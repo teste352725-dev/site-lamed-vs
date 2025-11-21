@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laméd vs | Alfaiataria e Casa</title>
+    <meta name="description" content="Laméd vs | Criações em fibras naturais. Peças atemporais que unem elegância, bem-estar e propósito para você e seu lar.">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#643f21">
+    <link rel="icon" type="image/png" href="https://i.ibb.co/mr93jDHT/JM.png">
+    <link rel="apple-touch-icon" href="https://i.ibb.co/mr93jDHT/JM.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">    
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <!-- CSS Personalizado -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="antialiased">
+    <!-- CABEÇALHO -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 grid grid-cols-3 items-center">
+            <div class="flex items-center gap-4">
+                <button id="menu-button" class="md:hidden text-2xl z-10 text-[--cor-texto]">☰</button>
+                <!-- Botão Minha Conta -->
+                <a href="minha-conta.html" class="text-2xl text-gray-600 hover:text-[--cor-ouro-acento]" title="Minha Conta">
+                    <i class="fa-regular fa-user"></i>
+                </a>
+            </div>
+
+            <a href="#home" class="flex items-end page-link justify-center">
+                <h1 class="text-6xl text-[--cor-texto] leading-none allura">Laméd</h1>
+                <span class="text-xl gold-accent serif leading-none ml-1" style="transform: translateY(-0.5rem);">vs</span>
+            </a>
+
+            <div class="flex items-center justify-end gap-4">
+                <a href="#" class="hidden md:inline hover:text-[--cor-ouro-acento] nav-collection-link font-medium text-sm">COLEÇÃO</a>
+                <button id="cart-btn" class="cart-btn relative p-2 text-gray-700 hover:text-[--cor-marrom-cta]">
+                    <i class="fa-solid fa-shopping-bag text-xl"></i>
+                    <!-- Badge do Carrinho -->
+                    <span id="cart-count" class="cart-item-count" style="display: none;">0</span>
+                </button>
+            </div>
+        </div>
+        
+        <nav id="mobile-menu" class="md:hidden bg-white shadow-lg border-t absolute w-full">
+            <a href="#" class="block px-4 py-3 hover:bg-gray-50 nav-collection-link">Coleção</a>
+            <a href="minha-conta.html" class="block px-4 py-3 hover:bg-gray-50">Minha Conta</a>
+            <a href="#contato" class="block px-4 py-3 hover:bg-gray-50">Contato</a>
+        </nav>
+    </header>
+
+    <main class="main-container">
+        
+        <!-- PÁGINA INICIAL (HOME) -->
+        <div id="page-home" class="page active">
+            
+            <!-- Hero Section -->
+            <section class="hero-section flex items-center justify-center text-center p-4">
+                <img src="https://i.supaimg.com/843f581a-5106-4617-a59d-b6d2df49a5e1.webp" alt="Coleção Laméd">
+                <div class="hero-overlay"></div>
+                <div class="hero-content bg-white/90 p-8 md:p-12 rounded-lg shadow-2xl max-w-lg">
+                    <h2 class="serif text-4xl md:text-6xl font-light mb-4 text-[--cor-texto]">Nova Coleção</h2>
+                    <p class="text-base md:text-xl mb-6 tracking-widest text-gray-700">Na Terra como no Céu</p>
+                    <a href="#" class="main-button text-white font-semibold py-3 px-8 rounded-full uppercase text-sm tracking-wider nav-collection-link">Veja nossa Coleção</a>
+                </div>
+            </section>
+            
+            <!-- Carrossel de Lançamentos -->
+            <section id="home-collection-preview" class="py-16 px-4 scroll-animate">
+                <div class="container mx-auto max-w-7xl text-center">
+                    <h3 class="serif text-3xl md:text-4xl font-light mb-12">Lançamentos</h3>
+                    <div id="home-splide" class="splide mb-12">
+                        <div class="splide__track">
+                            <ul class="splide__list" id="home-splide-list">
+                                <div class="text-gray-600">Carregando peças...</div>
+                            </ul>
+                        </div>
+                    </div>
+                    <a href="#" class="main-button text-white font-semibold py-3 px-8 rounded-full uppercase text-sm tracking-wider nav-collection-link">Ver todas as peças</a>
+                </div>
+            </section>
+            
+            <!-- Container para Coleções Dinâmicas (Separadas) -->
+            <div id="collections-container">
+                 <div class="text-center py-12">
+                    <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em]"></div>
+                    <p class="text-gray-500 mt-2">Carregando coleções...</p>
+                 </div>
+            </div>
+
+            <!-- Seção Sobre -->
+            <section id="sobre" class="py-16 px-4 bg-gray-50 scroll-animate">
+                 <div class="container mx-auto max-w-5xl text-center">
+                    <h3 class="serif text-3xl md:text-4xl font-light mb-6">Nossa Filosofia</h3>
+                    <p class="text-gray-700 text-lg leading-relaxed max-w-3xl mx-auto">A <strong class="allura text-[--cor-texto]">Laméd</strong><span class="text-sm gold-accent ml-1">VS</span> nasce da harmonia entre elegância, propósito e cuidado com você. Cada peça é confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequência. Mais que roupas, criamos experiências atemporais, conscientes e únicas — feitas para vestir seu corpo e inspirar sua mente.</p>
+                </div>
+            </section>
+            
+            <!-- Mensagem Final -->
+            <section id="mensagem" class="py-16 px-4 scroll-animate">
+                 <div class="container mx-auto max-w-5xl text-center">
+                    <h3 class="serif text-3xl md:text-4xl font-light mb-6">Uma Mensagem Para Você</h3>
+                    <div class="text-gray-700 text-lg leading-relaxed max-w-3xl mx-auto space-y-4">
+                        <p>Ao escolher uma de nossas criações, você se conecta com a sua essência. Nossos produtos são um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem você é.</p>
+                        <p>Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensação de vitalidade e paz interior. Laméd vs fala de governo, é um lembrete do poder que reside em suas escolhas diárias, especialmente naquelas feitas com consciência e amor.</p>
+                        <p class="pt-4">Com carinho,<br><span class="allura text-4xl text-[--cor-texto]">Laméd</span><span class="text-xl gold-accent serif ml-1">vs</span></p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- PÁGINA LISTA DE COLEÇÕES (Quando houver múltiplas) -->
+        <div id="page-collections-list" class="page">
+            <section class="py-16 px-4 bg-white min-h-screen">
+                <div class="container mx-auto max-w-7xl">
+                    <h3 class="serif text-3xl md:text-4xl font-light text-center mb-12 text-[--cor-texto]">Nossas Coleções</h3>
+                    <div id="collections-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Inserido via JS -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- PÁGINA DA COLEÇÃO (Lista de Produtos) -->
+        <div id="page-collection" class="page">
+            <section class="py-16 px-4 bg-white">
+                <!-- Galeria de Produtos -->
+                <div id="collection-gallery" class="container mx-auto max-w-7xl">
+                    <h3 class="serif text-3xl md:text-4xl font-light text-center mb-12 text-[--cor-texto]">Coleção</h3>
+                    <div id="collection-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+                         <div class="col-span-full text-center">
+                            <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status"></div>
+                            <p class="text-gray-600 mt-2">Carregando peças...</p>
+                         </div>
+                    </div>
+                </div>
+                
+                <!-- DETALHE DO PRODUTO (Visualização Única) -->
+                <div id="product-detail-view" class="hidden container mx-auto max-w-7xl">
+                    <button id="back-to-gallery" class="main-button text-white py-2 px-6 rounded text-sm mb-8">Voltar</button>
+                    <div class="flex flex-col md:flex-row gap-8 md:gap-12 md:items-start">
+                        
+                        <!-- Carrossel de Imagens do Produto -->
+                        <div class="md:w-1/2 lg:w-3/5">
+                            <div id="main-carousel" class="splide mb-4">
+                                <div class="splide__track">
+                                    <ul class="splide__list" id="main-carousel-list"></ul>
+                                </div>
+                            </div>
+                            
+                            <div id="thumbnail-carousel" class="splide">
+                                <div class="splide__track">
+                                    <ul class="splide__list" id="thumbnail-carousel-list"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Informações do Produto -->
+                        <div class="md:w-1/2 lg:w-2/5">
+                            <div class="flex justify-between items-start">
+                                <h2 id="detail-title" class="serif text-4xl font-light mb-4 text-[--cor-texto]"></h2>
+                                <!-- Botão Favorito -->
+                                <button id="btn-favorite" class="text-2xl text-gray-300 hover:text-red-500 transition" title="Adicionar aos Favoritos">
+                                    <i class="fa-regular fa-heart"></i>
+                                </button>
+                            </div>
+
+                            <div id="detail-price" class="text-2xl gold-accent mb-6 serif"></div>
+                            
+                            <div class="mb-6">
+                                <p class="text-sm font-medium text-gray-700 mb-2">Selecione o tamanho:</p>
+                                <div class="size-selector">
+                                    <div class="size-option" data-size="PP">PP</div>
+                                    <div class="size-option" data-size="P">P</div>
+                                    <div class="size-option" data-size="M">M</div>
+                                    <div class="size-option" data-size="G">G</div>
+                                    <div class="size-option" data-size="GG">GG</div>
+                                </div>
+                                <p class="size-guide-note">Consulte a tabela de medidas abaixo para escolher o tamanho correto</p>
+                                <p id="selected-size-display" class="text-green-700 font-semibold mt-3 hidden"></p>
+                            </div>
+
+                            <!-- O seletor de cores é inserido aqui via JS -->
+
+                            <div class="space-y-3 mb-6">
+                               <button id="add-to-cart-button" class="w-full block text-center bg-[--cor-ouro-acento] text-white py-3 rounded-md text-sm font-semibold uppercase transition-opacity opacity-50 cursor-not-allowed" disabled>Selecione Opções</button>
+                               <p id="add-to-cart-feedback" class="text-center text-sm text-gray-500 h-4"></p>
+                            </div>
+
+                            <div class="border-t border-gray-200">
+                                <div>
+                                    <button class="accordion-button accordion-toggle">
+                                        <span>Descrição</span>
+                                        <span class="accordion-icon">+</span>
+                                    </button>
+                                    <div class="accordion-content hidden mt-2 text-gray-600 text-sm leading-relaxed pb-4">
+                                        <p id="detail-description"></p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="accordion-button accordion-toggle">
+                                        <span>Guia de Medidas</span>
+                                        <span class="accordion-icon">+</span>
+                                    </button>
+                                    <div class="accordion-content hidden mt-2 text-gray-600 text-sm pb-4">
+                                        <table class="w-full text-left text-xs">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="p-2">Tamanho</th>
+                                                    <th class="p-2">Busto (cm)</th>
+                                                    <th class="p-2">Cintura (cm)</th>
+                                                    <th class="p-2">Quadril (cm)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr class="border-b"><td class="p-2 font-medium">PP (36)</td><td class="p-2">82-86</td><td class="p-2">62-66</td><td class="p-2">92-96</td></tr>
+                                                <tr class="border-b"><td class="p-2 font-medium">P (38)</td><td class="p-2">86-90</td><td class="p-2">66-70</td><td class="p-2">96-100</td></tr>
+                                                <tr class="border-b"><td class="p-2 font-medium">M (40)</td><td class="p-2">90-94</td><td class="p-2">70-74</td><td class="p-2">100-104</td></tr>
+                                                <tr class="border-b"><td class="p-2 font-medium">G (42)</td><td class="p-2">94-98</td><td class="p-2">74-78</td><td class="p-2">104-108</td></tr>
+                                                <tr><td class="p-2 font-medium">GG (44)</td><td class="p-2">98-102</td><td class="p-2">78-82</td><td class="p-2">108-112</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Secções de Recomendação (Você também pode gostar...) -->
+                    <div id="related-products-container" class="pb-8"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- GAVETA DO CARRINHO -->
+    <div id="cart-overlay" class="modal-overlay fixed inset-0 bg-black/50 z-[70]"></div>
+    <div id="cart-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[80] flex flex-col">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h2 class="text-xl font-semibold serif">Minha Encomenda</h2>
+            <button id="close-cart-btn" class="text-2xl text-gray-500 hover:text-gray-800">&times;</button>
+        </div>
+        <div id="cart-items-container" class="flex-grow p-4 overflow-y-auto">
+            <p id="cart-empty-msg" class="text-gray-500 text-center mt-8">Sua sacola de encomendas está vazia.</p>
+        </div>
+        <div class="p-4 border-t space-y-4">
+            <div class="flex justify-between font-semibold text-lg">
+                <span>Subtotal:</span>
+                <span id="cart-subtotal">R$ 0,00</span>
+            </div>
+            <button id="finalizar-pedido-btn" class="w-full bg-[--cor-marrom-cta] text-white py-3 rounded-lg font-semibold text-lg hover:bg-[#5a3d2b] transition-colors">
+                Finalizar Pedido
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE CHECKOUT -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Finalizar Pedido</h2>
+                <button class="close-modal text-2xl">&times;</button>
+            </div>
+
+            <form id="checkout-form" class="space-y-4">
+                <!-- Dados Pessoais -->
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h3 class="font-semibold text-blue-800 mb-3">Informações de Contato <span class="text-red-500">*</span></h3>
+                    <div class="space-y-3">
+                        <input type="text" name="nome" class="w-full border border-gray-300 rounded px-3 py-2 required-field" placeholder="Nome Completo" required>
+                        <input type="tel" name="telefone" class="w-full border border-gray-300 rounded px-3 py-2 required-field" placeholder="(11) 99999-9999" required>
+                        <input type="email" name="email" class="w-full border border-gray-300 rounded px-3 py-2 required-field" placeholder="seu@email.com" required>
+                    </div>
+                </div>
+
+                <!-- Endereço -->
+                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h3 class="font-semibold text-green-800 mb-3">Endereço de Entrega <span class="text-red-500">*</span></h3>
+                    <div class="space-y-3">
+                        <input type="text" name="rua" class="w-full border border-gray-300 rounded px-3 py-2 required-field" placeholder="Nome da rua" required>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" name="numero" class="w-full border border-gray-300 rounded px-3 py-2 required-field" placeholder="Número" required>
+                            <input type="text" name="cep" class="w-full border border-gray-300 rounded px-3 py-2 required-field" placeholder="CEP" required>
+                        </div>
+                        <input type="text" name="cidade" class="w-full border border-gray-300 rounded px-3 py-2 required-field" placeholder="Cidade" required>
+                    </div>
+                </div>
+
+                <!-- Pagamento -->
+                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <h3 class="font-semibold text-purple-800 mb-3">Forma de Pagamento <span class="text-red-500">*</span></h3>
+                    <div class="space-y-3">
+                        <div class="payment-option">
+                            <input type="radio" id="pix" name="pagamento" value="PIX" class="hidden payment-radio required-field" required>
+                            <label for="pix" class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-purple-400 payment-label bg-white">
+                                <div class="w-4 h-4 rounded-full border border-gray-300 bg-purple-600 hidden"></div>
+                                <div class="flex-1">
+                                    <div class="font-semibold">PIX</div>
+                                    <div class="text-sm text-gray-600">-5% de desconto</div>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="payment-option">
+                            <input type="radio" id="cartao" name="pagamento" value="Cartão de Crédito" class="hidden payment-radio required-field" required>
+                            <label for="cartao" class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-purple-400 payment-label bg-white">
+                                <div class="w-4 h-4 rounded-full border border-gray-300 bg-purple-600 hidden"></div>
+                                <div class="flex-1">
+                                    <div class="font-semibold">Cartão de Crédito</div>
+                                    <div class="text-sm text-green-600">2x SEM JUROS</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Parcelamento -->
+                        <div id="parcelamento-container" class="hidden mt-3 p-3 bg-gray-50 rounded-lg border">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Parcelamento:</label>
+                            <select id="parcelas-select" class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></select>
+                            <div id="parcela-info" class="text-xs text-gray-600 mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MENSAGEM DE PRODUÇÃO SOB DEMANDA -->
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div class="flex items-start">
+                        <i class="fa-solid fa-clock text-amber-600 mt-1 mr-3 text-lg"></i>
+                        <div>
+                            <h4 class="font-semibold text-amber-800 text-sm uppercase tracking-wide mb-2">✨ Produção Sob Demanda</h4>
+                            <div class="space-y-2 text-amber-700 text-sm">
+                                <div class="flex items-start">
+                                    <i class="fa-solid fa-calendar-check text-amber-600 mt-0.5 mr-2"></i>
+                                    <div>
+                                        <strong>Prazo de Produção:</strong> até 20 dias úteis<br>
+                                        <span class="text-xs text-amber-600">(Confeccionado especialmente para você)</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start">
+                                    <i class="fa-solid fa-truck text-amber-600 mt-0.5 mr-2"></i>
+                                    <div>
+                                        <strong>Envio:</strong> + Prazo dos Correios<br>
+                                        <span class="text-xs text-amber-600">(Após conclusão da produção)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumo -->
+                <div class="border-t pt-4">
+                    <h3 class="font-semibold mb-3">Resumo do Pedido</h3>
+                    <div id="checkout-summary"></div>
+                    <div class="flex justify-between items-center mt-3 pt-3 border-t">
+                        <span class="font-semibold">Total:</span>
+                        <span id="checkout-total" class="text-xl font-bold text-[--cor-marrom-cta]">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="close-modal flex-1 bg-gray-300 text-gray-700 py-2 rounded">Voltar</button>
+                    <button type="submit" class="flex-1 bg-[--cor-marrom-cta] text-white py-2 rounded font-semibold hover:bg-[#5a3d2b] transition-colors">Finalizar Pedido</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- RODAPÉ -->
+    <footer id="contato" class="bg-gray-100 text-gray-700 py-12 px-4 mt-12">
+        <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+                <h4 class="flex items-end space-x-0 mb-4"><span class="allura text-5xl text-[--cor-texto]">Laméd</span><span class="text-lg gold-accent ml-1">vs</span></h4>
+                <p class="text-sm">Lamed vs é Atemporal.</p>
+                <p class="text-sm">Lamed vs é Profético.</p>
+                <p class="text-sm">Lamed vs é Alta frequência.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-lg text-[--cor-texto] mb-4">Contato</h4>
+                <div class="text-sm leading-relaxed">
+                    <p>Servidão Otávio Pagoto, 1335 - Santa Lucia, Vitória - ES</p>
+                    <p>E-mail: veronicaateliercursos@gmail.com</p>
+                    <p>WhatsApp: (27) 99928-7657</p>
+                </div>
+                <div class="flex space-x-4 mt-4 text-2xl">
+                    <a href="https://www.instagram.com/veronicasoaresatelier" target="_blank" class="hover:text-[--cor-ouro-acento]"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/Veronicaaguiar237/" target="_blank" class="hover:text-[--cor-ouro-acento]"><i class="fa-brands fa-square-facebook"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="border-t border-gray-300 mt-8 pt-4">
+            <div class="text-center text-xs text-gray-500">&copy; 2025 Laméd vs. Todos os direitos reservados.</div>
+            <div class="text-center text-xs mt-2">
+                <a href="login-admin.html" class="text-gray-400 hover:text-gray-600">Acesso Restrito</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- BOTÃO WHATSAPP -->
+    <a id="floating-wpp-btn" href="https://wa.me/5527999287657" target="_blank" rel="noopener noreferrer" class="floating-whatsapp">
+        <i class="fa-brands fa-whatsapp"></i>
+    </a>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
+    <script src="app.js"></script>
+    
+    <!-- SERVICE WORKER -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('SW registrado:', reg))
+                .catch(err => console.log('Falha SW:', err));
+        }
+    </script>
+</body>
+</html>

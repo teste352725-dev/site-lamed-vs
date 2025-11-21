@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Coleções | Painel Administrativo - Laméd vs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compatibilidade - Mais Estável) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --cor-marrom-cta: #643f21;
+            --cor-ouro-acento: #A58A5C;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .font-allura { font-family: 'Allura', cursive; }
+
+        /* Cards Responsivos */
+        .card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .collection-card.active {
+            border: 2px solid var(--cor-ouro-acento);
+            background-color: #fffbeb;
+        }
+
+        /* Botões */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .btn-primary { background-color: var(--cor-marrom-cta); color: white; }
+        .btn-primary:hover { background-color: #5a3d2b; }
+        
+        .btn-secondary { background-color: #e5e7eb; color: #1f2937; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+        
+        .btn-danger { background-color: #fee2e2; color: #991b1b; }
+        .btn-danger:hover { background-color: #fecaca; }
+
+        .btn-success { background-color: #dcfce7; color: #166534; }
+        .btn-success:hover { background-color: #bbf7d0; }
+
+        /* Loading */
+        .loading-spinner {
+            width: 24px; height: 24px;
+            border: 3px solid #f3f4f6;
+            border-top-color: var(--cor-ouro-acento);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-active { background-color: #d1fae5; color: #065f46; }
+        .status-inactive { background-color: #f3f4f6; color: #6b7280; }
+
+        /* Modal */
+        .modal {
+            visibility: hidden; opacity: 0;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 50; transition: all 0.3s;
+        }
+        .modal.visivel { visibility: visible; opacity: 1; }
+        .modal-content {
+            background-color: white;
+            max-height: 90vh;
+            display: flex; flex-direction: column;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Cabeçalho -->
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <a href="dashboard.html" class="text-gray-600 text-xl"><i class="fa-solid fa-arrow-left"></i></a>
+                    <h1 class="font-allura text-3xl text-gray-800">Coleções</h1>
+                </div>
+                <button id="add-collection-btn" class="btn btn-primary text-sm shadow-lg">
+                    <i class="fa-solid fa-plus mr-2"></i><span class="hidden sm:inline">Nova</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4">
+        <!-- Status -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-center">
+                <span class="block text-2xl font-bold text-[--cor-marrom-cta]" id="total-collections">0</span>
+                <span class="text-xs text-gray-500">Total</span>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-center">
+                <span class="block text-2xl font-bold text-green-600" id="active-collections">0</span>
+                <span class="text-xs text-gray-500">Ativas (Max 2)</span>
+            </div>
+        </div>
+
+        <!-- Seção de Ativas -->
+        <div id="active-section" class="mb-8 hidden">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fa-solid fa-star text-yellow-500 mr-2"></i> Ativas no Site
+            </h2>
+            <div id="active-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- Lista Geral -->
+        <div class="card p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800">Biblioteca</h3>
+                <select id="sort-select" class="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                    <option value="date-desc">Mais Recentes</option>
+                    <option value="name-asc">Nome (A-Z)</option>
+                    <option value="status">Status (Ativas primeiro)</option>
+                </select>
+            </div>
+
+            <div id="loading-state" class="text-center py-12">
+                <div class="loading-spinner mx-auto mb-2"></div>
+                <p class="text-gray-500 text-sm">Carregando coleções...</p>
+            </div>
+
+            <div id="empty-state" class="hidden text-center py-12">
+                <i class="fa-solid fa-layer-group text-4xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">Nenhuma coleção criada.</p>
+            </div>
+
+            <div id="collections-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="collection-modal" class="modal">
+        <div class="modal-content w-full h-full md:h-auto md:max-w-2xl md:rounded-xl">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 id="modal-title" class="text-xl font-semibold">Nova Coleção</h2>
+                <button id="close-modal" class="text-gray-500 p-2 text-xl">&times;</button>
+            </div>
+
+            <form id="collection-form" class="p-4 overflow-y-auto flex-1 space-y-4">
+                <input type="hidden" id="collection-id">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                    <input type="text" id="collection-name" required class="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[--cor-ouro-acento] outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
+                    <input type="text" id="collection-slug" required class="w-full border rounded-lg p-3 bg-gray-50 text-gray-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <textarea id="collection-description" rows="3" class="w-full border rounded-lg p-3 outline-none"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
+                        <input type="number" id="collection-order" value="0" class="w-full border rounded-lg p-3">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data Lançamento</label>
+                        <input type="date" id="collection-date" class="w-full border rounded-lg p-3">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Imagem Capa (URL)</label>
+                    <input type="url" id="collection-image" class="w-full border rounded-lg p-3 mb-2">
+                    <img id="preview-image" src="" class="w-full h-32 object-cover rounded-lg hidden bg-gray-100">
+                </div>
+
+                <div class="pt-4 mt-4 border-t grid grid-cols-2 gap-3">
+                    <button type="button" id="delete-collection-btn" class="btn btn-danger hidden">
+                        <i class="fa-solid fa-trash mr-2"></i> Excluir
+                    </button>
+                    <button type="submit" id="save-collection-btn" class="btn btn-primary col-span-2">
+                        Salvar Coleção
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+            authDomain: "site-lamed.firebaseapp.com",
+            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+            projectId: "site-lamed",
+            storageBucket: "site-lamed.firebasestorage.app",
+            messagingSenderId: "862756160215",
+            appId: "1:862756160215:web:d0fded233682bf93eaa692",
+            measurementId: "G-BL1G961PGT"
+        };
+
+        // Inicializar Firebase (Global)
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let colecoes = [];
+        let currentCollectionId = null;
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Iniciando...");
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    console.log("Não autenticado, redirecionando...");
+                    window.location.href = './login-admin.html';
+                } else {
+                    console.log("Autenticado:", user.email);
+                    carregarColecoes();
+                }
+            });
+            setupEventListeners();
+        });
+
+        function carregarColecoes() {
+            const grid = document.getElementById('collections-grid');
+            const loading = document.getElementById('loading-state');
+
+            db.collection("colecoes").orderBy("ordem", "asc").onSnapshot((snapshot) => {
+                colecoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Coleções carregadas:", colecoes.length);
+                renderizarTela();
+                loading.classList.add('hidden');
+            }, (error) => {
+                console.error("Erro ao carregar coleções:", error);
+                loading.innerHTML = `<p class="text-red-500">Erro ao carregar dados.<br>${error.message}</p>`;
+            });
+        }
+
+        function renderizarTela() {
+            const grid = document.getElementById('collections-grid');
+            const activeGrid = document.getElementById('active-grid');
+            
+            grid.innerHTML = '';
+            activeGrid.innerHTML = '';
+
+            if (colecoes.length === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('empty-state').classList.add('hidden');
+
+            // Contadores
+            const ativas = colecoes.filter(c => c.ativa);
+            document.getElementById('total-collections').textContent = colecoes.length;
+            document.getElementById('active-collections').textContent = ativas.length;
+
+            // Ativas
+            if (ativas.length > 0) {
+                document.getElementById('active-section').classList.remove('hidden');
+                ativas.forEach(c => activeGrid.appendChild(criarCard(c)));
+            } else {
+                document.getElementById('active-section').classList.add('hidden');
+            }
+
+            // Lista Geral (Ordenada)
+            const sortType = document.getElementById('sort-select').value;
+            let sorted = [...colecoes];
+            if(sortType === 'date-desc') sorted.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            if(sortType === 'name-asc') sorted.sort((a,b) => a.nome.localeCompare(b.nome));
+            if(sortType === 'status') sorted.sort((a,b) => (b.ativa === a.ativa) ? 0 : b.ativa ? 1 : -1);
+
+            sorted.forEach(c => grid.appendChild(criarCard(c)));
+        }
+
+        function criarCard(c) {
+            const div = document.createElement('div');
+            div.className = `card p-4 flex flex-col gap-3 ${c.ativa ? 'collection-card active' : ''}`;
+            
+            const data = c.dataLancamento ? new Date(c.dataLancamento.seconds * 1000).toLocaleDateString('pt-BR') : '-';
+            
+            div.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-lg">${c.nome}</h4>
+                        <span class="text-xs text-gray-500">${data}</span>
+                    </div>
+                    <span class="status-badge ${c.ativa ? 'status-active' : 'status-inactive'}">
+                        ${c.ativa ? 'Ativa' : 'Inativa'}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-600 line-clamp-2 flex-grow">${c.descricao || 'Sem descrição'}</p>
+                <div class="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-gray-100">
+                    <button class="btn ${c.ativa ? 'btn-secondary' : 'btn-success'} text-xs toggle-status-btn">
+                        ${c.ativa ? '<i class="fa-solid fa-pause mr-1"></i> Pausar' : '<i class="fa-solid fa-play mr-1"></i> Ativar'}
+                    </button>
+                    <button class="btn btn-primary text-xs edit-btn">
+                        <i class="fa-solid fa-pen mr-1"></i> Editar
+                    </button>
+                </div>
+            `;
+            
+            div.querySelector('.toggle-status-btn').onclick = () => toggleStatus(c);
+            div.querySelector('.edit-btn').onclick = () => abrirModal(c);
+            return div;
+        }
+
+        async function toggleStatus(colecao) {
+            const novoStatus = !colecao.ativa;
+            if (novoStatus === true) {
+                const ativas = colecoes.filter(c => c.ativa).length;
+                if (ativas >= 2) {
+                    alert("Limite atingido! Máximo de 2 coleções ativas.");
+                    return;
+                }
+            }
+            try {
+                await db.collection("colecoes").doc(colecao.id).update({ 
+                    ativa: novoStatus, 
+                    updatedAt: new Date() 
+                });
+            } catch (e) {
+                console.error(e);
+                alert("Erro ao atualizar: " + e.message);
+            }
+        }
+
+        function abrirModal(colecao = null) {
+            const form = document.getElementById('collection-form');
+            form.reset();
+            currentCollectionId = null;
+            document.getElementById('preview-image').classList.add('hidden');
+            document.getElementById('delete-collection-btn').classList.add('hidden');
+            const saveBtn = document.getElementById('save-collection-btn');
+            saveBtn.classList.remove('col-span-1');
+            saveBtn.classList.add('col-span-2');
+
+            if (colecao) {
+                currentCollectionId = colecao.id;
+                document.getElementById('modal-title').textContent = 'Editar Coleção';
+                document.getElementById('collection-name').value = colecao.nome;
+                document.getElementById('collection-slug').value = colecao.slug;
+                document.getElementById('collection-description').value = colecao.descricao || '';
+                document.getElementById('collection-order').value = colecao.ordem || 0;
+                document.getElementById('collection-image').value = colecao.imagemDestaque || '';
+                
+                if (colecao.dataLancamento) {
+                    const d = new Date(colecao.dataLancamento.seconds * 1000);
+                    document.getElementById('collection-date').value = d.toISOString().split('T')[0];
+                }
+                if (colecao.imagemDestaque) {
+                    const img = document.getElementById('preview-image');
+                    img.src = colecao.imagemDestaque;
+                    img.classList.remove('hidden');
+                }
+
+                document.getElementById('delete-collection-btn').classList.remove('hidden');
+                saveBtn.classList.remove('col-span-2');
+                saveBtn.classList.add('col-span-1');
+            } else {
+                document.getElementById('modal-title').textContent = 'Nova Coleção';
+            }
+            document.getElementById('collection-modal').classList.add('visivel');
+        }
+
+        async function salvarColecao(e) {
+            e.preventDefault();
+            const nome = document.getElementById('collection-name').value;
+            const slug = document.getElementById('collection-slug').value;
+            const dateVal = document.getElementById('collection-date').value;
+
+            const data = {
+                nome, slug,
+                descricao: document.getElementById('collection-description').value,
+                ordem: parseInt(document.getElementById('collection-order').value) || 0,
+                imagemDestaque: document.getElementById('collection-image').value,
+                updatedAt: new Date()
+            };
+            if (dateVal) data.dataLancamento = new Date(dateVal);
+
+            try {
+                if (currentCollectionId) {
+                    await db.collection("colecoes").doc(currentCollectionId).update(data);
+                } else {
+                    data.createdAt = new Date();
+                    data.ativa = false;
+                    await db.collection("colecoes").add(data);
+                }
+                document.getElementById('collection-modal').classList.remove('visivel');
+            } catch (error) {
+                alert("Erro ao salvar: " + error.message);
+            }
+        }
+
+        async function excluirColecao() {
+            if (!currentCollectionId || !confirm("Tem certeza?")) return;
+            try {
+                await db.collection("colecoes").doc(currentCollectionId).delete();
+                document.getElementById('collection-modal').classList.remove('visivel');
+            } catch (e) { alert("Erro ao excluir."); }
+        }
+
+        function setupEventListeners() {
+            document.getElementById('add-collection-btn').onclick = () => abrirModal();
+            document.getElementById('close-modal').onclick = () => document.getElementById('collection-modal').classList.remove('visivel');
+            document.getElementById('collection-form').onsubmit = salvarColecao;
+            document.getElementById('delete-collection-btn').onclick = excluirColecao;
+            document.getElementById('sort-select').onchange = renderizarTela;
+            
+            document.getElementById('collection-name').oninput = (e) => {
+                if(!currentCollectionId) {
+                    document.getElementById('collection-slug').value = e.target.value.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+                }
+            };
+            document.getElementById('collection-image').oninput = (e) => {
+                const img = document.getElementById('preview-image');
+                if(e.target.value) { img.src = e.target.value; img.classList.remove('hidden'); }
+                else img.classList.add('hidden');
+            };
+        }
+    </script>
+</body>
+</html>

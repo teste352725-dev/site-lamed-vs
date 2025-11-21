@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Conta | Laméd vs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root { --cor-marrom: #643f21; --cor-ouro: #A58A5C; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .font-allura { font-family: 'Allura', cursive; }
+        
+        /* Chat Styles */
+        .chat-container { height: calc(100vh - 280px); min-height: 400px; }
+        .msg-bubble { max-width: 80%; padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; position: relative; font-size: 0.9rem; }
+        .msg-user { background-color: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; margin-left: auto; }
+        .msg-admin { background-color: #ffffff; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #e5e7eb; }
+        .tab-btn.active { border-bottom: 2px solid var(--cor-marrom); color: var(--cor-marrom); font-weight: 600; }
+        
+        /* Login Screen */
+        #login-screen { background-image: url('https://i.supaimg.com/843f581a-5106-4617-a59d-b6d2df49a5e1.webp'); background-size: cover; background-position: center; }
+        .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- TELA DE LOGIN / REGISTRO -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="glass-effect p-8 rounded-xl shadow-2xl w-full max-w-md text-center">
+            <h1 class="font-allura text-5xl text-[--cor-marrom] mb-2">Laméd</h1>
+            <p class="text-gray-600 mb-8 uppercase tracking-widest text-xs">Área do Cliente</p>
+            
+            <button onclick="fazerLoginGoogle()" class="w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-50 transition shadow-sm mb-4">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5">
+                Entrar com Google
+            </button>
+            
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300"></div></div>
+                <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-500">Ou com email</span></div>
+            </div>
+
+            <form id="email-form" class="space-y-4">
+                <input type="email" id="email-input" placeholder="Seu E-mail" class="w-full p-3 border rounded bg-white/50 focus:outline-[--cor-ouro]">
+                <input type="password" id="pass-input" placeholder="Sua Senha" class="w-full p-3 border rounded bg-white/50 focus:outline-[--cor-ouro]">
+                <button type="submit" class="w-full bg-[--cor-marrom] text-white py-3 rounded-lg hover:bg-[#4a2e18] transition">Entrar / Cadastrar</button>
+            </form>
+            <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+            <a href="index.html" class="block mt-6 text-sm text-gray-500 hover:underline">Voltar para a Loja</a>
+        </div>
+    </div>
+
+    <!-- PAINEL DO USUÁRIO (Escondido inicialmente) -->
+    <div id="user-panel" class="hidden min-h-screen flex flex-col">
+        
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-40">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <a href="index.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
+                    <span class="font-allura text-2xl">Minha Conta</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="user-name" class="text-sm font-medium hidden sm:block">Usuario</span>
+                    <img id="user-avatar" src="" class="w-8 h-8 rounded-full border bg-gray-200 object-cover">
+                    <button onclick="fazerLogout()" class="text-red-500 text-sm ml-2"><i class="fa-solid fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+            
+            <!-- Abas de Navegação -->
+            <div class="flex border-b bg-white px-4 gap-6 overflow-x-auto">
+                <button onclick="switchTab('pedidos')" class="tab-btn active py-3 px-2 whitespace-nowrap">
+                    <i class="fa-solid fa-box mr-1"></i> Meus Pedidos
+                </button>
+                <button onclick="switchTab('favoritos')" class="tab-btn py-3 px-2 whitespace-nowrap">
+                    <i class="fa-solid fa-heart mr-1"></i> Favoritos
+                </button>
+                <button onclick="switchTab('chat')" class="tab-btn py-3 px-2 whitespace-nowrap">
+                    <i class="fa-brands fa-whatsapp mr-1"></i> Fale Conosco
+                </button>
+            </div>
+        </header>
+
+        <main class="container mx-auto p-4 flex-1">
+            
+            <!-- ABA: PEDIDOS -->
+            <div id="tab-pedidos" class="tab-content space-y-4">
+                <div id="orders-list" class="space-y-4">
+                    <div class="text-center py-10 text-gray-400">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA: FAVORITOS -->
+            <div id="tab-favoritos" class="tab-content hidden">
+                <div id="favorites-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Produtos injetados via JS -->
+                </div>
+                <div id="no-favorites" class="hidden text-center py-20 text-gray-500">
+                    <i class="fa-regular fa-heart text-4xl mb-2"></i>
+                    <p>Você ainda não tem favoritos.</p>
+                </div>
+            </div>
+
+            <!-- ABA: CHAT -->
+            <div id="tab-chat" class="tab-content hidden h-full">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-140px)]">
+                    <div class="p-3 border-b bg-gray-50 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[--cor-marrom] text-white flex items-center justify-center font-allura text-xl">L</div>
+                        <div>
+                            <h3 class="font-semibold text-sm">Atendimento Laméd vs</h3>
+                            <p class="text-xs text-green-600 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Online</p>
+                        </div>
+                    </div>
+                    
+                    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col bg-[#e5ded8]">
+                        <!-- Mensagens aqui -->
+                        <div class="text-center text-xs text-gray-500 my-4 bg-white/50 py-1 rounded-full self-center px-4">
+                            Inicie uma conversa para tirar dúvidas sobre suas peças.
+                        </div>
+                    </div>
+                    
+                    <form id="chat-form" class="p-3 bg-gray-100 border-t flex gap-2">
+                        <input type="text" id="message-input" class="flex-1 rounded-full border-0 px-4 py-2 focus:ring-2 focus:ring-[--cor-ouro]" placeholder="Digite sua mensagem...">
+                        <button type="submit" class="bg-[--cor-marrom] text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#4a2e18] transition">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <script src="user.js"></script>
+</body>
+</html>

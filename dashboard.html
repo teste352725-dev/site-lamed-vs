@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Painel Administrativo - Laméd vs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --cor-marrom-cta: #643f21;
+            --cor-ouro-acento: #A58A5C;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .font-allura { font-family: 'Allura', cursive; }
+        
+        /* Cards */
+        .stat-card {
+            background: white; border-radius: 0.75rem; padding: 1.25rem;
+            border: 1px solid #e2e8f0; transition: all 0.2s;
+        }
+        .stat-card:active { transform: scale(0.98); }
+        
+        /* Botões de Atalho */
+        .quick-action {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: white; border-radius: 0.75rem; padding: 1.5rem;
+            border: 1px solid #e2e8f0; transition: all 0.2s; text-align: center;
+            cursor: pointer;
+            height: 100%;
+        }
+        .quick-action:hover { border-color: var(--cor-ouro-acento); background-color: #fffbeb; transform: translateY(-2px); shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        
+        /* Menu Mobile */
+        #mobile-menu {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: white; border-top: 1px solid #e2e8f0;
+            display: flex; justify-content: space-around; padding: 0.75rem;
+            z-index: 50; box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .menu-item {
+            display: flex; flex-direction: column; align-items: center;
+            color: #6b7280; font-size: 0.75rem; text-decoration: none;
+        }
+        .menu-item.active { color: var(--cor-marrom-cta); font-weight: 600; }
+        .menu-item i { font-size: 1.25rem; margin-bottom: 0.25rem; }
+        
+        /* Loading */
+        .loading-spinner {
+            width: 24px; height: 24px; border: 3px solid #f3f4f6;
+            border-top-color: var(--cor-ouro-acento); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Cabeçalho -->
+    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <h1 class="font-allura text-3xl text-gray-800">Laméd vs</h1>
+            <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full font-medium">Admin</span>
+        </div>
+        <button id="logout-btn" class="text-gray-500 hover:text-red-600 transition-colors">
+            <i class="fa-solid fa-arrow-right-from-bracket text-lg"></i>
+        </button>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 space-y-6">
+        <!-- Boas Vindas -->
+        <div>
+            <h2 class="text-xl font-semibold text-gray-800">Visão Geral</h2>
+            <p class="text-gray-500 text-sm">Bem-vindo de volta.</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="stat-card">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-gray-500 text-xs uppercase font-bold">Pedidos</span>
+                    <i class="fa-solid fa-shopping-bag text-blue-500"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800" id="total-pedidos">-</span>
+                <p class="text-xs text-gray-400 mt-1">Total</p>
+            </div>
+            <div class="stat-card">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-gray-500 text-xs uppercase font-bold">Receita</span>
+                    <i class="fa-solid fa-dollar-sign text-green-500"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800" id="receita-total">-</span>
+                <p class="text-xs text-gray-400 mt-1">Estimada</p>
+            </div>
+            <div class="stat-card">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-gray-500 text-xs uppercase font-bold">Produtos</span>
+                    <i class="fa-solid fa-shirt text-purple-500"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800" id="total-produtos">-</span>
+                <p class="text-xs text-gray-400 mt-1">Cadastrados</p>
+            </div>
+            <div class="stat-card">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-gray-500 text-xs uppercase font-bold">Coleções</span>
+                    <i class="fa-solid fa-layer-group text-orange-500"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800" id="colecoes-ativas">-</span>
+                <p class="text-xs text-green-600 mt-1">Ativas</p>
+            </div>
+        </div>
+
+        <!-- Ações Rápidas -->
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">Acesso Rápido</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- 1. Produtos -->
+                <a href="produtos.html" class="quick-action">
+                    <i class="fa-solid fa-shirt text-2xl text-[--cor-marrom-cta] mb-2"></i>
+                    <span class="font-medium text-sm">Produtos</span>
+                </a>
+                
+                <!-- 2. Pedidos -->
+                <a href="pedidos.html" class="quick-action">
+                    <i class="fa-solid fa-box text-2xl text-[--cor-marrom-cta] mb-2"></i>
+                    <span class="font-medium text-sm">Pedidos</span>
+                </a>
+                
+                <!-- 3. Chat Clientes -->
+                <a href="chat-admin.html" class="quick-action border-2 border-green-100 bg-green-50 hover:bg-green-100">
+                    <i class="fa-brands fa-whatsapp text-2xl text-green-600 mb-2"></i>
+                    <span class="font-medium text-sm text-green-800">Chat Clientes</span>
+                </a>
+                
+                <!-- 4. Galeria -->
+                <a href="galeria.html" class="quick-action">
+                    <i class="fa-solid fa-images text-2xl text-[--cor-marrom-cta] mb-2"></i>
+                    <span class="font-medium text-sm">Galeria</span>
+                </a>
+                
+                <!-- 5. Coleções -->
+                <a href="colecoes.html" class="quick-action">
+                    <i class="fa-solid fa-layer-group text-2xl text-[--cor-marrom-cta] mb-2"></i>
+                    <span class="font-medium text-sm">Coleções</span>
+                </a>
+                
+                <!-- 6. Editor -->
+                <a href="editor-imagem.html" class="quick-action">
+                    <i class="fa-solid fa-crop-simple text-2xl text-gray-500 mb-2"></i>
+                    <span class="font-medium text-sm">Editor</span>
+                </a>
+                
+                <!-- 7. Calculadora (NOVO) -->
+                <a href="calculadora.html" class="quick-action border-2 border-[--cor-ouro-acento] bg-[#fffbeb]">
+                    <i class="fa-solid fa-calculator text-2xl text-[--cor-marrom-cta] mb-2"></i>
+                    <span class="font-medium text-sm">Calculadora</span>
+                </a>
+
+                <!-- 8. Scripts -->
+                <a href="executor_scripts.html" class="quick-action">
+                    <i class="fa-solid fa-terminal text-2xl text-gray-500 mb-2"></i>
+                    <span class="font-medium text-sm">Scripts</span>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Menu Navegação Mobile -->
+    <nav id="mobile-menu" class="md:hidden">
+        <a href="dashboard.html" class="menu-item active">
+            <i class="fa-solid fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="pedidos.html" class="menu-item">
+            <i class="fa-solid fa-box"></i>
+            <span>Pedidos</span>
+        </a>
+        <a href="produtos.html" class="menu-item">
+            <i class="fa-solid fa-shirt"></i>
+            <span>Produtos</span>
+        </a>
+        <a href="chat-admin.html" class="menu-item">
+            <i class="fa-solid fa-comments"></i>
+            <span>Chat</span>
+        </a>
+    </nav>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+            authDomain: "site-lamed.firebaseapp.com",
+            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+            projectId: "site-lamed",
+            storageBucket: "site-lamed.firebasestorage.app",
+            messagingSenderId: "862756160215",
+            appId: "1:862756160215:web:d0fded233682bf93eaa692",
+            measurementId: "G-BL1G961PGT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // Validação de Admin (Proteção Front-End)
+        const ADMIN_UID = "8EIyqLDb9TSBCdX7ECZwoAX70s63";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    window.location.href = 'login-admin.html';
+                } else if (user.uid !== ADMIN_UID) {
+                    // Se logado mas não for o admin correto, manda para a loja
+                    alert("Acesso restrito a administradores.");
+                    window.location.href = 'index.html';
+                } else {
+                    // É o admin, carrega tudo
+                    carregarStats();
+                }
+            });
+
+            document.getElementById('logout-btn').onclick = () => auth.signOut();
+        });
+
+        async function carregarStats() {
+            // Pedidos
+            db.collection('pedidos').get().then(snap => {
+                document.getElementById('total-pedidos').textContent = snap.size;
+                let total = 0;
+                snap.forEach(doc => total += (doc.data().total || 0));
+                document.getElementById('receita-total').textContent = `R$ ${total.toFixed(0)}`;
+            });
+
+            // Produtos
+            db.collection('pecas').get().then(snap => {
+                document.getElementById('total-produtos').textContent = snap.size;
+            });
+
+            // Coleções Ativas
+            db.collection('colecoes').where('ativa', '==', true).get().then(snap => {
+                document.getElementById('colecoes-ativas').textContent = snap.size;
+            });
+        }
+    </script>
+</body>
+</html>

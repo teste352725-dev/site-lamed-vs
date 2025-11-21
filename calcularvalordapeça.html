@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Preços | Painel Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root { --cor-marrom-cta: #643f21; --cor-ouro-acento: #A58A5C; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .font-allura { font-family: 'Allura', cursive; }
+        
+        .card { background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        
+        .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-primary { background: var(--cor-marrom-cta); color: white; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #fee2e2; color: #991b1b; }
+
+        .input-field { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem; outline: none; font-size: 0.9rem; }
+        .input-field:focus { border-color: var(--cor-ouro-acento); ring: 2px solid var(--cor-ouro-acento); }
+        
+        .modelo-btn { cursor: pointer; border: 1px solid #e5e7eb; padding: 0.5rem; border-radius: 0.5rem; text-align: center; transition: 0.2s; font-size: 0.85rem; }
+        .modelo-btn:hover { background: #f9fafb; }
+        .modelo-btn.active { background: var(--cor-ouro-acento); color: white; border-color: var(--cor-ouro-acento); }
+    </style>
+</head>
+<body class="pb-20 min-h-screen flex flex-col">
+
+    <!-- Cabeçalho -->
+    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="text-xl font-bold text-gray-800">Calculadora de Preços</h1>
+        </div>
+        <button onclick="limparTudo()" class="text-sm text-red-500 hover:text-red-700 font-medium">
+            <i class="fa-solid fa-trash mr-1"></i>Limpar
+        </button>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 w-full">
+        
+        <!-- Coluna Esquerda: Configuração -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- 1. Base de Cálculo -->
+            <div class="card p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-gray-800 text-lg">1. Base de Cálculo</h3>
+                    
+                    <!-- Toggle Modo -->
+                    <div class="flex bg-gray-100 p-1 rounded-lg">
+                        <button onclick="mudarModo('novo')" id="btn-modo-novo" class="px-3 py-1 text-xs font-bold rounded bg-white shadow-sm text-gray-800 transition-all">Novo</button>
+                        <button onclick="mudarModo('existente')" id="btn-modo-existente" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition-all">Do Site</button>
+                    </div>
+                </div>
+
+                <!-- Modo: Novo Modelo -->
+                <div id="modo-novo">
+                    <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Modelos Rápidos</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                        <div class="modelo-btn active" onclick="selecionarModelo('camisa')" data-modelo="camisa">Camisa</div>
+                        <div class="modelo-btn" onclick="selecionarModelo('calca')" data-modelo="calca">Calça</div>
+                        <div class="modelo-btn" onclick="selecionarModelo('vestido')" data-modelo="vestido">Vestido</div>
+                        <div class="modelo-btn" onclick="selecionarModelo('personalizado')" data-modelo="personalizado">Vazio</div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="text-sm text-gray-600 block mb-1">Nome da Peça / Referência</label>
+                        <input type="text" id="nomePeca" class="input-field" placeholder="Ex: Vestido Linho Verão 2025">
+                    </div>
+                </div>
+
+                <!-- Modo: Peça Existente -->
+                <div id="modo-existente" class="hidden">
+                    <label class="text-sm text-gray-600 block mb-1">Selecione um produto cadastrado</label>
+                    <div class="flex gap-2">
+                        <select id="select-produto-site" class="input-field flex-1 bg-white">
+                            <option value="">Carregando produtos...</option>
+                        </select>
+                        <button onclick="carregarDadosProduto()" class="btn btn-secondary">
+                            <i class="fa-solid fa-download"></i>
+                        </button>
+                    </div>
+                    <div id="produto-info-box" class="mt-3 p-3 bg-blue-50 text-blue-800 rounded text-sm hidden border border-blue-100 flex justify-between items-center">
+                        <span>Preço Atual no Site:</span>
+                        <span id="preco-venda-atual" class="font-bold text-lg">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Materiais e Custos -->
+            <div class="card p-5">
+                <h3 class="font-bold text-gray-800 text-lg mb-4">2. Composição de Custos</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Tecido -->
+                    <div class="space-y-3">
+                        <h4 class="text-sm font-bold text-[--cor-marrom-cta] border-b pb-1">Tecido Principal</h4>
+                        
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">Tipo de Tecido</label>
+                            <select id="tecido" class="input-field text-sm bg-white" onchange="atualizarPrecoTecido()">
+                                <option value="linho" data-price="70">Linho (R$ 70,00/m)</option>
+                                <option value="algodao" data-price="25">Algodão (R$ 25,00/m)</option>
+                                <option value="viscose" data-price="35">Viscose (R$ 35,00/m)</option>
+                                <option value="seda" data-price="120">Seda (R$ 120,00/m)</option>
+                                <option value="personalizado">Outro (Personalizado)</option>
+                            </select>
+                        </div>
+
+                        <div id="div-preco-custom" class="hidden">
+                            <label class="text-xs text-gray-500 block mb-1">Preço por Metro (R$)</label>
+                            <input type="number" id="precoTecidoCustom" class="input-field" placeholder="0.00" step="0.01">
+                        </div>
+
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">Metragem Gasta (m)</label>
+                            <input type="number" id="metragem" class="input-field" placeholder="1.5" step="0.05">
+                        </div>
+                    </div>
+
+                    <!-- Mão de Obra -->
+                    <div class="space-y-3">
+                        <h4 class="text-sm font-bold text-[--cor-marrom-cta] border-b pb-1">Mão de Obra</h4>
+                        
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">Tempo de Produção (Horas)</label>
+                            <input type="number" id="tempoProducao" class="input-field" placeholder="2.0" step="0.5">
+                        </div>
+
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">Valor da Hora (R$)</label>
+                            <input type="number" id="valorHora" class="input-field" value="30">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aviamentos -->
+                <div class="mt-6">
+                    <h4 class="text-sm font-bold text-[--cor-marrom-cta] border-b pb-1 mb-3">Aviamentos & Acabamentos</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div><label class="text-xs text-gray-500 block mb-1">Entretela (m)</label><input type="number" id="entretela" class="input-field text-sm" step="0.1"></div>
+                        <div><label class="text-xs text-gray-500 block mb-1">Botões (un)</label><input type="number" id="botoes" class="input-field text-sm"></div>
+                        <div><label class="text-xs text-gray-500 block mb-1">Zíper (un)</label><input type="number" id="ziper" class="input-field text-sm"></div>
+                        <div><label class="text-xs text-gray-500 block mb-1">Custo Linha (R$)</label><input type="number" id="linha" class="input-field text-sm" step="0.1"></div>
+                        <div><label class="text-xs text-gray-500 block mb-1">Custo Bordado (R$)</label><input type="number" id="bordado" class="input-field text-sm" step="0.1"></div>
+                        <div><label class="text-xs text-gray-500 block mb-1">Outros (R$)</label><input type="number" id="outros" class="input-field text-sm" step="0.1"></div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-4 border-t flex justify-end">
+                    <button onclick="adicionarALista()" class="btn btn-primary w-full sm:w-auto">
+                        <i class="fa-solid fa-calculator mr-2"></i>Calcular e Adicionar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista de Itens -->
+            <div class="card p-4 bg-gray-50 border-dashed">
+                <h3 class="font-bold text-gray-700 text-sm mb-2 uppercase tracking-wide">Itens na Simulação</h3>
+                <div id="lista-simulacao" class="space-y-2">
+                    <p class="text-center text-gray-400 text-sm py-4">Nenhum item calculado ainda.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Resultados e Histórico -->
+        <div class="lg:col-span-1 space-y-6">
+            
+            <!-- Painel de Resultados (Sticky) -->
+            <div class="card p-5 sticky top-20 border-t-4 border-t-[--cor-ouro-acento]">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Resultado Final</h3>
+
+                <!-- Margens -->
+                <div class="space-y-3 mb-6 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">Margem de Lucro (%)</label>
+                        <input type="number" id="margem" class="input-field bg-white mt-1" value="100" onchange="recalcularTotal()">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase">Taxa Cartão (%)</label>
+                            <input type="number" id="taxaCartao" class="input-field bg-white mt-1" value="5.49" onchange="recalcularTotal()">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase">Desc. PIX (%)</label>
+                            <input type="number" id="descPix" class="input-field bg-white mt-1" value="5" onchange="recalcularTotal()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Valores -->
+                <div class="space-y-3">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Custo de Produção:</span>
+                        <span class="font-medium" id="res-custo">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Lucro Bruto:</span>
+                        <span class="font-medium text-green-600" id="res-lucro">R$ 0,00</span>
+                    </div>
+                    
+                    <div class="my-4 border-t border-dashed border-gray-300"></div>
+
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-bold mb-1">Preço Sugerido (Cartão)</p>
+                        <div class="text-4xl font-bold text-[--cor-marrom-cta]" id="res-preco-final">R$ 0,00</div>
+                    </div>
+
+                    <div class="bg-green-50 p-2 rounded border border-green-100 flex justify-between items-center">
+                        <span class="text-xs font-bold text-green-800">Preço à Vista (PIX):</span>
+                        <span class="text-lg font-bold text-green-700" id="res-preco-pix">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <!-- Salvar -->
+                <button onclick="salvarSimulacao()" class="btn btn-success w-full mt-6 shadow-sm">
+                    <i class="fa-solid fa-save mr-2"></i>Salvar no Histórico
+                </button>
+            </div>
+
+            <!-- Calculadora Reversa (NOVO) -->
+            <div class="card p-5 bg-blue-50 border-blue-100">
+                <h3 class="text-sm font-bold text-blue-800 mb-3 flex items-center">
+                    <i class="fa-solid fa-arrow-right-arrow-left mr-2"></i> Cálculo Reverso
+                </h3>
+                <div class="space-y-2">
+                    <label class="text-xs text-blue-600">Se eu vender por:</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="rev-preco-venda" class="input-field bg-white" placeholder="R$ 200,00">
+                        <button onclick="calcularReverso()" class="btn btn-primary px-3"><i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                    <div id="rev-resultado" class="hidden mt-2 pt-2 border-t border-blue-200 text-sm">
+                        <p>Lucro: <span class="font-bold text-green-600" id="rev-lucro">R$ 0,00</span></p>
+                        <p>Margem Real: <span class="font-bold" id="rev-margem">0%</span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Histórico -->
+            <div class="card p-4">
+                <h4 class="text-sm font-bold text-gray-600 mb-3 uppercase tracking-wide">Últimos Cálculos</h4>
+                <div id="historico-lista" class="space-y-2 text-sm max-h-60 overflow-y-auto pr-1">
+                    <p class="text-gray-400 text-center text-xs">Carregando...</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded shadow-lg z-50 transition-all">
+        <span id="toast-message"></span>
+    </div>
+
+    <script type="module">
+        // Configuração Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+            authDomain: "site-lamed.firebaseapp.com",
+            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+            projectId: "site-lamed",
+            storageBucket: "site-lamed.firebasestorage.app",
+            messagingSenderId: "862756160215",
+            appId: "1:862756160215:web:d0fded233682bf93eaa692",
+            measurementId: "G-BL1G961PGT"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) { console.error(e); }
+
+        // --- DADOS DE REFERÊNCIA ---
+        // Preços base de mercado (editáveis apenas via código por enquanto)
+        const PRECOS_BASE = {
+            aviamentos: {
+                entretela: 25, // metro
+                botao: 2,      // unidade
+                etiqueta: 1.31,// unidade
+                ziper: 8       // unidade
+            },
+            embalagem: 3.07 // kit completo
+        };
+
+        const MODELOS = {
+            camisa: { tecido:'linho', metragem:1.5, tempo:2, entretela:0.3, botoes:10, linha:2.5, bordado:35, ziper:0, outros:0 },
+            calca: { tecido:'linho', metragem:2.6, tempo:1.5, entretela:0.1, botoes:2, linha:2.5, bordado:0, ziper:1, outros:0 },
+            vestido: { tecido:'linho', metragem:3.0, tempo:3.5, entretela:0.2, botoes:8, linha:3.0, bordado:50, ziper:1, outros:5 },
+            personalizado: { tecido:'linho', metragem:0, tempo:0, entretela:0, botoes:0, linha:0, bordado:0, ziper:0, outros:0 }
+        };
+
+        let itensSimulacao = [];
+        let produtosSite = [];
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.onAuthStateChanged(user => {
+                if (!user) window.location.href = 'login-admin.html';
+                else {
+                    carregarProdutosDoSite(); // Carrega dropdown
+                    monitorarHistorico();     // Carrega sidebar
+                }
+            });
+            
+            selecionarModelo('camisa');
+            
+            // Mostrar campo de preço se for tecido personalizado
+            window.atualizarPrecoTecido = () => {
+                const select = document.getElementById('tecido');
+                const custom = document.getElementById('div-preco-custom');
+                if(select.value === 'personalizado') custom.classList.remove('hidden');
+                else custom.classList.add('hidden');
+            };
+        });
+
+        // --- LÓGICA DE INTERFACE ---
+        window.mudarModo = (modo) => {
+            const novo = document.getElementById('modo-novo');
+            const existente = document.getElementById('modo-existente');
+            const btnNovo = document.getElementById('btn-modo-novo');
+            const btnExistente = document.getElementById('btn-modo-existente');
+
+            if (modo === 'novo') {
+                novo.classList.remove('hidden');
+                existente.classList.add('hidden');
+                btnNovo.classList.add('border-[--cor-marrom-cta]', 'text-[--cor-marrom-cta]');
+                btnNovo.classList.remove('text-gray-500');
+                btnExistente.classList.remove('border-[--cor-marrom-cta]', 'text-[--cor-marrom-cta]');
+                btnExistente.classList.add('text-gray-500');
+                document.getElementById('nomePeca').value = '';
+            } else {
+                novo.classList.add('hidden');
+                existente.classList.remove('hidden');
+                btnExistente.classList.add('border-[--cor-marrom-cta]', 'text-[--cor-marrom-cta]');
+                btnExistente.classList.remove('text-gray-500');
+                btnNovo.classList.remove('border-[--cor-marrom-cta]', 'text-[--cor-marrom-cta]');
+                btnNovo.classList.add('text-gray-500');
+            }
+        };
+
+        window.selecionarModelo = (tipo) => {
+            const m = MODELOS[tipo];
+            document.querySelectorAll('.modelo-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-modelo="${tipo}"]`).classList.add('active');
+            
+            document.getElementById('tecido').value = m.tecido;
+            document.getElementById('metragem').value = m.metragem;
+            document.getElementById('tempoProducao').value = m.tempo;
+            document.getElementById('entretela').value = m.entretela;
+            document.getElementById('botoes').value = m.botoes;
+            document.getElementById('linha').value = m.linha;
+            document.getElementById('bordado').value = m.bordado;
+            document.getElementById('ziper').value = m.ziper;
+            document.getElementById('outros').value = m.outros;
+            
+            atualizarPrecoTecido();
+        };
+
+        // --- INTEGRAÇÃO COM PRODUTOS DO SITE ---
+        async function carregarProdutosDoSite() {
+            const select = document.getElementById('select-produto-site');
+            try {
+                const snap = await getDocs(collection(db, 'pecas'));
+                produtosSite = [];
+                select.innerHTML = '<option value="">Selecione um produto...</option>';
+                
+                snap.forEach(doc => {
+                    const p = doc.data();
+                    produtosSite.push({ id: doc.id, ...p });
+                    const opt = document.createElement('option');
+                    opt.value = doc.id;
+                    opt.text = p.nome;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.error("Erro ao carregar produtos", e); }
+        }
+
+        window.carregarDadosProduto = () => {
+            const id = document.getElementById('select-produto-site').value;
+            const produto = produtosSite.find(p => p.id === id);
+            const infoBox = document.getElementById('produto-info-box');
+            
+            if (produto) {
+                infoBox.classList.remove('hidden');
+                document.getElementById('preco-venda-atual').textContent = `R$ ${parseFloat(produto.preco).toFixed(2)}`;
+                document.getElementById('nomePeca').value = produto.nome;
+                // Aqui poderíamos carregar mais dados se salvássemos a ficha técnica no produto
+            } else {
+                infoBox.classList.add('hidden');
+                document.getElementById('nomePeca').value = '';
+            }
+        };
+
+        // --- CÁLCULO DE CUSTOS ---
+        window.adicionarALista = () => {
+            const nome = document.getElementById('nomePeca').value || 'Peça sem nome';
+            
+            // 1. Custo Tecido
+            const tecidoSelect = document.getElementById('tecido');
+            const tipoTecido = tecidoSelect.value;
+            let precoMetroTecido = 0;
+            
+            if (tipoTecido === 'personalizado') {
+                precoMetroTecido = parseFloat(document.getElementById('precoTecidoCustom').value) || 0;
+            } else {
+                precoMetroTecido = parseFloat(tecidoSelect.options[tecidoSelect.selectedIndex].dataset.price) || 0;
+            }
+            
+            const metragem = parseFloat(document.getElementById('metragem').value) || 0;
+            const custoTecido = metragem * precoMetroTecido;
+
+            // 2. Custo Mão de Obra
+            const tempo = parseFloat(document.getElementById('tempoProducao').value) || 0;
+            const valorHora = parseFloat(document.getElementById('valorHora').value) || 0;
+            const custoMO = tempo * valorHora;
+
+            // 3. Custo Aviamentos (Valores dos Inputs)
+            const av_entretela = (parseFloat(document.getElementById('entretela').value) || 0) * PRECOS_BASE.aviamentos.entretela;
+            const av_botoes = (parseFloat(document.getElementById('botoes').value) || 0) * PRECOS_BASE.aviamentos.botao;
+            const av_ziper = (parseFloat(document.getElementById('ziper').value) || 0) * PRECOS_BASE.aviamentos.ziper;
+            
+            // Valores diretos em R$
+            const av_linha = parseFloat(document.getElementById('linha').value) || 0;
+            const av_bordado = parseFloat(document.getElementById('bordado').value) || 0;
+            const av_outros = parseFloat(document.getElementById('outros').value) || 0;
+            
+            // Fixo
+            const av_etiqueta = PRECOS_BASE.aviamentos.etiqueta;
+            const av_embalagem = PRECOS_BASE.embalagem;
+
+            const custoAviamentos = av_entretela + av_botoes + av_ziper + av_linha + av_bordado + av_outros + av_etiqueta + av_embalagem;
+
+            const custoTotal = custoTecido + custoMO + custoAviamentos;
+
+            const item = {
+                id: Date.now(),
+                nome,
+                tecido: tipoTecido,
+                custoTotal
+            };
+
+            itensSimulacao.push(item);
+            renderizarLista();
+            recalcularTotal();
+            
+            mostrarToast("Item adicionado!");
+        };
+
+        function renderizarLista() {
+            const div = document.getElementById('lista-simulacao');
+            if (itensSimulacao.length === 0) {
+                div.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">Nenhum item calculado.</p>';
+                return;
+            }
+            
+            div.innerHTML = itensSimulacao.map((item, idx) => `
+                <div class="flex justify-between items-center bg-white p-3 rounded border border-gray-200 shadow-sm">
+                    <div>
+                        <div class="font-bold text-gray-700 text-sm">${item.nome}</div>
+                        <div class="text-xs text-gray-500 uppercase">${item.tecido}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono text-sm font-bold text-gray-600">R$ ${item.custoTotal.toFixed(2)}</span>
+                        <button onclick="removerItem(${idx})" class="text-red-400 hover:text-red-600 transition">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.removerItem = (idx) => {
+            itensSimulacao.splice(idx, 1);
+            renderizarLista();
+            recalcularTotal();
+        };
+
+        window.limparTudo = () => {
+            if(confirm("Limpar todos os dados?")) {
+                itensSimulacao = [];
+                renderizarLista();
+                recalcularTotal();
+                document.getElementById('nomePeca').value = '';
+            }
+        }
+
+        window.recalcularTotal = () => {
+            // Soma total dos custos de produção
+            const custoProducao = itensSimulacao.reduce((acc, item) => acc + item.custoTotal, 0);
+
+            // Variáveis
+            const margemPerc = parseFloat(document.getElementById('margem').value) || 0;
+            const taxaCartao = parseFloat(document.getElementById('taxaCartao').value) || 0;
+            const descPix = parseFloat(document.getElementById('descPix').value) || 0;
+
+            // 1. Preço com Margem de Lucro (Base)
+            // Custo + (Custo * Margem%)
+            const precoComMargem = custoProducao * (1 + (margemPerc / 100));
+
+            // 2. Preço Final (Cartão) - Markup Reverso para garantir que receba o valor cheio após taxa
+            // Valor / (1 - taxa)
+            const precoFinalCartao = precoComMargem / (1 - (taxaCartao / 100));
+
+            // 3. Lucro Real (Preço Final - Taxa Cartão - Custo Produção)
+            const valorLiquido = precoFinalCartao * (1 - (taxaCartao / 100));
+            const lucroReal = valorLiquido - custoProducao;
+
+            // 4. Preço PIX
+            const precoPix = precoFinalCartao * (1 - (descPix / 100));
+
+            // Atualizar DOM
+            document.getElementById('res-custo').textContent = `R$ ${custoProducao.toFixed(2)}`;
+            document.getElementById('res-lucro').textContent = `R$ ${lucroReal.toFixed(2)}`;
+            document.getElementById('res-preco-final').textContent = `R$ ${precoFinalCartao.toFixed(2)}`;
+            document.getElementById('res-preco-pix').textContent = `R$ ${precoPix.toFixed(2)}`;
+        };
+
+        // --- CÁLCULO REVERSO ---
+        window.calcularReverso = () => {
+            const vendaDesejada = parseFloat(document.getElementById('rev-preco-venda').value);
+            const custoAtual = parseFloat(document.getElementById('res-custo').innerText.replace('R$','').trim().replace(',','.'));
+            const taxaCartao = parseFloat(document.getElementById('taxaCartao').value) / 100;
+
+            if (!vendaDesejada || !custoAtual) return;
+
+            const valorLiquido = vendaDesejada * (1 - taxaCartao);
+            const lucro = valorLiquido - custoAtual;
+            const margem = (lucro / custoAtual) * 100;
+
+            document.getElementById('rev-resultado').classList.remove('hidden');
+            document.getElementById('rev-lucro').textContent = `R$ ${lucro.toFixed(2)}`;
+            document.getElementById('rev-margem').textContent = `${margem.toFixed(1)}%`;
+            
+            // Cor semântica
+            const elMargem = document.getElementById('rev-margem');
+            if(margem < 30) elMargem.className = "font-bold text-red-500";
+            else if(margem < 100) elMargem.className = "font-bold text-yellow-600";
+            else elMargem.className = "font-bold text-green-600";
+        };
+
+        // --- PERSISTÊNCIA (HISTÓRICO) ---
+        window.salvarSimulacao = async () => {
+            if (itensSimulacao.length === 0) { mostrarToast("Nada para salvar.", "error"); return; }
+
+            const nome = prompt("Nome para salvar:", itensSimulacao[0].nome);
+            if (!nome) return;
+
+            const dados = {
+                nome: nome,
+                data: new Date(),
+                itens: itensSimulacao,
+                config: {
+                    margem: document.getElementById('margem').value,
+                    taxa: document.getElementById('taxaCartao').value
+                },
+                resultadoFinal: document.getElementById('res-preco-final').textContent
+            };
+
+            try {
+                await addDoc(collection(db, 'precificacoes'), dados);
+                mostrarToast("Salvo no histórico!");
+            } catch (e) {
+                console.error(e);
+                mostrarToast("Erro ao salvar", "error");
+            }
+        };
+
+        function monitorarHistorico() {
+            const q = query(collection(db, 'precificacoes'), orderBy('data', 'desc'), limit(10));
+            const lista = document.getElementById('historico-lista');
+            
+            onSnapshot(q, (snap) => {
+                lista.innerHTML = '';
+                if (snap.empty) {
+                    lista.innerHTML = '<p class="text-center text-gray-400 py-2">Vazio</p>';
+                    return;
+                }
+                
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const dataFormatada = d.data ? new Date(d.data.seconds * 1000).toLocaleDateString() : '-';
+                    
+                    const div = document.createElement('div');
+                    div.className = "border-b border-gray-100 pb-2 mb-2 last:border-0 group flex justify-between items-center";
+                    div.innerHTML = `
+                        <div class="overflow-hidden">
+                            <div class="font-medium text-gray-700 truncate" title="${d.nome}">${d.nome}</div>
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>${dataFormatada}</span>
+                                <span class="font-bold text-[--cor-marrom-cta]">${d.resultadoFinal}</span>
+                            </div>
+                        </div>
+                        <button class="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition px-2" onclick="apagarHistorico('${doc.id}')">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    `;
+                    lista.appendChild(div);
+                });
+            });
+        }
+
+        window.apagarHistorico = async (id) => {
+            if(confirm("Apagar este registro?")) {
+                await deleteDoc(doc(db, 'precificacoes', id));
+            }
+        };
+
+        function mostrarToast(msg, type='success') {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            t.className = `fixed bottom-4 right-4 px-4 py-3 rounded shadow-lg z-50 transition-all text-white ${type === 'error' ? 'bg-red-600' : 'bg-green-600'}`;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scripts de Manutenção | Painel Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --cor-marrom-cta: #643f21;
+            --cor-ouro-acento: #A58A5C;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .font-allura { font-family: 'Allura', cursive; }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        /* Botões */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary { background: var(--cor-marrom-cta); color: white; }
+        .btn-primary:hover { background: #4a2e18; }
+        
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background: #d1d5db; }
+        
+        .btn-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .btn-danger:hover { background: #fecaca; }
+
+        .btn-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .btn-warning:hover { background: #fde68a; }
+
+        /* Console */
+        .console-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            font-family: 'Courier New', monospace;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            border: 1px solid #334155;
+        }
+        
+        .code-editor {
+            background: #0f172a;
+            color: #a5b4fc;
+            font-family: 'Courier New', monospace;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            min-height: 200px;
+            width: 100%;
+            font-size: 0.9rem;
+            border: 1px solid #334155;
+            outline: none;
+            resize: vertical;
+        }
+
+        .log-entry { margin-bottom: 0.25rem; border-bottom: 1px solid #334155; padding-bottom: 0.25rem; }
+        .log-info { color: #60a5fa; }
+        .log-success { color: #4ade80; }
+        .log-warning { color: #fbbf24; }
+        .log-error { color: #f87171; }
+
+        /* Script Card */
+        .script-item {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .script-item:last-child { border-bottom: none; }
+        .script-item:hover { background-color: #f8fafc; }
+
+        .script-icon {
+            width: 40px; height: 40px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Cabeçalho -->
+    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="font-allura text-3xl text-gray-800">Executor de Scripts</h1>
+        </div>
+        <div class="flex gap-2">
+            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-bold border border-red-200">
+                <i class="fa-solid fa-lock mr-1"></i>Área Sensível
+            </span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Coluna Esquerda: Scripts Prontos -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Manutenção de Rotina -->
+            <div class="card">
+                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h2 class="font-bold text-gray-700">🛠️ Manutenção de Rotina</h2>
+                    <span class="text-xs text-gray-500">Uso seguro</span>
+                </div>
+                
+                <div class="script-item">
+                    <div class="flex items-center gap-3">
+                        <div class="script-icon bg-blue-100 text-blue-600"><i class="fa-solid fa-broom"></i></div>
+                        <div>
+                            <h3 class="font-medium text-gray-800">Limpar Carrinhos Antigos</h3>
+                            <p class="text-xs text-gray-500">Remove carrinhos abandonados do navegador.</p>
+                        </div>
+                    </div>
+                    <button onclick="runScript('limparCarrinhos')" class="btn btn-secondary text-xs">Executar</button>
+                </div>
+
+                <div class="script-item">
+                    <div class="flex items-center gap-3">
+                        <div class="script-icon bg-purple-100 text-purple-600"><i class="fa-solid fa-sync"></i></div>
+                        <div>
+                            <h3 class="font-medium text-gray-800">Sincronizar Contadores</h3>
+                            <p class="text-xs text-gray-500">Recalcula total de produtos e coleções ativas.</p>
+                        </div>
+                    </div>
+                    <button onclick="runScript('syncContadores')" class="btn btn-secondary text-xs">Executar</button>
+                </div>
+
+                <div class="script-item">
+                    <div class="flex items-center gap-3">
+                        <div class="script-icon bg-green-100 text-green-600"><i class="fa-solid fa-tags"></i></div>
+                        <div>
+                            <h3 class="font-medium text-gray-800">Corrigir Preços Inválidos</h3>
+                            <p class="text-xs text-gray-500">Define preço 0.00 para produtos com preço nulo/negativo.</p>
+                        </div>
+                    </div>
+                    <button onclick="runScript('corrigirPrecos')" class="btn btn-secondary text-xs">Executar</button>
+                </div>
+
+                <div class="script-item">
+                    <div class="flex items-center gap-3">
+                        <div class="script-icon bg-teal-100 text-teal-600"><i class="fa-solid fa-download"></i></div>
+                        <div>
+                            <h3 class="font-medium text-gray-800">Backup de Segurança</h3>
+                            <p class="text-xs text-gray-500">Baixa um arquivo JSON com todos os produtos e pedidos.</p>
+                        </div>
+                    </div>
+                    <button onclick="runScript('backupDados')" class="btn btn-secondary text-xs">Executar</button>
+                </div>
+            </div>
+
+            <!-- Ações de Emergência -->
+            <div class="card border-red-200">
+                <div class="p-4 border-b bg-red-50 flex justify-between items-center">
+                    <h2 class="font-bold text-red-800">🚨 Ações de Emergência</h2>
+                    <span class="text-xs text-red-600 font-bold">Cuidado!</span>
+                </div>
+
+                <div class="script-item hover:bg-red-50">
+                    <div class="flex items-center gap-3">
+                        <div class="script-icon bg-red-100 text-red-600"><i class="fa-solid fa-box-open"></i></div>
+                        <div>
+                            <h3 class="font-medium text-gray-800">Zerar Estoque de Produto</h3>
+                            <p class="text-xs text-gray-500">Define estoque = 0 para um produto específico.</p>
+                        </div>
+                    </div>
+                    <button onclick="abrirModalPrompt('zerarEstoque')" class="btn btn-warning text-xs">Configurar</button>
+                </div>
+
+                <div class="script-item hover:bg-red-50">
+                    <div class="flex items-center gap-3">
+                        <div class="script-icon bg-red-600 text-white"><i class="fa-solid fa-bomb"></i></div>
+                        <div>
+                            <h3 class="font-medium text-red-700">Reset de Fábrica (Limpar Tudo)</h3>
+                            <p class="text-xs text-red-500">Apaga TODOS os produtos, pedidos e clientes.</p>
+                        </div>
+                    </div>
+                    <button onclick="confirmarPerigo('limparTudo')" class="btn btn-danger text-xs">Executar</button>
+                </div>
+            </div>
+
+            <!-- NOVO: EDITOR DE SCRIPT PERSONALIZADO -->
+            <div class="card">
+                <div class="p-4 border-b bg-gray-900 flex justify-between items-center rounded-t-lg">
+                    <h2 class="font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-code"></i> Editor de Script Personalizado
+                    </h2>
+                    <div class="flex gap-2">
+                        <button onclick="carregarRascunho()" class="text-xs text-gray-400 hover:text-white">Carregar Rascunho</button>
+                        <button onclick="salvarRascunho()" class="text-xs text-gray-400 hover:text-white">Salvar Rascunho</button>
+                    </div>
+                </div>
+                <div class="p-0">
+                    <textarea id="custom-script-input" class="code-editor border-0 focus:ring-0" spellcheck="false" 
+placeholder="// Escreva seu código JavaScript aqui.
+// Variáveis disponíveis: db, auth, log(msg, type)
+
+// Exemplo: Listar todos os produtos
+// (async () => {
+//    const snap = await getDocs(collection(db, 'pecas'));
+//    log('Total de produtos: ' + snap.size);
+//    snap.forEach(doc => log(doc.data().nome));
+// })();"></textarea>
+                </div>
+                <div class="p-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+                    <button onclick="limparEditor()" class="btn btn-secondary text-xs">Limpar</button>
+                    <button onclick="executarScriptPersonalizado()" class="btn btn-primary text-xs">
+                        <i class="fa-solid fa-play mr-2"></i>Executar Código
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Coluna Direita: Console -->
+        <div class="lg:col-span-1">
+            <div class="card p-4 sticky top-20">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-gray-700"><i class="fa-solid fa-terminal mr-2"></i>Console de Saída</h3>
+                    <button onclick="limparConsole()" class="text-xs text-gray-400 hover:text-gray-600">Limpar</button>
+                </div>
+                
+                <div id="console-output" class="console-box mb-4">
+                    <div class="text-gray-500">// Aguardando comandos...</div>
+                </div>
+
+                <div class="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100">
+                    <i class="fa-solid fa-info-circle mr-1"></i>
+                    Os scripts rodam com suas permissões de admin. Use <code>await</code> para operações assíncronas.
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Scripts Firebase -->
+    <script type="module">
+        // Configuração Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+            authDomain: "site-lamed.firebaseapp.com",
+            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+            projectId: "site-lamed",
+            storageBucket: "site-lamed.firebasestorage.app",
+            messagingSenderId: "862756160215",
+            appId: "1:862756160215:web:d0fded233682bf93eaa692",
+            measurementId: "G-BL1G961PGT"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, 
+            writeBatch, query, where, addDoc 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        let app, auth, db;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) { console.error(e); }
+
+        // --- Autenticação ---
+        const ADMIN_UID = "8EIyqLDb9TSBCdX7ECZwoAX70s63";
+
+        auth.onAuthStateChanged(user => {
+            if (!user || user.uid !== ADMIN_UID) {
+                log("Acesso negado. Redirecionando...", "error");
+                setTimeout(() => window.location.href = 'login-admin.html', 2000);
+            } else {
+                log("Autenticado como Admin. Sistema pronto.", "success");
+                carregarRascunho(); // Carrega o rascunho salvo ao iniciar
+            }
+        });
+
+        // --- Funções de Log ---
+        function log(msg, type="info") {
+            const consoleBox = document.getElementById('console-output');
+            const div = document.createElement('div');
+            div.className = `log-entry log-${type}`;
+            
+            const time = new Date().toLocaleTimeString();
+            // Converte objetos para string para leitura
+            const text = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+            
+            div.innerHTML = `<span class="opacity-50">[${time}]</span> ${text}`;
+            
+            consoleBox.appendChild(div);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        // Disponibilizar log globalmente para o script customizado
+        window.log = log;
+
+        window.limparConsole = () => {
+            document.getElementById('console-output').innerHTML = '<div class="text-gray-500">// Console limpo</div>';
+        }
+
+        // --- Executores de Scripts ---
+
+        window.runScript = async (scriptName, params = null) => {
+            log(`Iniciando script: ${scriptName}...`, "info");
+            
+            try {
+                switch(scriptName) {
+                    
+                    case 'limparCarrinhos':
+                        log("Carrinhos são locais. Limpando localStorage deste navegador...", "warning");
+                        localStorage.removeItem('lamedCart');
+                        log("Carrinho local limpo.", "success");
+                        break;
+
+                    case 'syncContadores':
+                        const produtos = await getDocs(collection(db, "pecas"));
+                        const colecoes = await getDocs(collection(db, "colecoes"));
+                        log(`Sincronização: ${produtos.size} produtos, ${colecoes.size} coleções encontradas.`, "success");
+                        break;
+
+                    case 'corrigirPrecos':
+                        const snapPrecos = await getDocs(collection(db, "pecas"));
+                        let corrigidos = 0;
+                        const batchPrecos = writeBatch(db);
+                        
+                        snapPrecos.forEach(doc => {
+                            const p = doc.data();
+                            if (!p.preco || p.preco < 0 || isNaN(p.preco)) {
+                                batchPrecos.update(doc.ref, { preco: 0 });
+                                corrigidos++;
+                                log(`Corrigindo preço do produto ID: ${doc.id}`, "warning");
+                            }
+                        });
+                        
+                        if (corrigidos > 0) {
+                            await batchPrecos.commit();
+                            log(`${corrigidos} preços corrigidos.`, "success");
+                        } else {
+                            log("Nenhum preço inválido encontrado.", "success");
+                        }
+                        break;
+
+                    case 'backupDados':
+                        log("Gerando backup JSON...", "info");
+                        const allData = {};
+                        const colNames = ['pecas', 'colecoes', 'pedidos'];
+                        
+                        for (const colName of colNames) {
+                            const snap = await getDocs(collection(db, colName));
+                            allData[colName] = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                        }
+                        
+                        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData));
+                        const downloadAnchor = document.createElement('a');
+                        downloadAnchor.setAttribute("href", dataStr);
+                        downloadAnchor.setAttribute("download", `backup_lamed_${new Date().toISOString().split('T')[0]}.json`);
+                        document.body.appendChild(downloadAnchor);
+                        downloadAnchor.click();
+                        downloadAnchor.remove();
+                        
+                        log("Backup baixado com sucesso.", "success");
+                        break;
+
+                    case 'zerarEstoque':
+                        if (!params) { log("ID do produto não fornecido.", "error"); return; }
+                        
+                        const prodRef = doc(db, "pecas", params);
+                        await updateDoc(prodRef, { 
+                            status: 'inactive',
+                            cores: [] 
+                        });
+                        log(`Estoque do produto ${params} zerado e produto desativado.`, "success");
+                        break;
+
+                    case 'modoManutencao':
+                        // Exemplo de flag global
+                        log("Modo manutenção ativado (Simulação).", "warning");
+                        break;
+                        
+                    default:
+                        log("Script não reconhecido.", "error");
+                }
+            } catch (e) {
+                log(`Erro: ${e.message}`, "error");
+                console.error(e);
+            }
+        };
+
+        // --- EXECUTOR DE SCRIPT PERSONALIZADO ---
+
+        window.executarScriptPersonalizado = async () => {
+            const code = document.getElementById('custom-script-input').value;
+            
+            if (!code.trim()) {
+                log("Digite algum código para executar.", "warning");
+                return;
+            }
+
+            log("Executando script personalizado...", "info");
+
+            try {
+                // Criamos uma função assíncrona dinâmica
+                // Passamos as variáveis de contexto: db, auth, log, etc.
+                // Usamos collection, getDocs, etc para facilitar o uso
+                
+                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+                
+                const func = new AsyncFunction(
+                    'db', 'auth', 'log', 
+                    'collection', 'getDocs', 'doc', 'updateDoc', 'deleteDoc', 'addDoc', 'query', 'where',
+                    code
+                );
+
+                await func(
+                    db, auth, log, 
+                    collection, getDocs, doc, updateDoc, deleteDoc, addDoc, query, where
+                );
+                
+                log("Script finalizado.", "success");
+
+            } catch (e) {
+                log(`Erro de execução: ${e.message}`, "error");
+                console.error(e);
+            }
+        };
+
+        // --- Persistência do Editor ---
+
+        window.salvarRascunho = () => {
+            const code = document.getElementById('custom-script-input').value;
+            localStorage.setItem('customScriptDraft', code);
+            log("Rascunho salvo no navegador.", "success");
+        };
+
+        window.carregarRascunho = () => {
+            const code = localStorage.getItem('customScriptDraft');
+            if (code) {
+                document.getElementById('custom-script-input').value = code;
+                // log("Rascunho carregado.", "info");
+            }
+        };
+
+        window.limparEditor = () => {
+            if(confirm("Limpar o editor?")) {
+                document.getElementById('custom-script-input').value = "";
+            }
+        };
+
+        // --- Funções Auxiliares de Confirmação ---
+
+        window.confirmarPerigo = async (acao) => {
+            const codigo = Math.floor(1000 + Math.random() * 9000);
+            const resposta = prompt(`PERIGO: Esta ação é destrutiva!\nDigite o código ${codigo} para confirmar:`);
+            
+            if (resposta == codigo) {
+                if (acao === 'limparTudo') {
+                    log("Iniciando limpeza total...", "warning");
+                    const batch = writeBatch(db);
+                    
+                    const pecas = await getDocs(collection(db, "pecas"));
+                    pecas.forEach(d => batch.delete(d.ref));
+                    
+                    const pedidos = await getDocs(collection(db, "pedidos"));
+                    pedidos.forEach(d => batch.delete(d.ref));
+                    
+                    await batch.commit();
+                    log("Banco de dados limpo com sucesso.", "success");
+                }
+            } else {
+                log("Ação cancelada. Código incorreto.", "info");
+            }
+        };
+
+        window.abrirModalPrompt = (tipo) => {
+            if (tipo === 'zerarEstoque') {
+                const id = prompt("Digite o ID do produto para zerar o estoque:");
+                if (id) window.runScript('zerarEstoque', id);
+            }
+        };
+
+    </script>
+</body>
+</html>

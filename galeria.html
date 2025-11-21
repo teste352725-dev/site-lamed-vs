@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeria | Painel Administrativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .btn-primary { background-color: #643f21; color: white; padding: 8px 16px; border-radius: 8px; }
+        .gallery-item { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 8px; background: #eee; }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+        .del-btn { position: absolute; top: 4px; right: 4px; background: rgba(255,0,0,0.7); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        
+        /* Upload Area Mobile */
+        .upload-box { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 2rem; text-align: center; background: white; margin-bottom: 1.5rem; }
+    </style>
+</head>
+<body class="pb-20">
+
+    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3">
+        <div class="flex items-center gap-3">
+            <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="text-xl font-bold text-gray-800">Galeria</h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4">
+        
+        <!-- Upload Simples -->
+        <div class="upload-box">
+            <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-300 mb-2"></i>
+            <p class="text-sm text-gray-500 mb-3">Selecione imagens para enviar</p>
+            <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+            <button onclick="document.getElementById('file-input').click()" class="btn-primary w-full sm:w-auto">
+                Escolher Arquivos
+            </button>
+            <div id="upload-status" class="mt-2 text-sm text-blue-600"></div>
+        </div>
+
+        <!-- Grid -->
+        <div id="gallery-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <!-- Imagens aqui -->
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+            authDomain: "site-lamed.firebaseapp.com",
+            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+            projectId: "site-lamed",
+            storageBucket: "site-lamed.firebasestorage.app",
+            messagingSenderId: "862756160215",
+            appId: "1:862756160215:web:d0fded233682bf93eaa692",
+            measurementId: "G-BL1G961PGT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        const auth = firebase.auth();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.onAuthStateChanged(user => {
+                if(!user) window.location.href = 'login-admin.html';
+                else carregarGaleria();
+            });
+
+            document.getElementById('file-input').addEventListener('change', uploadImages);
+        });
+
+        function carregarGaleria() {
+            db.collection('galeria').orderBy('dataUpload', 'desc').onSnapshot(snap => {
+                const grid = document.getElementById('gallery-grid');
+                grid.innerHTML = '';
+                snap.forEach(doc => {
+                    const img = doc.data();
+                    grid.innerHTML += `
+                        <div class="gallery-item">
+                            <img src="${img.url}" loading="lazy">
+                            <button class="del-btn" onclick="deletar('${doc.id}', '${img.path}')">
+                                <i class="fa-solid fa-times text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        async function uploadImages(e) {
+            const files = e.target.files;
+            const status = document.getElementById('upload-status');
+            
+            for (let file of files) {
+                status.textContent = `Enviando ${file.name}...`;
+                const path = `galeria/${Date.now()}_${file.name}`;
+                const ref = storage.ref().child(path);
+                
+                await ref.put(file);
+                const url = await ref.getDownloadURL();
+                
+                await db.collection('galeria').add({
+                    url, path, 
+                    dataUpload: new Date(),
+                    nome: file.name
+                });
+            }
+            status.textContent = 'Concluído!';
+            setTimeout(() => status.textContent = '', 2000);
+        }
+
+        window.deletar = async (id, path) => {
+            if(!confirm('Apagar imagem?')) return;
+            if(path) await storage.ref().child(path).delete().catch(console.error);
+            await db.collection('galeria').doc(id).delete();
+        }
+    </script>
+</body>
+</html>

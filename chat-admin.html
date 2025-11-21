@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Admin | Laméd vs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .chat-list-item:hover { background-color: #f3f4f6; cursor: pointer; }
+        .chat-list-item.active { background-color: #e5e7eb; }
+        .msg-bubble { max-width: 80%; padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; font-size: 0.9rem; }
+        .msg-admin { background-color: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; margin-left: auto; }
+        .msg-user { background-color: #ffffff; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #e5e7eb; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="bg-white shadow-sm px-4 py-3 flex justify-between items-center border-b z-10">
+        <div class="flex items-center gap-3">
+            <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="text-xl font-bold text-gray-800">Atendimento ao Cliente</h1>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Lista de Chats -->
+        <aside class="w-1/3 border-r bg-white flex flex-col min-w-[250px]">
+            <div class="p-4 border-b">
+                <input type="text" placeholder="Buscar cliente..." class="w-full p-2 border rounded bg-gray-50 text-sm">
+            </div>
+            <div id="chat-list" class="flex-1 overflow-y-auto">
+                <!-- Lista injetada via JS -->
+                <div class="text-center py-8 text-gray-400 text-sm">Carregando conversas...</div>
+            </div>
+        </aside>
+
+        <!-- Área de Conversa -->
+        <main class="flex-1 flex flex-col bg-[#e5ded8]">
+            <div id="chat-header" class="bg-white p-3 border-b flex items-center gap-3 hidden">
+                <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-lg" id="chat-avatar">U</div>
+                <div>
+                    <h3 class="font-semibold text-gray-800" id="chat-username">Nome do Cliente</h3>
+                    <p class="text-xs text-gray-500" id="chat-status">Online</p>
+                </div>
+            </div>
+
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col space-y-2">
+                <div class="text-center text-gray-500 mt-20">Selecione um chat para iniciar o atendimento.</div>
+            </div>
+
+            <form id="admin-chat-form" class="p-3 bg-gray-100 border-t flex gap-2 hidden">
+                <input type="text" id="admin-message-input" class="flex-1 rounded-full border-0 px-4 py-2 focus:ring-2 focus:ring-green-500" placeholder="Digite sua resposta...">
+                <button type="submit" class="bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-green-700 transition">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+            authDomain: "site-lamed.firebaseapp.com",
+            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+            projectId: "site-lamed",
+            storageBucket: "site-lamed.firebasestorage.app",
+            messagingSenderId: "862756160215",
+            appId: "1:862756160215:web:d0fded233682bf93eaa692",
+            measurementId: "G-BL1G961PGT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        let currentChatId = null;
+        let unsubscribeMessages = null;
+
+        // Verificar Admin
+        auth.onAuthStateChanged(user => {
+            if(!user) window.location.href = 'login-admin.html';
+            else carregarListaChats();
+        });
+
+        function carregarListaChats() {
+            const listEl = document.getElementById('chat-list');
+            
+            // Escuta a coleção de metadados dos chats
+            db.collection('chats_ativos')
+              .orderBy('lastUpdate', 'desc')
+              .onSnapshot(snap => {
+                  listEl.innerHTML = '';
+                  if(snap.empty) {
+                      listEl.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">Nenhuma conversa iniciada.</div>';
+                      return;
+                  }
+
+                  snap.forEach(doc => {
+                      const chat = doc.data();
+                      const time = chat.lastUpdate ? new Date(chat.lastUpdate.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+                      const activeClass = currentChatId === doc.id ? 'active' : '';
+                      const unreadDot = chat.unread ? '<span class="w-2 h-2 bg-green-500 rounded-full ml-2"></span>' : '';
+
+                      listEl.innerHTML += `
+                          <div class="chat-list-item p-3 border-b flex items-center gap-3 ${activeClass}" onclick="abrirChat('${doc.id}', '${chat.userName}')">
+                              <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
+                                  ${chat.userName ? chat.userName.charAt(0).toUpperCase() : 'C'}
+                              </div>
+                              <div class="flex-1 min-w-0">
+                                  <div class="flex justify-between items-baseline">
+                                      <h4 class="font-medium text-sm truncate text-gray-800">${chat.userName || 'Cliente'}</h4>
+                                      <span class="text-xs text-gray-400">${time}</span>
+                                  </div>
+                                  <div class="flex justify-between items-center">
+                                      <p class="text-xs text-gray-500 truncate pr-2">${chat.lastMessage || '...'}</p>
+                                      ${unreadDot}
+                                  </div>
+                              </div>
+                          </div>
+                      `;
+                  });
+              });
+        }
+
+        function abrirChat(chatId, userName) {
+            currentChatId = chatId;
+            
+            // UI Updates
+            document.getElementById('chat-header').classList.remove('hidden');
+            document.getElementById('admin-chat-form').classList.remove('hidden');
+            document.getElementById('chat-username').textContent = userName || 'Cliente';
+            document.getElementById('chat-avatar').textContent = (userName || 'C').charAt(0).toUpperCase();
+            
+            // Marcar como lido
+            db.collection('chats_ativos').doc(chatId).update({ unread: false });
+
+            // Carregar Mensagens
+            if(unsubscribeMessages) unsubscribeMessages();
+            
+            const messagesDiv = document.getElementById('chat-messages');
+            
+            unsubscribeMessages = db.collection('pedidos').doc('chat_global').collection(chatId)
+                .orderBy('timestamp', 'asc')
+                .onSnapshot(snap => {
+                    messagesDiv.innerHTML = '';
+                    snap.forEach(doc => {
+                        const msg = doc.data();
+                        const isAdmin = msg.sender === 'admin'; // Mensagens do admin
+                        const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...';
+                        
+                        messagesDiv.innerHTML += `
+                            <div class="msg-bubble ${isAdmin ? 'msg-admin' : 'msg-user'} shadow-sm">
+                                <p>${msg.text}</p>
+                                <span class="text-[10px] opacity-60 block text-right mt-1 font-mono">${time}</span>
+                            </div>
+                        `;
+                    });
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                });
+        }
+
+        document.getElementById('admin-chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('admin-message-input');
+            const text = input.value.trim();
+            
+            if(!text || !currentChatId) return;
+            
+            input.value = '';
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+
+            // Salvar mensagem
+            await db.collection('pedidos').doc('chat_global').collection(currentChatId).add({
+                text: text,
+                sender: 'admin', // Identifica que foi o admin
+                timestamp: timestamp
+            });
+
+            // Atualizar metadados
+            await db.collection('chats_ativos').doc(currentChatId).update({
+                lastMessage: `Você: ${text}`,
+                lastUpdate: timestamp
+            });
+        });
+    </script>
+</body>
+</html>

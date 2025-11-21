@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor | Painel Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .editor-container { max-height: 60vh; background: #333; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        img { max-width: 100%; }
+        .btn-primary { background: #643f21; color: white; padding: 12px; width: 100%; border-radius: 8px; font-weight: 600; }
+    </style>
+</head>
+<body class="pb-20">
+
+    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex items-center gap-3">
+        <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
+        <h1 class="text-xl font-bold text-gray-800">Editor de Imagem</h1>
+    </header>
+
+    <main class="p-4 max-w-lg mx-auto">
+        
+        <div id="step-1" class="text-center py-10 border-2 border-dashed border-gray-300 rounded-xl bg-white">
+            <i class="fa-solid fa-image text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 mb-4">Carregue uma imagem para cortar no formato 3:4</p>
+            <button onclick="document.getElementById('file-input').click()" class="btn-primary max-w-xs mx-auto">
+                Abrir Imagem
+            </button>
+            <input type="file" id="file-input" accept="image/*" class="hidden">
+        </div>
+
+        <div id="step-2" class="hidden bg-white p-4 rounded-xl shadow-sm">
+            <div class="editor-container rounded-lg mb-4">
+                <img id="image" src="">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="cancelar()" class="py-3 rounded-lg bg-gray-200 text-gray-700 font-medium">Cancelar</button>
+                <button onclick="cortar()" class="btn-primary">Cortar e Baixar</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script>
+        let cropper;
+        const fileInput = document.getElementById('file-input');
+        const image = document.getElementById('image');
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    image.src = e.target.result;
+                    document.getElementById('step-1').classList.add('hidden');
+                    document.getElementById('step-2').classList.remove('hidden');
+                    
+                    if(cropper) cropper.destroy();
+                    cropper = new Cropper(image, {
+                        aspectRatio: 3 / 4,
+                        viewMode: 1,
+                        autoCropArea: 0.95
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function cancelar() {
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+            if(cropper) cropper.destroy();
+            fileInput.value = '';
+        }
+
+        function cortar() {
+            const canvas = cropper.getCroppedCanvas({
+                width: 900, // Otimizado para web
+                imageSmoothingQuality: 'high'
+            });
+            
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'imagem_cortada.jpg';
+                link.click();
+                cancelar();
+            }, 'image/jpeg', 0.9);
+        }
+    </script>
+</body>
+</html>

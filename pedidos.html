@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos | Painel Administrativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* Estilos de Card */
+        .card { 
+            background: white; 
+            border-radius: 0.75rem; 
+            border: 1px solid #e2e8f0; 
+            padding: 1rem; 
+            margin-bottom: 0.75rem; 
+            transition: all 0.2s ease;
+        }
+        .card:active { transform: scale(0.99); }
+
+        /* Badges de Status */
+        .status-badge { padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .status-pendente { color: #b45309; background: #fffbeb; }
+        .status-processando { color: #1d4ed8; background: #dbeafe; }
+        .status-enviado { color: #047857; background: #d1fae5; }
+        .status-entregue { color: #15803d; background: #dcfce7; }
+        .status-cancelado { color: #b91c1c; background: #fee2e2; }
+
+        /* Botões */
+        .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #643f21; color: white; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-danger { background: #fee2e2; color: #991b1b; }
+
+        /* Modal */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center; z-index: 50;
+        }
+        .modal.visivel { display: flex; }
+        .modal-content {
+            background: white; width: 100%; height: 100%; 
+            display: flex; flex-direction: column;
+        }
+        @media (min-width: 768px) {
+            .modal-content { width: 600px; height: auto; max-height: 90vh; border-radius: 1rem; }
+        }
+    </style>
+</head>
+<body class="pb-20">
+
+    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3">
+        <div class="flex items-center gap-3">
+            <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="text-xl font-bold text-gray-800">Pedidos</h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4">
+        <!-- Filtros Rápidos -->
+        <div class="flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
+            <button onclick="filtrarStatus('todos')" class="px-3 py-1 rounded-full bg-gray-200 text-sm font-medium whitespace-nowrap">Todos</button>
+            <button onclick="filtrarStatus('pendente')" class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-sm font-medium whitespace-nowrap">Pendentes</button>
+            <button onclick="filtrarStatus('processando')" class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium whitespace-nowrap">Processando</button>
+        </div>
+
+        <div id="loading" class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-gray-400 text-2xl"></i></div>
+        <div id="orders-list"></div>
+    </main>
+
+    <!-- Modal Detalhes do Pedido -->
+    <div id="order-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center p-4 border-b bg-gray-50">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">Pedido <span id="modal-order-id"></span></h2>
+                    <span id="modal-status-badge" class="status-badge"></span>
+                </div>
+                <button onclick="fecharModal()" class="text-gray-500 p-2"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 space-y-6">
+                <!-- Dados do Cliente -->
+                <div>
+                    <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Cliente</h3>
+                    <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-700 space-y-1">
+                        <p><i class="fa-solid fa-user mr-2 w-4"></i> <span id="modal-cliente"></span></p>
+                        <p><i class="fa-solid fa-phone mr-2 w-4"></i> <span id="modal-telefone"></span></p>
+                        <p><i class="fa-solid fa-envelope mr-2 w-4"></i> <span id="modal-email"></span></p>
+                    </div>
+                </div>
+
+                <!-- Endereço -->
+                <div>
+                    <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Entrega</h3>
+                    <p id="modal-endereco" class="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg"></p>
+                </div>
+
+                <!-- Itens -->
+                <div>
+                    <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Itens</h3>
+                    <div id="modal-itens" class="space-y-2"></div>
+                </div>
+                
+                <!-- Resumo -->
+                <div class="border-t pt-4 flex justify-between items-center">
+                    <span class="font-bold text-gray-600">Total</span>
+                    <span id="modal-total" class="text-xl font-bold text-green-700"></span>
+                </div>
+
+                <!-- Ações de Edição -->
+                <div class="border-t pt-4">
+                    <h3 class="text-sm font-bold text-gray-500 uppercase mb-3">Alterar Status</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="atualizarStatus('pendente')" class="btn bg-yellow-100 text-yellow-800 text-xs">Pendente</button>
+                        <button onclick="atualizarStatus('processando')" class="btn bg-blue-100 text-blue-800 text-xs">Processando</button>
+                        <button onclick="atualizarStatus('enviado')" class="btn bg-green-100 text-green-800 text-xs">Enviado</button>
+                        <button onclick="atualizarStatus('entregue')" class="btn bg-green-200 text-green-900 text-xs">Entregue</button>
+                        <button onclick="atualizarStatus('cancelado')" class="btn bg-red-100 text-red-800 text-xs">Cancelado</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t grid grid-cols-2 gap-3 bg-gray-50">
+                <a id="modal-whatsapp" href="#" target="_blank" class="btn bg-green-500 text-white text-center flex items-center justify-center gap-2">
+                    <i class="fa-brands fa-whatsapp"></i> Conversar
+                </a>
+                <button onclick="arquivarPedido()" class="btn btn-danger flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trash"></i> Arquivar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+            authDomain: "site-lamed.firebaseapp.com",
+            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+            projectId: "site-lamed",
+            storageBucket: "site-lamed.firebasestorage.app",
+            messagingSenderId: "862756160215",
+            appId: "1:862756160215:web:d0fded233682bf93eaa692",
+            measurementId: "G-BL1G961PGT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let currentPedidoId = null;
+        let todosPedidos = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.onAuthStateChanged(user => {
+                if (!user) window.location.href = 'login-admin.html';
+                else carregarPedidos();
+            });
+        });
+
+        function carregarPedidos() {
+            db.collection('pedidos').orderBy('data', 'desc').onSnapshot(snap => {
+                todosPedidos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderizarLista(todosPedidos);
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+
+        function renderizarLista(pedidos) {
+            const div = document.getElementById('orders-list');
+            div.innerHTML = '';
+
+            if(pedidos.length === 0) {
+                div.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pedido encontrado.</p>';
+                return;
+            }
+
+            pedidos.forEach(p => {
+                const data = p.data ? new Date(p.data.seconds * 1000).toLocaleDateString('pt-BR') : '-';
+                
+                div.innerHTML += `
+                    <div class="card cursor-pointer hover:shadow-md" onclick="abrirDetalhes('${p.id}')">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="font-bold text-gray-800 mr-2">#${p.id.slice(0,6).toUpperCase()}</span>
+                                <span class="text-xs text-gray-500">${data}</span>
+                            </div>
+                            <span class="status-badge status-${p.status}">${p.status}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">${p.cliente?.nome || 'Cliente'}</p>
+                                <p class="text-xs text-gray-500">${p.produtos ? p.produtos.length : 0} itens</p>
+                            </div>
+                            <span class="font-bold text-[--cor-marrom-cta]">R$ ${parseFloat(p.total || 0).toFixed(2).replace('.',',')}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function filtrarStatus(status) {
+            if (status === 'todos') renderizarLista(todosPedidos);
+            else {
+                const filtrados = todosPedidos.filter(p => p.status === status);
+                renderizarLista(filtrados);
+            }
+        }
+
+        function abrirDetalhes(id) {
+            currentPedidoId = id;
+            const p = todosPedidos.find(ped => ped.id === id);
+            if(!p) return;
+
+            // Preencher Modal
+            document.getElementById('modal-order-id').textContent = `#${p.id.slice(0,6).toUpperCase()}`;
+            const badge = document.getElementById('modal-status-badge');
+            badge.textContent = p.status;
+            badge.className = `status-badge status-${p.status}`;
+
+            // Cliente
+            document.getElementById('modal-cliente').textContent = p.cliente?.nome || '-';
+            document.getElementById('modal-telefone').textContent = p.cliente?.telefone || '-';
+            document.getElementById('modal-email').textContent = p.cliente?.email || '-';
+
+            // Endereço
+            const end = p.cliente?.endereco;
+            document.getElementById('modal-endereco').textContent = end ? 
+                `${end.rua}, ${end.numero} - ${end.cidade} (${end.cep})` : 'Não informado';
+
+            // Itens
+            const itensDiv = document.getElementById('modal-itens');
+            itensDiv.innerHTML = '';
+            if(p.produtos) {
+                p.produtos.forEach(item => {
+                    itensDiv.innerHTML += `
+                        <div class="flex justify-between text-sm border-b border-gray-100 pb-2">
+                            <div>
+                                <span class="font-medium">${item.quantity}x ${item.nome}</span>
+                                <div class="text-xs text-gray-500">Tam: ${item.tamanho} ${item.cor ? '| '+item.cor.nome : ''}</div>
+                            </div>
+                            <span>R$ ${(item.preco * item.quantity).toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            // Total e WhatsApp
+            document.getElementById('modal-total').textContent = `R$ ${parseFloat(p.total).toFixed(2)}`;
+            
+            let fone = p.cliente?.telefone?.replace(/\D/g, '') || '';
+            const wppBtn = document.getElementById('modal-whatsapp');
+            if(fone) {
+                wppBtn.href = `https://wa.me/55${fone}`;
+                wppBtn.classList.remove('hidden');
+            } else {
+                wppBtn.classList.add('hidden');
+            }
+
+            document.getElementById('order-modal').classList.add('visivel');
+        }
+
+        async function atualizarStatus(novoStatus) {
+            if(!currentPedidoId) return;
+            try {
+                await db.collection('pedidos').doc(currentPedidoId).update({ status: novoStatus });
+                // Atualiza visualmente sem fechar modal imediatamente se quiser
+                const badge = document.getElementById('modal-status-badge');
+                badge.textContent = novoStatus;
+                badge.className = `status-badge status-${novoStatus}`;
+                alert(`Status alterado para ${novoStatus}`);
+            } catch(e) {
+                alert("Erro ao atualizar status: " + e.message);
+            }
+        }
+
+        async function arquivarPedido() {
+            if(!currentPedidoId || !confirm("Tem certeza que deseja arquivar (excluir) este pedido?")) return;
+            try {
+                await db.collection('pedidos').doc(currentPedidoId).delete();
+                fecharModal();
+            } catch(e) {
+                alert("Erro ao arquivar.");
+            }
+        }
+
+        function fecharModal() {
+            document.getElementById('order-modal').classList.remove('visivel');
+            currentPedidoId = null;
+        }
+    </script>
+</body>
+</html>
