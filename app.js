@@ -369,6 +369,13 @@ function showProductDetail(id) {
     
     // --- Lógica: Mesa Posta & Aviso ---
     const sizeSection = document.querySelector('.size-selector')?.parentElement;
+    
+    // Elementos de tamanho
+    const sizeHeader = sizeSection?.querySelector('.flex.justify-between'); 
+    const sizeOptions = sizeSection?.querySelector('.size-selector');
+    const sizeDisplay = sizeSection?.querySelector('#selected-size-display');
+
+    // Acordeões
     const accordions = document.querySelectorAll('.accordion-button');
     let measureAccordionWrapper = null;
 
@@ -376,8 +383,7 @@ function showProductDetail(id) {
         if(btn.textContent.includes('Guia de Medidas')) {
             measureAccordionWrapper = btn.parentElement;
         }
-        // --- Lógica: Descrições Abertas ---
-        // Abre o acordeão da descrição automaticamente e remove o hidden
+        // Descrição aberta
         if(btn.textContent.includes('Descrição')) {
             const content = btn.nextElementSibling;
             const icon = btn.querySelector('.accordion-icon');
@@ -386,16 +392,20 @@ function showProductDetail(id) {
         }
     });
 
-    // Injeta o aviso de Mesa Posta se necessário
+    // Remove aviso antigo
     const existingWarning = document.getElementById('mesa-posta-warning');
     if (existingWarning) existingWarning.remove();
 
     if (currentProduct.categoria === 'mesa_posta') {
-        if(sizeSection) sizeSection.classList.add('hidden');
+        // Esconde só os tamanhos, mantém container visível para as Cores (se houver)
+        if(sizeHeader) sizeHeader.classList.add('hidden');
+        if(sizeOptions) sizeOptions.classList.add('hidden');
+        if(sizeDisplay) sizeDisplay.classList.add('hidden');
+        if(sizeSection) sizeSection.classList.remove('hidden');
+
         if(measureAccordionWrapper) measureAccordionWrapper.classList.add('hidden');
         selectedSize = 'Único'; 
         
-        // Criação do Aviso
         const warningDiv = document.createElement('div');
         warningDiv.id = 'mesa-posta-warning';
         warningDiv.className = 'bg-orange-50 border border-orange-100 text-[#643f21] text-xs p-3 rounded mb-4 mt-2 flex gap-2 items-start';
@@ -403,11 +413,13 @@ function showProductDetail(id) {
             <i class="fa-solid fa-circle-exclamation mt-0.5 text-[#A58A5C]"></i>
             <span><strong>Atenção:</strong> Valor referente a <strong>1 unidade</strong> (peça avulsa). Não acompanha acessórios ou jogo completo.</span>
         `;
-        // Insere antes do botão de adicionar ao carrinho
         const btnContainer = document.getElementById('add-to-cart-button').parentElement;
         btnContainer.insertBefore(warningDiv, document.getElementById('add-to-cart-button'));
 
     } else {
+        // Restaura
+        if(sizeHeader) sizeHeader.classList.remove('hidden');
+        if(sizeOptions) sizeOptions.classList.remove('hidden');
         if(sizeSection) sizeSection.classList.remove('hidden');
         if(measureAccordionWrapper) measureAccordionWrapper.classList.remove('hidden');
         selectedSize = null; 
@@ -455,12 +467,35 @@ function setupSplideCarousel() {
 function renderColors() {
     const container = document.querySelector('.color-selector-container');
     if (container) container.remove();
+    
     const cores = currentProduct.cores || [];
-    if (cores.length === 0) return;
+    if (cores.length === 0) {
+        selectedColor = null;
+        return;
+    }
+
     const div = document.createElement('div');
     div.className = 'color-selector-container mb-6';
     div.innerHTML = `<p class="text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">Cor</p><div class="flex gap-3 flex-wrap">${cores.map((c, i) => `<div class="color-option" data-idx="${i}"><div class="w-4 h-4 rounded-full border border-gray-300" style="background-color:${c.hex}"></div><span class="text-xs">${c.nome}</span></div>`).join('')}</div>`;
-    document.querySelector('.size-selector').after(div);
+    
+    // Inserção CORRETA: Fora do .size-selector, mas próximo a ele
+    const sizeSelector = document.querySelector('.size-selector');
+    if (sizeSelector && sizeSelector.parentElement) {
+        // Insere após o container pai do tamanho (a div mb-8)
+        // Isso garante que se o tamanho for oculto (add class hidden no parent), a cor ainda fica visível fora dele
+        sizeSelector.parentElement.after(div);
+    } else {
+        document.getElementById('detail-price').after(div);
+    }
+
+    // Auto-seleção se houver apenas 1 cor
+    if (cores.length === 1) {
+        selectedColor = 0;
+        div.querySelector('.color-option').classList.add('selected');
+    } else {
+        selectedColor = null;
+    }
+
     div.querySelectorAll('.color-option').forEach(btn => {
         btn.addEventListener('click', () => {
             div.querySelectorAll('.color-option').forEach(b => b.classList.remove('selected'));
