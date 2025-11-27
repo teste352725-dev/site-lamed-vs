@@ -476,7 +476,20 @@ function renderColors() {
 
     const div = document.createElement('div');
     div.className = 'color-selector-container mb-6';
-    div.innerHTML = `<p class="text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">Cor</p><div class="flex gap-3 flex-wrap">${cores.map((c, i) => `<div class="color-option" data-idx="${i}"><div class="w-4 h-4 rounded-full border border-gray-300" style="background-color:${c.hex}"></div><span class="text-xs">${c.nome}</span></div>`).join('')}</div>`;
+    const isMesaPosta = currentProduct.categoria === 'mesa_posta';
+
+    div.innerHTML = `<p class="text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">Cor</p><div class="flex gap-3 flex-wrap">${cores.map((c, i) => {
+        let stockBadge = '';
+        if (isMesaPosta && c.quantidade !== undefined) {
+            stockBadge = `<span class="text-[10px] text-gray-500 font-medium ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full border border-gray-200">${c.quantidade} un</span>`;
+        }
+        return `
+        <div class="color-option group relative" data-idx="${i}">
+            <div class="w-4 h-4 rounded-full border border-gray-300 shadow-sm" style="background-color:${c.hex}"></div>
+            <span class="text-xs font-medium text-gray-700">${c.nome}</span>
+            ${stockBadge}
+        </div>`;
+    }).join('')}</div>`;
     
     // Inserção CORRETA: Fora do .size-selector, mas próximo a ele
     const sizeSelector = document.querySelector('.size-selector');
