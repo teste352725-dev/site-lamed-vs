@@ -6,7 +6,7 @@
     <title>Minha Conta | Laméd vs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -15,132 +15,221 @@
 
     <style>
         :root { --cor-marrom: #643f21; --cor-ouro: #A58A5C; }
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: #fff; color: #374151; }
+        .serif { font-family: 'Cormorant Garamond', serif; }
         .font-allura { font-family: 'Allura', cursive; }
         
-        /* Chat Styles */
-        .chat-container { height: calc(100vh - 280px); min-height: 400px; }
-        .msg-bubble { max-width: 80%; padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; position: relative; font-size: 0.9rem; }
-        .msg-user { background-color: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; margin-left: auto; }
-        .msg-admin { background-color: #ffffff; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #e5e7eb; }
+        /* Transições de View */
+        .auth-view { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .auth-view.active { display: block; opacity: 1; }
+        
+        /* Input Chique */
+        .input-chic {
+            width: 100%; border-bottom: 1px solid #e5e7eb; padding: 12px 0;
+            outline: none; transition: border-color 0.3s; background: transparent;
+            font-size: 0.9rem; color: #1f2937;
+        }
+        .input-chic:focus { border-color: var(--cor-ouro); }
+        .input-chic::placeholder { color: #9ca3af; }
+        
+        /* Botão Chique */
+        .btn-chic {
+            width: 100%; background: var(--cor-marrom); color: white;
+            padding: 14px; font-weight: 500; letter-spacing: 0.05em;
+            text-transform: uppercase; font-size: 0.8rem;
+            transition: background 0.3s, transform 0.2s;
+        }
+        .btn-chic:hover { background: #4a2e18; transform: translateY(-1px); }
+
         .tab-btn.active { border-bottom: 2px solid var(--cor-marrom); color: var(--cor-marrom); font-weight: 600; }
         
-        /* Login Screen */
-        #login-screen { background-image: url('https://i.supaimg.com/843f581a-5106-4617-a59d-b6d2df49a5e1.webp'); background-size: cover; background-position: center; }
-        .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px); }
+        /* Chat */
+        .msg-user { background: #f3f4f6; border-radius: 12px 12px 0 12px; margin-left: auto; padding: 10px 15px; max-width: 80%; }
+        .msg-admin { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px 12px 12px 0; padding: 10px 15px; max-width: 80%; }
     </style>
 </head>
-<body class="text-gray-800">
+<body class="min-h-screen flex flex-col">
 
-    <!-- TELA DE LOGIN / REGISTRO -->
-    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="glass-effect p-8 rounded-xl shadow-2xl w-full max-w-md text-center">
-            <h1 class="font-allura text-5xl text-[--cor-marrom] mb-2">Laméd</h1>
-            <p class="text-gray-600 mb-8 uppercase tracking-widest text-xs">Área do Cliente</p>
-            
-            <button onclick="fazerLoginGoogle()" class="w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-50 transition shadow-sm mb-4">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5">
-                Entrar com Google
-            </button>
-            
-            <div class="relative my-6">
-                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300"></div></div>
-                <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-500">Ou com email</span></div>
+    <!-- ÁREA DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
+    <div id="auth-container" class="flex-1 flex flex-col items-center justify-center p-6 hidden">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-10">
+                <a href="index.html" class="inline-block group">
+                    <h1 class="font-allura text-6xl text-[--cor-marrom] group-hover:opacity-90 transition">Laméd</h1>
+                    <span class="text-xs tracking-[0.3em] text-[--cor-ouro] uppercase mt-2 block font-serif">Alfaiataria & Casa</span>
+                </a>
             </div>
 
-            <form id="email-form" class="space-y-4">
-                <input type="email" id="email-input" placeholder="Seu E-mail" class="w-full p-3 border rounded bg-white/50 focus:outline-[--cor-ouro]">
-                <input type="password" id="pass-input" placeholder="Sua Senha" class="w-full p-3 border rounded bg-white/50 focus:outline-[--cor-ouro]">
-                <button type="submit" class="w-full bg-[--cor-marrom] text-white py-3 rounded-lg hover:bg-[#4a2e18] transition">Entrar / Cadastrar</button>
-            </form>
-            <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
-            <a href="index.html" class="block mt-6 text-sm text-gray-500 hover:underline">Voltar para a Loja</a>
+            <!-- LOGIN VIEW -->
+            <div id="view-login" class="auth-view active">
+                <h2 class="serif text-3xl font-light mb-8 text-center text-gray-800">Bem-vindo de volta</h2>
+                
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label class="text-[10px] uppercase text-gray-400 tracking-widest font-bold">E-mail</label>
+                        <input type="email" id="login-email" class="input-chic" required>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-gray-400 tracking-widest font-bold">Senha</label>
+                        <input type="password" id="login-pass" class="input-chic" required>
+                    </div>
+                    <button type="submit" class="btn-chic shadow-lg">Entrar</button>
+                </form>
+
+                <div class="mt-8 space-y-6">
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-100"></div></div>
+                        <div class="relative flex justify-center text-xs"><span class="px-2 bg-white text-gray-400">OU</span></div>
+                    </div>
+
+                    <button onclick="fazerLoginGoogle()" class="w-full border border-gray-200 py-3 flex items-center justify-center gap-3 hover:bg-gray-50 transition text-sm text-gray-600">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5">
+                        Continuar com Google
+                    </button>
+                    <p class="text-center text-sm text-gray-500">
+                        Ainda não possui conta? <button onclick="switchAuthView('register')" class="text-[--cor-marrom] font-medium underline">Cadastrar-se</button>
+                    </p>
+                </div>
+            </div>
+
+            <!-- REGISTER VIEW -->
+            <div id="view-register" class="auth-view">
+                <h2 class="serif text-3xl font-light mb-2 text-center text-gray-800">Criar Conta</h2>
+                <p class="text-center text-gray-400 text-sm mb-8 font-light">Preencha seus dados para uma experiência personalizada.</p>
+                
+                <form id="register-form" class="space-y-5">
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" id="reg-nome" placeholder="Nome" class="input-chic" required>
+                        <input type="text" id="reg-sobrenome" placeholder="Sobrenome" class="input-chic" required>
+                    </div>
+                    <input type="email" id="reg-email" placeholder="E-mail" class="input-chic" required>
+                    <input type="tel" id="reg-phone" placeholder="WhatsApp (DDD + Número)" class="input-chic" required>
+                    <input type="password" id="reg-pass" placeholder="Senha" class="input-chic" required>
+                    
+                    <div class="pt-4">
+                        <p class="text-[10px] text-gray-400 uppercase mb-3 font-bold tracking-widest">Endereço de Entrega</p>
+                        <div class="grid grid-cols-3 gap-3 mb-2">
+                            <input type="text" id="reg-cep" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
+                            <input type="text" id="reg-cidade" placeholder="Cidade" class="input-chic col-span-2">
+                        </div>
+                        <input type="text" id="reg-rua" placeholder="Rua" class="input-chic mb-2">
+                        <input type="text" id="reg-numero" placeholder="Número / Compl." class="input-chic">
+                    </div>
+
+                    <button type="submit" class="btn-chic mt-6 shadow-lg">Finalizar Cadastro</button>
+                </form>
+                
+                <p class="text-center text-sm text-gray-500 mt-8">
+                    Já tem conta? <button onclick="switchAuthView('login')" class="text-[--cor-marrom] font-medium underline">Entrar</button>
+                </p>
+            </div>
         </div>
     </div>
 
-    <!-- PAINEL DO USUÁRIO (Escondido inicialmente) -->
-    <div id="user-panel" class="hidden min-h-screen flex flex-col">
-        
-        <!-- Header -->
-        <header class="bg-white shadow-sm sticky top-0 z-40">
-            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <a href="index.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
-                    <span class="font-allura text-2xl">Minha Conta</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span id="user-name" class="text-sm font-medium hidden sm:block">Usuario</span>
-                    <img id="user-avatar" src="" class="w-8 h-8 rounded-full border bg-gray-200 object-cover">
-                    <button onclick="fazerLogout()" class="text-red-500 text-sm ml-2"><i class="fa-solid fa-sign-out-alt"></i></button>
+    <!-- PAINEL DO USUÁRIO -->
+    <div id="user-panel" class="hidden flex-1 flex flex-col">
+        <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <a href="index.html" class="flex items-center gap-2 text-gray-400 hover:text-[--cor-marrom] transition">
+                    <i class="fa-solid fa-arrow-left"></i> <span class="text-xs uppercase tracking-widest font-medium">Voltar à Loja</span>
+                </a>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p id="user-name-display" class="font-medium text-sm text-gray-800">Usuario</p>
+                        <p class="text-[10px] text-[--cor-ouro] uppercase tracking-wider font-bold">Cliente VIP</p>
+                    </div>
+                    <img id="user-avatar-display" src="" class="w-10 h-10 rounded-full border border-gray-100 object-cover shadow-sm">
+                    <button onclick="fazerLogout()" class="text-gray-400 hover:text-red-500 ml-2" title="Sair"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
             
-            <!-- Abas de Navegação -->
-            <div class="flex border-b bg-white px-4 gap-6 overflow-x-auto">
-                <button onclick="switchTab('pedidos')" class="tab-btn active py-3 px-2 whitespace-nowrap">
-                    <i class="fa-solid fa-box mr-1"></i> Meus Pedidos
-                </button>
-                <button onclick="switchTab('favoritos')" class="tab-btn py-3 px-2 whitespace-nowrap">
-                    <i class="fa-solid fa-heart mr-1"></i> Favoritos
-                </button>
-                <button onclick="switchTab('chat')" class="tab-btn py-3 px-2 whitespace-nowrap">
-                    <i class="fa-brands fa-whatsapp mr-1"></i> Fale Conosco
-                </button>
-            </div>
+            <nav class="flex justify-center gap-8 mt-2">
+                <button onclick="switchTab('pedidos')" class="tab-btn active py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition">Pedidos</button>
+                <button onclick="switchTab('dados')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition">Meus Dados</button>
+                <button onclick="switchTab('chat')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition">Suporte</button>
+            </nav>
         </header>
 
-        <main class="container mx-auto p-4 flex-1">
+        <main class="container mx-auto p-4 md:p-8 max-w-4xl flex-1 bg-white">
             
-            <!-- ABA: PEDIDOS -->
-            <div id="tab-pedidos" class="tab-content space-y-4">
-                <div id="orders-list" class="space-y-4">
-                    <div class="text-center py-10 text-gray-400">
-                        <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
-                    </div>
-                </div>
+            <!-- PEDIDOS -->
+            <div id="tab-pedidos" class="tab-content space-y-6">
+                <div id="orders-list"></div>
             </div>
 
-            <!-- ABA: FAVORITOS -->
-            <div id="tab-favoritos" class="tab-content hidden">
-                <div id="favorites-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <!-- Produtos injetados via JS -->
-                </div>
-                <div id="no-favorites" class="hidden text-center py-20 text-gray-500">
-                    <i class="fa-regular fa-heart text-4xl mb-2"></i>
-                    <p>Você ainda não tem favoritos.</p>
-                </div>
-            </div>
+            <!-- MEUS DADOS (PERFIL) -->
+            <div id="tab-dados" class="tab-content hidden">
+                <div class="max-w-xl mx-auto mt-8">
+                    <h3 class="serif text-2xl mb-8 text-center text-gray-800">Editar Perfil</h3>
+                    <form id="profile-form" class="space-y-8">
+                        <div class="flex flex-col items-center gap-4 mb-8">
+                            <img id="profile-edit-avatar" src="" class="w-24 h-24 rounded-full object-cover border-4 border-gray-50 shadow-md">
+                            <div class="w-full">
+                                <label class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">URL da Foto</label>
+                                <input type="url" id="profile-photo-url" class="input-chic text-sm" placeholder="Cole o link da sua foto aqui">
+                            </div>
+                        </div>
 
-            <!-- ABA: CHAT -->
-            <div id="tab-chat" class="tab-content hidden h-full">
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-140px)]">
-                    <div class="p-3 border-b bg-gray-50 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-[--cor-marrom] text-white flex items-center justify-center font-allura text-xl">L</div>
-                        <div>
-                            <h3 class="font-semibold text-sm">Atendimento Laméd vs</h3>
-                            <p class="text-xs text-green-600 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Online</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><label class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Nome Completo</label><input type="text" id="profile-nome" class="input-chic"></div>
+                            <div><label class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Telefone / WhatsApp</label><input type="text" id="profile-phone" class="input-chic"></div>
                         </div>
-                    </div>
-                    
-                    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col bg-[#e5ded8]">
-                        <!-- Mensagens aqui -->
-                        <div class="text-center text-xs text-gray-500 my-4 bg-white/50 py-1 rounded-full self-center px-4">
-                            Inicie uma conversa para tirar dúvidas sobre suas peças.
+
+                        <div class="pt-6 border-t border-gray-100">
+                            <h4 class="serif text-lg mb-4 text-gray-600">Endereço de Entrega</h4>
+                            <div class="grid grid-cols-3 gap-4 mb-4">
+                                <input type="text" id="profile-cep" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
+                                <input type="text" id="profile-cidade" placeholder="Cidade" class="input-chic col-span-2">
+                            </div>
+                            <input type="text" id="profile-rua" placeholder="Rua" class="input-chic mb-4">
+                            <input type="text" id="profile-numero" placeholder="Número e Complemento" class="input-chic">
                         </div>
-                    </div>
-                    
-                    <form id="chat-form" class="p-3 bg-gray-100 border-t flex gap-2">
-                        <input type="text" id="message-input" class="flex-1 rounded-full border-0 px-4 py-2 focus:ring-2 focus:ring-[--cor-ouro]" placeholder="Digite sua mensagem...">
-                        <button type="submit" class="bg-[--cor-marrom] text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#4a2e18] transition">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </button>
+
+                        <button type="submit" class="btn-chic shadow-lg">Salvar Alterações</button>
                     </form>
                 </div>
             </div>
-            
+
+            <!-- CHAT -->
+            <div id="tab-chat" class="tab-content hidden h-full">
+                <div class="bg-white border border-gray-100 shadow-sm flex flex-col h-[600px] max-h-[70vh] rounded-lg overflow-hidden">
+                    <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span class="font-medium text-sm text-gray-700">Atendimento Online</span>
+                        </div>
+                        <span class="text-xs text-gray-400">Resposta em até 1h</span>
+                    </div>
+                    <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30"></div>
+                    <form id="chat-form" class="p-4 border-t flex gap-3 bg-white">
+                        <input type="text" id="message-input" class="flex-1 border-b border-gray-200 px-4 py-2 text-sm focus:border-[--cor-ouro] outline-none bg-transparent" placeholder="Digite sua dúvida...">
+                        <button type="submit" class="text-[--cor-marrom] hover:text-[--cor-ouro] transition"><i class="fa-solid fa-paper-plane text-xl"></i></button>
+                    </form>
+                </div>
+            </div>
+
         </main>
     </div>
 
     <script src="user.js"></script>
+    <script>
+        function buscarEndereco(cep) {
+            cep = cep.replace(/\D/g, '');
+            if(cep.length === 8) {
+                // Tenta preencher no cadastro ou no perfil, dependendo de qual estiver visível
+                const prefix = document.getElementById('view-register').classList.contains('active') ? 'reg' : 'profile';
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if(!data.erro) {
+                            const ruaEl = document.getElementById(`${prefix}-rua`);
+                            const cidEl = document.getElementById(`${prefix}-cidade`);
+                            if(ruaEl) ruaEl.value = data.logradouro;
+                            if(cidEl) cidEl.value = `${data.localidade}/${data.uf}`;
+                        }
+                    });
+            }
+        }
+    </script>
 </body>
 </html>
