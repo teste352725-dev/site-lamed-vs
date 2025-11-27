@@ -46,7 +46,7 @@ const elements = {
     checkoutTotal: document.getElementById('checkout-total'),
     collectionsContainer: document.getElementById('collections-container'),
     userIconLink: document.getElementById('header-user-icon-link'),
-    favoriteBtn: document.getElementById('btn-favorite') // NOVO: Botão de favorito mapeado
+    favoriteBtn: document.getElementById('btn-favorite')
 };
 
 // --- INIT ---
@@ -57,7 +57,6 @@ function init() {
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         atualizarIconeUsuario(user);
-        // Verifica o status do favorito se já estivermos vendo um produto
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id); 
     });
 
@@ -145,7 +144,6 @@ function setupEventListeners() {
     if (elements.addToCartBtn) elements.addToCartBtn.addEventListener('click', addToCart);
     if (elements.cartItemsContainer) elements.cartItemsContainer.addEventListener('click', handleCartItemClick);
     
-    // NOVO: Listener para o botão de favoritar
     if (elements.favoriteBtn) elements.favoriteBtn.addEventListener('click', toggleFavorite);
 
     document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
@@ -153,7 +151,7 @@ function setupEventListeners() {
     setupPaymentOptions();
 }
 
-// --- LÓGICA DE FAVORITOS (NOVA) ---
+// --- LÓGICA DE FAVORITOS ---
 async function toggleFavorite() {
     if (!currentUser) {
         alert("Por favor, faça login ou cadastre-se para favoritar produtos.");
@@ -162,14 +160,12 @@ async function toggleFavorite() {
     if (!currentProduct) return;
 
     const icon = elements.favoriteBtn.querySelector('i');
-    // Verifica visualmente se já está favoritado
     const isFav = icon.classList.contains('fa-solid'); 
     
-    // Atualização Otimista (Muda visualmente antes de confirmar no banco)
     if (isFav) {
-        icon.className = "fa-regular fa-heart"; // Desmarcar
+        icon.className = "fa-regular fa-heart";
     } else {
-        icon.className = "fa-solid fa-heart text-red-500"; // Marcar
+        icon.className = "fa-solid fa-heart text-red-500";
     }
 
     try {
@@ -178,32 +174,26 @@ async function toggleFavorite() {
         let favs = doc.exists && doc.data().favoritos ? doc.data().favoritos : [];
 
         if (isFav) {
-            // Se já era favorito, remover
             favs = favs.filter(id => id !== currentProduct.id);
         } else {
-            // Se não era, adicionar (evitando duplicatas)
             if (!favs.includes(currentProduct.id)) favs.push(currentProduct.id);
         }
 
-        // Salva no Firebase
         await userRef.set({ favoritos: favs }, { merge: true });
         
     } catch (e) {
         console.error("Erro ao favoritar:", e);
-        // Reverte visualmente se der erro
         if (isFav) icon.className = "fa-solid fa-heart text-red-500";
         else icon.className = "fa-regular fa-heart";
         alert("Não foi possível atualizar os favoritos.");
     }
 }
 
-// Checa status ao carregar produto
 async function checkFavoriteStatus(productId) {
     if (!currentUser || !productId) return;
     const icon = elements.favoriteBtn ? elements.favoriteBtn.querySelector('i') : null;
     if(!icon) return;
     
-    // Reset visual
     icon.className = "fa-regular fa-heart";
 
     try { 
@@ -337,7 +327,7 @@ function criarCardProduto(peca) {
         <div class="text-center px-2">
             <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${peca.nome}</h4>
             ${priceHtml}
-            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${peca.categoria || 'Coleção'}</p>
+            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${peca.categoria === 'mesa_posta' ? 'Mesa Posta' : (peca.categoria || 'Coleção')}</p>
         </div>
     `;
     card.addEventListener('click', () => window.location.hash = `#/produto/${peca.id}`);
@@ -356,12 +346,14 @@ function renderizarGridColecao(collectionId) {
     prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
 }
 
-// --- Detalhes do Produto ---
+// --- Detalhes do Produto (Atualizado para Mesa Posta) ---
 function showProductDetail(id) {
     currentProduct = products.find(p => p.id === id);
     if (!currentProduct) return;
+    
     selectedSize = null; selectedColor = null;
     document.querySelectorAll('.size-option').forEach(el => el.classList.remove('selected'));
+    
     document.getElementById('detail-title').textContent = currentProduct.nome;
     document.getElementById('detail-description').textContent = currentProduct.descricao || '';
     
@@ -373,10 +365,31 @@ function showProductDetail(id) {
     
     setupSplideCarousel(); 
     renderColors(); 
-    updateAddToCartButton(); 
     renderRecommendations(currentProduct);
     
-    // Check inicial de favorito
+    // --- Lógica para esconder tamanhos e medidas se for Mesa Posta ---
+    const sizeSection = document.querySelector('.size-selector')?.parentElement;
+    const accordions = document.querySelectorAll('.accordion-button');
+    let measureAccordionWrapper = null;
+
+    accordions.forEach(btn => {
+        if(btn.textContent.includes('Guia de Medidas')) {
+            measureAccordionWrapper = btn.parentElement;
+        }
+    });
+
+    if (currentProduct.categoria === 'mesa_posta') {
+        if(sizeSection) sizeSection.classList.add('hidden');
+        if(measureAccordionWrapper) measureAccordionWrapper.classList.add('hidden');
+        selectedSize = 'Único'; // Auto-seleciona para lógica interna
+    } else {
+        if(sizeSection) sizeSection.classList.remove('hidden');
+        if(measureAccordionWrapper) measureAccordionWrapper.classList.remove('hidden');
+        selectedSize = null; // Reseta
+    }
+    
+    updateAddToCartButton();
+
     if(currentUser) checkFavoriteStatus(currentProduct.id);
 
     document.getElementById('collection-gallery').classList.add('hidden');
@@ -443,18 +456,40 @@ function selectSize(el) {
 function updateAddToCartButton() {
     const btn = elements.addToCartBtn;
     if(!btn) return;
-    if (selectedSize && (!currentProduct.cores?.length || selectedColor !== null)) {
+    
+    // Se for mesa posta OU (tamanho selecionado E (sem cores ou cor selecionada))
+    const isMesaPosta = currentProduct.categoria === 'mesa_posta';
+    const hasSize = selectedSize !== null;
+    const hasColor = !currentProduct.cores?.length || selectedColor !== null;
+
+    if ((isMesaPosta || hasSize) && hasColor) {
         btn.disabled = false; btn.textContent = "ADICIONAR À SACOLA";
+    } else {
+        btn.disabled = true; btn.textContent = "Selecione Opções";
     }
 }
 
 function addToCart() {
     const corObj = selectedColor !== null ? currentProduct.cores[selectedColor] : null;
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
-    const cartId = `${currentProduct.id}-${selectedSize}-${corObj?.nome || 'unico'}`;
+    // Usa "Único" se for mesa posta e selectedSize for null/auto
+    const tamanhoFinal = currentProduct.categoria === 'mesa_posta' ? 'Único' : selectedSize;
+    
+    const cartId = `${currentProduct.id}-${tamanhoFinal}-${corObj?.nome || 'unico'}`;
     const existing = cart.find(i => i.cartId === cartId);
+    
     if (existing) existing.quantity++;
-    else cart.push({ cartId, id: currentProduct.id, nome: currentProduct.nome, preco: precoFinal, imagem: currentProduct.imagens[0], tamanho: selectedSize, cor: corObj, quantity: 1 });
+    else cart.push({ 
+        cartId, 
+        id: currentProduct.id, 
+        nome: currentProduct.nome, 
+        preco: precoFinal, 
+        imagem: currentProduct.imagens[0], 
+        tamanho: tamanhoFinal, 
+        cor: corObj, 
+        quantity: 1 
+    });
+    
     localStorage.setItem('lamedCart', JSON.stringify(cart));
     updateCartUI(); openCart();
 }
