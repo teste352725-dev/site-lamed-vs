@@ -55,7 +55,8 @@
         /* Loading */
         .loading-spinner {
             width: 24px; height: 24px; border: 3px solid #f3f4f6;
-            border-top-color: var(--cor-ouro-acento); border-radius: 50%;
+            border-top-color: var(--cor-ouro-acento);
+            border-radius: 50%;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -209,7 +210,8 @@
         const db = firebase.firestore();
         
         // Validação de Admin (Proteção Front-End)
-        const ADMIN_UID = "8EIyqLDb9TSBCdX7ECZwoAX70s63";
+        // ATUALIZADO PARA O SEU NOVO ID
+        const ADMIN_UID = "NoGsCqiKc0VJwWb6rppk7QVLV1B2";
 
         document.addEventListener('DOMContentLoaded', () => {
             auth.onAuthStateChanged(user => {
@@ -217,7 +219,9 @@
                     window.location.href = 'login-admin.html';
                 } else if (user.uid !== ADMIN_UID) {
                     // Se logado mas não for o admin correto, manda para a loja
-                    alert("Acesso restrito a administradores.");
+                    console.log("UID Logado:", user.uid); // Debug
+                    console.log("UID Esperado:", ADMIN_UID); // Debug
+                    alert("Acesso restrito: Seu usuário não é administrador.");
                     window.location.href = 'index.html';
                 } else {
                     // É o admin, carrega tudo
