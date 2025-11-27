@@ -38,7 +38,6 @@
                 <input type="text" placeholder="Buscar cliente..." class="w-full p-2 border rounded bg-gray-50 text-sm">
             </div>
             <div id="chat-list" class="flex-1 overflow-y-auto">
-                <!-- Lista injetada via JS -->
                 <div class="text-center py-8 text-gray-400 text-sm">Carregando conversas...</div>
             </div>
         </aside>
@@ -143,18 +142,19 @@
             // Marcar como lido
             db.collection('chats_ativos').doc(chatId).update({ unread: false });
 
-            // Carregar Mensagens
+            // Carregar Mensagens (Nova Estrutura)
             if(unsubscribeMessages) unsubscribeMessages();
             
             const messagesDiv = document.getElementById('chat-messages');
             
-            unsubscribeMessages = db.collection('pedidos').doc('chat_global').collection(chatId)
+            // CORREÇÃO: Usando a nova coleção 'chats'
+            unsubscribeMessages = db.collection('chats').doc(chatId).collection('messages')
                 .orderBy('timestamp', 'asc')
                 .onSnapshot(snap => {
                     messagesDiv.innerHTML = '';
                     snap.forEach(doc => {
                         const msg = doc.data();
-                        const isAdmin = msg.sender === 'admin'; // Mensagens do admin
+                        const isAdmin = msg.sender === 'admin'; 
                         const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...';
                         
                         messagesDiv.innerHTML += `
@@ -178,10 +178,10 @@
             input.value = '';
             const timestamp = firebase.firestore.FieldValue.serverTimestamp();
 
-            // Salvar mensagem
-            await db.collection('pedidos').doc('chat_global').collection(currentChatId).add({
+            // Salvar mensagem (Nova Estrutura)
+            await db.collection('chats').doc(currentChatId).collection('messages').add({
                 text: text,
-                sender: 'admin', // Identifica que foi o admin
+                sender: 'admin',
                 timestamp: timestamp
             });
 
