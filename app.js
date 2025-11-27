@@ -703,7 +703,12 @@ function updateCheckoutSummary() {
     cart.forEach(item => { total += item.preco * item.quantity; summary.innerHTML += `<div class="flex justify-between text-sm mb-1 pb-1 border-b border-dashed border-[#dcdcdc]"><div><span class="font-medium text-[--cor-texto]">${item.quantity}x ${item.nome}</span></div><span>${formatarReal(item.preco * item.quantity)}</span></div>`; });
     const pgto = document.querySelector('input[name="pagamento"]:checked')?.value;
     let final = total;
-    if (pgto === 'PIX') { const desc = total * 0.05; final -= desc; summary.innerHTML += `<div class="flex justify-between text-sm text-green-600 font-medium mt-1"><span>Desconto PIX</span><span>-${formatarReal(desc)}</span></div>`; }
+    if (pgto === 'PIX') { 
+        // DESCONTO PIX TEMPORARIAMENTE REMOVIDO
+        // const desc = total * 0.05; 
+        // final -= desc; 
+        // summary.innerHTML += `<div class="flex justify-between text-sm text-green-600 font-medium mt-1"><span>Desconto PIX</span><span>-${formatarReal(desc)}</span></div>`; 
+    }
     elements.checkoutTotal.textContent = formatarReal(final);
 }
 
