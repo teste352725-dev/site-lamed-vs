@@ -12,6 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
     <style>
         :root { --cor-marrom: #643f21; --cor-ouro: #A58A5C; }
@@ -46,6 +47,10 @@
         /* Chat */
         .msg-user { background: #f3f4f6; border-radius: 12px 12px 0 12px; margin-left: auto; padding: 10px 15px; max-width: 80%; }
         .msg-admin { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px 12px 12px 0; padding: 10px 15px; max-width: 80%; }
+
+        /* Upload Overlay */
+        .avatar-container:hover .avatar-overlay { opacity: 1; }
+        .avatar-overlay { opacity: 0; transition: opacity 0.2s; background: rgba(0,0,0,0.5); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -136,17 +141,17 @@
                 <div class="flex items-center gap-4">
                     <div class="text-right hidden sm:block">
                         <p id="user-name-display" class="font-medium text-sm text-gray-800">Usuario</p>
-                        <p class="text-[10px] text-[--cor-ouro] uppercase tracking-wider font-bold">Cliente VIP</p>
                     </div>
                     <img id="user-avatar-display" src="" class="w-10 h-10 rounded-full border border-gray-100 object-cover shadow-sm">
                     <button onclick="fazerLogout()" class="text-gray-400 hover:text-red-500 ml-2" title="Sair"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
             
-            <nav class="flex justify-center gap-8 mt-2">
-                <button onclick="switchTab('pedidos')" class="tab-btn active py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition">Pedidos</button>
-                <button onclick="switchTab('dados')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition">Meus Dados</button>
-                <button onclick="switchTab('chat')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition">Suporte</button>
+            <nav class="flex justify-center gap-4 sm:gap-8 mt-2 overflow-x-auto">
+                <button onclick="switchTab('pedidos')" class="tab-btn active py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Pedidos</button>
+                <button onclick="switchTab('favoritos')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Favoritos</button>
+                <button onclick="switchTab('dados')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Meus Dados</button>
+                <button onclick="switchTab('chat')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Suporte</button>
             </nav>
         </header>
 
@@ -154,7 +159,17 @@
             
             <!-- PEDIDOS -->
             <div id="tab-pedidos" class="tab-content space-y-6">
-                <div id="orders-list"></div>
+                <div id="orders-list" class="space-y-4">
+                    <p class="text-center text-gray-400 py-10">Carregando pedidos...</p>
+                </div>
+            </div>
+
+            <!-- FAVORITOS (NOVO) -->
+            <div id="tab-favoritos" class="tab-content hidden">
+                <h3 class="serif text-2xl mb-6 text-gray-800 border-b pb-2">Meus Favoritos</h3>
+                <div id="favorites-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <p class="col-span-full text-center text-gray-400 py-10">Você ainda não tem peças favoritas.</p>
+                </div>
             </div>
 
             <!-- MEUS DADOS (PERFIL) -->
@@ -162,8 +177,19 @@
                 <div class="max-w-xl mx-auto mt-8">
                     <h3 class="serif text-2xl mb-8 text-center text-gray-800">Editar Perfil</h3>
                     <form id="profile-form" class="space-y-8">
+                        
+                        <!-- Upload de Imagem -->
                         <div class="flex flex-col items-center gap-4 mb-8">
-                            <img id="profile-edit-avatar" src="" class="w-24 h-24 rounded-full object-cover border-4 border-gray-50 shadow-md">
+                            <div class="relative w-24 h-24 avatar-container cursor-pointer">
+                                <img id="profile-edit-avatar" src="" class="w-full h-full rounded-full object-cover border-4 border-gray-50 shadow-md">
+                                <div class="absolute inset-0 rounded-full avatar-overlay flex items-center justify-center text-white" onclick="document.getElementById('file-upload-profile').click()">
+                                    <i class="fa-solid fa-camera text-xl"></i>
+                                </div>
+                                <input type="file" id="file-upload-profile" class="hidden" accept="image/*" onchange="uploadFotoPerfil(this)">
+                            </div>
+                            <div class="w-full text-center">
+                                <span class="text-xs text-gray-400">Clique na foto para alterar ou cole o link abaixo</span>
+                            </div>
                             <div class="w-full">
                                 <label class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">URL da Foto</label>
                                 <input type="url" id="profile-photo-url" class="input-chic text-sm" placeholder="Cole o link da sua foto aqui">
@@ -216,7 +242,6 @@
         function buscarEndereco(cep) {
             cep = cep.replace(/\D/g, '');
             if(cep.length === 8) {
-                // Tenta preencher no cadastro ou no perfil, dependendo de qual estiver visível
                 const prefix = document.getElementById('view-register').classList.contains('active') ? 'reg' : 'profile';
                 fetch(`https://viacep.com.br/ws/${cep}/json/`)
                     .then(res => res.json())
