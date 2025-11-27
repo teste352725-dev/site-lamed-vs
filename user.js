@@ -14,6 +14,7 @@ let app;
 try { app = firebase.app(); } catch (e) { app = firebase.initializeApp(firebaseConfig); }
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // Variáveis de Estado
 let currentUser = null;
@@ -32,14 +33,13 @@ auth.onAuthStateChanged(async (user) => {
         
         await carregarPerfilUsuario();
         carregarMeusPedidos();
+        carregarFavoritos(); // Carrega os favoritos ao logar
         iniciarChat();
         
     } else {
         currentUser = null;
         if(authContainer) authContainer.classList.remove('hidden');
         if(userPanel) userPanel.classList.add('hidden');
-        
-        // Padrão: mostrar login
         switchAuthView('login');
     }
 });
@@ -99,7 +99,6 @@ if(regForm) {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-            // Sucesso: o onAuthStateChanged cuidará do redirecionamento
         } catch(err) {
             alert("Erro no cadastro: " + err.message);
             const btn = regForm.querySelector('button');
@@ -117,7 +116,6 @@ window.fazerLoginGoogle = () => {
         const docRef = db.collection('usuarios').doc(user.uid);
         const docSnap = await docRef.get();
         
-        // Se primeiro login, cria doc
         if (!docSnap.exists) {
             await docRef.set({
                 nome: user.displayName,
@@ -142,16 +140,17 @@ async function carregarPerfilUsuario() {
     document.getElementById('user-name-display').textContent = currentUser.displayName || 'Cliente';
     const avatarEl = document.getElementById('user-avatar-display');
     
-    // Busca dados do Firestore
     try {
         const doc = await db.collection('usuarios').doc(currentUser.uid).get();
         const data = doc.data() || {};
         
-        const photo = data.fotoUrl || currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName}&background=A58A5C&color=fff`;
-        avatarEl.src = photo;
+        const photo = data.fotoUrl || currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName || 'U'}&background=A58A5C&color=fff`;
+        if(avatarEl) avatarEl.src = photo;
 
         // Preenche formulário de edição
-        document.getElementById('profile-edit-avatar').src = photo;
+        const editAvatar = document.getElementById('profile-edit-avatar');
+        if(editAvatar) editAvatar.src = photo;
+        
         document.getElementById('profile-photo-url').value = data.fotoUrl || '';
         document.getElementById('profile-nome').value = data.nome || currentUser.displayName || '';
         document.getElementById('profile-phone').value = data.telefone || '';
@@ -164,6 +163,42 @@ async function carregarPerfilUsuario() {
         }
     } catch(e) { console.error("Erro perfil:", e); }
 }
+
+// --- UPLOAD DE FOTO (NOVO) ---
+window.uploadFotoPerfil = async (input) => {
+    const file = input.files[0];
+    if (!file || !currentUser) return;
+
+    const imgPreview = document.getElementById('profile-edit-avatar');
+    // Preview imediato
+    imgPreview.style.opacity = '0.5';
+    
+    try {
+        // Upload para o Storage
+        const ref = storage.ref(`profile_images/${currentUser.uid}_${Date.now()}`);
+        await ref.put(file);
+        const url = await ref.getDownloadURL();
+
+        // Atualiza no Firestore e Auth
+        await currentUser.updateProfile({ photoURL: url });
+        await db.collection('usuarios').doc(currentUser.uid).update({
+            fotoUrl: url
+        });
+
+        // Atualiza UI
+        imgPreview.src = url;
+        document.getElementById('user-avatar-display').src = url;
+        document.getElementById('profile-photo-url').value = url;
+        alert("Foto de perfil atualizada!");
+
+    } catch (error) {
+        console.error("Erro no upload:", error);
+        alert("Erro ao enviar imagem: " + error.message);
+    } finally {
+        imgPreview.style.opacity = '1';
+        input.value = '';
+    }
+};
 
 // Salvar Perfil
 const profileForm = document.getElementById('profile-form');
@@ -210,38 +245,55 @@ window.switchTab = (tab) => {
     if(tab === 'chat') rolarChatParaBaixo();
 }
 
-// --- PEDIDOS ---
+// --- PEDIDOS (Melhorado) ---
 function carregarMeusPedidos() {
     const list = document.getElementById('orders-list');
-    if(!list) return;
+    if(!list || !currentUser) return;
     
-    db.collection('pedidos').where('userId', '==', currentUser.uid).orderBy('data', 'desc')
+    // Consulta por userId
+    db.collection('pedidos')
+        .where('userId', '==', currentUser.uid)
+        .orderBy('data', 'desc')
         .onSnapshot(snap => {
             list.innerHTML = '';
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-400 py-10">Você ainda não tem pedidos.</p>'; return; }
+            if(snap.empty) { 
+                list.innerHTML = '<div class="text-center py-10"><i class="fa-solid fa-basket-shopping text-4xl text-gray-200 mb-3"></i><p class="text-gray-400">Você ainda não fez pedidos.</p></div>'; 
+                return; 
+            }
             
             snap.forEach(doc => {
                 const p = doc.data();
-                const total = p.total ? p.total.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) : 'R$ 0,00';
+                // Verificação de segurança para o total
+                const valorTotal = typeof p.total === 'number' ? p.total : 0;
+                const totalFormatado = valorTotal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
                 
+                // Formatação da data
+                let dataPedido = 'Data desconhecida';
+                if(p.data && p.data.seconds) {
+                    dataPedido = new Date(p.data.seconds*1000).toLocaleDateString('pt-BR');
+                }
+
                 let itensHtml = (p.produtos || []).map(i => `
-                    <div class="flex justify-between text-xs text-gray-500 mt-1 border-b border-gray-50 pb-1">
-                        <span>${i.quantity}x ${i.nome}</span>
+                    <div class="flex justify-between text-xs text-gray-500 mt-1 border-b border-gray-50 pb-1 last:border-0">
+                        <span>${i.quantity}x ${i.nome} - <span class="text-[10px] bg-gray-100 px-1 rounded">${i.tamanho || 'U'}</span></span>
                         <span>${(i.preco * i.quantity).toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
                     </div>
                 `).join('');
 
                 list.innerHTML += `
-                    <div class="bg-white border border-gray-100 p-5 rounded-lg shadow-sm hover:shadow-md transition mb-4">
+                    <div class="bg-white border border-gray-100 p-5 rounded-lg shadow-sm hover:shadow-md transition">
                         <div class="flex justify-between mb-3 border-b border-gray-50 pb-2">
                             <div>
                                 <span class="font-bold text-gray-800">#${doc.id.slice(0,6).toUpperCase()}</span>
-                                <span class="text-xs text-gray-400 block">${new Date(p.data.seconds*1000).toLocaleDateString()}</span>
+                                <span class="text-xs text-gray-400 block">${dataPedido}</span>
                             </div>
-                            <span class="text-xs px-3 py-1 rounded-full uppercase tracking-wider font-bold ${getStatusClass(p.status)} h-fit">${p.status}</span>
+                            <span class="text-xs px-3 py-1 rounded-full uppercase tracking-wider font-bold ${getStatusClass(p.status)} h-fit flex items-center">${p.status}</span>
                         </div>
-                        <div class="mb-3">${itensHtml}</div>
-                        <div class="text-right font-serif text-xl text-[--cor-marrom]">${total}</div>
+                        <div class="mb-3 space-y-1">${itensHtml}</div>
+                        <div class="text-right">
+                            <span class="text-xs text-gray-400 mr-2">Total</span>
+                            <span class="font-serif text-lg text-[#643f21] font-bold">${totalFormatado}</span>
+                        </div>
                     </div>
                 `;
             });
@@ -253,6 +305,60 @@ function getStatusClass(status) {
     if(status === 'cancelado') return 'text-red-600 bg-red-50';
     if(status === 'enviado') return 'text-blue-600 bg-blue-50';
     return 'text-yellow-600 bg-yellow-50';
+}
+
+// --- FAVORITOS (NOVO) ---
+async function carregarFavoritos() {
+    const grid = document.getElementById('favorites-grid');
+    if (!grid || !currentUser) return;
+
+    try {
+        const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+        const favoritosIds = userDoc.data()?.favoritos || [];
+
+        if (favoritosIds.length === 0) {
+            grid.innerHTML = '<div class="col-span-full text-center py-10"><i class="fa-regular fa-heart text-4xl text-gray-200 mb-3"></i><p class="text-gray-400">Sua lista de desejos está vazia.</p></div>';
+            return;
+        }
+
+        // Busca os detalhes de cada produto favoritado
+        grid.innerHTML = '<p class="col-span-full text-center text-sm text-gray-400">Carregando...</p>';
+        
+        const promises = favoritosIds.map(id => db.collection('pecas').doc(id).get());
+        const snapshots = await Promise.all(promises);
+        
+        grid.innerHTML = '';
+        let itemsFound = 0;
+
+        snapshots.forEach(doc => {
+            if (doc.exists) {
+                itemsFound++;
+                const p = doc.data();
+                const img = (p.imagens && p.imagens[0]) ? p.imagens[0] : '';
+                const preco = parseFloat(p.preco || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                
+                grid.innerHTML += `
+                    <div class="bg-white border border-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group" onclick="window.location.href='index.html#/produto/${doc.id}'">
+                        <div class="aspect-[3/4] relative bg-gray-50">
+                            <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                        </div>
+                        <div class="p-3 text-center">
+                            <h4 class="text-sm font-medium text-gray-800 truncate">${p.nome}</h4>
+                            <p class="text-xs text-[#643f21] font-bold mt-1">${preco}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        if (itemsFound === 0) {
+            grid.innerHTML = '<p class="col-span-full text-center text-gray-400">Produtos não encontrados.</p>';
+        }
+
+    } catch (e) {
+        console.error("Erro ao carregar favoritos:", e);
+        grid.innerHTML = '<p class="col-span-full text-center text-red-400">Erro ao carregar.</p>';
+    }
 }
 
 // --- CHAT ---
