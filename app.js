@@ -346,7 +346,7 @@ function renderizarGridColecao(collectionId) {
     prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
 }
 
-// --- Detalhes do Produto (Atualizado para Mesa Posta) ---
+// --- Detalhes do Produto ---
 function showProductDetail(id) {
     currentProduct = products.find(p => p.id === id);
     if (!currentProduct) return;
@@ -367,7 +367,7 @@ function showProductDetail(id) {
     renderColors(); 
     renderRecommendations(currentProduct);
     
-    // --- Lógica para esconder tamanhos e medidas se for Mesa Posta ---
+    // --- Lógica: Mesa Posta & Aviso ---
     const sizeSection = document.querySelector('.size-selector')?.parentElement;
     const accordions = document.querySelectorAll('.accordion-button');
     let measureAccordionWrapper = null;
@@ -376,16 +376,41 @@ function showProductDetail(id) {
         if(btn.textContent.includes('Guia de Medidas')) {
             measureAccordionWrapper = btn.parentElement;
         }
+        // --- Lógica: Descrições Abertas ---
+        // Abre o acordeão da descrição automaticamente e remove o hidden
+        if(btn.textContent.includes('Descrição')) {
+            const content = btn.nextElementSibling;
+            const icon = btn.querySelector('.accordion-icon');
+            content.classList.remove('hidden');
+            if(icon) icon.classList.add('rotate');
+        }
     });
+
+    // Injeta o aviso de Mesa Posta se necessário
+    const existingWarning = document.getElementById('mesa-posta-warning');
+    if (existingWarning) existingWarning.remove();
 
     if (currentProduct.categoria === 'mesa_posta') {
         if(sizeSection) sizeSection.classList.add('hidden');
         if(measureAccordionWrapper) measureAccordionWrapper.classList.add('hidden');
-        selectedSize = 'Único'; // Auto-seleciona para lógica interna
+        selectedSize = 'Único'; 
+        
+        // Criação do Aviso
+        const warningDiv = document.createElement('div');
+        warningDiv.id = 'mesa-posta-warning';
+        warningDiv.className = 'bg-orange-50 border border-orange-100 text-[#643f21] text-xs p-3 rounded mb-4 mt-2 flex gap-2 items-start';
+        warningDiv.innerHTML = `
+            <i class="fa-solid fa-circle-exclamation mt-0.5 text-[#A58A5C]"></i>
+            <span><strong>Atenção:</strong> Valor referente a <strong>1 unidade</strong> (peça avulsa). Não acompanha acessórios ou jogo completo.</span>
+        `;
+        // Insere antes do botão de adicionar ao carrinho
+        const btnContainer = document.getElementById('add-to-cart-button').parentElement;
+        btnContainer.insertBefore(warningDiv, document.getElementById('add-to-cart-button'));
+
     } else {
         if(sizeSection) sizeSection.classList.remove('hidden');
         if(measureAccordionWrapper) measureAccordionWrapper.classList.remove('hidden');
-        selectedSize = null; // Reseta
+        selectedSize = null; 
     }
     
     updateAddToCartButton();
@@ -457,7 +482,20 @@ function updateAddToCartButton() {
     const btn = elements.addToCartBtn;
     if(!btn) return;
     
-    // Se for mesa posta OU (tamanho selecionado E (sem cores ou cor selecionada))
+    // --- Lógica: Estoque Total (Se 0, desabilita) ---
+    const stockTotal = currentProduct.cores ? currentProduct.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
+    
+    if (stockTotal <= 0) {
+        btn.disabled = true;
+        btn.textContent = "ESGOTADO";
+        btn.classList.add('bg-gray-400');
+        btn.classList.remove('hover:bg-[#4a2e18]');
+        return;
+    } else {
+        btn.classList.remove('bg-gray-400');
+        btn.classList.add('hover:bg-[#4a2e18]');
+    }
+
     const isMesaPosta = currentProduct.categoria === 'mesa_posta';
     const hasSize = selectedSize !== null;
     const hasColor = !currentProduct.cores?.length || selectedColor !== null;
@@ -472,7 +510,6 @@ function updateAddToCartButton() {
 function addToCart() {
     const corObj = selectedColor !== null ? currentProduct.cores[selectedColor] : null;
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
-    // Usa "Único" se for mesa posta e selectedSize for null/auto
     const tamanhoFinal = currentProduct.categoria === 'mesa_posta' ? 'Único' : selectedSize;
     
     const cartId = `${currentProduct.id}-${tamanhoFinal}-${corObj?.nome || 'unico'}`;
