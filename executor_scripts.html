@@ -438,13 +438,13 @@ placeholder="// Escreva seu código JavaScript aqui.
                 
                 const func = new AsyncFunction(
                     'db', 'auth', 'log', 
-                    'collection', 'getDocs', 'doc', 'updateDoc', 'deleteDoc', 'addDoc', 'query', 'where',
+                    'collection', 'getDocs', 'doc', 'updateDoc', 'deleteDoc', 'addDoc', 'query', 'where', 'writeBatch',
                     code
                 );
 
                 await func(
                     db, auth, log, 
-                    collection, getDocs, doc, updateDoc, deleteDoc, addDoc, query, where
+                    collection, getDocs, doc, updateDoc, deleteDoc, addDoc, query, where, writeBatch
                 );
                 
                 log("Script finalizado.", "success");
