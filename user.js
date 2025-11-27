@@ -33,7 +33,7 @@ auth.onAuthStateChanged(async (user) => {
         
         await carregarPerfilUsuario();
         carregarMeusPedidos();
-        carregarFavoritos(); // Carrega os favoritos ao logar
+        carregarFavoritos();
         iniciarChat();
         
     } else {
@@ -89,7 +89,6 @@ if(regForm) {
             
             await user.updateProfile({ displayName: nomeCompleto });
             
-            // Salva dados extras no Firestore
             await db.collection('usuarios').doc(user.uid).set({
                 nome: nomeCompleto,
                 email: email,
@@ -136,7 +135,6 @@ window.fazerLogout = () => auth.signOut();
 async function carregarPerfilUsuario() {
     if(!currentUser) return;
     
-    // Atualiza Header
     document.getElementById('user-name-display').textContent = currentUser.displayName || 'Cliente';
     const avatarEl = document.getElementById('user-avatar-display');
     
@@ -147,7 +145,6 @@ async function carregarPerfilUsuario() {
         const photo = data.fotoUrl || currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName || 'U'}&background=A58A5C&color=fff`;
         if(avatarEl) avatarEl.src = photo;
 
-        // Preenche formulário de edição
         const editAvatar = document.getElementById('profile-edit-avatar');
         if(editAvatar) editAvatar.src = photo;
         
@@ -164,28 +161,24 @@ async function carregarPerfilUsuario() {
     } catch(e) { console.error("Erro perfil:", e); }
 }
 
-// --- UPLOAD DE FOTO (NOVO) ---
+// --- UPLOAD DE FOTO ---
 window.uploadFotoPerfil = async (input) => {
     const file = input.files[0];
     if (!file || !currentUser) return;
 
     const imgPreview = document.getElementById('profile-edit-avatar');
-    // Preview imediato
     imgPreview.style.opacity = '0.5';
     
     try {
-        // Upload para o Storage
         const ref = storage.ref(`profile_images/${currentUser.uid}_${Date.now()}`);
         await ref.put(file);
         const url = await ref.getDownloadURL();
 
-        // Atualiza no Firestore e Auth
         await currentUser.updateProfile({ photoURL: url });
         await db.collection('usuarios').doc(currentUser.uid).update({
             fotoUrl: url
         });
 
-        // Atualiza UI
         imgPreview.src = url;
         document.getElementById('user-avatar-display').src = url;
         document.getElementById('profile-photo-url').value = url;
@@ -245,29 +238,36 @@ window.switchTab = (tab) => {
     if(tab === 'chat') rolarChatParaBaixo();
 }
 
-// --- PEDIDOS (Melhorado) ---
+// --- PEDIDOS (ATUALIZADO) ---
 function carregarMeusPedidos() {
     const list = document.getElementById('orders-list');
     if(!list || !currentUser) return;
     
-    // Consulta por userId
     db.collection('pedidos')
         .where('userId', '==', currentUser.uid)
         .orderBy('data', 'desc')
         .onSnapshot(snap => {
             list.innerHTML = '';
+            
+            // MUDANÇA AQUI: Mensagem personalizada quando não há pedidos
             if(snap.empty) { 
-                list.innerHTML = '<div class="text-center py-10"><i class="fa-solid fa-basket-shopping text-4xl text-gray-200 mb-3"></i><p class="text-gray-400">Você ainda não fez pedidos.</p></div>'; 
+                list.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fa-solid fa-bag-shopping text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-600 mb-4">Você ainda não realizou nenhum pedido.</p>
+                        <a href="index.html" class="inline-block text-[#643f21] font-medium border-b border-[#643f21] pb-0.5 hover:text-[#A58A5C] hover:border-[#A58A5C] transition-colors">
+                            Que tal dar uma olhada em nossos produtos?
+                        </a>
+                    </div>
+                `;
                 return; 
             }
             
             snap.forEach(doc => {
                 const p = doc.data();
-                // Verificação de segurança para o total
                 const valorTotal = typeof p.total === 'number' ? p.total : 0;
                 const totalFormatado = valorTotal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
                 
-                // Formatação da data
                 let dataPedido = 'Data desconhecida';
                 if(p.data && p.data.seconds) {
                     dataPedido = new Date(p.data.seconds*1000).toLocaleDateString('pt-BR');
@@ -307,7 +307,7 @@ function getStatusClass(status) {
     return 'text-yellow-600 bg-yellow-50';
 }
 
-// --- FAVORITOS (NOVO) ---
+// --- FAVORITOS ---
 async function carregarFavoritos() {
     const grid = document.getElementById('favorites-grid');
     if (!grid || !currentUser) return;
@@ -321,7 +321,6 @@ async function carregarFavoritos() {
             return;
         }
 
-        // Busca os detalhes de cada produto favoritado
         grid.innerHTML = '<p class="col-span-full text-center text-sm text-gray-400">Carregando...</p>';
         
         const promises = favoritosIds.map(id => db.collection('pecas').doc(id).get());
