@@ -234,6 +234,10 @@ function showPage(pageId, param1 = null, param2 = null) {
         document.getElementById('page-collection').classList.add('active');
         if (products.length === 0) carregarDadosLoja().then(() => showProductDetail(param1));
         else showProductDetail(param1);
+    } else if (pageId === 'page-collections-list') {
+        // Garante que a página de lista de coleções apareça
+        document.getElementById('page-collections-list').classList.add('active');
+        renderizarListaDeColecoes(); // Nova função para preencher o grid de coleções
     }
     window.scrollTo(0, 0);
 }
@@ -247,9 +251,9 @@ async function carregarDadosLoja() {
         const produtosSnap = await db.collection("pecas").where("status", "==", "active").get();
         products = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
         
-        renderizarSecoesColecoes(); 
-        popularPreviewColecao(); 
-        handleRouting();
+        renderizarSecoesColecoes(); // Renderiza na HOME
+        popularPreviewColecao();    // Renderiza o carrossel na HOME
+        handleRouting();            // Verifica a rota atual
     } catch (err) { console.error("Erro dados:", err); }
 }
 
@@ -257,9 +261,16 @@ function renderizarSecoesColecoes() {
     const container = elements.collectionsContainer;
     if (!container) return;
     container.innerHTML = ''; 
+    
+    // Se não houver coleções ativas, não faz nada
+    if (activeCollections.length === 0) return;
+
     activeCollections.forEach((colecao, index) => {
         const prods = products.filter(p => p.colecaoId === colecao.id);
-        if (prods.length === 0) return;
+        
+        // CORREÇÃO: Não usar 'return' aqui, pois para o loop inteiro se a primeira coleção estiver vazia.
+        if (prods.length === 0) return; 
+
         const section = document.createElement('section');
         section.className = "py-16 px-4 border-b border-[#E5E0D8] last:border-0";
         const splideId = `splide-collection-${index}`;
@@ -272,6 +283,7 @@ function renderizarSecoesColecoes() {
             </div>
         `;
         container.appendChild(section);
+        
         const list = section.querySelector('.splide__list');
         prods.slice(0, 8).forEach(peca => {
             const slide = document.createElement('li');
@@ -279,7 +291,22 @@ function renderizarSecoesColecoes() {
             slide.appendChild(criarCardProduto(peca));
             list.appendChild(slide);
         });
-        new Splide(`#${splideId}`, { type: 'slide', perPage: 4, gap: '20px', pagination: false, arrows: true, breakpoints: { 1024: { perPage: 3 }, 768: { perPage: 2 }, 640: { perPage: 1, padding: '20px' } } }).mount();
+        
+        // Inicializa o Splide apenas se houver itens
+        if (prods.length > 0) {
+            new Splide(`#${splideId}`, { 
+                type: 'slide', 
+                perPage: 4, 
+                gap: '20px', 
+                pagination: false, 
+                arrows: true, 
+                breakpoints: { 
+                    1024: { perPage: 3 }, 
+                    768: { perPage: 2 }, 
+                    640: { perPage: 1, padding: '20px' } 
+                } 
+            }).mount();
+        }
     });
 }
 
@@ -287,14 +314,55 @@ function popularPreviewColecao() {
     const list = document.getElementById('home-splide-list');
     if (!list) return;
     const lancamentos = [...products].sort((a, b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0, 6);
+    
     list.innerHTML = '';
+    
+    if (lancamentos.length === 0) {
+        list.innerHTML = '<li class="w-full text-center text-gray-400 py-8">Nenhum lançamento no momento.</li>';
+        return;
+    }
+
     lancamentos.forEach(peca => {
         const slide = document.createElement('li');
         slide.className = 'splide__slide';
         slide.appendChild(criarCardProduto(peca));
         list.appendChild(slide);
     });
+    
     new Splide('#home-splide', { type: 'slide', perPage: 4, gap: '20px', pagination: false, breakpoints: { 640: { perPage: 1, padding: '40px' }, 1024: { perPage: 3 } } }).mount();
+}
+
+// NOVA FUNÇÃO: Renderizar a página de lista de todas as coleções
+function renderizarListaDeColecoes() {
+    const grid = document.getElementById('collections-list-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (activeCollections.length === 0) {
+        grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-20">Nenhuma coleção ativa no momento.</p>';
+        return;
+    }
+
+    activeCollections.forEach(col => {
+        // Conta produtos nesta coleção
+        const count = products.filter(p => p.colecaoId === col.id).length;
+        const img = col.imagemDestaque || 'https://placehold.co/600x400/eee/ccc?text=Sem+Imagem';
+
+        const card = document.createElement('div');
+        card.className = "group cursor-pointer";
+        card.innerHTML = `
+            <div class="relative overflow-hidden aspect-[4/3] mb-4 bg-gray-100">
+                <img src="${img}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+                <div class="absolute bottom-6 left-6 text-white">
+                    <h3 class="serif text-3xl mb-1">${col.nome}</h3>
+                    <p class="text-xs uppercase tracking-widest opacity-90">${count} Peças</p>
+                </div>
+            </div>
+        `;
+        card.onclick = () => window.location.hash = `#/colecao/${col.id}`;
+        grid.appendChild(card);
+    });
 }
 
 function criarCardProduto(peca) {
