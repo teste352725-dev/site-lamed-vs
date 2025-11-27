@@ -1,6 +1,4 @@
-// ============================================================================
-// CONFIGURAÇÃO FIREBASE
-// ============================================================================
+// Configurações do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
     authDomain: "site-lamed.firebaseapp.com",
@@ -12,199 +10,292 @@ const firebaseConfig = {
     measurementId: "G-BL1G961PGT"
 };
 
-// Inicialização Segura
 let app;
-try {
-    app = firebase.app();
-} catch (e) {
-    app = firebase.initializeApp(firebaseConfig);
-}
-
+try { app = firebase.app(); } catch (e) { app = firebase.initializeApp(firebaseConfig); }
 const auth = firebase.auth();
 const db = firebase.firestore();
-
-// Tratamento silencioso da persistência para evitar erros no console
-db.enablePersistence({ synchronizeTabs: true })
-    .catch((err) => {
-        console.log("Modo offline desativado (Ambiente restrito ou múltiplas abas).");
-    });
 
 // Variáveis de Estado
 let currentUser = null;
 let unsubscribeChat = null;
 
-// ============================================================================
-// SISTEMA DE AUTENTICAÇÃO
-// ============================================================================
+// --- GERENCIAMENTO DE ESTADO ---
 
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async (user) => {
+    const authContainer = document.getElementById('auth-container');
+    const userPanel = document.getElementById('user-panel');
+
     if (user) {
         currentUser = user;
-        const loginScreen = document.getElementById('login-screen');
-        const userPanel = document.getElementById('user-panel');
-        
-        if(loginScreen) loginScreen.classList.add('hidden');
+        if(authContainer) authContainer.classList.add('hidden');
         if(userPanel) userPanel.classList.remove('hidden');
         
-        const displayName = user.displayName || (user.email ? user.email.split('@')[0] : 'Cliente');
-        const nameEl = document.getElementById('user-name');
-        if(nameEl) nameEl.textContent = displayName;
-        
-        const avatarEl = document.getElementById('user-avatar');
-        if(avatarEl) {
-            avatarEl.src = user.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=A58A5C&color=fff`;
-        }
-        
-        if(typeof carregarMeusPedidos === 'function') carregarMeusPedidos();
-        if(typeof carregarFavoritos === 'function') carregarFavoritos();
+        await carregarPerfilUsuario();
+        carregarMeusPedidos();
         iniciarChat();
         
     } else {
         currentUser = null;
-        if (unsubscribeChat) unsubscribeChat(); 
-        
-        const loginScreen = document.getElementById('login-screen');
-        const userPanel = document.getElementById('user-panel');
-        
-        if(loginScreen) loginScreen.classList.remove('hidden');
+        if(authContainer) authContainer.classList.remove('hidden');
         if(userPanel) userPanel.classList.add('hidden');
+        
+        // Padrão: mostrar login
+        switchAuthView('login');
     }
 });
 
+window.switchAuthView = (view) => {
+    document.querySelectorAll('.auth-view').forEach(v => v.classList.remove('active'));
+    document.getElementById(`view-${view}`).classList.add('active');
+}
+
+// --- LOGIN ---
+const loginForm = document.getElementById('login-form');
+if(loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+        auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Erro: " + err.message));
+    });
+}
+
+// --- CADASTRO COMPLETO ---
+const regForm = document.getElementById('register-form');
+if(regForm) {
+    regForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('reg-email').value;
+        const pass = document.getElementById('reg-pass').value;
+        const nome = document.getElementById('reg-nome').value;
+        const sobrenome = document.getElementById('reg-sobrenome').value;
+        const phone = document.getElementById('reg-phone').value;
+        
+        const endereco = {
+            cep: document.getElementById('reg-cep').value,
+            cidade: document.getElementById('reg-cidade').value,
+            rua: document.getElementById('reg-rua').value,
+            numero: document.getElementById('reg-numero').value
+        };
+
+        try {
+            const btn = regForm.querySelector('button');
+            btn.textContent = 'Criando conta...';
+            btn.disabled = true;
+
+            const userCred = await auth.createUserWithEmailAndPassword(email, pass);
+            const user = userCred.user;
+            const nomeCompleto = `${nome} ${sobrenome}`;
+            
+            await user.updateProfile({ displayName: nomeCompleto });
+            
+            // Salva dados extras no Firestore
+            await db.collection('usuarios').doc(user.uid).set({
+                nome: nomeCompleto,
+                email: email,
+                telefone: phone,
+                endereco: endereco,
+                fotoUrl: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // Sucesso: o onAuthStateChanged cuidará do redirecionamento
+        } catch(err) {
+            alert("Erro no cadastro: " + err.message);
+            const btn = regForm.querySelector('button');
+            btn.textContent = 'Finalizar Cadastro';
+            btn.disabled = false;
+        }
+    });
+}
+
+// --- GOOGLE LOGIN ---
 window.fazerLoginGoogle = () => {
     const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(erro => {
-        console.error("Erro Login Google:", erro);
-        let msg = erro.message;
-        if (erro.code === 'auth/operation-not-supported-in-this-environment' || erro.code === 'auth/network-request-failed') {
-            msg = "Login bloqueado pelo navegador. Desative bloqueadores de anúncio (AdBlock) e tente novamente.";
+    auth.signInWithPopup(provider).then(async (result) => {
+        const user = result.user;
+        const docRef = db.collection('usuarios').doc(user.uid);
+        const docSnap = await docRef.get();
+        
+        // Se primeiro login, cria doc
+        if (!docSnap.exists) {
+            await docRef.set({
+                nome: user.displayName,
+                email: user.email,
+                fotoUrl: user.photoURL,
+                telefone: '',
+                endereco: {},
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }
-        alert(msg);
-    });
+    }).catch(err => console.error(err));
 };
 
 window.fazerLogout = () => auth.signOut();
 
-// ============================================================================
-// NAVEGAÇÃO
-// ============================================================================
+// --- PERFIL E DADOS ---
 
-window.switchTab = (tabName) => {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    const target = document.getElementById(`tab-${tabName}`);
-    if (target) target.classList.remove('hidden');
+async function carregarPerfilUsuario() {
+    if(!currentUser) return;
     
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
-    }
+    // Atualiza Header
+    document.getElementById('user-name-display').textContent = currentUser.displayName || 'Cliente';
+    const avatarEl = document.getElementById('user-avatar-display');
     
-    if(tabName === 'chat') rolarChatParaBaixo();
-};
+    // Busca dados do Firestore
+    try {
+        const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+        const data = doc.data() || {};
+        
+        const photo = data.fotoUrl || currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName}&background=A58A5C&color=fff`;
+        avatarEl.src = photo;
 
-// ============================================================================
-// MÓDULO: CHAT (CORRIGIDO)
-// ============================================================================
+        // Preenche formulário de edição
+        document.getElementById('profile-edit-avatar').src = photo;
+        document.getElementById('profile-photo-url').value = data.fotoUrl || '';
+        document.getElementById('profile-nome').value = data.nome || currentUser.displayName || '';
+        document.getElementById('profile-phone').value = data.telefone || '';
+        
+        if(data.endereco) {
+            document.getElementById('profile-cep').value = data.endereco.cep || '';
+            document.getElementById('profile-cidade').value = data.endereco.cidade || '';
+            document.getElementById('profile-rua').value = data.endereco.rua || '';
+            document.getElementById('profile-numero').value = data.endereco.numero || '';
+        }
+    } catch(e) { console.error("Erro perfil:", e); }
+}
 
+// Salvar Perfil
+const profileForm = document.getElementById('profile-form');
+if(profileForm) {
+    profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = profileForm.querySelector('button');
+        btn.textContent = 'Salvando...';
+        btn.disabled = true;
+
+        const nome = document.getElementById('profile-nome').value;
+        const phone = document.getElementById('profile-phone').value;
+        const fotoUrl = document.getElementById('profile-photo-url').value;
+        const endereco = {
+            cep: document.getElementById('profile-cep').value,
+            cidade: document.getElementById('profile-cidade').value,
+            rua: document.getElementById('profile-rua').value,
+            numero: document.getElementById('profile-numero').value
+        };
+
+        try {
+            if(nome) await currentUser.updateProfile({ displayName: nome, photoURL: fotoUrl || currentUser.photoURL });
+            
+            await db.collection('usuarios').doc(currentUser.uid).set({
+                nome, telefone: phone, fotoUrl, endereco
+            }, { merge: true });
+            
+            alert("Dados atualizados!");
+            location.reload(); 
+        } catch(e) {
+            alert("Erro ao salvar: " + e.message);
+            btn.textContent = 'Salvar Alterações';
+            btn.disabled = false;
+        }
+    });
+}
+
+// --- NAVEGAÇÃO ---
+window.switchTab = (tab) => {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    if(tab === 'chat') rolarChatParaBaixo();
+}
+
+// --- PEDIDOS ---
+function carregarMeusPedidos() {
+    const list = document.getElementById('orders-list');
+    if(!list) return;
+    
+    db.collection('pedidos').where('userId', '==', currentUser.uid).orderBy('data', 'desc')
+        .onSnapshot(snap => {
+            list.innerHTML = '';
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-400 py-10">Você ainda não tem pedidos.</p>'; return; }
+            
+            snap.forEach(doc => {
+                const p = doc.data();
+                const total = p.total ? p.total.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) : 'R$ 0,00';
+                
+                let itensHtml = (p.produtos || []).map(i => `
+                    <div class="flex justify-between text-xs text-gray-500 mt-1 border-b border-gray-50 pb-1">
+                        <span>${i.quantity}x ${i.nome}</span>
+                        <span>${(i.preco * i.quantity).toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
+                    </div>
+                `).join('');
+
+                list.innerHTML += `
+                    <div class="bg-white border border-gray-100 p-5 rounded-lg shadow-sm hover:shadow-md transition mb-4">
+                        <div class="flex justify-between mb-3 border-b border-gray-50 pb-2">
+                            <div>
+                                <span class="font-bold text-gray-800">#${doc.id.slice(0,6).toUpperCase()}</span>
+                                <span class="text-xs text-gray-400 block">${new Date(p.data.seconds*1000).toLocaleDateString()}</span>
+                            </div>
+                            <span class="text-xs px-3 py-1 rounded-full uppercase tracking-wider font-bold ${getStatusClass(p.status)} h-fit">${p.status}</span>
+                        </div>
+                        <div class="mb-3">${itensHtml}</div>
+                        <div class="text-right font-serif text-xl text-[--cor-marrom]">${total}</div>
+                    </div>
+                `;
+            });
+        });
+}
+
+function getStatusClass(status) {
+    if(status === 'entregue') return 'text-green-600 bg-green-50';
+    if(status === 'cancelado') return 'text-red-600 bg-red-50';
+    if(status === 'enviado') return 'text-blue-600 bg-blue-50';
+    return 'text-yellow-600 bg-yellow-50';
+}
+
+// --- CHAT ---
 function iniciarChat() {
     if (!currentUser) return;
     const chatId = currentUser.uid;
-    const messagesDiv = document.getElementById('chat-messages');
-    
-    // Status visual
-    const statusEl = document.querySelector('.text-green-600'); 
-    if (statusEl) statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500"></span> Online`;
+    const div = document.getElementById('chat-messages');
+    if(!div) return;
 
     if (unsubscribeChat) unsubscribeChat();
-
-    // NOVA ESTRUTURA: /chats/{userId}/messages
-    unsubscribeChat = db.collection('chats').doc(chatId).collection('messages')
-       .orderBy('timestamp', 'asc')
-       .onSnapshot(snap => {
-           messagesDiv.innerHTML = '';
-           
-           if (snap.empty) {
-               messagesDiv.innerHTML = `
-                   <div class="flex flex-col items-center justify-center h-full text-gray-400 space-y-2 opacity-70">
-                       <i class="fa-regular fa-comments text-4xl"></i>
-                       <p class="text-xs bg-white/80 py-1 px-4 rounded-full shadow-sm">Inicie a conversa com nossa equipe.</p>
-                   </div>`;
-           }
-           
-           snap.forEach(doc => {
-               const msg = doc.data();
-               const isMe = msg.sender === 'user';
-               
-               let timeString = '...';
-               if (msg.timestamp) {
-                   const date = msg.timestamp.toDate ? msg.timestamp.toDate() : new Date(msg.timestamp.seconds * 1000);
-                   timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-               }
-
-               messagesDiv.innerHTML += `
-                   <div class="msg-bubble ${isMe ? 'msg-user' : 'msg-admin'} shadow-sm flex flex-col">
-                       <span class="text-sm">${msg.text}</span>
-                       <span class="text-[9px] opacity-50 self-end mt-1 font-mono">${timeString}</span>
-                   </div>
-               `;
-           });
-           
-           rolarChatParaBaixo();
-       }, error => {
-           console.error("Erro Chat:", error);
-           if(error.code === 'permission-denied') {
-               messagesDiv.innerHTML = '<div class="text-center text-xs text-red-500 mt-2 bg-red-100 p-2 rounded">Erro de permissão. Verifique se você está logado.</div>';
-           } else {
-               messagesDiv.innerHTML = '<div class="text-center text-xs text-red-500 mt-2 bg-red-100 p-2 rounded">Conexão bloqueada. Desative seu AdBlock.</div>';
-           }
-       });
-
-    // Configurar envio
-    const chatForm = document.getElementById('chat-form');
-    // Remove listeners antigos clonando o elemento
-    const newChatForm = chatForm.cloneNode(true);
-    chatForm.parentNode.replaceChild(newChatForm, chatForm);
-
-    newChatForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const input = document.getElementById('message-input');
-        const text = input.value.trim();
-        if (!text) return;
-        
-        input.value = ''; 
-        
-        try {
-            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
-            
-            // 1. Salva a mensagem na coleção correta
-            await db.collection('chats').doc(chatId).collection('messages').add({
-                text: text,
-                sender: 'user',
-                timestamp: timestamp,
-                userName: currentUser.displayName || currentUser.email
+    unsubscribeChat = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp')
+        .onSnapshot(snap => {
+            div.innerHTML = '';
+            snap.forEach(doc => {
+                const msg = doc.data();
+                const cls = msg.sender === 'user' ? 'msg-user' : 'msg-admin';
+                div.innerHTML += `<div class="mb-2 text-sm ${cls} break-words shadow-sm">${msg.text}</div>`;
             });
-            
-            // 2. Atualiza o status na lista do admin
-            await db.collection('chats_ativos').doc(chatId).set({
-                lastMessage: text,
-                lastUpdate: timestamp,
-                userName: currentUser.displayName || currentUser.email,
-                userId: currentUser.uid,
-                userEmail: currentUser.email,
-                unread: true 
-            }, { merge: true });
-            
             rolarChatParaBaixo();
-            
-        } catch (err) {
-            console.error("Erro envio:", err);
-            alert("Erro ao enviar. Se você tem um bloqueador de anúncios, desative-o.");
-            input.value = text; // Devolve o texto para não perder
-        }
-    };
+        });
+
+    const form = document.getElementById('chat-form');
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    newForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const inp = document.getElementById('message-input');
+        const text = inp.value.trim();
+        if(!text) return;
+        inp.value = '';
+        
+        const ts = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('chats').doc(chatId).collection('messages').add({
+            text, sender: 'user', timestamp: ts, userName: currentUser.displayName
+        });
+        await db.collection('chats_ativos').doc(chatId).set({
+            lastMessage: text, lastUpdate: ts, userName: currentUser.displayName, userId: chatId, unread: true
+        }, {merge: true});
+    }
 }
 
 function rolarChatParaBaixo() {
-    const div = document.getElementById('chat-messages');
-    if (div) setTimeout(() => { div.scrollTop = div.scrollHeight; }, 100);
+    const d = document.getElementById('chat-messages');
+    if(d) setTimeout(() => d.scrollTop = d.scrollHeight, 100);
 }
