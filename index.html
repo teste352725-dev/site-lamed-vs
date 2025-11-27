@@ -6,7 +6,7 @@
     <title>Laméd vs | Alfaiataria e Casa</title>
     <meta name="description" content="Laméd vs | Criações em fibras naturais. Peças atemporais que unem elegância, bem-estar e propósito.">
 
-    <!-- PWA -->
+    <!-- PWA & Ícones -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#FDFBF6">
     <link rel="icon" type="image/png" href="https://i.ibb.co/mr93jDHT/JM.png">
@@ -27,7 +27,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-    <!-- CSS Personalizado -->
+    <!-- CSS -->
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -37,20 +37,21 @@
     <header class="sticky top-0 z-50 transition-all border-b border-[#E5E0D8]" style="background-color: var(--cor-fundo);">
         <div class="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
             
-            <!-- Esquerda: Menu (Mobile) & Ícone Usuário -->
+            <!-- Esquerda: Menu & Ícone Usuário -->
             <div class="flex items-center gap-4">
                 <button id="menu-button" class="md:hidden text-xl text-[--cor-texto] focus:outline-none">
                     <i class="fa-solid fa-bars"></i>
                 </button>
+                <!-- Link Dinâmico do Usuário (Preenchido pelo app.js) -->
                 <a href="minha-conta.html" id="header-user-icon-link" class="text-[--cor-texto] hover:text-[--cor-ouro-acento] transition-colors flex items-center justify-center w-8 h-8 rounded-full" title="Minha Conta">
                     <i class="fa-regular fa-user text-xl"></i>
                 </a>
             </div>
 
-            <!-- Centro: Logo (Corrigido para ficar na mesma linha) -->
+            <!-- Centro: Logo (Alinhado na mesma linha) -->
             <a href="#home" class="flex flex-row items-baseline justify-center group text-center gap-1">
                 <h1 class="text-4xl md:text-5xl text-[--cor-texto] leading-none allura">Laméd</h1>
-                <span class="text-lg gold-accent serif leading-none">vs</span>
+                <span class="text-xl gold-accent serif leading-none">vs</span>
             </a>
 
             <!-- Direita: Link Coleção & Carrinho -->
@@ -99,7 +100,7 @@
                     <div id="home-splide" class="splide mb-12">
                         <div class="splide__track">
                             <ul class="splide__list" id="home-splide-list">
-                                <!-- O JS injeta os cards aqui com os preços -->
+                                <!-- JS preenche isso -->
                                 <li class="splide__slide flex justify-center items-center h-40">
                                     <div class="text-gray-400 text-sm">Carregando novidades...</div>
                                 </li>
@@ -113,7 +114,7 @@
             <!-- Container para Coleções Dinâmicas (O JS preenche isso) -->
             <div id="collections-container"></div>
 
-            <!-- Seção Nossa Filosofia (Texto Restaurado) -->
+            <!-- Seção Nossa Filosofia -->
             <section id="sobre" class="py-20 px-4 scroll-animate border-t border-[#E5E0D8]" style="background-color: #F8F6F0;">
                  <div class="container mx-auto max-w-4xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Nossa Filosofia</h3>
@@ -123,7 +124,7 @@
                 </div>
             </section>
             
-            <!-- Seção Uma Mensagem Para Você (Texto Restaurado) -->
+            <!-- Seção Uma Mensagem Para Você -->
             <section id="mensagem" class="py-20 px-4 scroll-animate" style="background-color: var(--cor-fundo);">
                  <div class="container mx-auto max-w-4xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Uma Mensagem Para Você</h3>
@@ -132,7 +133,11 @@
                         <p>Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensação de vitalidade e paz interior. Laméd vs fala de governo, é um lembrete do poder que reside em suas escolhas diárias, especialmente naquelas feitas com consciência e amor.</p>
                         <div class="pt-8">
                             <p class="text-sm uppercase tracking-widest text-gray-400 mb-2">Com carinho,</p>
-                            <span class="allura text-5xl text-[--cor-marrom-cta]">Laméd</span><span class="text-xl gold-accent serif ml-1">vs</span>
+                            <!-- Laméd vs na mesma linha, conforme solicitado -->
+                            <div class="flex items-baseline justify-center gap-1">
+                                <span class="allura text-5xl text-[--cor-marrom-cta]">Laméd</span>
+                                <span class="text-xl gold-accent serif">vs</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -199,8 +204,6 @@
                                 </div>
                                 <p id="selected-size-display" class="text-xs text-gray-800 mt-2 font-medium hidden"></p>
                             </div>
-
-                            <!-- O JS vai injetar o seletor de cores aqui se houver -->
 
                             <div class="space-y-4 mb-8 pt-4 border-t border-[#E5E0D8]">
                                <button id="add-to-cart-button" class="w-full bg-[--cor-marrom-cta] text-white py-4 text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#4a2e18] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -330,14 +333,14 @@
         </div>
     </div>
 
-    <!-- RODAPÉ (Conteúdo Restaurado) -->
+    <!-- RODAPÉ (Corrigido e Completo) -->
     <footer id="contato" class="bg-[#F8F6F0] text-[--cor-texto] py-16 px-4 mt-auto border-t border-[#E5E0D8]">
         <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 text-center md:text-left">
             <div>
-                <!-- Laméd vs em linhas separadas como solicitado -->
+                <!-- Laméd vs na mesma linha -->
                 <div class="mb-6 group inline-block text-left">
-                    <span class="allura text-5xl text-[--cor-texto] block leading-none">Laméd</span>
-                    <span class="text-xl gold-accent serif block leading-none ml-2">vs</span>
+                    <span class="allura text-5xl text-[--cor-texto] inline-block">Laméd</span>
+                    <span class="text-xl gold-accent serif inline-block ml-1">vs</span>
                 </div>
                 <div class="space-y-1 mt-4">
                     <p class="text-sm font-light italic">Lamed vs é Atemporal.</p>
