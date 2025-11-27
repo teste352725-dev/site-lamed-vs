@@ -89,6 +89,7 @@
                 </div>
                 <select id="filter-category" class="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 bg-white text-sm focus:outline-none focus:border-[--cor-ouro-acento]">
                     <option value="all">Todas as Categorias</option>
+                    <option value="mesa_posta">Mesa Posta</option>
                     <option value="vestido">Vestidos</option>
                     <option value="conjunto">Conjuntos</option>
                     <option value="calca">Calças</option>
@@ -113,7 +114,7 @@
         </div>
     </main>
 
-    <!-- MODAL DE PRODUTO (Seu Layout Solicitado) -->
+    <!-- MODAL DE PRODUTO -->
     <div id="product-modal" class="modal">
         <div class="modal-content">
             <!-- Cabeçalho -->
@@ -172,6 +173,7 @@
                                     <option value="calca">Calça</option>
                                     <option value="camisa">Camisa</option>
                                     <option value="saia">Saia</option>
+                                    <option value="mesa_posta">Mesa Posta</option>
                                     <option value="outros">Outros</option>
                                 </select>
                             </div>
@@ -403,7 +405,7 @@
                         <div class="p-4 flex-1 flex flex-col">
                             <div class="mb-1">
                                 <h3 class="font-semibold text-gray-800 text-base truncate">${p.nome}</h3>
-                                <p class="text-xs text-gray-500 capitalize">${p.categoria} • ${colName}</p>
+                                <p class="text-xs text-gray-500 capitalize">${p.categoria === 'mesa_posta' ? 'Mesa Posta' : p.categoria} • ${colName}</p>
                             </div>
                             <div class="flex justify-between items-end mt-auto pt-3 border-t border-gray-50">
                                 <span class="font-bold text-[--cor-marrom-cta] text-lg">R$ ${p.preco}</span>
