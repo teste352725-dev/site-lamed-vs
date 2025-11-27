@@ -34,7 +34,6 @@
 <body class="antialiased">
 
     <!-- CABEÇALHO -->
-    <!-- O fundo usa a variável --cor-fundo para manter a cor creme original -->
     <header class="sticky top-0 z-50 transition-all border-b border-[#E5E0D8]" style="background-color: var(--cor-fundo);">
         <div class="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
             
@@ -43,16 +42,15 @@
                 <button id="menu-button" class="md:hidden text-xl text-[--cor-texto] focus:outline-none">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-                <!-- Este ID 'header-user-icon-link' é usado pelo app.js para colocar a foto -->
                 <a href="minha-conta.html" id="header-user-icon-link" class="text-[--cor-texto] hover:text-[--cor-ouro-acento] transition-colors flex items-center justify-center w-8 h-8 rounded-full" title="Minha Conta">
                     <i class="fa-regular fa-user text-xl"></i>
                 </a>
             </div>
 
-            <!-- Centro: Logo -->
-            <a href="#home" class="flex flex-col items-center justify-center group text-center">
+            <!-- Centro: Logo (Corrigido para ficar na mesma linha) -->
+            <a href="#home" class="flex flex-row items-baseline justify-center group text-center gap-1">
                 <h1 class="text-4xl md:text-5xl text-[--cor-texto] leading-none allura">Laméd</h1>
-                <span class="text-[10px] gold-accent serif tracking-[0.3em] -mt-1 uppercase opacity-80">vs</span>
+                <span class="text-lg gold-accent serif leading-none">vs</span>
             </a>
 
             <!-- Direita: Link Coleção & Carrinho -->
@@ -115,13 +113,28 @@
             <!-- Container para Coleções Dinâmicas (O JS preenche isso) -->
             <div id="collections-container"></div>
 
-            <!-- Seção Sobre -->
+            <!-- Seção Nossa Filosofia (Texto Restaurado) -->
             <section id="sobre" class="py-20 px-4 scroll-animate border-t border-[#E5E0D8]" style="background-color: #F8F6F0;">
                  <div class="container mx-auto max-w-4xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Nossa Filosofia</h3>
                     <p class="text-[--cor-texto] text-lg leading-relaxed font-light">
-                        A <strong class="allura text-3xl text-[--cor-marrom-cta]">Laméd</strong><span class="text-xs gold-accent ml-1 uppercase tracking-widest">VS</span> nasce da harmonia entre elegância, propósito e cuidado. Cada peça em fibra natural é escolhida para transmitir bem-estar e elevar sua frequência.
+                        A <strong class="allura text-3xl text-[--cor-marrom-cta]">Laméd</strong><span class="text-xs gold-accent ml-1 uppercase tracking-widest">VS</span> nasce da harmonia entre elegância, propósito e cuidado com você. Cada peça é confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequência. Mais que roupas, criamos experiências atemporais, conscientes e únicas — feitas para vestir seu corpo e inspirar sua mente.
                     </p>
+                </div>
+            </section>
+            
+            <!-- Seção Uma Mensagem Para Você (Texto Restaurado) -->
+            <section id="mensagem" class="py-20 px-4 scroll-animate" style="background-color: var(--cor-fundo);">
+                 <div class="container mx-auto max-w-4xl text-center">
+                    <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Uma Mensagem Para Você</h3>
+                    <div class="text-[--cor-texto] text-lg leading-relaxed space-y-6 font-light">
+                        <p>Ao escolher uma de nossas criações, você se conecta com a sua essência. Nossos produtos são um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem você é.</p>
+                        <p>Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensação de vitalidade e paz interior. Laméd vs fala de governo, é um lembrete do poder que reside em suas escolhas diárias, especialmente naquelas feitas com consciência e amor.</p>
+                        <div class="pt-8">
+                            <p class="text-sm uppercase tracking-widest text-gray-400 mb-2">Com carinho,</p>
+                            <span class="allura text-5xl text-[--cor-marrom-cta]">Laméd</span><span class="text-xl gold-accent serif ml-1">vs</span>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
@@ -167,9 +180,7 @@
                         <div class="w-full md:w-1/2 lg:w-2/5 md:pl-4">
                             <div class="flex justify-between items-start mb-2">
                                 <h2 id="detail-title" class="serif text-3xl md:text-4xl font-light text-[--cor-texto]"></h2>
-                                <button id="btn-favorite" class="text-2xl text-gray-300 hover:text-red-500 transition-colors pt-1" title="Favoritar">
-                                    <i class="fa-regular fa-heart"></i>
-                                </button>
+                                <button id="btn-favorite" class="text-2xl text-gray-300 hover:text-red-500 pt-1"><i class="fa-regular fa-heart"></i></button>
                             </div>
 
                             <div id="detail-price" class="mb-8 flex items-baseline gap-3"></div>
@@ -238,11 +249,11 @@
         </div>
     </main>
 
-    <!-- GAVETA DO CARRINHO -->
+    <!-- GAVETA DO CARRINHO (Minha Encomenda) -->
     <div id="cart-overlay" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] transition-opacity"></div>
     <div id="cart-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#FDFBF6] shadow-2xl z-[80] flex flex-col transform transition-transform translate-x-full duration-300">
         <div class="flex justify-between items-center p-5 border-b border-[#E5E0D8]">
-            <h2 class="text-lg font-serif text-[--cor-texto]">Sua Sacola</h2>
+            <h2 class="text-lg font-serif text-[--cor-texto]">Minha Encomenda</h2>
             <button id="close-cart-btn" class="text-gray-400 hover:text-gray-800 text-xl px-2">&times;</button>
         </div>
         
@@ -259,7 +270,7 @@
                 <span id="cart-subtotal" class="text-xl font-serif text-[--cor-texto]">R$ 0,00</span>
             </div>
             <button id="finalizar-pedido-btn" class="w-full bg-[--cor-marrom-cta] text-white py-4 text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-lg">
-                Finalizar Compra
+                Finalizar Pedido
             </button>
         </div>
     </div>
@@ -268,7 +279,7 @@
     <div id="checkout-modal" class="modal fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="modal-content w-full max-w-lg bg-[#FDFBF6] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center p-5 border-b border-[#E5E0D8]">
-                <h2 class="text-lg font-serif text-[--cor-texto]">Checkout</h2>
+                <h2 class="text-lg font-serif text-[--cor-texto]">Finalizar Pedido</h2>
                 <button class="close-modal text-gray-400 hover:text-red-500 text-2xl">&times;</button>
             </div>
 
@@ -319,19 +330,28 @@
         </div>
     </div>
 
-    <!-- RODAPÉ -->
+    <!-- RODAPÉ (Conteúdo Restaurado) -->
     <footer id="contato" class="bg-[#F8F6F0] text-[--cor-texto] py-16 px-4 mt-auto border-t border-[#E5E0D8]">
         <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 text-center md:text-left">
             <div>
-                <a href="#" class="inline-block mb-6 group">
-                    <span class="allura text-5xl text-[--cor-texto] group-hover:text-[--cor-marrom-cta] transition">Laméd</span>
-                    <span class="text-xs gold-accent serif ml-1 uppercase">vs</span>
-                </a>
-                <p class="text-sm font-light italic mt-4">"Lamed vs é Atemporal. É Profético. É Alta frequência."</p>
+                <!-- Laméd vs em linhas separadas como solicitado -->
+                <div class="mb-6 group inline-block text-left">
+                    <span class="allura text-5xl text-[--cor-texto] block leading-none">Laméd</span>
+                    <span class="text-xl gold-accent serif block leading-none ml-2">vs</span>
+                </div>
+                <div class="space-y-1 mt-4">
+                    <p class="text-sm font-light italic">Lamed vs é Atemporal.</p>
+                    <p class="text-sm font-light italic">Lamed vs é Profético.</p>
+                    <p class="text-sm font-light italic">Lamed vs é Alta frequência.</p>
+                </div>
             </div>
             <div>
                 <h4 class="font-serif text-lg mb-4">Contato</h4>
-                <p class="text-sm font-light">Santa Lucia, Vitória - ES<br>veronicaateliercursos@gmail.com<br>(27) 99928-7657</p>
+                <div class="text-sm font-light space-y-1">
+                    <p>Servidão Otávio Pagoto, 1335 - Santa Lucia, Vitória - ES</p>
+                    <p>E-mail: veronicaateliercursos@gmail.com</p>
+                    <p>WhatsApp: (27) 99928-7657</p>
+                </div>
                 <div class="flex justify-center md:justify-start space-x-6 mt-6 text-xl text-gray-400">
                     <a href="https://www.instagram.com/veronicasoaresatelier" target="_blank" class="hover:text-[--cor-ouro-acento] transition"><i class="fa-brands fa-instagram"></i></a>
                     <a href="https://www.facebook.com/Veronicaaguiar237/" target="_blank" class="hover:text-[--cor-ouro-acento] transition"><i class="fa-brands fa-square-facebook"></i></a>
@@ -340,7 +360,7 @@
         </div>
         <div class="border-t border-[#E5E0D8] mt-12 pt-8 text-center">
             <p class="text-xs text-gray-400 tracking-wide">&copy; 2025 Laméd vs. Todos os direitos reservados.</p>
-            <a href="login-admin.html" class="inline-block mt-4 text-[10px] text-gray-300 hover:text-gray-500 uppercase tracking-widest">Admin Area</a>
+            <a href="login-admin.html" class="inline-block mt-4 text-[10px] text-gray-300 hover:text-gray-500 uppercase tracking-widest">Acesso Restrito</a>
         </div>
     </footer>
 
