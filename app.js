@@ -45,7 +45,8 @@ const elements = {
     checkoutSummary: document.getElementById('checkout-summary'),
     checkoutTotal: document.getElementById('checkout-total'),
     collectionsContainer: document.getElementById('collections-container'),
-    userIconLink: document.getElementById('header-user-icon-link') 
+    userIconLink: document.getElementById('header-user-icon-link'),
+    favoriteBtn: document.getElementById('btn-favorite') // NOVO: Botão de favorito mapeado
 };
 
 // --- INIT ---
@@ -56,7 +57,8 @@ function init() {
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         atualizarIconeUsuario(user);
-        if(currentUser) checkFavoriteStatus(currentProduct?.id); 
+        // Verifica o status do favorito se já estivermos vendo um produto
+        if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id); 
     });
 
     // Carrinho e Dados
@@ -65,22 +67,15 @@ function init() {
     carregarDadosLoja(); 
     setupEventListeners();
 
-    // --- CORREÇÃO: Animação de Scroll (Filosofia e Mensagem) ---
-    const observerOptions = {
-        threshold: 0.1
-    };
-
+    // Animação de Scroll (Filosofia e Mensagem)
+    const observerOptions = { threshold: 0.1 };
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('is-visible');
-            }
+            if (entry.isIntersecting) entry.target.classList.add('is-visible');
         });
     }, observerOptions);
 
-    document.querySelectorAll('.scroll-animate').forEach((el) => {
-        observer.observe(el);
-    });
+    document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
 }
 
 // Atualizar Ícone do Usuário no Header
@@ -150,9 +145,74 @@ function setupEventListeners() {
     if (elements.addToCartBtn) elements.addToCartBtn.addEventListener('click', addToCart);
     if (elements.cartItemsContainer) elements.cartItemsContainer.addEventListener('click', handleCartItemClick);
     
+    // NOVO: Listener para o botão de favoritar
+    if (elements.favoriteBtn) elements.favoriteBtn.addEventListener('click', toggleFavorite);
+
     document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
     
     setupPaymentOptions();
+}
+
+// --- LÓGICA DE FAVORITOS (NOVA) ---
+async function toggleFavorite() {
+    if (!currentUser) {
+        alert("Por favor, faça login ou cadastre-se para favoritar produtos.");
+        return;
+    }
+    if (!currentProduct) return;
+
+    const icon = elements.favoriteBtn.querySelector('i');
+    // Verifica visualmente se já está favoritado
+    const isFav = icon.classList.contains('fa-solid'); 
+    
+    // Atualização Otimista (Muda visualmente antes de confirmar no banco)
+    if (isFav) {
+        icon.className = "fa-regular fa-heart"; // Desmarcar
+    } else {
+        icon.className = "fa-solid fa-heart text-red-500"; // Marcar
+    }
+
+    try {
+        const userRef = db.collection('usuarios').doc(currentUser.uid);
+        const doc = await userRef.get();
+        let favs = doc.exists && doc.data().favoritos ? doc.data().favoritos : [];
+
+        if (isFav) {
+            // Se já era favorito, remover
+            favs = favs.filter(id => id !== currentProduct.id);
+        } else {
+            // Se não era, adicionar (evitando duplicatas)
+            if (!favs.includes(currentProduct.id)) favs.push(currentProduct.id);
+        }
+
+        // Salva no Firebase
+        await userRef.set({ favoritos: favs }, { merge: true });
+        
+    } catch (e) {
+        console.error("Erro ao favoritar:", e);
+        // Reverte visualmente se der erro
+        if (isFav) icon.className = "fa-solid fa-heart text-red-500";
+        else icon.className = "fa-regular fa-heart";
+        alert("Não foi possível atualizar os favoritos.");
+    }
+}
+
+// Checa status ao carregar produto
+async function checkFavoriteStatus(productId) {
+    if (!currentUser || !productId) return;
+    const icon = elements.favoriteBtn ? elements.favoriteBtn.querySelector('i') : null;
+    if(!icon) return;
+    
+    // Reset visual
+    icon.className = "fa-regular fa-heart";
+
+    try { 
+        const doc = await db.collection('usuarios').doc(currentUser.uid).get(); 
+        const favs = doc.data()?.favoritos || []; 
+        if (favs.includes(productId)) {
+            icon.className = "fa-solid fa-heart text-red-500";
+        }
+    } catch (e) { console.error(e); }
 }
 
 // Navegação
@@ -247,7 +307,6 @@ function popularPreviewColecao() {
     new Splide('#home-splide', { type: 'slide', perPage: 4, gap: '20px', pagination: false, breakpoints: { 640: { perPage: 1, padding: '40px' }, 1024: { perPage: 3 } } }).mount();
 }
 
-// Criação do Card de Produto
 function criarCardProduto(peca) {
     const card = document.createElement('div');
     card.className = "h-full bg-[#FDFBF6] group cursor-pointer flex flex-col";
@@ -311,7 +370,15 @@ function showProductDetail(id) {
         <span class="text-3xl font-light text-[--cor-marrom-cta]">${formatarReal(precoFinal)}</span>
         ${currentProduct.desconto > 0 ? `<span class="ml-2 text-lg text-gray-400 line-through">${formatarReal(currentProduct.preco)}</span>` : ''}
     `;
-    setupSplideCarousel(); renderColors(); updateAddToCartButton(); renderRecommendations(currentProduct);
+    
+    setupSplideCarousel(); 
+    renderColors(); 
+    updateAddToCartButton(); 
+    renderRecommendations(currentProduct);
+    
+    // Check inicial de favorito
+    if(currentUser) checkFavoriteStatus(currentProduct.id);
+
     document.getElementById('collection-gallery').classList.add('hidden');
     document.getElementById('product-detail-view').classList.remove('hidden');
 }
@@ -486,12 +553,6 @@ function formatarReal(v) { return v.toLocaleString('pt-BR', { style: 'currency',
 function openCart() { elements.cartOverlay.classList.add('visivel'); elements.cartDrawer.classList.add('open'); }
 function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); }
 function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggle('hidden'); e.currentTarget.querySelector('.accordion-icon').classList.toggle('rotate'); }
-
-async function checkFavoriteStatus(productId) {
-    if (!currentUser || !productId) return;
-    const icon = document.querySelector('#btn-favorite i'); if(!icon) return;
-    try { const doc = await db.collection('usuarios').doc(currentUser.uid).get(); const favs = doc.data()?.favoritos || []; icon.className = favs.includes(productId) ? "fa-solid fa-heart text-red-500" : "fa-regular fa-heart"; } catch (e) {}
-}
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', init);
