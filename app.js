@@ -1,4 +1,4 @@
-// Configurações e Init do Firebase (Idêntico ao anterior)
+// Configurações e Init do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
     authDomain: "site-lamed.firebaseapp.com",
@@ -15,7 +15,7 @@ try { app = firebase.app(); } catch (e) { app = firebase.initializeApp(firebaseC
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Variáveis
+// Variáveis Globais
 let products = [];
 let activeCollections = []; 
 let cart = [];
@@ -25,7 +25,7 @@ let selectedColor = null;
 let currentUser = null;
 const TAXA_JUROS = 0.0549;
 
-// Elementos
+// Elementos do DOM
 const elements = {
     cartOverlay: document.getElementById('cart-overlay'),
     cartDrawer: document.getElementById('cart-drawer'),
@@ -51,17 +51,39 @@ const elements = {
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
+    
+    // Autenticação
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         atualizarIconeUsuario(user);
         if(currentUser) checkFavoriteStatus(currentProduct?.id); 
     });
+
+    // Carrinho e Dados
     validarELimparCarrinho();
     updateCartUI(); 
     carregarDadosLoja(); 
     setupEventListeners();
+
+    // --- CORREÇÃO: Animação de Scroll (Filosofia e Mensagem) ---
+    const observerOptions = {
+        threshold: 0.1
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.scroll-animate').forEach((el) => {
+        observer.observe(el);
+    });
 }
 
+// Atualizar Ícone do Usuário no Header
 async function atualizarIconeUsuario(user) {
     const link = document.getElementById('header-user-icon-link');
     if (!link) return;
@@ -82,6 +104,7 @@ async function atualizarIconeUsuario(user) {
     }
 }
 
+// Carrinho: Validação Inicial
 function validarELimparCarrinho() {
     const savedCart = localStorage.getItem('lamedCart');
     if (savedCart) {
@@ -93,34 +116,46 @@ function validarELimparCarrinho() {
     } else { cart = []; }
 }
 
+// Event Listeners
 function setupEventListeners() {
     window.addEventListener('hashchange', handleRouting);
+    
     document.querySelectorAll('.nav-collection-link').forEach(link => {
         link.addEventListener('click', (e) => { e.preventDefault(); navegarParaColecoes(); });
     });
+    
     const backBtn = document.getElementById('back-to-gallery');
     if(backBtn) backBtn.addEventListener('click', () => { window.history.back(); });
+    
     if(elements.menuButton) {
         elements.menuButton.addEventListener('click', () => {
             elements.mobileMenu.classList.toggle('active');
             elements.menuButton.textContent = elements.mobileMenu.classList.contains('active') ? '✕' : '☰';
         });
     }
+    
     if (elements.cartButton) elements.cartButton.addEventListener('click', openCart);
     if (elements.closeCartButton) elements.closeCartButton.addEventListener('click', closeCart);
     if (elements.cartOverlay) elements.cartOverlay.addEventListener('click', closeCart);
+    
     if (elements.finalizarPedidoBtn) elements.finalizarPedidoBtn.addEventListener('click', openCheckoutModal);
     document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeCheckoutModal));
+    
     if (elements.checkoutForm) {
         elements.checkoutForm.addEventListener('submit', (e) => { e.preventDefault(); finalizarPedido(new FormData(elements.checkoutForm)); });
     }
+    
     document.querySelectorAll('.size-option').forEach(option => { option.addEventListener('click', () => selectSize(option)); });
+    
     if (elements.addToCartBtn) elements.addToCartBtn.addEventListener('click', addToCart);
     if (elements.cartItemsContainer) elements.cartItemsContainer.addEventListener('click', handleCartItemClick);
+    
     document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
+    
     setupPaymentOptions();
 }
 
+// Navegação
 function navegarParaColecoes() {
     if (elements.mobileMenu && elements.mobileMenu.classList.contains('active')) elements.mobileMenu.classList.remove('active');
     if (activeCollections.length === 1) window.location.hash = `#/colecao/${activeCollections[0].id}`;
@@ -212,7 +247,7 @@ function popularPreviewColecao() {
     new Splide('#home-splide', { type: 'slide', perPage: 4, gap: '20px', pagination: false, breakpoints: { 640: { perPage: 1, padding: '40px' }, 1024: { perPage: 3 } } }).mount();
 }
 
-// *** CARD DE PRODUTO CORRIGIDO PARA MOSTRAR PREÇO ***
+// Criação do Card de Produto
 function criarCardProduto(peca) {
     const card = document.createElement('div');
     card.className = "h-full bg-[#FDFBF6] group cursor-pointer flex flex-col";
@@ -221,7 +256,6 @@ function criarCardProduto(peca) {
     const imgPrincipal = peca.imagens[0];
     const imgHover = peca.imagens[1] || peca.imagens[0];
     
-    // Lógica de Preço
     let priceHtml = '';
     if (peca.desconto > 0) {
         priceHtml = `
@@ -263,7 +297,7 @@ function renderizarGridColecao(collectionId) {
     prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
 }
 
-// --- Detalhes ---
+// --- Detalhes do Produto ---
 function showProductDetail(id) {
     currentProduct = products.find(p => p.id === id);
     if (!currentProduct) return;
@@ -447,13 +481,17 @@ async function finalizarPedido(formData) {
     } catch (e) { alert("Erro ao enviar pedido: " + e.message); }
 }
 
+// Utilitários
 function formatarReal(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 function openCart() { elements.cartOverlay.classList.add('visivel'); elements.cartDrawer.classList.add('open'); }
 function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); }
 function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggle('hidden'); e.currentTarget.querySelector('.accordion-icon').classList.toggle('rotate'); }
+
 async function checkFavoriteStatus(productId) {
     if (!currentUser || !productId) return;
     const icon = document.querySelector('#btn-favorite i'); if(!icon) return;
     try { const doc = await db.collection('usuarios').doc(currentUser.uid).get(); const favs = doc.data()?.favoritos || []; icon.className = favs.includes(productId) ? "fa-solid fa-heart text-red-500" : "fa-regular fa-heart"; } catch (e) {}
 }
+
+// Inicializar
 document.addEventListener('DOMContentLoaded', init);
