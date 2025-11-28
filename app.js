@@ -754,6 +754,10 @@ function updateCheckoutSummary() {
         // const desc = total * 0.05; 
         // final -= desc; 
         // summary.innerHTML += `<div class="flex justify-between text-sm text-green-600 font-medium mt-1"><span>Desconto PIX</span><span>-${formatarReal(desc)}</span></div>`; 
+    } else if (pgto === 'Cartão de Crédito') {
+        const taxa = total * TAXA_JUROS;
+        final += taxa;
+        summary.innerHTML += `<div class="flex justify-between text-sm text-gray-500 font-medium mt-1"><span>Taxa Cartão</span><span>+${formatarReal(taxa)}</span></div>`;
     }
     elements.checkoutTotal.textContent = formatarReal(final);
 }
@@ -772,14 +776,63 @@ function preencherParcelas() {
     const total = cart.reduce((s, i) => s + i.preco*i.quantity, 0);
     const select = document.getElementById('parcelas-select');
     select.innerHTML = '';
-    for(let i=1; i<=12; i++) { let val = total; if(i > 2) val = total * (1 + TAXA_JUROS); select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} ${i>2 ?'(c/ juros)':'(sem juros)'}</option>`; }
+    
+    // Alterado: Removemos a condição "if(i > 2)" para que 1x e 2x também tenham juros
+    for(let i=1; i<=12; i++) { 
+        // Aplica taxa de juros fixa para qualquer parcelamento no cartão
+        let val = total * (1 + TAXA_JUROS); 
+        // Texto agora é sempre (c/ juros) já que a taxa base é aplicada
+        select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} (c/ juros)</option>`; 
+    }
 }
 
 async function finalizarPedido(formData) {
     const cliente = { nome: formData.get('nome'), telefone: formData.get('telefone'), email: formData.get('email'), endereco: { rua: formData.get('rua'), numero: formData.get('numero'), cep: formData.get('cep'), cidade: formData.get('cidade') } };
     if(currentUser) db.collection('usuarios').doc(currentUser.uid).set({ nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, { merge: true });
-    const pedido = { cliente, pagamento: formData.get('pagamento'), parcelas: formData.get('pagamento') === 'Cartão de Crédito' ? document.getElementById('parcelas-select').value : 1, produtos: cart, total: parseFloat(elements.checkoutTotal.textContent.replace(/[^\d,]/g,'').replace(',','.')), data: firebase.firestore.FieldValue.serverTimestamp(), status: 'pendente', userId: currentUser ? currentUser.uid : null };
+    
+    // Status definido como 'processando'
+    const pedido = { 
+        cliente, 
+        pagamento: formData.get('pagamento'), 
+        parcelas: formData.get('pagamento') === 'Cartão de Crédito' ? document.getElementById('parcelas-select').value : 1, 
+        produtos: cart, 
+        total: parseFloat(elements.checkoutTotal.textContent.replace(/[^\d,]/g,'').replace(',','.')), 
+        data: firebase.firestore.FieldValue.serverTimestamp(), 
+        status: 'processando', 
+        userId: currentUser ? currentUser.uid : null 
+    };
+
     try {
+        // --- LÓGICA DE BAIXA NO ESTOQUE ---
+        for (const item of cart) {
+            // Só tenta baixar se o item tiver ID e cor válida
+            if (item.id && item.cor && item.cor.nome) {
+                const productRef = db.collection('pecas').doc(item.id);
+                
+                await db.runTransaction(async (transaction) => {
+                    const doc = await transaction.get(productRef);
+                    if (!doc.exists) return; // Se o produto foi excluído, ignora
+
+                    const data = doc.data();
+                    const cores = data.cores || [];
+                    
+                    // Encontra o índice da cor correta
+                    const colorIndex = cores.findIndex(c => c.nome === item.cor.nome);
+                    
+                    if (colorIndex !== -1) {
+                        // Calcula nova quantidade
+                        const newQty = (parseInt(cores[colorIndex].quantidade) || 0) - item.quantity;
+                        
+                        // Atualiza array de cores com a nova quantidade
+                        cores[colorIndex].quantidade = newQty; 
+                        
+                        // Salva no banco
+                        transaction.update(productRef, { cores: cores });
+                    }
+                });
+            }
+        }
+
         const ref = await db.collection('pedidos').add(pedido);
         const msg = `Olá! Fiz um pedido no site (ID #${ref.id.slice(0,6).toUpperCase()}).\nCliente: ${cliente.nome}\nTotal: ${formatarReal(pedido.total)}`;
         window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(msg)}`, '_blank');
