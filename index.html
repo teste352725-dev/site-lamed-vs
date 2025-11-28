@@ -309,7 +309,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
                         <input type="radio" name="pagamento" value="PIX" required class="mr-2"> 
-                        <span class="text-sm font-medium">PIX (-5%)</span>
+                        <span class="text-sm font-medium">PIX</span>
                     </label>
                     <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
                         <input type="radio" name="pagamento" value="Cartão de Crédito" required class="mr-2"> 
@@ -331,6 +331,31 @@
                     <i class="fa-brands fa-whatsapp"></i> Enviar Pedido
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE LOGIN/CADASTRO (NOVO) -->
+    <div id="auth-prompt-modal" class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="modal-content w-full max-w-sm bg-[#FDFBF6] rounded-lg shadow-2xl p-6 text-center relative overflow-hidden">
+            <button id="close-auth-prompt" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            
+            <div class="mb-4 text-[#643f21]">
+                <i class="fa-regular fa-user-circle text-5xl"></i>
+            </div>
+            
+            <h3 class="serif text-2xl text-[#45301F] mb-2">Bem-vindo(a)!</h3>
+            <p class="text-sm text-gray-600 mb-6 font-light">
+                Cadastre-se para acompanhar seus pedidos, salvar favoritos e ter uma experiência personalizada.
+            </p>
+            
+            <div class="space-y-3">
+                <a href="minha-conta.html" class="block w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">
+                    Entrar ou Cadastrar
+                </a>
+                <button id="auth-prompt-dismiss" class="text-xs text-gray-400 underline hover:text-gray-600">
+                    Continuar como visitante
+                </button>
+            </div>
         </div>
     </div>
 
