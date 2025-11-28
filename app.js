@@ -46,7 +46,11 @@ const elements = {
     checkoutTotal: document.getElementById('checkout-total'),
     collectionsContainer: document.getElementById('collections-container'),
     userIconLink: document.getElementById('header-user-icon-link'),
-    favoriteBtn: document.getElementById('btn-favorite')
+    favoriteBtn: document.getElementById('btn-favorite'),
+    // NOVO: Elementos do modal de login
+    authPromptModal: document.getElementById('auth-prompt-modal'),
+    closeAuthPromptBtn: document.getElementById('close-auth-prompt'),
+    dismissAuthPromptBtn: document.getElementById('auth-prompt-dismiss')
 };
 
 // --- INIT ---
@@ -57,7 +61,10 @@ function init() {
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         atualizarIconeUsuario(user);
-        if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id); 
+        if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
+        
+        // Verifica se deve mostrar o prompt de login
+        checkAuthPrompt(user);
     });
 
     // Carrinho e Dados
@@ -75,6 +82,31 @@ function init() {
     }, observerOptions);
 
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
+}
+
+// --- PROMPT DE LOGIN (NOVO) ---
+function checkAuthPrompt(user) {
+    // Se o usuário estiver logado, garante que o modal esteja fechado
+    if (user) {
+        if (elements.authPromptModal) elements.authPromptModal.classList.add('hidden');
+        if (elements.authPromptModal) elements.authPromptModal.classList.remove('flex');
+        return;
+    }
+
+    // Se não estiver logado, verifica se já mostramos o prompt nesta sessão
+    const promptShown = sessionStorage.getItem('authPromptShown');
+    
+    if (!promptShown && elements.authPromptModal) {
+        // Aguarda 8 segundos antes de mostrar
+        setTimeout(() => {
+            // Verifica novamente se ainda não está logado
+            if (!auth.currentUser) {
+                elements.authPromptModal.classList.remove('hidden');
+                elements.authPromptModal.classList.add('flex');
+                sessionStorage.setItem('authPromptShown', 'true');
+            }
+        }, 8000);
+    }
 }
 
 // Atualizar Ícone do Usuário no Header
@@ -147,6 +179,20 @@ function setupEventListeners() {
     if (elements.favoriteBtn) elements.favoriteBtn.addEventListener('click', toggleFavorite);
 
     document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
+    
+    // Listeners do Modal de Login
+    if (elements.closeAuthPromptBtn) {
+        elements.closeAuthPromptBtn.addEventListener('click', () => {
+            elements.authPromptModal.classList.add('hidden');
+            elements.authPromptModal.classList.remove('flex');
+        });
+    }
+    if (elements.dismissAuthPromptBtn) {
+        elements.dismissAuthPromptBtn.addEventListener('click', () => {
+            elements.authPromptModal.classList.add('hidden');
+            elements.authPromptModal.classList.remove('flex');
+        });
+    }
     
     setupPaymentOptions();
 }
