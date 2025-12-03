@@ -47,7 +47,6 @@ const elements = {
     collectionsContainer: document.getElementById('collections-container'),
     userIconLink: document.getElementById('header-user-icon-link'),
     favoriteBtn: document.getElementById('btn-favorite'),
-    // NOVO: Elementos do modal de login
     authPromptModal: document.getElementById('auth-prompt-modal'),
     closeAuthPromptBtn: document.getElementById('close-auth-prompt'),
     dismissAuthPromptBtn: document.getElementById('auth-prompt-dismiss')
@@ -62,8 +61,6 @@ function init() {
         currentUser = user;
         atualizarIconeUsuario(user);
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
-        
-        // Verifica se deve mostrar o prompt de login
         checkAuthPrompt(user);
     });
 
@@ -73,7 +70,7 @@ function init() {
     carregarDadosLoja(); 
     setupEventListeners();
 
-    // Animação de Scroll (Filosofia e Mensagem)
+    // Animação de Scroll
     const observerOptions = { threshold: 0.1 };
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
@@ -84,22 +81,18 @@ function init() {
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
 }
 
-// --- PROMPT DE LOGIN (NOVO) ---
+// --- PROMPT DE LOGIN ---
 function checkAuthPrompt(user) {
-    // Se o usuário estiver logado, garante que o modal esteja fechado
     if (user) {
         if (elements.authPromptModal) elements.authPromptModal.classList.add('hidden');
         if (elements.authPromptModal) elements.authPromptModal.classList.remove('flex');
         return;
     }
 
-    // Se não estiver logado, verifica se já mostramos o prompt nesta sessão
     const promptShown = sessionStorage.getItem('authPromptShown');
     
     if (!promptShown && elements.authPromptModal) {
-        // Aguarda 8 segundos antes de mostrar
         setTimeout(() => {
-            // Verifica novamente se ainda não está logado
             if (!auth.currentUser) {
                 elements.authPromptModal.classList.remove('hidden');
                 elements.authPromptModal.classList.add('flex');
@@ -109,7 +102,7 @@ function checkAuthPrompt(user) {
     }
 }
 
-// Atualizar Ícone do Usuário no Header
+// Atualizar Ícone do Usuário
 async function atualizarIconeUsuario(user) {
     const link = document.getElementById('header-user-icon-link');
     if (!link) return;
@@ -130,7 +123,7 @@ async function atualizarIconeUsuario(user) {
     }
 }
 
-// Carrinho: Validação Inicial
+// Carrinho
 function validarELimparCarrinho() {
     const savedCart = localStorage.getItem('lamedCart');
     if (savedCart) {
@@ -180,7 +173,6 @@ function setupEventListeners() {
 
     document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
     
-    // Listeners do Modal de Login
     if (elements.closeAuthPromptBtn) {
         elements.closeAuthPromptBtn.addEventListener('click', () => {
             elements.authPromptModal.classList.add('hidden');
@@ -281,9 +273,8 @@ function showPage(pageId, param1 = null, param2 = null) {
         if (products.length === 0) carregarDadosLoja().then(() => showProductDetail(param1));
         else showProductDetail(param1);
     } else if (pageId === 'page-collections-list') {
-        // Garante que a página de lista de coleções apareça
         document.getElementById('page-collections-list').classList.add('active');
-        renderizarListaDeColecoes(); // Nova função para preencher o grid de coleções
+        renderizarListaDeColecoes(); 
     }
     window.scrollTo(0, 0);
 }
@@ -297,9 +288,9 @@ async function carregarDadosLoja() {
         const produtosSnap = await db.collection("pecas").where("status", "==", "active").get();
         products = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
         
-        renderizarSecoesColecoes(); // Renderiza na HOME
-        popularPreviewColecao();    // Renderiza o carrossel na HOME
-        handleRouting();            // Verifica a rota atual
+        renderizarSecoesColecoes(); 
+        popularPreviewColecao();    
+        handleRouting();            
     } catch (err) { console.error("Erro dados:", err); }
 }
 
@@ -308,13 +299,11 @@ function renderizarSecoesColecoes() {
     if (!container) return;
     container.innerHTML = ''; 
     
-    // Se não houver coleções ativas, não faz nada
     if (activeCollections.length === 0) return;
 
     activeCollections.forEach((colecao, index) => {
         const prods = products.filter(p => p.colecaoId === colecao.id);
         
-        // CORREÇÃO: Não usar 'return' aqui, pois para o loop inteiro se a primeira coleção estiver vazia.
         if (prods.length === 0) return; 
 
         const section = document.createElement('section');
@@ -338,7 +327,6 @@ function renderizarSecoesColecoes() {
             list.appendChild(slide);
         });
         
-        // Inicializa o Splide apenas se houver itens
         if (prods.length > 0) {
             new Splide(`#${splideId}`, { 
                 type: 'slide', 
@@ -346,11 +334,7 @@ function renderizarSecoesColecoes() {
                 gap: '20px', 
                 pagination: false, 
                 arrows: true, 
-                breakpoints: { 
-                    1024: { perPage: 3 }, 
-                    768: { perPage: 2 }, 
-                    640: { perPage: 1, padding: '20px' } 
-                } 
+                breakpoints: { 1024: { perPage: 3 }, 768: { perPage: 2 }, 640: { perPage: 1, padding: '20px' } } 
             }).mount();
         }
     });
@@ -378,7 +362,6 @@ function popularPreviewColecao() {
     new Splide('#home-splide', { type: 'slide', perPage: 4, gap: '20px', pagination: false, breakpoints: { 640: { perPage: 1, padding: '40px' }, 1024: { perPage: 3 } } }).mount();
 }
 
-// NOVA FUNÇÃO: Renderizar a página de lista de todas as coleções
 function renderizarListaDeColecoes() {
     const grid = document.getElementById('collections-list-grid');
     if (!grid) return;
@@ -390,7 +373,6 @@ function renderizarListaDeColecoes() {
     }
 
     activeCollections.forEach(col => {
-        // Conta produtos nesta coleção
         const count = products.filter(p => p.colecaoId === col.id).length;
         const img = col.imagemDestaque || 'https://placehold.co/600x400/eee/ccc?text=Sem+Imagem';
 
@@ -484,12 +466,10 @@ function showProductDetail(id) {
     // --- Lógica: Mesa Posta & Aviso ---
     const sizeSection = document.querySelector('.size-selector')?.parentElement;
     
-    // Elementos de tamanho
     const sizeHeader = sizeSection?.querySelector('.flex.justify-between'); 
     const sizeOptions = sizeSection?.querySelector('.size-selector');
     const sizeDisplay = sizeSection?.querySelector('#selected-size-display');
 
-    // Acordeões
     const accordions = document.querySelectorAll('.accordion-button');
     let measureAccordionWrapper = null;
 
@@ -497,7 +477,6 @@ function showProductDetail(id) {
         if(btn.textContent.includes('Guia de Medidas')) {
             measureAccordionWrapper = btn.parentElement;
         }
-        // Descrição aberta
         if(btn.textContent.includes('Descrição')) {
             const content = btn.nextElementSibling;
             const icon = btn.querySelector('.accordion-icon');
@@ -506,12 +485,10 @@ function showProductDetail(id) {
         }
     });
 
-    // Remove aviso antigo
     const existingWarning = document.getElementById('mesa-posta-warning');
     if (existingWarning) existingWarning.remove();
 
     if (currentProduct.categoria === 'mesa_posta') {
-        // Esconde só os tamanhos, mantém container visível para as Cores (se houver)
         if(sizeHeader) sizeHeader.classList.add('hidden');
         if(sizeOptions) sizeOptions.classList.add('hidden');
         if(sizeDisplay) sizeDisplay.classList.add('hidden');
@@ -531,7 +508,6 @@ function showProductDetail(id) {
         btnContainer.insertBefore(warningDiv, document.getElementById('add-to-cart-button'));
 
     } else {
-        // Restaura
         if(sizeHeader) sizeHeader.classList.remove('hidden');
         if(sizeOptions) sizeOptions.classList.remove('hidden');
         if(sizeSection) sizeSection.classList.remove('hidden');
@@ -605,17 +581,13 @@ function renderColors() {
         </div>`;
     }).join('')}</div>`;
     
-    // Inserção CORRETA: Fora do .size-selector, mas próximo a ele
     const sizeSelector = document.querySelector('.size-selector');
     if (sizeSelector && sizeSelector.parentElement) {
-        // Insere após o container pai do tamanho (a div mb-8)
-        // Isso garante que se o tamanho for oculto (add class hidden no parent), a cor ainda fica visível fora dele
         sizeSelector.parentElement.after(div);
     } else {
         document.getElementById('detail-price').after(div);
     }
 
-    // Auto-seleção se houver apenas 1 cor
     if (cores.length === 1) {
         selectedColor = 0;
         div.querySelector('.color-option').classList.add('selected');
@@ -644,7 +616,6 @@ function updateAddToCartButton() {
     const btn = elements.addToCartBtn;
     if(!btn) return;
     
-    // --- Lógica: Estoque Total (Se 0, desabilita) ---
     const stockTotal = currentProduct.cores ? currentProduct.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
     
     if (stockTotal <= 0) {
@@ -750,14 +721,9 @@ function updateCheckoutSummary() {
     const pgto = document.querySelector('input[name="pagamento"]:checked')?.value;
     let final = total;
     if (pgto === 'PIX') { 
-        // DESCONTO PIX TEMPORARIAMENTE REMOVIDO
-        // const desc = total * 0.05; 
-        // final -= desc; 
-        // summary.innerHTML += `<div class="flex justify-between text-sm text-green-600 font-medium mt-1"><span>Desconto PIX</span><span>-${formatarReal(desc)}</span></div>`; 
-    } else if (pgto === 'Cartão de Crédito') {
-        const taxa = total * TAXA_JUROS;
-        final += taxa;
-        summary.innerHTML += `<div class="flex justify-between text-sm text-gray-500 font-medium mt-1"><span>Taxa Cartão</span><span>+${formatarReal(taxa)}</span></div>`;
+        const desc = total * 0.05; 
+        final -= desc; 
+        summary.innerHTML += `<div class="flex justify-between text-sm text-green-600 font-medium mt-1"><span>Desconto PIX</span><span>-${formatarReal(desc)}</span></div>`; 
     }
     elements.checkoutTotal.textContent = formatarReal(final);
 }
@@ -776,13 +742,16 @@ function preencherParcelas() {
     const total = cart.reduce((s, i) => s + i.preco*i.quantity, 0);
     const select = document.getElementById('parcelas-select');
     select.innerHTML = '';
-    
-    // Alterado: Removemos a condição "if(i > 2)" para que 1x e 2x também tenham juros
     for(let i=1; i<=12; i++) { 
-        // Aplica taxa de juros fixa para qualquer parcelamento no cartão
-        let val = total * (1 + TAXA_JUROS); 
-        // Texto agora é sempre (c/ juros) já que a taxa base é aplicada
-        select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} (c/ juros)</option>`; 
+        let val = total;
+        let suffix = '(sem juros)';
+        
+        if(i > 2) {
+            val = total * (1 + TAXA_JUROS);
+            suffix = '(c/ juros)';
+        }
+        
+        select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} ${suffix}</option>`; 
     }
 }
 
