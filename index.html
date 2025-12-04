@@ -288,6 +288,18 @@
             </div>
 
             <form id="checkout-form" class="p-6 space-y-6">
+                
+                <!-- AVISO DE PRODUÇÃO E FRETE (NOVO) -->
+                <div id="shipping-message-box" class="bg-orange-50 border border-orange-100 p-4 rounded text-sm text-[#643f21] mb-4">
+                    <p class="font-bold mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-clock"></i> Atenção à Produção:
+                    </p>
+                    <p class="mb-2">Nossas peças são feitas sob demanda com muito carinho. Por isso, podem levar alguns dias para serem produzidas.</p>
+                    <p id="shipping-cost-msg" class="font-medium text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
+                        <i class="fa-solid fa-truck-fast"></i> O frete é calculado e pago diretamente no WhatsApp.
+                    </p>
+                </div>
+
                 <!-- Campos Pessoais -->
                 <input type="text" name="nome" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Nome Completo" required>
                 <div class="grid grid-cols-2 gap-4">
@@ -298,7 +310,7 @@
                 <!-- Campos de Entrega -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Entrega</h3>
                 <div class="grid grid-cols-3 gap-4">
-                    <input type="text" name="cep" class="col-span-1 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CEP" required>
+                    <input type="text" id="checkout-cep" name="cep" class="col-span-1 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CEP" required>
                     <input type="text" name="cidade" class="col-span-2 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Cidade/UF" required>
                 </div>
                 <input type="text" name="rua" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Endereço (Rua)" required>
@@ -309,7 +321,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
                         <input type="radio" name="pagamento" value="PIX" required class="mr-2"> 
-                        <span class="text-sm font-medium">PIX</span>
+                        <span class="text-sm font-medium">PIX (-5%)</span>
                     </label>
                     <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
                         <input type="radio" name="pagamento" value="Cartão de Crédito" required class="mr-2"> 
@@ -334,36 +346,24 @@
         </div>
     </div>
 
-    <!-- MODAL DE LOGIN/CADASTRO (NOVO) -->
+    <!-- MODAL DE LOGIN/CADASTRO -->
     <div id="auth-prompt-modal" class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="modal-content w-full max-w-sm bg-[#FDFBF6] rounded-lg shadow-2xl p-6 text-center relative overflow-hidden">
             <button id="close-auth-prompt" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
-            
-            <div class="mb-4 text-[#643f21]">
-                <i class="fa-regular fa-user-circle text-5xl"></i>
-            </div>
-            
+            <div class="mb-4 text-[#643f21]"><i class="fa-regular fa-user-circle text-5xl"></i></div>
             <h3 class="serif text-2xl text-[#45301F] mb-2">Bem-vindo(a)!</h3>
-            <p class="text-sm text-gray-600 mb-6 font-light">
-                Cadastre-se para acompanhar seus pedidos, salvar favoritos e ter uma experiência personalizada.
-            </p>
-            
+            <p class="text-sm text-gray-600 mb-6 font-light">Cadastre-se para acompanhar seus pedidos, salvar favoritos e ter uma experiência personalizada.</p>
             <div class="space-y-3">
-                <a href="minha-conta.html" class="block w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">
-                    Entrar ou Cadastrar
-                </a>
-                <button id="auth-prompt-dismiss" class="text-xs text-gray-400 underline hover:text-gray-600">
-                    Continuar como visitante
-                </button>
+                <a href="minha-conta.html" class="block w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Entrar ou Cadastrar</a>
+                <button id="auth-prompt-dismiss" class="text-xs text-gray-400 underline hover:text-gray-600">Continuar como visitante</button>
             </div>
         </div>
     </div>
 
-    <!-- RODAPÉ (Completo e Alinhado) -->
+    <!-- RODAPÉ -->
     <footer id="contato" class="bg-[#F8F6F0] text-[--cor-texto] py-16 px-4 mt-auto border-t border-[#E5E0D8]">
         <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 text-center md:text-left">
             <div>
-                <!-- Laméd vs na mesma linha -->
                 <div class="mb-6 group inline-block text-left">
                     <div class="flex items-baseline gap-1">
                         <span class="allura text-5xl text-[--cor-texto]">Laméd</span>
@@ -395,16 +395,13 @@
         </div>
     </footer>
 
-    <!-- BOTÃO WHATSAPP -->
     <a href="https://wa.me/5527999287657" target="_blank" class="floating-whatsapp fixed bottom-6 right-6 w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center text-white text-3xl shadow-lg z-40 hover:scale-110 transition-transform duration-300">
         <i class="fa-brands fa-whatsapp"></i>
     </a>
 
-    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
     <script src="app.js"></script>
     
-    <!-- SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
