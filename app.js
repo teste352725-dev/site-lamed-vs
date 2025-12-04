@@ -57,30 +57,42 @@ const elements = {
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
-    
-    // Autenticação
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         atualizarIconeUsuario(user);
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
         checkAuthPrompt(user);
     });
-
-    // Carrinho e Dados
     validarELimparCarrinho();
     updateCartUI(); 
     carregarDadosLoja(); 
     setupEventListeners();
 
-    // Animação de Scroll
     const observerOptions = { threshold: 0.1 };
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
             if (entry.isIntersecting) entry.target.classList.add('is-visible');
         });
     }, observerOptions);
-
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
+}
+
+// --- UTILITÁRIOS E HELPERS ---
+function formatarReal(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+function isSudeste(cep) {
+    if (!cep) return false;
+    const cepClean = cep.replace(/\D/g, '');
+    if (cepClean.length !== 8) return false;
+    const prefix = parseInt(cepClean.substring(0, 2)); 
+    // SP: 01-19, RJ: 20-28, ES: 29, MG: 30-39
+    return (prefix >= 1 && prefix <= 39);
+}
+
+function isHanukahProduct(item) {
+    if (!item || !item.nome) return false;
+    const term = item.nome.toLowerCase();
+    return term.includes('hanukah') || term.includes('chanukiá') || term.includes('chanuká') || term.includes('judaica');
 }
 
 // --- PROMPT DE LOGIN ---
@@ -122,6 +134,7 @@ async function atualizarIconeUsuario(user) {
     }
 }
 
+// --- CARRINHO E NAVEGAÇÃO ---
 function validarELimparCarrinho() {
     const savedCart = localStorage.getItem('lamedCart');
     if (savedCart) {
@@ -152,16 +165,12 @@ function setupEventListeners() {
     
     if (elements.finalizarPedidoBtn) elements.finalizarPedidoBtn.addEventListener('click', openCheckoutModal);
     document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeCheckoutModal));
-    
     if (elements.checkoutForm) elements.checkoutForm.addEventListener('submit', (e) => { e.preventDefault(); finalizarPedido(new FormData(elements.checkoutForm)); });
     
     document.querySelectorAll('.size-option').forEach(option => { option.addEventListener('click', () => selectSize(option)); });
-    
     if (elements.addToCartBtn) elements.addToCartBtn.addEventListener('click', addToCart);
     if (elements.cartItemsContainer) elements.cartItemsContainer.addEventListener('click', handleCartItemClick);
-    
     if (elements.favoriteBtn) elements.favoriteBtn.addEventListener('click', toggleFavorite);
-
     document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
     
     if (elements.closeAuthPromptBtn) elements.closeAuthPromptBtn.addEventListener('click', () => {
@@ -246,6 +255,7 @@ function showPage(pageId, param1 = null, param2 = null) {
     window.scrollTo(0, 0);
 }
 
+// --- CARREGAMENTO DE DADOS ---
 async function carregarDadosLoja() {
     try {
         const colecoesSnap = await db.collection("colecoes").where("ativa", "==", true).get();
@@ -304,11 +314,13 @@ function popularPreviewColecao() {
     const list = document.getElementById('home-splide-list');
     if (!list) return;
     const lancamentos = [...products].sort((a, b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0, 6);
+    
     list.innerHTML = '';
     if (lancamentos.length === 0) {
         list.innerHTML = '<li class="w-full text-center text-gray-400 py-8">Nenhum lançamento no momento.</li>';
         return;
     }
+
     lancamentos.forEach(peca => {
         const slide = document.createElement('li');
         slide.className = 'splide__slide';
@@ -386,6 +398,19 @@ function criarCardProduto(peca) {
     return card;
 }
 
+function renderizarGridColecao(collectionId) {
+    const grid = document.getElementById('collection-grid');
+    const title = document.querySelector('#page-collection h3');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const col = activeCollections.find(c => c.id === collectionId);
+    if (col && title) title.textContent = col.nome;
+    const prods = products.filter(p => p.colecaoId === collectionId);
+    if (prods.length === 0) { grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>'; return; }
+    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
+}
+
+// --- DETALHES DO PRODUTO ---
 function showProductDetail(id) {
     currentProduct = products.find(p => p.id === id);
     if (!currentProduct) return;
@@ -542,20 +567,142 @@ function renderColors() {
     });
 }
 
-function isSudeste(cep) {
-    if (!cep) return false;
-    const cepClean = cep.replace(/\D/g, '');
-    if (cepClean.length !== 8) return false;
-    const prefix = parseInt(cepClean.substring(0, 2)); 
-    return (prefix >= 1 && prefix <= 39);
+// --- FUNÇÕES DE CARRINHO ---
+function selectSize(el) {
+    document.querySelectorAll('.size-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedSize = el.dataset.size;
+    updateAddToCartButton();
 }
 
-function isHanukahProduct(item) {
-    if (!item || !item.nome) return false;
-    const term = item.nome.toLowerCase();
-    return term.includes('hanukah') || term.includes('chanukiá') || term.includes('chanuká') || term.includes('judaica');
+function updateAddToCartButton() {
+    const btn = elements.addToCartBtn;
+    if(!btn) return;
+    
+    const stockTotal = currentProduct.cores ? currentProduct.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
+    if (stockTotal <= 0 && currentProduct.categoria !== 'kit') { // Kits gerenciam estoque pelos componentes
+        btn.disabled = true;
+        btn.textContent = "ESGOTADO";
+        btn.classList.add('bg-gray-400');
+        btn.classList.remove('hover:bg-[#4a2e18]');
+        return;
+    } else {
+        btn.classList.remove('bg-gray-400');
+        btn.classList.add('hover:bg-[#4a2e18]');
+    }
+
+    const isMesaPosta = currentProduct.categoria === 'mesa_posta';
+    const isKit = currentProduct.categoria === 'kit';
+    const hasSize = selectedSize !== null;
+    const hasColor = !currentProduct.cores?.length || selectedColor !== null;
+
+    let canAdd = false;
+    if (isKit) {
+        const totalComponents = currentProduct.componentes ? currentProduct.componentes.length : 0;
+        const selectedCount = Object.keys(kitSelections).length;
+        canAdd = selectedCount >= totalComponents;
+    } else {
+        canAdd = (isMesaPosta || hasSize) && hasColor;
+    }
+
+    if (canAdd) {
+        btn.disabled = false; btn.textContent = "ADICIONAR À SACOLA";
+    } else {
+        btn.disabled = true; btn.textContent = isKit ? "Selecione as cores do Kit" : "Selecione Opções";
+        btn.classList.add('bg-gray-400');
+        btn.classList.remove('hover:bg-[#4a2e18]');
+    }
 }
 
+function addToCart() {
+    const corObj = selectedColor !== null ? currentProduct.cores[selectedColor] : null;
+    const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
+    const isKit = currentProduct.categoria === 'kit';
+    const tamanhoFinal = (currentProduct.categoria === 'mesa_posta' || isKit) ? (isKit ? 'Kit' : 'Único') : selectedSize;
+    
+    const cartId = isKit ? `${currentProduct.id}-kit-${Date.now()}` : `${currentProduct.id}-${tamanhoFinal}-${corObj?.nome || 'unico'}`;
+    const existing = cart.find(i => i.cartId === cartId);
+    
+    if (existing) existing.quantity++;
+    else cart.push({ 
+        cartId, 
+        id: currentProduct.id, 
+        nome: currentProduct.nome, 
+        preco: precoFinal, 
+        imagem: currentProduct.imagens[0], 
+        tamanho: tamanhoFinal, 
+        cor: corObj, 
+        quantity: 1,
+        isKit: isKit,
+        componentes: isKit ? currentProduct.componentes : null,
+        kitSelections: isKit ? kitSelections : null
+    });
+    
+    localStorage.setItem('lamedCart', JSON.stringify(cart));
+    updateCartUI(); openCart();
+}
+
+function updateCartUI() {
+    const container = elements.cartItemsContainer;
+    let total = 0, count = 0;
+    container.innerHTML = '';
+    if (cart.length === 0) { elements.cartEmptyMsg.classList.remove('hidden'); elements.cartCountBadge.style.display = 'none'; elements.cartSubtotalEl.textContent = 'R$ 0,00'; return; }
+    elements.cartEmptyMsg.classList.add('hidden');
+    
+    cart.forEach(item => {
+        total += item.preco * item.quantity; count += item.quantity;
+        
+        let detailsHtml = '';
+        if (item.isKit && item.kitSelections) {
+            detailsHtml = `<div class="text-[10px] text-gray-500 mt-1 pl-2 border-l-2 border-gray-200">`;
+            item.componentes.forEach((comp, idx) => {
+                const sel = item.kitSelections[idx];
+                detailsHtml += `<div>${comp.quantidade}x ${comp.nome} <span class="font-bold text-gray-700">(${sel?.nome || '-'})</span></div>`;
+            });
+            detailsHtml += `</div>`;
+        } else {
+            detailsHtml = `<p class="text-xs text-gray-500 mb-1">${item.tamanho} ${item.cor ? `| ${item.cor.nome}` : ''}</p>`;
+        }
+
+        container.innerHTML += `
+            <div class="flex gap-4 mb-4 border-b border-[#E5E0D8] pb-4 last:border-0">
+                <img src="${item.imagem}" class="w-16 h-20 object-cover rounded-sm border border-[#E5E0D8]">
+                <div class="flex-grow">
+                    <h4 class="font-medium text-sm text-[--cor-texto]">${item.nome}</h4>
+                    ${detailsHtml}
+                    <div class="flex justify-between items-center mt-1">
+                        <span class="font-semibold text-sm">${formatarReal(item.preco)}</span>
+                        <div class="flex items-center border border-[#dcdcdc] rounded bg-white">
+                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="dec" data-id="${item.cartId}">-</button>
+                            <span class="px-2 text-xs">${item.quantity}</span>
+                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="inc" data-id="${item.cartId}">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    });
+    elements.cartSubtotalEl.textContent = formatarReal(total);
+    elements.cartCountBadge.textContent = count;
+    elements.cartCountBadge.style.display = 'flex';
+}
+
+function handleCartItemClick(e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const { action, id } = btn.dataset;
+    const item = cart.find(i => i.cartId === id);
+    if (!item) return;
+    if (action === 'inc') item.quantity++;
+    if (action === 'dec') { item.quantity--; if (item.quantity <= 0) cart = cart.filter(i => i.cartId !== id); }
+    localStorage.setItem('lamedCart', JSON.stringify(cart));
+    updateCartUI();
+}
+
+function openCart() { elements.cartOverlay.classList.add('visivel'); elements.cartDrawer.classList.add('open'); }
+function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); }
+function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggle('hidden'); e.currentTarget.querySelector('.accordion-icon').classList.toggle('rotate'); }
+
+// --- CHECKOUT ---
 async function openCheckoutModal() {
     if (cart.length === 0) return alert("Sua sacola está vazia.");
     updateCheckoutSummary();
@@ -587,16 +734,12 @@ function closeCheckoutModal() { elements.checkoutModal.classList.add('hidden'); 
 function updateCheckoutSummary() {
     const summary = elements.checkoutSummary;
     summary.innerHTML = ''; let total = 0;
-    
     let hanukahSubtotal = 0;
     
     cart.forEach(item => { 
         const itemTotal = item.preco * item.quantity;
         total += itemTotal; 
-        
-        if (isHanukahProduct(item)) {
-            hanukahSubtotal += itemTotal;
-        }
+        if (isHanukahProduct(item)) hanukahSubtotal += itemTotal;
 
         let desc = item.nome;
         if (item.isKit) desc += " (Kit)";
@@ -668,28 +811,10 @@ function preencherParcelas() {
     select.addEventListener('change', updateCheckoutSummary);
 }
 
-// --- FINALIZAR PEDIDO (ATUALIZADO) ---
 async function finalizarPedido(formData) {
-    const cliente = { 
-        nome: formData.get('nome'), 
-        telefone: formData.get('telefone'), 
-        email: formData.get('email'), 
-        endereco: { 
-            rua: formData.get('rua'), 
-            numero: formData.get('numero'), 
-            cep: formData.get('cep'), 
-            cidade: formData.get('cidade') 
-        } 
-    };
-
-    if(currentUser) {
-        db.collection('usuarios').doc(currentUser.uid).set({ 
-            nome: cliente.nome, 
-            telefone: cliente.telefone, 
-            endereco: cliente.endereco 
-        }, { merge: true });
-    }
-
+    const cliente = { nome: formData.get('nome'), telefone: formData.get('telefone'), email: formData.get('email'), endereco: { rua: formData.get('rua'), numero: formData.get('numero'), cep: formData.get('cep'), cidade: formData.get('cidade') } };
+    if(currentUser) db.collection('usuarios').doc(currentUser.uid).set({ nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, { merge: true });
+    
     const pedido = { 
         cliente, 
         pagamento: formData.get('pagamento'), 
@@ -697,7 +822,7 @@ async function finalizarPedido(formData) {
         produtos: cart, 
         total: parseFloat(elements.checkoutTotal.textContent.replace(/[^\d,]/g,'').replace(',','.')), 
         data: firebase.firestore.FieldValue.serverTimestamp(), 
-        status: 'pendente', 
+        status: 'processando', 
         userId: currentUser ? currentUser.uid : null,
         estoque_baixado: false 
     };
@@ -705,7 +830,6 @@ async function finalizarPedido(formData) {
     try {
         const ref = await db.collection('pedidos').add(pedido);
         
-        // --- CONSTRUÇÃO DA MENSAGEM WHATSAPP MELHORADA ---
         let msg = `*Novo Pedido #${ref.id.slice(0,6).toUpperCase()}*\n`;
         msg += `*Cliente:* ${cliente.nome}\n`;
         msg += `*Pagamento:* ${pedido.pagamento}`;
@@ -757,5 +881,4 @@ function openCart() { elements.cartOverlay.classList.add('visivel'); elements.ca
 function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); }
 function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggle('hidden'); e.currentTarget.querySelector('.accordion-icon').classList.toggle('rotate'); }
 
-// Inicializar
 document.addEventListener('DOMContentLoaded', init);
