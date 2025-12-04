@@ -193,6 +193,11 @@
         </a>
     </nav>
 
+    <!-- Notificação de Estoque -->
+    <div id="estoque-status" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded shadow-lg z-50 text-xs hidden">
+        <i class="fa-solid fa-sync fa-spin mr-2"></i> Processando estoque...
+    </div>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
@@ -210,7 +215,6 @@
         const db = firebase.firestore();
         
         // Validação de Admin (Proteção Front-End)
-        // ATUALIZADO PARA O SEU NOVO ID
         const ADMIN_UID = "NoGsCqiKc0VJwWb6rppk7QVLV1B2";
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -219,13 +223,14 @@
                     window.location.href = 'login-admin.html';
                 } else if (user.uid !== ADMIN_UID) {
                     // Se logado mas não for o admin correto, manda para a loja
-                    console.log("UID Logado:", user.uid); // Debug
-                    console.log("UID Esperado:", ADMIN_UID); // Debug
+                    console.log("UID Logado:", user.uid); 
+                    console.log("UID Esperado:", ADMIN_UID); 
                     alert("Acesso restrito: Seu usuário não é administrador.");
                     window.location.href = 'index.html';
                 } else {
-                    // É o admin, carrega tudo
+                    // É o admin, carrega tudo e inicia o robô
                     carregarStats();
+                    iniciarRoboDeEstoque();
                 }
             });
 
@@ -250,6 +255,114 @@
             db.collection('colecoes').where('ativa', '==', true).get().then(snap => {
                 document.getElementById('colecoes-ativas').textContent = snap.size;
             });
+        }
+
+        // --- ROBÔ DE ESTOQUE ---
+        function iniciarRoboDeEstoque() {
+            console.log("🤖 Robô de Estoque iniciado no Dashboard...");
+            
+            // Vigia pedidos onde estoque_baixado é falso
+            db.collection('pedidos')
+              .where('estoque_baixado', '==', false)
+              .onSnapshot(async (snapshot) => {
+                  
+                // Se não tiver pedidos pendentes, não faz nada
+                if(snapshot.empty) return;
+
+                const statusDiv = document.getElementById('estoque-status');
+                statusDiv.classList.remove('hidden');
+
+                // Processa cada pedido pendente
+                for (const docPedido of snapshot.docs) {
+                    const pedido = docPedido.data();
+                    const pedidoId = docPedido.id;
+                    
+                    console.log(`🔄 Baixando estoque do pedido ${pedidoId}...`);
+
+                    try {
+                        await db.runTransaction(async (transaction) => {
+                            // Iterar sobre os itens do pedido
+                            for (const item of pedido.produtos) {
+                                // Lógica para Kits
+                                if (item.isKit && item.componentes && item.kitSelections) {
+                                    // Para cada componente do kit
+                                    for (let i = 0; i < item.componentes.length; i++) {
+                                        const comp = item.componentes[i];
+                                        // Cor escolhida para este componente (baseado no índice)
+                                        // Nota: kitSelections é um objeto { "0": {nome: "Azul"}, "1": ... }
+                                        const selectedColorName = item.kitSelections[i] ? item.kitSelections[i].nome : null;
+                                        
+                                        if (selectedColorName) {
+                                            const compRef = db.collection('pecas').doc(comp.id);
+                                            const compDoc = await transaction.get(compRef);
+                                            
+                                            if (compDoc.exists) {
+                                                const dadosComp = compDoc.data();
+                                                const cores = dadosComp.cores || [];
+                                                
+                                                // Encontra a cor e baixa estoque
+                                                const colorIndex = cores.findIndex(c => c.nome === selectedColorName);
+                                                
+                                                if (colorIndex !== -1) {
+                                                    const qtdBaixar = item.quantity * comp.quantidade;
+                                                    const novaQtd = (parseInt(cores[colorIndex].quantidade) || 0) - qtdBaixar;
+                                                    cores[colorIndex].quantidade = novaQtd < 0 ? 0 : novaQtd;
+                                                    transaction.update(compRef, { cores: cores });
+                                                }
+                                            }
+                                        }
+                                    }
+                                } 
+                                // Lógica para Produtos Normais
+                                else if (item.id) {
+                                    const produtoRef = db.collection('pecas').doc(item.id);
+                                    const produtoDoc = await transaction.get(produtoRef);
+
+                                    if (!produtoDoc.exists) {
+                                        console.warn(`Produto ${item.id} não encontrado, ignorando.`);
+                                        continue;
+                                    }
+
+                                    const dadosProd = produtoDoc.data();
+                                    const cores = dadosProd.cores || [];
+                                    let estoqueAlterado = false;
+
+                                    // Atualizar a quantidade da cor específica
+                                    const novasCores = cores.map(cor => {
+                                        // Tenta casar a cor do pedido com a cor do produto
+                                        const nomeCorPedido = item.cor ? item.cor.nome : null;
+                                        
+                                        // Se for a cor certa OU se o produto só tiver uma cor
+                                        if (cor.nome === nomeCorPedido || (!nomeCorPedido && cores.length === 1)) {
+                                            const novaQtd = parseInt(cor.quantidade || 0) - item.quantity;
+                                            cor.quantidade = novaQtd < 0 ? 0 : novaQtd; // Evita negativo
+                                            estoqueAlterado = true;
+                                        }
+                                        return cor;
+                                    });
+
+                                    // Salvar atualização no produto
+                                    if (estoqueAlterado) {
+                                        transaction.update(produtoRef, { cores: novasCores });
+                                    }
+                                }
+                            }
+
+                            // Marcar pedido como processado
+                            const pedidoRef = db.collection('pedidos').doc(pedidoId);
+                            transaction.update(pedidoRef, { estoque_baixado: true });
+                        });
+                        
+                        console.log(`✅ Pedido ${pedidoId} processado com sucesso!`);
+
+                    } catch (err) {
+                        console.error(`Erro no pedido ${pedidoId}:`, err);
+                    }
+                }
+
+                // Esconde o aviso depois de 2 segundos
+                setTimeout(() => statusDiv.classList.add('hidden'), 2000);
+              });
         }
     </script>
 </body>
