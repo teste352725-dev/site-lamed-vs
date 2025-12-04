@@ -26,6 +26,10 @@ let kitSelections = {};
 let currentUser = null;
 const TAXA_JUROS = 0.0549;
 
+// Variáveis para controle do Carrossel (Correção do Erro)
+let mainSplideInstance = null;
+let thumbSplideInstance = null;
+
 // Elementos do DOM
 const elements = {
     cartOverlay: document.getElementById('cart-overlay'),
@@ -57,17 +61,22 @@ const elements = {
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
+    
+    // Autenticação
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         atualizarIconeUsuario(user);
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
         checkAuthPrompt(user);
     });
+
+    // Carrinho e Dados
     validarELimparCarrinho();
     updateCartUI(); 
     carregarDadosLoja(); 
     setupEventListeners();
 
+    // Animação de Scroll
     const observerOptions = { threshold: 0.1 };
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
@@ -77,7 +86,7 @@ function init() {
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
 }
 
-// --- UTILITÁRIOS E HELPERS ---
+// --- UTILITÁRIOS ---
 function formatarReal(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
 function isSudeste(cep) {
@@ -85,7 +94,6 @@ function isSudeste(cep) {
     const cepClean = cep.replace(/\D/g, '');
     if (cepClean.length !== 8) return false;
     const prefix = parseInt(cepClean.substring(0, 2)); 
-    // SP: 01-19, RJ: 20-28, ES: 29, MG: 30-39
     return (prefix >= 1 && prefix <= 39);
 }
 
@@ -95,7 +103,7 @@ function isHanukahProduct(item) {
     return term.includes('hanukah') || term.includes('chanukiá') || term.includes('chanuká') || term.includes('judaica');
 }
 
-// --- PROMPT DE LOGIN ---
+// --- LOGIN PROMPT ---
 function checkAuthPrompt(user) {
     if (user) {
         if (elements.authPromptModal) elements.authPromptModal.classList.add('hidden');
@@ -134,7 +142,7 @@ async function atualizarIconeUsuario(user) {
     }
 }
 
-// --- CARRINHO E NAVEGAÇÃO ---
+// --- CARRINHO ---
 function validarELimparCarrinho() {
     const savedCart = localStorage.getItem('lamedCart');
     if (savedCart) {
@@ -220,6 +228,7 @@ async function checkFavoriteStatus(productId) {
     } catch (e) { console.error(e); }
 }
 
+// --- ROTEAMENTO ---
 function navegarParaColecoes() {
     if (elements.mobileMenu && elements.mobileMenu.classList.contains('active')) elements.mobileMenu.classList.remove('active');
     if (activeCollections.length === 1) window.location.hash = `#/colecao/${activeCollections[0].id}`;
@@ -228,27 +237,42 @@ function navegarParaColecoes() {
 
 function handleRouting() {
     const hash = window.location.hash;
-    if (hash.startsWith('#/produto/')) showPage('page-product-detail', hash.split('/')[2]);
+    if (hash.startsWith('#/produto/')) {
+        const prodId = hash.split('/')[2];
+        showPage('page-product-detail', prodId);
+    }
     else if (hash.startsWith('#/colecao/')) showPage('page-single-collection', null, hash.split('/')[2]);
     else if (hash === '#colecoes') showPage('page-collections-list');
     else showPage('page-home');
 }
 
 function showPage(pageId, param1 = null, param2 = null) {
+    // Esconde todas as páginas principais
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    
+    // Esconde containers específicos dentro da página de coleção/produto
     document.getElementById('product-detail-view').classList.add('hidden');
     document.getElementById('collection-gallery').classList.add('hidden');
 
-    if (pageId === 'page-home') document.getElementById('page-home').classList.add('active');
+    if (pageId === 'page-home') {
+        document.getElementById('page-home').classList.add('active');
+    }
     else if (pageId === 'page-single-collection') {
         document.getElementById('page-collection').classList.add('active');
         document.getElementById('collection-gallery').classList.remove('hidden');
         renderizarGridColecao(param2);
-    } else if (pageId === 'page-product-detail') {
-        document.getElementById('page-collection').classList.add('active');
-        if (products.length === 0) carregarDadosLoja().then(() => showProductDetail(param1));
-        else showProductDetail(param1);
-    } else if (pageId === 'page-collections-list') {
+    } 
+    else if (pageId === 'page-product-detail') {
+        document.getElementById('page-collection').classList.add('active'); // Usa a estrutura da pág de coleção
+        
+        // Verifica se os produtos já carregaram
+        if (products.length === 0) {
+            carregarDadosLoja().then(() => showProductDetail(param1));
+        } else {
+            showProductDetail(param1);
+        }
+    } 
+    else if (pageId === 'page-collections-list') {
         document.getElementById('page-collections-list').classList.add('active');
         renderizarListaDeColecoes(); 
     }
@@ -266,7 +290,7 @@ async function carregarDadosLoja() {
         
         renderizarSecoesColecoes(); 
         popularPreviewColecao();    
-        handleRouting();            
+        // Não chama handleRouting aqui para não sobrescrever a navegação inicial se já estiver correta
     } catch (err) { console.error("Erro dados:", err); }
 }
 
@@ -410,11 +434,12 @@ function renderizarGridColecao(collectionId) {
     prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
 }
 
-// --- DETALHES DO PRODUTO ---
+// --- DETALHES DO PRODUTO (CORRIGIDO PARA SPLIDE) ---
 function showProductDetail(id) {
     currentProduct = products.find(p => p.id === id);
     if (!currentProduct) return;
     
+    // Reset de variáveis
     selectedSize = null; selectedColor = null; 
     kitSelections = {};
     
@@ -433,6 +458,7 @@ function showProductDetail(id) {
         ${currentProduct.desconto > 0 ? `<span class="ml-2 text-lg text-gray-400 line-through">${formatarReal(currentProduct.preco)}</span>` : ''}
     `;
     
+    // CORREÇÃO SPLIDE: Iniciar Carrossel de forma segura
     setupSplideCarousel(); 
     
     const isKit = currentProduct.categoria === 'kit';
@@ -476,6 +502,8 @@ function showProductDetail(id) {
     renderRecommendations(currentProduct);
     updateAddToCartButton();
     if(currentUser) checkFavoriteStatus(currentProduct.id);
+    
+    // Exibe o painel
     document.getElementById('collection-gallery').classList.add('hidden');
     document.getElementById('product-detail-view').classList.remove('hidden');
 }
@@ -567,7 +595,48 @@ function renderColors() {
     });
 }
 
-// --- FUNÇÕES DE CARRINHO ---
+function renderRecommendations(current) {
+    const container = document.getElementById('related-products-container');
+    if (!container) return;
+    container.innerHTML = '';
+    const suggestions = products.filter(p => p.id !== current.id).sort(() => 0.5 - Math.random()).slice(0, 4);
+    if (suggestions.length > 0) {
+        const title = document.createElement('h3');
+        title.className = "serif text-2xl text-center mt-12 mb-6 text-[--cor-texto]";
+        title.textContent = "Você também pode gostar";
+        container.appendChild(title);
+        const grid = document.createElement('div');
+        grid.className = "grid grid-cols-2 md:grid-cols-4 gap-4";
+        suggestions.forEach(p => grid.appendChild(criarCardProduto(p)));
+        container.appendChild(grid);
+    }
+}
+
+// CORREÇÃO FUNDAMENTAL: Destrói instâncias anteriores para evitar erro no Splide
+function setupSplideCarousel() {
+    // Se já existirem, destrói antes de recriar
+    if (mainSplideInstance) { mainSplideInstance.destroy(); mainSplideInstance = null; }
+    if (thumbSplideInstance) { thumbSplideInstance.destroy(); thumbSplideInstance = null; }
+
+    const mainList = document.getElementById('main-carousel-list');
+    const thumbList = document.getElementById('thumbnail-carousel-list');
+    mainList.innerHTML = ''; thumbList.innerHTML = '';
+    
+    const images = currentProduct.imagens.length > 0 ? currentProduct.imagens : ['https://placehold.co/600x800/eee/ccc?text=Sem+imagem'];
+    images.forEach((img) => {
+        mainList.innerHTML += `<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" class="h-full w-auto object-contain"></li>`;
+        thumbList.innerHTML += `<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer"></li>`;
+    });
+
+    // Cria novas instâncias e salva nas variáveis globais
+    mainSplideInstance = new Splide('#main-carousel', { type: 'fade', rewind: true, pagination: false, arrows: true });
+    thumbSplideInstance = new Splide('#thumbnail-carousel', { fixedWidth: 60, fixedHeight: 60, gap: 10, rewind: true, pagination: false, isNavigation: true, arrows: false });
+    
+    mainSplideInstance.sync(thumbSplideInstance);
+    mainSplideInstance.mount();
+    thumbSplideInstance.mount();
+}
+
 function selectSize(el) {
     document.querySelectorAll('.size-option').forEach(o => o.classList.remove('selected'));
     el.classList.add('selected');
@@ -580,7 +649,9 @@ function updateAddToCartButton() {
     if(!btn) return;
     
     const stockTotal = currentProduct.cores ? currentProduct.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
-    if (stockTotal <= 0 && currentProduct.categoria !== 'kit') { // Kits gerenciam estoque pelos componentes
+    
+    // Se for kit, estoque é complexo (ignora), se for normal e 0, esgota
+    if (stockTotal <= 0 && currentProduct.categoria !== 'kit') {
         btn.disabled = true;
         btn.textContent = "ESGOTADO";
         btn.classList.add('bg-gray-400');
@@ -734,6 +805,7 @@ function closeCheckoutModal() { elements.checkoutModal.classList.add('hidden'); 
 function updateCheckoutSummary() {
     const summary = elements.checkoutSummary;
     summary.innerHTML = ''; let total = 0;
+    
     let hanukahSubtotal = 0;
     
     cart.forEach(item => { 
@@ -753,6 +825,7 @@ function updateCheckoutSummary() {
     const pgto = document.querySelector('input[name="pagamento"]:checked')?.value;
     let final = total;
     
+    // RESTAURADO: Desconto 5% no PIX
     if (pgto === 'PIX') { 
         const desc = total * 0.05; 
         final -= desc; 
@@ -801,6 +874,7 @@ function preencherParcelas() {
         let val = total;
         let suffix = '(sem juros)';
         
+        // RESTAURADO: 1x e 2x sem juros, demais com juros
         if(i > 2) {
             val = total * (1 + TAXA_JUROS);
             suffix = '(c/ juros)';
@@ -822,7 +896,7 @@ async function finalizarPedido(formData) {
         produtos: cart, 
         total: parseFloat(elements.checkoutTotal.textContent.replace(/[^\d,]/g,'').replace(',','.')), 
         data: firebase.firestore.FieldValue.serverTimestamp(), 
-        status: 'processando', 
+        status: 'pendente', 
         userId: currentUser ? currentUser.uid : null,
         estoque_baixado: false 
     };
@@ -830,6 +904,7 @@ async function finalizarPedido(formData) {
     try {
         const ref = await db.collection('pedidos').add(pedido);
         
+        // --- WHATSAPP DETALHADO ---
         let msg = `*Novo Pedido #${ref.id.slice(0,6).toUpperCase()}*\n`;
         msg += `*Cliente:* ${cliente.nome}\n`;
         msg += `*Pagamento:* ${pedido.pagamento}`;
@@ -874,11 +949,5 @@ async function finalizarPedido(formData) {
         alert("Erro ao enviar pedido: " + e.message); 
     }
 }
-
-// Utilitários
-function formatarReal(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-function openCart() { elements.cartOverlay.classList.add('visivel'); elements.cartDrawer.classList.add('open'); }
-function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); }
-function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggle('hidden'); e.currentTarget.querySelector('.accordion-icon').classList.toggle('rotate'); }
 
 document.addEventListener('DOMContentLoaded', init);
