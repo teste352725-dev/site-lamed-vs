@@ -275,3 +275,22 @@ body {
     z-index: 2;
 }
 .hero-content { position: relative; z-index: 3; }
+
+/* Animação Seta Sidebar */
+.rotate-180 {
+    transform: rotate(180deg);
+}
+
+/* Sidebar Custom */
+#sidebar-menu {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Esconder barra de rolagem da sidebar mas manter funcional */
+#sidebar-menu nav::-webkit-scrollbar {
+    width: 4px;
+}
+#sidebar-menu nav::-webkit-scrollbar-thumb {
+    background-color: #E5E0D8;
+    border-radius: 4px;
+}
