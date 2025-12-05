@@ -89,11 +89,16 @@
                 </div>
                 <select id="filter-category" class="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 bg-white text-sm focus:outline-none focus:border-[--cor-ouro-acento]">
                     <option value="all">Todas as Categorias</option>
-                    <option value="mesa_posta">Mesa Posta</option>
+                    <option value="combo">Combos / Kits</option>
                     <option value="vestido">Vestidos</option>
                     <option value="conjunto">Conjuntos</option>
                     <option value="calca">Calças</option>
                     <option value="camisa">Camisas</option>
+                    <option value="saia">Saias</option>
+                    <option value="mesa_posta">Mesa Posta (Geral)</option>
+                    <option value="lugar_americano">Lugar Americano</option>
+                    <option value="guardanapo">Guardanapo</option>
+                    <option value="caminho_mesa">Caminho de Mesa</option>
                 </select>
             </div>
         </div>
@@ -133,8 +138,12 @@
                         <button type="button" class="tab-button py-3 border-b-2 border-[--cor-marrom-cta] font-medium text-sm text-[--cor-marrom-cta] whitespace-nowrap" data-tab="basic">
                             Informações Básicas
                         </button>
-                        <button type="button" class="tab-button py-3 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="colors">
+                        <button type="button" id="tab-btn-colors" class="tab-button py-3 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="colors">
                             Cores e Estoque
+                        </button>
+                        <!-- Aba COMBO (Controlada pelo Tipo de Produto) -->
+                        <button type="button" id="tab-btn-combo" class="tab-button hidden py-3 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="combo">
+                            Montar Combo
                         </button>
                         <button type="button" class="tab-button py-3 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="images">
                             Imagens
@@ -147,9 +156,20 @@
                     
                     <!-- Aba: Informações Básicas -->
                     <div id="tab-basic" class="tab-panel active space-y-6">
+                        
+                        <!-- CAMPO: TIPO DE PRODUTO -->
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Tipo de Produto</label>
+                            <select id="product-type" class="w-full border border-gray-300 rounded-md p-2 bg-white font-medium" onchange="toggleProductType()">
+                                <option value="standard">Produto Padrão (Peça Única)</option>
+                                <option value="combo">Combo / Kit (Conjunto de Peças)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1" id="type-description">Produto físico com controle de estoque direto.</p>
+                        </div>
+
                         <div class="grid grid-cols-1 gap-6">
                             <div>
-                                <label for="product-name" class="block text-sm font-medium text-gray-700 mb-2">Nome do Produto *</label>
+                                <label for="product-name" class="block text-sm font-medium text-gray-700 mb-2">Nome *</label>
                                 <input type="text" id="product-name" required class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-[--cor-ouro-acento]">
                             </div>
 
@@ -166,14 +186,22 @@
                             <div id="price-preview" class="text-sm text-green-600 font-medium -mt-4"></div>
 
                             <div>
-                                <label for="product-category" class="block text-sm font-medium text-gray-700 mb-2">Categoria *</label>
+                                <label for="product-category" class="block text-sm font-medium text-gray-700 mb-2">Categoria Principal *</label>
                                 <select id="product-category" required class="w-full border border-gray-300 rounded-md p-2 bg-white">
-                                    <option value="vestido">Vestido</option>
-                                    <option value="conjunto">Conjunto</option>
-                                    <option value="calca">Calça</option>
-                                    <option value="camisa">Camisa</option>
-                                    <option value="saia">Saia</option>
-                                    <option value="mesa_posta">Mesa Posta</option>
+                                    <optgroup label="Alfaiataria">
+                                        <option value="vestido">Vestido</option>
+                                        <option value="conjunto">Conjunto</option>
+                                        <option value="calca">Calça</option>
+                                        <option value="camisa">Camisa</option>
+                                        <option value="saia">Saia</option>
+                                    </optgroup>
+                                    <optgroup label="Mesa Posta & Casa">
+                                        <option value="mesa_posta">Mesa Posta (Geral)</option>
+                                        <option value="lugar_americano">Lugar Americano</option>
+                                        <option value="guardanapo">Guardanapo</option>
+                                        <option value="caminho_mesa">Caminho de Mesa</option>
+                                        <option value="porta_guardanapo">Porta Guardanapo</option>
+                                    </optgroup>
                                     <option value="outros">Outros</option>
                                 </select>
                             </div>
@@ -210,7 +238,7 @@
                         </div>
                     </div>
 
-                    <!-- Aba: Cores -->
+                    <!-- Aba: Cores (Escondida se for Combo) -->
                     <div id="tab-colors" class="tab-panel hidden space-y-6">
                         <div class="bg-white p-4 rounded-lg border border-gray-200">
                             <h4 class="font-medium text-gray-800 mb-4">Adicionar Nova Cor</h4>
@@ -230,6 +258,30 @@
 
                         <div id="colors-list" class="space-y-3">
                             <!-- Lista de cores renderizada via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Aba: Composição do Combo (NOVA) -->
+                    <div id="tab-combo" class="tab-panel hidden space-y-4">
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100 text-sm text-purple-800">
+                            <i class="fa-solid fa-layer-group mr-2"></i>
+                            <strong>Montando um Combo:</strong> Adicione as peças que compõem este combo. O cliente escolherá a variante (cor/tamanho) de cada peça.
+                        </div>
+
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-medium text-gray-800 mb-2">Buscar Peça para Adicionar</h4>
+                            <div class="flex gap-2 relative">
+                                <input type="text" id="search-component" placeholder="Digite o nome da peça (ex: Camisa Linho)..." class="w-full border border-gray-300 rounded-md p-2 text-sm" oninput="buscarComponentes(this.value)">
+                                <div id="component-search-results" class="absolute top-full left-0 w-full bg-white border border-gray-200 shadow-lg rounded-md mt-1 max-h-48 overflow-y-auto hidden z-20"></div>
+                            </div>
+                        </div>
+
+                        <h4 class="font-medium text-gray-800 mt-4 flex justify-between items-center">
+                            Itens no Combo
+                            <span id="combo-items-count" class="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">0</span>
+                        </h4>
+                        <div id="combo-components-list" class="space-y-3">
+                            <p class="text-gray-400 text-sm text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">Nenhum item adicionado ao combo.</p>
                         </div>
                     </div>
 
@@ -262,7 +314,7 @@
                         <div id="selected-images-preview" class="grid grid-cols-3 gap-3">
                             <!-- Lista de imagens renderizada via JS -->
                         </div>
-                        <p class="text-xs text-center text-gray-500">A primeira imagem será a capa.</p>
+                        <p class="text-xs text-center text-gray-500">A primeira imagem será a capa. Imagens das peças do combo são adicionadas automaticamente.</p>
                     </div>
 
                 </div>
@@ -326,6 +378,7 @@
         let produtos = [];
         let selectedProductImages = [];
         let productColors = [];
+        let comboComponents = []; 
         let collectionsMap = {};
 
         const elementos = {
@@ -343,16 +396,13 @@
                 }
             });
 
-            // Abas
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.addEventListener('click', () => switchTab(btn.dataset.tab));
             });
 
-            // Preview Preço
             document.getElementById('product-price').addEventListener('input', atualizarPreviewPreco);
             document.getElementById('product-discount').addEventListener('input', atualizarPreviewPreco);
             
-            // Filtro
             document.getElementById('search-input').addEventListener('input', filtrarProdutos);
             document.getElementById('filter-category').addEventListener('change', filtrarProdutos);
         });
@@ -386,15 +436,27 @@
 
             lista.forEach(p => {
                 const img = (p.imagens && p.imagens[0]) ? p.imagens[0] : 'https://placehold.co/300x400/eee/ccc?text=Sem+Imagem';
-                const stockTotal = p.cores ? p.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
+                
+                let badgeEstoque = '';
+                // Verifica pelo TIPO
+                if (p.tipo === 'combo') {
+                    badgeEstoque = `<span class="text-xs bg-purple-600 text-white px-2 py-1 rounded font-bold shadow-sm">COMBO</span>`;
+                } else {
+                    const stockTotal = p.cores ? p.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
+                    badgeEstoque = `<span class="text-xs bg-white/90 px-2 py-1 rounded font-bold shadow-sm text-gray-700">${stockTotal} un.</span>`;
+                }
+
                 const colName = p.colecaoId ? (collectionsMap[p.colecaoId] || 'Geral') : 'Geral';
+                
+                // Formatação bonita da categoria
+                const catFormatada = p.categoria ? p.categoria.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Sem Categoria';
 
                 grid.innerHTML += `
                     <div class="card cursor-pointer group" onclick="abrirModalProduto('${p.id}')">
                         <div class="relative h-48 bg-gray-50 border-b border-gray-100 overflow-hidden">
                             <img src="${img}" class="w-full h-full object-cover">
                             <div class="absolute top-2 right-2">
-                                <span class="text-xs bg-white/90 px-2 py-1 rounded font-bold shadow-sm text-gray-700">${stockTotal} un.</span>
+                                ${badgeEstoque}
                             </div>
                             <div class="absolute top-2 left-2">
                                 <span class="status-badge ${p.status === 'active' ? 'status-active' : 'status-inactive'} shadow-sm border border-white/50">
@@ -405,7 +467,7 @@
                         <div class="p-4 flex-1 flex flex-col">
                             <div class="mb-1">
                                 <h3 class="font-semibold text-gray-800 text-base truncate">${p.nome}</h3>
-                                <p class="text-xs text-gray-500 capitalize">${p.categoria === 'mesa_posta' ? 'Mesa Posta' : p.categoria} • ${colName}</p>
+                                <p class="text-xs text-gray-500 capitalize">${catFormatada} • ${colName}</p>
                             </div>
                             <div class="flex justify-between items-end mt-auto pt-3 border-t border-gray-50">
                                 <span class="font-bold text-[--cor-marrom-cta] text-lg">R$ ${p.preco}</span>
@@ -421,14 +483,153 @@
             const cat = document.getElementById('filter-category').value;
             const filtrados = produtos.filter(p => {
                 const matchTermo = p.nome.toLowerCase().includes(termo);
-                const matchCat = cat === 'all' || p.categoria === cat;
+                const matchCat = cat === 'all' || 
+                                 (cat === 'combo' ? p.tipo === 'combo' : p.categoria === cat);
                 return matchTermo && matchCat;
             });
             renderizarGrid(filtrados);
         }
 
+        // --- Lógica de TIPO DE PRODUTO ---
+        window.toggleProductType = function() {
+            const type = document.getElementById('product-type').value;
+            const tabBtnCombo = document.getElementById('tab-btn-combo');
+            const tabBtnColors = document.getElementById('tab-btn-colors');
+            const desc = document.getElementById('type-description');
+            
+            if (type === 'combo') {
+                tabBtnCombo.classList.remove('hidden');
+                tabBtnColors.classList.add('hidden'); 
+                desc.textContent = "Agrupamento de produtos existentes. O cliente monta o combo.";
+            } else {
+                tabBtnCombo.classList.add('hidden');
+                tabBtnColors.classList.remove('hidden');
+                desc.textContent = "Produto físico com controle de estoque direto.";
+            }
+        };
+
+        window.buscarComponentes = function(termo) {
+            const resultsDiv = document.getElementById('component-search-results');
+            if (termo.length < 2) { resultsDiv.classList.add('hidden'); return; }
+
+            const matches = produtos.filter(p => 
+                p.tipo !== 'combo' && 
+                p.nome.toLowerCase().includes(termo.toLowerCase())
+            );
+
+            resultsDiv.innerHTML = '';
+            if (matches.length > 0) {
+                matches.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = "flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer text-sm border-b border-gray-100 last:border-0";
+                    const thumb = p.imagens && p.imagens[0] ? p.imagens[0] : 'https://placehold.co/50';
+                    div.innerHTML = `
+                        <img src="${thumb}" class="w-8 h-8 rounded object-cover">
+                        <div>
+                            <div class="font-medium">${p.nome}</div>
+                            <div class="text-xs text-gray-500">${p.categoria}</div>
+                        </div>
+                    `;
+                    div.onclick = () => adicionarComponente(p);
+                    resultsDiv.appendChild(div);
+                });
+                resultsDiv.classList.remove('hidden');
+            } else {
+                resultsDiv.innerHTML = '<div class="p-2 text-xs text-gray-500">Nada encontrado.</div>';
+                resultsDiv.classList.remove('hidden');
+            }
+        };
+
+        window.adicionarComponente = function(produto) {
+            const existing = comboComponents.find(c => c.id === produto.id);
+            if(existing) {
+                if(confirm("Este item já está no combo. Deseja aumentar a quantidade?")) {
+                    existing.quantidade++;
+                    renderizarComponentesCombo();
+                }
+            } else {
+                comboComponents.push({
+                    id: produto.id,
+                    nome: produto.nome,
+                    categoria: produto.categoria,
+                    imagem: produto.imagens ? produto.imagens[0] : null,
+                    quantidade: 1
+                });
+                
+                // Adiciona imagem automaticamente
+                if (produto.imagens && produto.imagens.length > 0) {
+                    const imgUrl = produto.imagens[0];
+                    if (!selectedProductImages.includes(imgUrl)) {
+                        selectedProductImages.push(imgUrl);
+                        atualizarPreviewImagensSelecionadas();
+                        mostrarToast("Imagem da peça adicionada à galeria do combo!");
+                    }
+                }
+            }
+            
+            document.getElementById('search-component').value = '';
+            document.getElementById('component-search-results').classList.add('hidden');
+            renderizarComponentesCombo();
+        };
+
+        function renderizarComponentesCombo() {
+            const list = document.getElementById('combo-components-list');
+            const countBadge = document.getElementById('combo-items-count');
+            list.innerHTML = '';
+
+            countBadge.textContent = comboComponents.reduce((acc, c) => acc + c.quantidade, 0);
+
+            if (comboComponents.length === 0) {
+                list.innerHTML = '<p class="text-gray-400 text-sm text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">Nenhum item adicionado ao combo.</p>';
+                return;
+            }
+
+            comboComponents.forEach((comp, idx) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm";
+                
+                const imgHtml = comp.imagem ? `<img src="${comp.imagem}" class="w-10 h-10 rounded object-cover border border-gray-100">` : `<div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center"><i class="fa-solid fa-shirt text-gray-300"></i></div>`;
+                
+                const catLabel = comp.categoria ? comp.categoria.replace('_', ' ').toUpperCase() : '-';
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-3 flex-1">
+                        ${imgHtml}
+                        <div>
+                            <span class="font-medium text-gray-800 text-sm block">${comp.nome}</span>
+                            <span class="text-[10px] text-gray-400 font-bold bg-gray-100 px-1.5 py-0.5 rounded">${catLabel}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 border-l pl-3 ml-3 border-gray-100">
+                        <div class="flex items-center bg-gray-50 border border-gray-200 rounded-md">
+                            <button type="button" class="px-2 py-1 text-gray-500 hover:bg-gray-200" onclick="alterarQtdComponente(${idx}, -1)">-</button>
+                            <span class="px-2 text-xs font-bold w-6 text-center">${comp.quantidade}</span>
+                            <button type="button" class="px-2 py-1 text-gray-500 hover:bg-gray-200" onclick="alterarQtdComponente(${idx}, 1)">+</button>
+                        </div>
+                        <button type="button" onclick="removerComponente(${idx})" class="text-red-400 hover:text-red-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        window.alterarQtdComponente = (idx, delta) => {
+            const novaQtd = comboComponents[idx].quantidade + delta;
+            if (novaQtd >= 1) {
+                comboComponents[idx].quantidade = novaQtd;
+                renderizarComponentesCombo();
+            }
+        };
+
+        window.removerComponente = (idx) => {
+            comboComponents.splice(idx, 1);
+            renderizarComponentesCombo();
+        };
+
         // --- Modal Logic ---
-        function abrirModalProduto(productId = null) {
+        window.abrirModalProduto = function(productId = null) {
             resetModalProduto();
             if (productId) {
                 const produto = produtos.find(p => p.id === productId);
@@ -441,17 +642,21 @@
             }
             elementos.productModal.classList.add("visivel");
             switchTab("basic");
-        }
+            toggleProductType(); // Ajusta abas
+        };
 
-        function fecharModalProduto() { elementos.productModal.classList.remove("visivel"); }
+        window.fecharModalProduto = function() { elementos.productModal.classList.remove("visivel"); };
 
         function resetModalProduto() {
             document.getElementById("product-form").reset();
             document.getElementById("product-id").value = "";
+            document.getElementById("product-type").value = "standard"; 
             selectedProductImages = [];
             productColors = [];
+            comboComponents = [];
             atualizarPreviewImagensSelecionadas();
             atualizarListaCores();
+            renderizarComponentesCombo();
             atualizarPreviewPreco();
         }
 
@@ -462,6 +667,7 @@
             document.getElementById("product-discount").value = produto.desconto || 0;
             document.getElementById("product-description").value = produto.descricao || '';
             document.getElementById("product-category").value = produto.categoria;
+            document.getElementById("product-type").value = produto.tipo || (produto.categoria === 'combo' ? 'combo' : 'standard');
             document.getElementById("product-status").value = produto.status || 'active';
             document.getElementById("product-tags").value = produto.tags || "";
             document.getElementById("product-order").value = produto.ordem || 0;
@@ -469,37 +675,51 @@
 
             selectedProductImages = [...(produto.imagens || [])];
             atualizarPreviewImagensSelecionadas();
+            
             productColors = [...(produto.cores || [])];
             atualizarListaCores();
+            
+            comboComponents = [...(produto.componentes || [])];
+            renderizarComponentesCombo();
+
             atualizarPreviewPreco();
         }
 
-        async function salvarProduto(event) {
+        window.salvarProduto = async function(event) {
             event.preventDefault();
             const id = document.getElementById("product-id").value;
             const nome = document.getElementById("product-name").value.trim();
             const preco = parseFloat(document.getElementById("product-price").value);
+            const categoria = document.getElementById("product-category").value;
+            const tipo = document.getElementById("product-type").value;
 
             if (!nome || isNaN(preco)) { alert("Preencha nome e preço."); return; }
+            
+            if (tipo === 'combo' && comboComponents.length === 0) {
+                alert("Um Combo precisa ter pelo menos 1 peça adicionada.");
+                switchTab('combo');
+                return;
+            }
 
             const data = {
                 nome: nome,
                 preco: preco,
                 desconto: parseInt(document.getElementById("product-discount").value) || 0,
                 descricao: document.getElementById("product-description").value.trim(),
-                categoria: document.getElementById("product-category").value,
+                categoria: categoria,
+                tipo: tipo, 
                 status: document.getElementById("product-status").value,
                 ordem: parseInt(document.getElementById("product-order").value) || 0,
                 tags: document.getElementById("product-tags").value,
                 colecaoId: document.getElementById("product-collection").value || null,
                 imagens: selectedProductImages,
-                cores: productColors,
+                cores: tipo === 'standard' ? productColors : [], 
+                componentes: tipo === 'combo' ? comboComponents : [], 
                 updatedAt: new Date()
             };
 
             try {
                 const btn = document.getElementById('save-product-btn');
-                const originalText = btn.innerHTML;
                 btn.disabled = true; 
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Salvando...';
                 
@@ -519,18 +739,17 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-save mr-2"></i><span id="save-button-text">Salvar</span>';
             }
-        }
+        };
 
-        async function deletarProduto() {
+        window.deletarProduto = async function() {
             const id = document.getElementById("product-id").value;
             if (!id || !confirm("Tem certeza?")) return;
             await db.collection("pecas").doc(id).delete();
             fecharModalProduto();
             mostrarToast("Produto excluído.");
-        }
+        };
 
-        // --- Cores ---
-        function adicionarCor() {
+        window.adicionarCor = function() {
             const nome = document.getElementById("new-color-name").value.trim();
             const hex = document.getElementById("new-color-hex-text").value.trim();
             const quantidade = parseInt(document.getElementById("new-color-quantity").value) || 0;
@@ -539,7 +758,7 @@
             document.getElementById("new-color-name").value = '';
             document.getElementById("new-color-quantity").value = '';
             atualizarListaCores();
-        }
+        };
 
         function atualizarListaCores() {
             const container = document.getElementById("colors-list");
@@ -556,32 +775,25 @@
                             <div class="text-xs text-gray-500">Qtd: ${cor.quantidade}</div>
                         </div>
                     </div>
-                    <button type="button" onclick="removerCor(${i})" class="text-red-500 hover:text-red-700 p-2">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
+                    <button type="button" onclick="removerCor(${i})" class="text-red-500 hover:text-red-700 p-2"><i class="fa-solid fa-trash"></i></button>
                 </div>
             `).join("");
         }
 
-        window.removerCor = (idx) => {
-            if(confirm('Remover cor?')) { productColors.splice(idx, 1); atualizarListaCores(); }
-        }
+        window.removerCor = (idx) => { if(confirm('Remover cor?')) { productColors.splice(idx, 1); atualizarListaCores(); } };
 
-        // --- Imagens e Galeria ---
-        function adicionarImagemUrl() {
+        window.adicionarImagemUrl = function() {
             const url = document.getElementById('new-image-url').value;
             if (url) { selectedProductImages.push(url); document.getElementById('new-image-url').value = ''; atualizarPreviewImagensSelecionadas(); }
-        }
+        };
 
-        async function handleFileUpload(input) {
+        window.handleFileUpload = async function(input) {
             const file = input.files[0];
             if(!file) return;
-            
             const btn = input.parentElement;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Enviando...';
             btn.disabled = true;
-
             try {
                 const ref = storage.ref(`produtos/${Date.now()}_${file.name}`);
                 await ref.put(file);
@@ -589,14 +801,10 @@
                 selectedProductImages.push(url);
                 atualizarPreviewImagensSelecionadas();
             } catch(e) { alert("Erro upload: " + e.message); }
-            finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                input.value = '';
-            }
-        }
+            finally { btn.innerHTML = originalText; btn.disabled = false; input.value = ''; }
+        };
 
-        async function abrirSeletorGaleria() {
+        window.abrirSeletorGaleria = async function() {
             elementos.galleryModal.classList.add('visivel');
             const grid = document.getElementById('gallery-picker-grid');
             grid.innerHTML = '<div class="col-span-3 text-center py-4">Carregando...</div>';
@@ -613,8 +821,8 @@
                     grid.appendChild(item);
                 });
             } catch(e) { console.error(e); }
-        }
-        function fecharSeletorGaleria() { elementos.galleryModal.classList.remove('visivel'); }
+        };
+        window.fecharSeletorGaleria = function() { elementos.galleryModal.classList.remove('visivel'); };
 
         function atualizarPreviewImagensSelecionadas() {
             const container = document.getElementById("selected-images-preview");
@@ -630,9 +838,14 @@
                 </div>
             `).join("");
         }
-        window.removerImagem = (i) => { selectedProductImages.splice(i, 1); atualizarPreviewImagensSelecionadas(); }
+        window.removerImagem = (i) => { selectedProductImages.splice(i, 1); atualizarPreviewImagensSelecionadas(); };
 
-        // --- Utilitários ---
+        function atualizarPreviewPreco() {
+            const p = parseFloat(document.getElementById('product-price').value) || 0;
+            const d = parseInt(document.getElementById('product-discount').value) || 0;
+            document.getElementById('price-preview').textContent = d > 0 ? `Final: R$ ${(p * (1 - d/100)).toFixed(2)}` : '';
+        }
+
         function switchTab(tab) {
             document.querySelectorAll('.tab-button').forEach(b => {
                 b.classList.remove('border-[--cor-marrom-cta]', 'text-[--cor-marrom-cta]');
@@ -644,12 +857,6 @@
             });
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
-        }
-
-        function atualizarPreviewPreco() {
-            const p = parseFloat(document.getElementById('product-price').value) || 0;
-            const d = parseInt(document.getElementById('product-discount').value) || 0;
-            document.getElementById('price-preview').textContent = d > 0 ? `Final: R$ ${(p * (1 - d/100)).toFixed(2)}` : '';
         }
 
         function mostrarToast(msg) {
