@@ -33,47 +33,120 @@
 
 <body class="antialiased">
 
-    <!-- CABEÇALHO -->
+    <!-- CABEÇALHO LIMPO -->
     <header class="sticky top-0 z-50 transition-all border-b border-[#E5E0D8]" style="background-color: var(--cor-fundo);">
         <div class="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
             
-            <!-- Esquerda: Menu & Ícone Usuário -->
-            <div class="flex items-center gap-4">
-                <button id="menu-button" class="md:hidden text-xl text-[--cor-texto] focus:outline-none">
+            <!-- Esquerda: Menu Hamburguer -->
+            <div class="flex items-center justify-start">
+                <button id="sidebar-toggle" class="text-2xl text-[--cor-texto] focus:outline-none hover:text-[--cor-ouro-acento] transition p-2">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-                <!-- Link Dinâmico do Usuário -->
-                <a href="minha-conta.html" id="header-user-icon-link" class="text-[--cor-texto] hover:text-[--cor-ouro-acento] transition-colors flex items-center justify-center w-8 h-8 rounded-full" title="Minha Conta">
-                    <i class="fa-regular fa-user text-xl"></i>
-                </a>
             </div>
 
-            <!-- Centro: Logo (Na mesma linha) -->
+            <!-- Centro: Logo -->
             <a href="#home" class="flex flex-row items-baseline justify-center group text-center gap-2">
                 <h1 class="text-4xl md:text-5xl text-[--cor-texto] leading-none allura">Laméd</h1>
                 <span class="text-xl gold-accent serif leading-none">vs</span>
             </a>
 
-            <!-- Direita: Link Coleção & Carrinho -->
-            <div class="flex items-center justify-end gap-5">
-                <a href="#" class="hidden md:inline text-xs font-medium tracking-widest text-[--cor-texto] hover:text-[--cor-ouro-acento] nav-collection-link uppercase transition-colors">Coleção</a>
-                
-                <button id="cart-btn" class="cart-btn relative text-[--cor-texto] hover:text-[--cor-ouro-acento] p-1">
+            <!-- Direita: Carrinho -->
+            <div class="flex items-center justify-end">
+                <button id="cart-btn" class="cart-btn relative text-[--cor-texto] hover:text-[--cor-ouro-acento] p-2">
                     <i class="fa-solid fa-bag-shopping text-xl"></i>
-                    <span id="cart-count" class="cart-item-count absolute -top-1 -right-2 bg-[--cor-ouro-acento] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm" style="display: none;">0</span>
+                    <span id="cart-count" class="cart-item-count absolute -top-1 -right-1 bg-[--cor-ouro-acento] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm" style="display: none;">0</span>
                 </button>
             </div>
         </div>
-        
-        <!-- Menu Mobile -->
-        <nav id="mobile-menu" class="md:hidden border-t border-[#E5E0D8] absolute w-full left-0 shadow-lg transform -translate-y-full transition-transform duration-300 -z-10 opacity-0" style="background-color: var(--cor-fundo);">
-            <div class="flex flex-col py-4">
-                <a href="#" class="px-6 py-3 hover:bg-[#F0EEE6] text-sm uppercase tracking-wide nav-collection-link text-[--cor-texto]">Coleção</a>
-                <a href="minha-conta.html" class="px-6 py-3 hover:bg-[#F0EEE6] text-sm uppercase tracking-wide text-[--cor-texto]">Minha Conta</a>
-                <a href="#contato" class="px-6 py-3 hover:bg-[#F0EEE6] text-sm uppercase tracking-wide text-[--cor-texto]">Contato</a>
-            </div>
-        </nav>
     </header>
+
+    <!-- SIDEBAR (MENU LATERAL ESQUERDO) -->
+    <div id="sidebar-overlay" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-opacity hidden"></div>
+    
+    <aside id="sidebar-menu" class="fixed top-0 left-0 h-full w-[80%] max-w-sm bg-[#FDFBF6] shadow-2xl z-[70] transform -translate-x-full transition-transform duration-300 flex flex-col">
+        
+        <!-- Topo da Sidebar: Usuário -->
+        <div class="p-6 border-b border-[#E5E0D8] bg-[#F8F6F0]">
+            <div class="flex justify-between items-start mb-4">
+                <div id="sidebar-user-area" class="flex items-center gap-3">
+                    <!-- Injetado via JS -->
+                    <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
+                    <div class="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+                <button id="close-sidebar" class="text-gray-400 hover:text-gray-800 text-xl px-2">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <a href="minha-conta.html" class="text-xs uppercase tracking-widest text-[--cor-ouro-acento] font-bold hover:underline">Minha Conta</a>
+        </div>
+
+        <!-- Links de Navegação -->
+        <nav class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1">
+                <li>
+                    <a href="#home" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">
+                        Início
+                    </a>
+                </li>
+                
+                <!-- Item com Sanfona: Coleções -->
+                <li>
+                    <div class="group">
+                        <button id="sidebar-collections-toggle" class="w-full flex justify-between items-center px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6] focus:outline-none">
+                            <span>Nossas Coleções</span>
+                            <i class="fa-solid fa-chevron-down text-xs transition-transform duration-300" id="sidebar-arrow"></i>
+                        </button>
+                        
+                        <!-- Submenu (Expandido) -->
+                        <div id="sidebar-submenu" class="hidden bg-white border-y border-[#E5E0D8]">
+                            <a href="#colecoes" class="block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">
+                                Ver Todas as Coleções
+                            </a>
+                            
+                            <!-- Categorias Específicas -->
+                            <a href="#/categoria/combo" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50 flex items-center gap-2">
+                                <i class="fa-solid fa-star text-[10px] text-purple-400"></i> Kits Mesa Posta
+                            </a>
+                            <a href="#/categoria/mesa_posta" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
+                                Mesa Posta Completa
+                            </a>
+                            <a href="#/categoria/lugar_americano" class="block px-10 py-2 text-[11px] text-gray-500 hover:text-[--cor-marrom-cta]">
+                                • Lugares Americanos
+                            </a>
+                            <a href="#/categoria/vestido" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
+                                Vestidos
+                            </a>
+                            <a href="#/categoria/conjunto" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
+                                Conjuntos
+                            </a>
+                            <a href="#/categoria/camisa" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
+                                Camisas
+                            </a>
+                            <a href="#/categoria/calca" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
+                                Calças
+                            </a>
+                        </div>
+                    </div>
+                </li>
+
+                <li>
+                    <a href="minha-conta.html" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">
+                        Meus Pedidos
+                    </a>
+                </li>
+                <li>
+                    <a href="#contato" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">
+                        Contato
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Rodapé da Sidebar -->
+        <div class="p-6 border-t border-[#E5E0D8] bg-[#F8F6F0] text-center">
+            <p class="text-[10px] text-gray-400">Laméd vs &copy; 2025</p>
+        </div>
+    </aside>
 
     <main class="main-container">
         
@@ -87,7 +160,7 @@
                 <div class="hero-content p-8 md:p-12 rounded-sm shadow-xl max-w-lg mx-4" style="background-color: rgba(253, 251, 246, 0.95);">
                     <h2 class="serif text-4xl md:text-5xl font-light mb-4 text-[--cor-texto]">Nova Coleção</h2>
                     <p class="text-sm md:text-base mb-8 tracking-[0.2em] text-[--cor-texto] uppercase">Na Terra como no Céu</p>
-                    <a href="#" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition nav-collection-link">Ver Coleção</a>
+                    <a href="#colecoes" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition">Ver Coleção</a>
                 </div>
             </section>
             
@@ -107,7 +180,7 @@
                             </ul>
                         </div>
                     </div>
-                    <a href="#" class="inline-block border border-[#dcdcdc] text-[--cor-texto] font-medium py-3 px-10 text-xs uppercase tracking-widest hover:bg-[#F0EEE6] transition nav-collection-link">Ver Loja Completa</a>
+                    <a href="#colecoes" class="inline-block border border-[#dcdcdc] text-[--cor-texto] font-medium py-3 px-10 text-xs uppercase tracking-widest hover:bg-[#F0EEE6] transition">Ver Loja Completa</a>
                 </div>
             </section>
             
@@ -204,8 +277,6 @@
                                 <p id="selected-size-display" class="text-xs text-gray-800 mt-2 font-medium hidden"></p>
                             </div>
 
-                            <!-- O JS vai injetar o seletor de cores aqui se houver -->
-
                             <div class="space-y-4 mb-8 pt-4 border-t border-[#E5E0D8]">
                                <button id="add-to-cart-button" class="w-full bg-[--cor-marrom-cta] text-white py-4 text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#4a2e18] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                    Selecione Opções
@@ -228,10 +299,9 @@
                                         <span class="accordion-icon">+</span>
                                     </button>
                                     <div class="accordion-content hidden px-2 pb-4">
+                                        <!-- Conteúdo injetado via JS -->
                                         <table class="w-full text-xs text-[--cor-texto]">
-                                            <thead class="bg-[#F8F6F0] font-medium">
-                                                <tr><th class="p-2 text-left">Tam</th><th class="p-2">Busto</th><th class="p-2">Cintura</th><th class="p-2">Quadril</th></tr>
-                                            </thead>
+                                            <thead class="bg-[#F8F6F0] font-medium"><tr><th class="p-2 text-left">Tam</th><th class="p-2">Busto</th><th class="p-2">Cintura</th><th class="p-2">Quadril</th></tr></thead>
                                             <tbody class="divide-y divide-[#E5E0D8]">
                                                 <tr><td class="p-2 font-bold">PP</td><td class="p-2 text-center">82-86</td><td class="p-2 text-center">62-66</td><td class="p-2 text-center">92-96</td></tr>
                                                 <tr><td class="p-2 font-bold">P</td><td class="p-2 text-center">86-90</td><td class="p-2 text-center">66-70</td><td class="p-2 text-center">96-100</td></tr>
@@ -289,7 +359,7 @@
 
             <form id="checkout-form" class="p-6 space-y-6">
                 
-                <!-- AVISO DE PRODUÇÃO E FRETE (NOVO) -->
+                <!-- AVISO DE PRODUÇÃO E FRETE -->
                 <div id="shipping-message-box" class="bg-orange-50 border border-orange-100 p-4 rounded text-sm text-[#643f21] mb-4">
                     <p class="font-bold mb-1 flex items-center gap-2">
                         <i class="fa-solid fa-clock"></i> Atenção à Produção:
