@@ -1,5 +1,5 @@
 // Configurações e Init do Firebase
-const firebaseConfig = {
+const appFirebaseConfig = {
     apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
     authDomain: "site-lamed.firebaseapp.com",
     databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
@@ -11,7 +11,12 @@ const firebaseConfig = {
 };
 
 let app;
-try { app = firebase.app(); } catch (e) { app = firebase.initializeApp(firebaseConfig); }
+try { 
+    app = firebase.app(); 
+} catch (e) { 
+    app = firebase.initializeApp(appFirebaseConfig); 
+}
+
 const db = firebase.firestore();
 const auth = firebase.auth();
 
@@ -22,16 +27,27 @@ let cart = [];
 let currentProduct = null;
 let selectedSize = null;
 let selectedColor = null;
-let kitSelections = {};
+let comboSelections = {};
 let currentUser = null;
 const TAXA_JUROS = 0.0549;
 
-// Variáveis para controle do Carrossel (Correção do Erro)
+// Controle Carrossel
 let mainSplideInstance = null;
 let thumbSplideInstance = null;
 
-// Elementos do DOM
+// Elementos DOM
 const elements = {
+    // Sidebar
+    sidebarToggle: document.getElementById('sidebar-toggle'),
+    sidebarMenu: document.getElementById('sidebar-menu'),
+    sidebarOverlay: document.getElementById('sidebar-overlay'),
+    closeSidebarBtn: document.getElementById('close-sidebar'),
+    sidebarUserArea: document.getElementById('sidebar-user-area'),
+    sidebarCollectionsToggle: document.getElementById('sidebar-collections-toggle'),
+    sidebarSubmenu: document.getElementById('sidebar-submenu'),
+    sidebarArrow: document.getElementById('sidebar-arrow'),
+
+    // Carrinho
     cartOverlay: document.getElementById('cart-overlay'),
     cartDrawer: document.getElementById('cart-drawer'),
     cartButton: document.getElementById('cart-btn'),
@@ -44,46 +60,99 @@ const elements = {
     selectedSizeDisplay: document.getElementById('selected-size-display'),
     menuButton: document.getElementById('menu-button'),
     mobileMenu: document.getElementById('mobile-menu'),
+    
+    // Checkout
     finalizarPedidoBtn: document.getElementById('finalizar-pedido-btn'),
     checkoutModal: document.getElementById('checkout-modal'),
     checkoutForm: document.getElementById('checkout-form'),
     checkoutSummary: document.getElementById('checkout-summary'),
     checkoutTotal: document.getElementById('checkout-total'),
+    checkoutCepInput: document.getElementById('checkout-cep'),
+
+    // Páginas
     collectionsContainer: document.getElementById('collections-container'),
-    userIconLink: document.getElementById('header-user-icon-link'),
     favoriteBtn: document.getElementById('btn-favorite'),
+    userIconLink: document.getElementById('header-user-icon-link'),
+    
+    // Auth Modal
     authPromptModal: document.getElementById('auth-prompt-modal'),
     closeAuthPromptBtn: document.getElementById('close-auth-prompt'),
-    dismissAuthPromptBtn: document.getElementById('auth-prompt-dismiss'),
-    checkoutCepInput: document.getElementById('checkout-cep')
+    dismissAuthPromptBtn: document.getElementById('auth-prompt-dismiss')
 };
 
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
     
-    // Autenticação
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
-        atualizarIconeUsuario(user);
+        atualizarInterfaceUsuario(user);
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
         checkAuthPrompt(user);
     });
 
-    // Carrinho e Dados
     validarELimparCarrinho();
     updateCartUI(); 
     carregarDadosLoja(); 
     setupEventListeners();
 
-    // Animação de Scroll
-    const observerOptions = { threshold: 0.1 };
     const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-            if (entry.isIntersecting) entry.target.classList.add('is-visible');
-        });
-    }, observerOptions);
+        entries.forEach((entry) => { if (entry.isIntersecting) entry.target.classList.add('is-visible'); });
+    }, { threshold: 0.1 });
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
+}
+
+// --- SETUP EVENT LISTENERS (Restaurada) ---
+function setupEventListeners() {
+    window.addEventListener('hashchange', handleRouting);
+    
+    // Sidebar Toggles
+    if (elements.sidebarToggle) elements.sidebarToggle.addEventListener('click', toggleSidebar);
+    if (elements.closeSidebarBtn) elements.closeSidebarBtn.addEventListener('click', toggleSidebar);
+    if (elements.sidebarOverlay) elements.sidebarOverlay.addEventListener('click', toggleSidebar);
+    if (elements.sidebarCollectionsToggle) elements.sidebarCollectionsToggle.addEventListener('click', toggleSidebarCollections);
+
+    // Links da Sidebar para fechar ao clicar
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.addEventListener('click', toggleSidebar);
+    });
+
+    const backBtn = document.getElementById('back-to-gallery');
+    if(backBtn) backBtn.addEventListener('click', () => { window.history.back(); });
+    
+    if (elements.cartButton) elements.cartButton.addEventListener('click', openCart);
+    if (elements.closeCartButton) elements.closeCartButton.addEventListener('click', closeCart);
+    if (elements.cartOverlay) elements.cartOverlay.addEventListener('click', closeCart);
+    
+    if (elements.finalizarPedidoBtn) elements.finalizarPedidoBtn.addEventListener('click', openCheckoutModal);
+    document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeCheckoutModal));
+    if (elements.checkoutForm) elements.checkoutForm.addEventListener('submit', (e) => { e.preventDefault(); finalizarPedido(new FormData(elements.checkoutForm)); });
+    
+    // Delegação de eventos para opções dinâmicas
+    document.body.addEventListener('click', (e) => {
+        if(e.target.classList.contains('size-option')) selectSize(e.target);
+    });
+
+    if (elements.addToCartBtn) elements.addToCartBtn.addEventListener('click', addToCart);
+    if (elements.cartItemsContainer) elements.cartItemsContainer.addEventListener('click', handleCartItemClick);
+    if (elements.favoriteBtn) elements.favoriteBtn.addEventListener('click', toggleFavorite);
+    
+    document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
+    
+    if (elements.closeAuthPromptBtn) elements.closeAuthPromptBtn.addEventListener('click', () => {
+        elements.authPromptModal.classList.add('hidden');
+        elements.authPromptModal.classList.remove('flex');
+    });
+    if (elements.dismissAuthPromptBtn) elements.dismissAuthPromptBtn.addEventListener('click', () => {
+        elements.authPromptModal.classList.add('hidden');
+        elements.authPromptModal.classList.remove('flex');
+    });
+
+    if(elements.checkoutCepInput) {
+        elements.checkoutCepInput.addEventListener('blur', updateCheckoutSummary);
+    }
+    
+    setupPaymentOptions();
 }
 
 // --- UTILITÁRIOS ---
@@ -103,7 +172,11 @@ function isHanukahProduct(item) {
     return term.includes('hanukah') || term.includes('chanukiá') || term.includes('chanuká') || term.includes('judaica');
 }
 
-// --- LOGIN PROMPT ---
+function checkIsMesaPosta(categoria) {
+    const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'porta_guardanapo'];
+    return catsMesa.includes(categoria);
+}
+
 function checkAuthPrompt(user) {
     if (user) {
         if (elements.authPromptModal) elements.authPromptModal.classList.add('hidden');
@@ -122,135 +195,100 @@ function checkAuthPrompt(user) {
     }
 }
 
-async function atualizarIconeUsuario(user) {
-    const link = document.getElementById('header-user-icon-link');
-    if (!link) return;
+// --- SIDEBAR NAVIGATION ---
+function toggleSidebar() {
+    const isOpen = elements.sidebarMenu.classList.contains('open');
+    const overlay = elements.sidebarOverlay;
+    
+    if(isOpen) {
+        // Fechar
+        elements.sidebarMenu.classList.remove('open');
+        elements.sidebarMenu.classList.add('-translate-x-full'); 
+        elements.sidebarMenu.classList.remove('translate-x-0'); 
+        
+        // Remove classe visual para fade out e espera transição para esconder
+        if(overlay) {
+            overlay.classList.remove('visivel');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
+    } else {
+        // Abrir
+        elements.sidebarMenu.classList.add('open');
+        elements.sidebarMenu.classList.remove('-translate-x-full');
+        elements.sidebarMenu.classList.add('translate-x-0');
+        
+        // Remove hidden para renderizar, depois adiciona visivel para fade in
+        if(overlay) {
+            overlay.classList.remove('hidden');
+            requestAnimationFrame(() => overlay.classList.add('visivel'));
+        }
+    }
+}
+
+function toggleSidebarCollections() {
+    elements.sidebarSubmenu.classList.toggle('hidden');
+    elements.sidebarArrow.classList.toggle('rotate-180');
+}
+
+// --- ATUALIZAÇÃO DO USUÁRIO ---
+async function atualizarInterfaceUsuario(user) {
+    const sidebarUserArea = elements.sidebarUserArea;
+    if (!sidebarUserArea) return;
+
     if (user) {
         let photoURL = user.photoURL;
+        let displayName = user.displayName || 'Cliente';
+        
         if (!photoURL) {
             try {
                 const doc = await db.collection('usuarios').doc(user.uid).get();
-                if (doc.exists && doc.data().fotoUrl) photoURL = doc.data().fotoUrl;
+                if (doc.exists) {
+                    const d = doc.data();
+                    if(d.fotoUrl) photoURL = d.fotoUrl;
+                    if(d.nome) displayName = d.nome;
+                }
             } catch(e) {}
         }
-        if (!photoURL) photoURL = `https://ui-avatars.com/api/?name=${user.displayName||'U'}&background=A58A5C&color=fff`;
-        link.innerHTML = `<img src="${photoURL}" class="w-7 h-7 rounded-full border border-[#45301F] object-cover">`;
-        link.href = "minha-conta.html";
+        if (!photoURL) photoURL = `https://ui-avatars.com/api/?name=${displayName}&background=A58A5C&color=fff`;
+        
+        sidebarUserArea.innerHTML = `
+            <img src="${photoURL}" class="w-10 h-10 rounded-full border border-[#45301F] object-cover">
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-400 uppercase tracking-widest">Olá,</span>
+                <span class="font-serif text-lg text-[#45301F] leading-none">${displayName.split(' ')[0]}</span>
+            </div>
+        `;
     } else {
-        link.innerHTML = `<i class="fa-regular fa-user text-xl"></i>`;
-        link.href = "minha-conta.html";
+        sidebarUserArea.innerHTML = `
+            <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
+                <i class="fa-regular fa-user"></i>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-400 uppercase tracking-widest">Bem-vindo</span>
+                <a href="minha-conta.html" class="font-bold text-[#A58A5C] text-sm hover:underline">Entrar / Cadastrar</a>
+            </div>
+        `;
     }
-}
-
-// --- CARRINHO ---
-function validarELimparCarrinho() {
-    const savedCart = localStorage.getItem('lamedCart');
-    if (savedCart) {
-        try {
-            let tempCart = JSON.parse(savedCart);
-            if (!Array.isArray(tempCart)) tempCart = [];
-            cart = tempCart.filter(item => item && item.cartId && item.nome && typeof item.preco === 'number');
-        } catch (e) { cart = []; }
-    } else { cart = []; }
-}
-
-function setupEventListeners() {
-    window.addEventListener('hashchange', handleRouting);
-    document.querySelectorAll('.nav-collection-link').forEach(link => {
-        link.addEventListener('click', (e) => { e.preventDefault(); navegarParaColecoes(); });
-    });
-    const backBtn = document.getElementById('back-to-gallery');
-    if(backBtn) backBtn.addEventListener('click', () => { window.history.back(); });
-    
-    if(elements.menuButton) elements.menuButton.addEventListener('click', () => {
-        elements.mobileMenu.classList.toggle('active');
-        elements.menuButton.textContent = elements.mobileMenu.classList.contains('active') ? '✕' : '☰';
-    });
-    
-    if (elements.cartButton) elements.cartButton.addEventListener('click', openCart);
-    if (elements.closeCartButton) elements.closeCartButton.addEventListener('click', closeCart);
-    if (elements.cartOverlay) elements.cartOverlay.addEventListener('click', closeCart);
-    
-    if (elements.finalizarPedidoBtn) elements.finalizarPedidoBtn.addEventListener('click', openCheckoutModal);
-    document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeCheckoutModal));
-    if (elements.checkoutForm) elements.checkoutForm.addEventListener('submit', (e) => { e.preventDefault(); finalizarPedido(new FormData(elements.checkoutForm)); });
-    
-    document.querySelectorAll('.size-option').forEach(option => { option.addEventListener('click', () => selectSize(option)); });
-    if (elements.addToCartBtn) elements.addToCartBtn.addEventListener('click', addToCart);
-    if (elements.cartItemsContainer) elements.cartItemsContainer.addEventListener('click', handleCartItemClick);
-    if (elements.favoriteBtn) elements.favoriteBtn.addEventListener('click', toggleFavorite);
-    document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
-    
-    if (elements.closeAuthPromptBtn) elements.closeAuthPromptBtn.addEventListener('click', () => {
-        elements.authPromptModal.classList.add('hidden');
-        elements.authPromptModal.classList.remove('flex');
-    });
-    if (elements.dismissAuthPromptBtn) elements.dismissAuthPromptBtn.addEventListener('click', () => {
-        elements.authPromptModal.classList.add('hidden');
-        elements.authPromptModal.classList.remove('flex');
-    });
-
-    if(elements.checkoutCepInput) {
-        elements.checkoutCepInput.addEventListener('blur', updateCheckoutSummary);
-    }
-    
-    setupPaymentOptions();
-}
-
-async function toggleFavorite() {
-    if (!currentUser) return alert("Por favor, faça login ou cadastre-se para favoritar produtos.");
-    if (!currentProduct) return;
-    const icon = elements.favoriteBtn.querySelector('i');
-    const isFav = icon.classList.contains('fa-solid'); 
-    
-    if (isFav) icon.className = "fa-regular fa-heart";
-    else icon.className = "fa-solid fa-heart text-red-500";
-
-    try {
-        const userRef = db.collection('usuarios').doc(currentUser.uid);
-        const doc = await userRef.get();
-        let favs = doc.exists && doc.data().favoritos ? doc.data().favoritos : [];
-        if (isFav) favs = favs.filter(id => id !== currentProduct.id);
-        else if (!favs.includes(currentProduct.id)) favs.push(currentProduct.id);
-        await userRef.set({ favoritos: favs }, { merge: true });
-    } catch (e) { console.error("Erro ao favoritar:", e); }
-}
-
-async function checkFavoriteStatus(productId) {
-    if (!currentUser || !productId) return;
-    const icon = elements.favoriteBtn ? elements.favoriteBtn.querySelector('i') : null;
-    if(!icon) return;
-    icon.className = "fa-regular fa-heart";
-    try { 
-        const doc = await db.collection('usuarios').doc(currentUser.uid).get(); 
-        const favs = doc.data()?.favoritos || []; 
-        if (favs.includes(productId)) icon.className = "fa-solid fa-heart text-red-500";
-    } catch (e) { console.error(e); }
 }
 
 // --- ROTEAMENTO ---
-function navegarParaColecoes() {
-    if (elements.mobileMenu && elements.mobileMenu.classList.contains('active')) elements.mobileMenu.classList.remove('active');
-    if (activeCollections.length === 1) window.location.hash = `#/colecao/${activeCollections[0].id}`;
-    else window.location.hash = '#colecoes';
-}
-
 function handleRouting() {
     const hash = window.location.hash;
+    
+    if(elements.sidebarMenu && elements.sidebarMenu.classList.contains('open')) toggleSidebar();
+
     if (hash.startsWith('#/produto/')) {
         const prodId = hash.split('/')[2];
         showPage('page-product-detail', prodId);
     }
     else if (hash.startsWith('#/colecao/')) showPage('page-single-collection', null, hash.split('/')[2]);
+    else if (hash.startsWith('#/categoria/')) showPage('page-category-view', null, hash.split('/')[2]);
     else if (hash === '#colecoes') showPage('page-collections-list');
     else showPage('page-home');
 }
 
 function showPage(pageId, param1 = null, param2 = null) {
-    // Esconde todas as páginas principais
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    
-    // Esconde containers específicos dentro da página de coleção/produto
     document.getElementById('product-detail-view').classList.add('hidden');
     document.getElementById('collection-gallery').classList.add('hidden');
 
@@ -261,11 +299,14 @@ function showPage(pageId, param1 = null, param2 = null) {
         document.getElementById('page-collection').classList.add('active');
         document.getElementById('collection-gallery').classList.remove('hidden');
         renderizarGridColecao(param2);
-    } 
+    }
+    else if (pageId === 'page-category-view') {
+        document.getElementById('page-collection').classList.add('active');
+        document.getElementById('collection-gallery').classList.remove('hidden');
+        renderizarGridCategoria(param2);
+    }
     else if (pageId === 'page-product-detail') {
-        document.getElementById('page-collection').classList.add('active'); // Usa a estrutura da pág de coleção
-        
-        // Verifica se os produtos já carregaram
+        document.getElementById('page-collection').classList.add('active');
         if (products.length === 0) {
             carregarDadosLoja().then(() => showProductDetail(param1));
         } else {
@@ -290,7 +331,9 @@ async function carregarDadosLoja() {
         
         renderizarSecoesColecoes(); 
         popularPreviewColecao();    
-        // Não chama handleRouting aqui para não sobrescrever a navegação inicial se já estiver correta
+        
+        // Garante que a rota correta seja carregada após ter os dados
+        handleRouting();
     } catch (err) { console.error("Erro dados:", err); }
 }
 
@@ -382,6 +425,54 @@ function renderizarListaDeColecoes() {
     });
 }
 
+function renderizarGridColecao(collectionId) {
+    const grid = document.getElementById('collection-grid');
+    const title = document.querySelector('#page-collection h3');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const col = activeCollections.find(c => c.id === collectionId);
+    if (col && title) title.textContent = col.nome;
+    const prods = products.filter(p => p.colecaoId === collectionId);
+    if (prods.length === 0) { grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>'; return; }
+    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
+}
+
+function renderizarGridCategoria(catSlug) {
+    const grid = document.getElementById('collection-grid');
+    const title = document.querySelector('#page-collection h3');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    const nomesCategorias = {
+        'combo': 'Kits de Mesa Posta',
+        'mesa_posta': 'Mesa Posta',
+        'lugar_americano': 'Lugares Americanos',
+        'vestido': 'Vestidos',
+        'calca': 'Calças',
+        'camisa': 'Camisas',
+        'conjunto': 'Conjuntos'
+    };
+
+    if (title) title.textContent = nomesCategorias[catSlug] || catSlug.toUpperCase();
+
+    const prods = products.filter(p => {
+        if (catSlug === 'combo') {
+            // Filtro específico: Produto é tipo Combo E é da categoria Mesa Posta (ou subcategorias)
+            return p.tipo === 'combo' && checkIsMesaPosta(p.categoria);
+        }
+        // Para categorias normais, mostra tudo que pertence àquela categoria
+        // (Isso inclui combos de roupas na categoria 'conjunto' ou 'vestido' se assim forem cadastrados)
+        return p.categoria === catSlug;
+    });
+
+    if (prods.length === 0) { 
+        grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça encontrada nesta categoria.</p>'; 
+        return; 
+    }
+    
+    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
+}
+
 function criarCardProduto(peca) {
     const card = document.createElement('div');
     card.className = "h-full bg-[#FDFBF6] group cursor-pointer flex flex-col";
@@ -401,9 +492,12 @@ function criarCardProduto(peca) {
         priceHtml = `<div class="mt-2 text-base font-bold text-[--cor-texto]">${formatarReal(peca.preco)}</div>`;
     }
 
-    const badge = peca.categoria === 'kit' 
-        ? '<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">KIT</div>' 
-        : (peca.desconto > 0 ? `<div class="badge-discount">-${peca.desconto}%</div>` : '');
+    const badge = peca.tipo === 'combo' 
+        ? '<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">COMBO</div>' 
+        : (peca.desconto > 0 ? `<div class="absolute top-2 left-2 bg-[--cor-marrom-cta] text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">-${peca.desconto}%</div>` : '');
+
+    const isMesa = checkIsMesaPosta(peca.categoria);
+    const catLabel = isMesa ? 'Mesa Posta' : (peca.tipo === 'combo' ? 'Monte seu Combo' : (peca.categoria || 'Coleção'));
 
     card.innerHTML = `
         <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">
@@ -415,42 +509,24 @@ function criarCardProduto(peca) {
         <div class="text-center px-2">
             <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${peca.nome}</h4>
             ${priceHtml}
-            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${peca.categoria === 'mesa_posta' ? 'Mesa Posta' : (peca.categoria === 'kit' ? 'Kit Pronto' : (peca.categoria || 'Coleção'))}</p>
+            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${catLabel}</p>
         </div>
     `;
     card.addEventListener('click', () => window.location.hash = `#/produto/${peca.id}`);
     return card;
 }
 
-function renderizarGridColecao(collectionId) {
-    const grid = document.getElementById('collection-grid');
-    const title = document.querySelector('#page-collection h3');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const col = activeCollections.find(c => c.id === collectionId);
-    if (col && title) title.textContent = col.nome;
-    const prods = products.filter(p => p.colecaoId === collectionId);
-    if (prods.length === 0) { grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>'; return; }
-    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
-}
-
-// --- DETALHES DO PRODUTO (CORRIGIDO PARA SPLIDE) ---
+// --- DETALHES DO PRODUTO ---
 function showProductDetail(id) {
     currentProduct = products.find(p => p.id === id);
     if (!currentProduct) return;
     
-    // Reset de variáveis
     selectedSize = null; selectedColor = null; 
-    kitSelections = {};
+    comboSelections = {};
     
     document.querySelectorAll('.size-option').forEach(el => el.classList.remove('selected'));
     document.getElementById('detail-title').textContent = currentProduct.nome;
-    
-    let descHtml = currentProduct.descricao || '';
-    if (currentProduct.categoria === 'kit' && currentProduct.componentes && currentProduct.componentes.length > 0) {
-        descHtml += `<div class="mt-4 bg-[#F8F6F0] p-4 rounded-md border border-[#E5E0D8]"><h4 class="font-bold text-sm text-[--cor-marrom-cta] mb-2 uppercase tracking-wide">O que vem neste Kit:</h4><ul class="text-sm space-y-1 text-gray-700 list-disc pl-4">${currentProduct.componentes.map(comp => `<li>${comp.quantidade}x ${comp.nome}</li>`).join('')}</ul></div>`;
-    }
-    document.getElementById('detail-description').innerHTML = descHtml;
+    document.getElementById('detail-description').innerHTML = currentProduct.descricao || '';
     
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
     document.getElementById('detail-price').innerHTML = `
@@ -458,24 +534,26 @@ function showProductDetail(id) {
         ${currentProduct.desconto > 0 ? `<span class="ml-2 text-lg text-gray-400 line-through">${formatarReal(currentProduct.preco)}</span>` : ''}
     `;
     
-    // CORREÇÃO SPLIDE: Iniciar Carrossel de forma segura
     setupSplideCarousel(); 
     
-    const isKit = currentProduct.categoria === 'kit';
-    const isMesaPosta = currentProduct.categoria === 'mesa_posta';
+    const isCombo = currentProduct.tipo === 'combo';
+    const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
     
     const sizeSection = document.querySelector('.size-selector')?.parentElement;
     const accordionDesc = document.querySelector('.accordion-content'); 
     if (accordionDesc) { accordionDesc.classList.remove('hidden'); accordionDesc.previousElementSibling.querySelector('.accordion-icon')?.classList.add('rotate'); }
 
+    // Limpezas
     const existingWarning = document.getElementById('mesa-posta-warning');
     if (existingWarning) existingWarning.remove();
-    const existingKitSelector = document.getElementById('kit-selector-container');
-    if (existingKitSelector) existingKitSelector.remove();
+    const existingComboSelector = document.getElementById('combo-selector-container');
+    if (existingComboSelector) existingComboSelector.remove();
+    const existingColorContainer = document.querySelector('.color-selector-container');
+    if (existingColorContainer) existingColorContainer.remove();
 
-    if (isKit) {
+    if (isCombo) {
         if(sizeSection) sizeSection.classList.add('hidden');
-        renderKitSelectors();
+        renderComboSelectors(); // Nova Interface de Combo
     } else if (isMesaPosta) {
         if(sizeSection) {
             sizeSection.classList.remove('hidden'); 
@@ -499,47 +577,174 @@ function showProductDetail(id) {
         renderColors();
     }
     
+    // --- LÓGICA DO GUIA DE MEDIDAS (DINÂMICO) ---
+    const buttons = document.querySelectorAll('.accordion-button');
+    let sizeGuideContainer = null;
+    buttons.forEach(btn => {
+        if(btn.textContent.includes('Guia de Medidas')) {
+            sizeGuideContainer = btn.nextElementSibling;
+        }
+    });
+
+    if (sizeGuideContainer) {
+        // Salva o original (Roupas) se ainda não salvou
+        if (!window.originalSizeGuideHTML) {
+            window.originalSizeGuideHTML = sizeGuideContainer.innerHTML;
+        }
+
+        const mesaPostaGuideHTML = `
+            <div class="space-y-4 text-sm text-[--cor-texto]">
+                <div class="border-b pb-2">
+                    <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Mesa Posta
+                    </h4>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal em algodão ou linho (variação 1–2 cm).</p>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🧵 Guardanapos</h5>
+                    <ul class="text-xs space-y-1">
+                        <li><strong>Tamanho:</strong> 41 cm x 41 cm</li>
+                        <li><strong>Material:</strong> 100% algodão</li>
+                        <li><em>Ideal para mesas formais e dobras.</em></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🟦 Lugares Americanos</h5>
+                    <div class="space-y-2 text-xs">
+                        <div>
+                            <p class="font-bold">Modelo Padrão (44 x 32 cm)</p>
+                            <p class="text-gray-500">Shabat Shalom, Muralhas de Jerusalém</p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Modelo Grande (47 x 33 cm)</p>
+                            <p class="text-gray-500">Chanukiá Grande, Chanukiá Pequena</p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Modelo Frase (46 x 34 cm)</p>
+                            <p class="text-gray-500">Chegou um Tempo Novo, Na Terra Como no Céu</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🕯 Caminho de Mesa</h5>
+                    <ul class="text-xs space-y-1">
+                        <li><strong>Chanukiá Sameach:</strong> 140 cm x 33 cm</li>
+                        <li><em>Ideal para mesas retangulares (4-6 lugares).</em></li>
+                    </ul>
+                </div>
+                
+                <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
+                    <p><strong>Nota:</strong> Bordados variam (dourado, branco, ocre). Medidas pensadas para pratos de 26-32cm.</p>
+                </div>
+            </div>
+        `;
+
+        if (isMesaPosta) {
+            sizeGuideContainer.innerHTML = mesaPostaGuideHTML;
+        } else {
+            sizeGuideContainer.innerHTML = window.originalSizeGuideHTML;
+        }
+    }
+
     renderRecommendations(currentProduct);
     updateAddToCartButton();
     if(currentUser) checkFavoriteStatus(currentProduct.id);
     
-    // Exibe o painel
     document.getElementById('collection-gallery').classList.add('hidden');
     document.getElementById('product-detail-view').classList.remove('hidden');
 }
 
-function renderKitSelectors() {
+// --- LÓGICA DE INTERFACE RICA PARA COMBO ---
+function renderComboSelectors() {
     if (!currentProduct.componentes || currentProduct.componentes.length === 0) return;
 
     const container = document.createElement('div');
-    container.id = 'kit-selector-container';
+    container.id = 'combo-selector-container';
     container.className = 'space-y-6 mb-8 mt-4';
-    container.innerHTML = `<h4 class="font-bold text-sm text-[--cor-marrom-cta] uppercase tracking-wide border-b border-[#E5E0D8] pb-2 mb-4">Monte seu Kit:</h4>`;
+    
+    container.innerHTML = `
+        <div class="bg-purple-50 p-3 rounded border border-purple-100 mb-4">
+            <h4 class="font-bold text-sm text-purple-900 uppercase tracking-wide flex items-center gap-2">
+                <i class="fa-solid fa-star"></i> Monte seu Combo:
+            </h4>
+            <p class="text-xs text-purple-700 mt-1">Selecione as variantes para cada item abaixo.</p>
+        </div>
+    `;
 
     currentProduct.componentes.forEach((comp, idx) => {
         const productOriginal = products.find(p => p.id === comp.id);
         const coresDisponiveis = productOriginal ? (productOriginal.cores || []) : [];
+        const imagemPeca = productOriginal && productOriginal.imagens && productOriginal.imagens.length > 0 ? productOriginal.imagens[0] : 'https://placehold.co/100x100';
+        const categoriaLabel = comp.categoria ? comp.categoria.replace('_', ' ').toUpperCase() : 'ITEM';
 
         const compDiv = document.createElement('div');
-        compDiv.className = 'kit-component-block';
+        compDiv.className = 'combo-component-card border border-gray-200 rounded-lg p-4 bg-white shadow-sm';
         
-        let coresHtml = '';
+        const header = document.createElement('div');
+        header.className = "flex gap-4 mb-4 pb-4 border-b border-gray-100";
+        header.innerHTML = `
+            <img src="${imagemPeca}" class="w-16 h-20 object-cover rounded-sm border border-gray-100">
+            <div>
+                <span class="text-[10px] font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-500 uppercase tracking-wider">${categoriaLabel}</span>
+                <h5 class="font-medium text-gray-800 mt-1">${comp.quantidade}x ${comp.nome}</h5>
+                <p class="text-xs text-gray-400 mt-0.5 line-clamp-2">${productOriginal?.descricao || ''}</p>
+            </div>
+        `;
+        compDiv.appendChild(header);
+
+        const colorSection = document.createElement('div');
         if (coresDisponiveis.length > 0) {
-            coresHtml = `<div class="flex gap-2 flex-wrap mt-2">
-                ${coresDisponiveis.map((cor, cIdx) => `
-                    <div class="color-option-kit cursor-pointer border border-gray-200 p-1 rounded flex items-center gap-2 hover:bg-gray-50" 
-                         onclick="selectKitColor(${idx}, '${cor.nome}', '${cor.hex}', this)">
-                        <div class="w-4 h-4 rounded-full border border-gray-300" style="background-color:${cor.hex}"></div>
-                        <span class="text-xs text-gray-600">${cor.nome}</span>
+            colorSection.innerHTML = `<p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Selecione a Cor:</p>`;
+            const colorsGrid = document.createElement('div');
+            colorsGrid.className = "flex gap-2 flex-wrap";
+            
+            coresDisponiveis.forEach(cor => {
+                const btn = document.createElement('div');
+                btn.className = `combo-color-btn cursor-pointer border border-gray-200 p-1.5 rounded-md flex items-center gap-2 hover:bg-gray-50 transition min-w-[100px]`;
+                btn.innerHTML = `
+                    <div class="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style="background-color:${cor.hex}"></div>
+                    <div class="flex flex-col">
+                        <span class="text-xs font-medium text-gray-700">${cor.nome}</span>
+                        <span class="text-[9px] text-gray-400">${cor.quantidade} un.</span>
                     </div>
-                `).join('')}
-            </div>`;
+                `;
+                btn.onclick = () => selectComboColor(idx, cor.nome, cor.hex, btn);
+                colorsGrid.appendChild(btn);
+            });
+            colorSection.appendChild(colorsGrid);
         } else {
-            coresHtml = `<p class="text-xs text-gray-400 mt-1">Cor única / Padrão</p>`;
-            kitSelections[idx] = { nome: 'Padrão', hex: '#000' };
+            colorSection.innerHTML = `<p class="text-xs text-gray-400 italic">Cor única / Padrão</p>`;
+            if (!comboSelections[idx]) comboSelections[idx] = {};
+            comboSelections[idx].cor = { nome: 'Padrão', hex: '#000' };
+        }
+        compDiv.appendChild(colorSection);
+
+        const isRoupa = ['vestido','conjunto','calca','camisa','saia'].includes(comp.categoria);
+        
+        if (isRoupa) {
+            const sizeSection = document.createElement('div');
+            sizeSection.className = "mt-4 pt-3 border-t border-gray-50";
+            sizeSection.innerHTML = `<p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Tamanho:</p>`;
+            
+            const sizesDiv = document.createElement('div');
+            sizesDiv.className = "flex gap-2";
+            ['PP','P','M','G','GG'].forEach(tam => {
+                const btn = document.createElement('div');
+                btn.className = "combo-size-btn w-8 h-8 flex items-center justify-center border border-gray-200 rounded text-xs cursor-pointer hover:border-gray-400";
+                btn.textContent = tam;
+                btn.onclick = () => selectComboSize(idx, tam, btn);
+                sizesDiv.appendChild(btn);
+            });
+            sizeSection.appendChild(sizesDiv);
+            compDiv.appendChild(sizeSection);
+        } else {
+             if (!comboSelections[idx]) comboSelections[idx] = {};
+             comboSelections[idx].tamanho = 'Único';
         }
 
-        compDiv.innerHTML = `<div class="mb-1 flex justify-between items-center"><span class="font-medium text-sm text-gray-800">${comp.quantidade}x ${comp.nome}</span></div>${coresHtml}`;
         container.appendChild(compDiv);
     });
 
@@ -547,35 +752,42 @@ function renderKitSelectors() {
     target.after(container);
 }
 
-window.selectKitColor = (compIndex, corNome, corHex, element) => {
+window.selectComboColor = (compIndex, corNome, corHex, element) => {
     const parent = element.parentElement;
-    parent.querySelectorAll('.color-option-kit').forEach(el => {
-        el.classList.remove('bg-[#F8F6F0]', 'border-[--cor-marrom-cta]');
+    parent.querySelectorAll('.combo-color-btn').forEach(el => {
+        el.classList.remove('bg-purple-50', 'border-purple-500', 'ring-1', 'ring-purple-500');
         el.classList.add('border-gray-200');
     });
     element.classList.remove('border-gray-200');
-    element.classList.add('bg-[#F8F6F0]', 'border-[--cor-marrom-cta]');
-    kitSelections[compIndex] = { nome: corNome, hex: corHex };
+    element.classList.add('bg-purple-50', 'border-purple-500', 'ring-1', 'ring-purple-500');
+
+    if (!comboSelections[compIndex]) comboSelections[compIndex] = {};
+    comboSelections[compIndex].cor = { nome: corNome, hex: corHex };
+    updateAddToCartButton();
+};
+
+window.selectComboSize = (compIndex, tamanho, element) => {
+    const parent = element.parentElement;
+    parent.querySelectorAll('.combo-size-btn').forEach(el => {
+        el.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+        el.classList.add('border-gray-200', 'text-gray-700');
+    });
+    element.classList.remove('border-gray-200', 'text-gray-700');
+    element.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+
+    if (!comboSelections[compIndex]) comboSelections[compIndex] = {};
+    comboSelections[compIndex].tamanho = tamanho;
     updateAddToCartButton();
 };
 
 function renderColors() {
-    const container = document.querySelector('.color-selector-container');
-    if (container) container.remove();
-    
     const cores = currentProduct.cores || [];
     if (cores.length === 0) { selectedColor = null; return; }
 
     const div = document.createElement('div');
     div.className = 'color-selector-container mb-6';
-    const isMesaPosta = currentProduct.categoria === 'mesa_posta';
-    const isKit = currentProduct.categoria === 'kit';
-
-    div.innerHTML = `<p class="text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">Cor ${isKit ? 'do Conjunto' : ''}</p><div class="flex gap-3 flex-wrap">${cores.map((c, i) => {
-        let stockBadge = '';
-        if ((isMesaPosta || isKit) && c.quantidade !== undefined) {
-            stockBadge = `<span class="text-[10px] text-gray-500 font-medium ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full border border-gray-200">${c.quantidade} un</span>`;
-        }
+    div.innerHTML = `<p class="text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">Cor</p><div class="flex gap-3 flex-wrap">${cores.map((c, i) => {
+        const stockBadge = `<span class="text-[10px] text-gray-500 font-medium ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full border border-gray-200">${c.quantidade} un</span>`;
         return `<div class="color-option group relative" data-idx="${i}"><div class="w-4 h-4 rounded-full border border-gray-300 shadow-sm" style="background-color:${c.hex}"></div><span class="text-xs font-medium text-gray-700">${c.nome}</span>${stockBadge}</div>`;
     }).join('')}</div>`;
     
@@ -612,9 +824,7 @@ function renderRecommendations(current) {
     }
 }
 
-// CORREÇÃO FUNDAMENTAL: Destrói instâncias anteriores para evitar erro no Splide
 function setupSplideCarousel() {
-    // Se já existirem, destrói antes de recriar
     if (mainSplideInstance) { mainSplideInstance.destroy(); mainSplideInstance = null; }
     if (thumbSplideInstance) { thumbSplideInstance.destroy(); thumbSplideInstance = null; }
 
@@ -628,7 +838,6 @@ function setupSplideCarousel() {
         thumbList.innerHTML += `<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer"></li>`;
     });
 
-    // Cria novas instâncias e salva nas variáveis globais
     mainSplideInstance = new Splide('#main-carousel', { type: 'fade', rewind: true, pagination: false, arrows: true });
     thumbSplideInstance = new Splide('#thumbnail-carousel', { fixedWidth: 60, fixedHeight: 60, gap: 10, rewind: true, pagination: false, isNavigation: true, arrows: false });
     
@@ -650,8 +859,7 @@ function updateAddToCartButton() {
     
     const stockTotal = currentProduct.cores ? currentProduct.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
     
-    // Se for kit, estoque é complexo (ignora), se for normal e 0, esgota
-    if (stockTotal <= 0 && currentProduct.categoria !== 'kit') {
+    if (stockTotal <= 0 && currentProduct.tipo !== 'combo') {
         btn.disabled = true;
         btn.textContent = "ESGOTADO";
         btn.classList.add('bg-gray-400');
@@ -662,16 +870,22 @@ function updateAddToCartButton() {
         btn.classList.add('hover:bg-[#4a2e18]');
     }
 
-    const isMesaPosta = currentProduct.categoria === 'mesa_posta';
-    const isKit = currentProduct.categoria === 'kit';
+    const isCombo = currentProduct.tipo === 'combo';
+    const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
     const hasSize = selectedSize !== null;
     const hasColor = !currentProduct.cores?.length || selectedColor !== null;
 
     let canAdd = false;
-    if (isKit) {
+    if (isCombo) {
         const totalComponents = currentProduct.componentes ? currentProduct.componentes.length : 0;
-        const selectedCount = Object.keys(kitSelections).length;
-        canAdd = selectedCount >= totalComponents;
+        let selectedCount = 0;
+        
+        for (let i = 0; i < totalComponents; i++) {
+            if (comboSelections[i] && comboSelections[i].cor && comboSelections[i].tamanho) {
+                selectedCount++;
+            }
+        }
+        canAdd = selectedCount === totalComponents;
     } else {
         canAdd = (isMesaPosta || hasSize) && hasColor;
     }
@@ -679,7 +893,8 @@ function updateAddToCartButton() {
     if (canAdd) {
         btn.disabled = false; btn.textContent = "ADICIONAR À SACOLA";
     } else {
-        btn.disabled = true; btn.textContent = isKit ? "Selecione as cores do Kit" : "Selecione Opções";
+        btn.disabled = true; 
+        btn.textContent = isCombo ? "Selecione opções de TODOS os itens" : "Selecione Opções";
         btn.classList.add('bg-gray-400');
         btn.classList.remove('hover:bg-[#4a2e18]');
     }
@@ -688,10 +903,11 @@ function updateAddToCartButton() {
 function addToCart() {
     const corObj = selectedColor !== null ? currentProduct.cores[selectedColor] : null;
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
-    const isKit = currentProduct.categoria === 'kit';
-    const tamanhoFinal = (currentProduct.categoria === 'mesa_posta' || isKit) ? (isKit ? 'Kit' : 'Único') : selectedSize;
+    const isCombo = currentProduct.tipo === 'combo';
+    const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
+    const tamanhoFinal = (isMesaPosta || isCombo) ? (isCombo ? 'Combo' : 'Único') : selectedSize;
     
-    const cartId = isKit ? `${currentProduct.id}-kit-${Date.now()}` : `${currentProduct.id}-${tamanhoFinal}-${corObj?.nome || 'unico'}`;
+    const cartId = isCombo ? `${currentProduct.id}-combo-${Date.now()}` : `${currentProduct.id}-${tamanhoFinal}-${corObj?.nome || 'unico'}`;
     const existing = cart.find(i => i.cartId === cartId);
     
     if (existing) existing.quantity++;
@@ -704,9 +920,9 @@ function addToCart() {
         tamanho: tamanhoFinal, 
         cor: corObj, 
         quantity: 1,
-        isKit: isKit,
-        componentes: isKit ? currentProduct.componentes : null,
-        kitSelections: isKit ? kitSelections : null
+        isCombo: isCombo,
+        componentes: isCombo ? currentProduct.componentes : null,
+        comboSelections: isCombo ? comboSelections : null
     });
     
     localStorage.setItem('lamedCart', JSON.stringify(cart));
@@ -724,11 +940,13 @@ function updateCartUI() {
         total += item.preco * item.quantity; count += item.quantity;
         
         let detailsHtml = '';
-        if (item.isKit && item.kitSelections) {
-            detailsHtml = `<div class="text-[10px] text-gray-500 mt-1 pl-2 border-l-2 border-gray-200">`;
+        if (item.isCombo && item.comboSelections) {
+            detailsHtml = `<div class="text-[10px] text-gray-500 mt-1 pl-2 border-l-2 border-purple-200">`;
             item.componentes.forEach((comp, idx) => {
-                const sel = item.kitSelections[idx];
-                detailsHtml += `<div>${comp.quantidade}x ${comp.nome} <span class="font-bold text-gray-700">(${sel?.nome || '-'})</span></div>`;
+                const sel = item.comboSelections[idx];
+                const cor = sel?.cor?.nome || '-';
+                const tam = sel?.tamanho !== 'Único' ? `(${sel.tamanho})` : '';
+                detailsHtml += `<div>${comp.quantidade}x ${comp.nome} <strong>${cor}</strong> ${tam}</div>`;
             });
             detailsHtml += `</div>`;
         } else {
@@ -773,7 +991,63 @@ function openCart() { elements.cartOverlay.classList.add('visivel'); elements.ca
 function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); }
 function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggle('hidden'); e.currentTarget.querySelector('.accordion-icon').classList.toggle('rotate'); }
 
-// --- CHECKOUT ---
+function setupPaymentOptions() {
+    document.querySelectorAll('input[name="pagamento"]').forEach(r => {
+        r.addEventListener('change', () => {
+            document.getElementById('parcelamento-container').classList.toggle('hidden', r.value !== 'Cartão de Crédito');
+            if(r.value === 'Cartão de Crédito') preencherParcelas();
+            updateCheckoutSummary();
+        });
+    });
+}
+
+function preencherParcelas() {
+    const total = cart.reduce((s, i) => s + i.preco*i.quantity, 0);
+    const select = document.getElementById('parcelas-select');
+    select.innerHTML = '';
+    
+    for(let i=1; i<=12; i++) { 
+        let val = total;
+        let suffix = '(sem juros)';
+        
+        if(i > 2) {
+            val = total * (1 + TAXA_JUROS);
+            suffix = '(c/ juros)';
+        }
+        
+        select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} ${suffix}</option>`; 
+    }
+    select.addEventListener('change', updateCheckoutSummary);
+}
+
+function validarELimparCarrinho() {
+    const s = localStorage.getItem('lamedCart');
+    if(s) { try { let t = JSON.parse(s); cart = Array.isArray(t) ? t.filter(i=>i&&i.cartId&&i.nome&&typeof i.preco==='number') : []; } catch(e){ cart=[]; } } else cart=[];
+}
+
+async function toggleFavorite() {
+    if(!currentUser) return alert("Faça login para favoritar.");
+    if(!currentProduct) return;
+    const icon = elements.favoriteBtn.querySelector('i');
+    const isFav = icon.classList.contains('fa-solid');
+    icon.className = isFav ? "fa-regular fa-heart" : "fa-solid fa-heart text-red-500";
+    try {
+        const ref = db.collection('usuarios').doc(currentUser.uid);
+        const doc = await ref.get();
+        let favs = doc.exists && doc.data().favoritos ? doc.data().favoritos : [];
+        if(isFav) favs = favs.filter(id=>id!==currentProduct.id); else if(!favs.includes(currentProduct.id)) favs.push(currentProduct.id);
+        await ref.set({favoritos:favs}, {merge:true});
+    } catch(e){console.error(e);}
+}
+
+async function checkFavoriteStatus(pid) {
+    if(!currentUser||!pid) return;
+    const icon = elements.favoriteBtn?.querySelector('i');
+    if(!icon) return;
+    icon.className = "fa-regular fa-heart";
+    try { const doc = await db.collection('usuarios').doc(currentUser.uid).get(); if(doc.data()?.favoritos?.includes(pid)) icon.className = "fa-solid fa-heart text-red-500"; } catch(e){}
+}
+
 async function openCheckoutModal() {
     if (cart.length === 0) return alert("Sua sacola está vazia.");
     updateCheckoutSummary();
@@ -805,7 +1079,6 @@ function closeCheckoutModal() { elements.checkoutModal.classList.add('hidden'); 
 function updateCheckoutSummary() {
     const summary = elements.checkoutSummary;
     summary.innerHTML = ''; let total = 0;
-    
     let hanukahSubtotal = 0;
     
     cart.forEach(item => { 
@@ -814,7 +1087,7 @@ function updateCheckoutSummary() {
         if (isHanukahProduct(item)) hanukahSubtotal += itemTotal;
 
         let desc = item.nome;
-        if (item.isKit) desc += " (Kit)";
+        if (item.isCombo) desc += " (Combo)";
         
         summary.innerHTML += `<div class="flex justify-between text-sm mb-1 pb-1 border-b border-dashed border-[#dcdcdc]">
             <div><span class="font-medium text-[--cor-texto]">${item.quantity}x ${desc}</span></div>
@@ -825,7 +1098,6 @@ function updateCheckoutSummary() {
     const pgto = document.querySelector('input[name="pagamento"]:checked')?.value;
     let final = total;
     
-    // RESTAURADO: Desconto 5% no PIX
     if (pgto === 'PIX') { 
         const desc = total * 0.05; 
         final -= desc; 
@@ -855,36 +1127,6 @@ function updateCheckoutSummary() {
     elements.checkoutTotal.textContent = formatarReal(final);
 }
 
-function setupPaymentOptions() {
-    document.querySelectorAll('input[name="pagamento"]').forEach(r => {
-        r.addEventListener('change', () => {
-            document.getElementById('parcelamento-container').classList.toggle('hidden', r.value !== 'Cartão de Crédito');
-            if(r.value === 'Cartão de Crédito') preencherParcelas();
-            updateCheckoutSummary();
-        });
-    });
-}
-
-function preencherParcelas() {
-    const total = cart.reduce((s, i) => s + i.preco*i.quantity, 0);
-    const select = document.getElementById('parcelas-select');
-    select.innerHTML = '';
-    
-    for(let i=1; i<=12; i++) { 
-        let val = total;
-        let suffix = '(sem juros)';
-        
-        // RESTAURADO: 1x e 2x sem juros, demais com juros
-        if(i > 2) {
-            val = total * (1 + TAXA_JUROS);
-            suffix = '(c/ juros)';
-        }
-        
-        select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} ${suffix}</option>`; 
-    }
-    select.addEventListener('change', updateCheckoutSummary);
-}
-
 async function finalizarPedido(formData) {
     const cliente = { nome: formData.get('nome'), telefone: formData.get('telefone'), email: formData.get('email'), endereco: { rua: formData.get('rua'), numero: formData.get('numero'), cep: formData.get('cep'), cidade: formData.get('cidade') } };
     if(currentUser) db.collection('usuarios').doc(currentUser.uid).set({ nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, { merge: true });
@@ -904,7 +1146,6 @@ async function finalizarPedido(formData) {
     try {
         const ref = await db.collection('pedidos').add(pedido);
         
-        // --- WHATSAPP DETALHADO ---
         let msg = `*Novo Pedido #${ref.id.slice(0,6).toUpperCase()}*\n`;
         msg += `*Cliente:* ${cliente.nome}\n`;
         msg += `*Pagamento:* ${pedido.pagamento}`;
@@ -915,11 +1156,13 @@ async function finalizarPedido(formData) {
             msg += `------------------------------\n`;
             msg += `• *${item.quantity}x ${item.nome}*\n`;
             
-            if (item.isKit && item.kitSelections) {
-                msg += `  _Kit Personalizado:_\n`;
+            if (item.isCombo && item.comboSelections) {
+                msg += `  _Combo Personalizado:_\n`;
                 item.componentes.forEach((comp, idx) => {
-                    const corEscolhida = item.kitSelections[idx]?.nome || 'Padrão';
-                    msg += `  - ${comp.quantidade}x ${comp.nome} (${corEscolhida})\n`;
+                    const sel = item.comboSelections[idx];
+                    const cor = sel?.cor?.nome || 'Padrão';
+                    const tam = sel?.tamanho !== 'Único' ? `(${sel.tamanho})` : '';
+                    msg += `  - ${comp.quantidade}x ${comp.nome} [${cor} ${tam}]\n`;
                 });
             } else {
                 const tam = item.tamanho && item.tamanho !== 'Único' ? `Tam: ${item.tamanho}` : '';
