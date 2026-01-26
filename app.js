@@ -999,6 +999,11 @@ function setupPaymentOptions() {
             updateCheckoutSummary();
         });
     });
+
+    const parcelasSelect = document.getElementById('parcelas-select');
+    if (parcelasSelect) {
+        parcelasSelect.addEventListener('change', updateCheckoutSummary);
+    }
 }
 
 function preencherParcelas() {
@@ -1017,7 +1022,6 @@ function preencherParcelas() {
         
         select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} ${suffix}</option>`; 
     }
-    select.addEventListener('change', updateCheckoutSummary);
 }
 
 function validarELimparCarrinho() {
