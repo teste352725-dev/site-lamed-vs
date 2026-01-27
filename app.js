@@ -30,6 +30,7 @@ let selectedColor = null;
 let comboSelections = {};
 let currentUser = null;
 const TAXA_JUROS = 0.0549;
+const EFI_BACKEND_URL = window.EFI_BACKEND_URL || '/api/efi';
 
 // Controle Carrossel
 let mainSplideInstance = null;
@@ -68,6 +69,14 @@ const elements = {
     checkoutSummary: document.getElementById('checkout-summary'),
     checkoutTotal: document.getElementById('checkout-total'),
     checkoutCepInput: document.getElementById('checkout-cep'),
+    parcelasSelect: document.getElementById('parcelas-select'),
+    cardFields: document.getElementById('card-fields'),
+    paymentResult: document.getElementById('payment-result'),
+    paymentStatus: document.getElementById('payment-status'),
+    paymentQr: document.getElementById('payment-qr'),
+    paymentQrImg: document.getElementById('payment-qr-img'),
+    pixCode: document.getElementById('pix-code'),
+    copyPixCode: document.getElementById('copy-pix-code'),
 
     // Páginas
     collectionsContainer: document.getElementById('collections-container'),
@@ -996,19 +1005,27 @@ function setupPaymentOptions() {
         r.addEventListener('change', () => {
             document.getElementById('parcelamento-container').classList.toggle('hidden', r.value !== 'Cartão de Crédito');
             if(r.value === 'Cartão de Crédito') preencherParcelas();
+            toggleCardFields(r.value === 'Cartão de Crédito');
             updateCheckoutSummary();
         });
     });
 
-    const parcelasSelect = document.getElementById('parcelas-select');
-    if (parcelasSelect) {
-        parcelasSelect.addEventListener('change', updateCheckoutSummary);
+    if (elements.parcelasSelect) {
+        elements.parcelasSelect.addEventListener('change', updateCheckoutSummary);
+    }
+    if (elements.copyPixCode) {
+        elements.copyPixCode.addEventListener('click', () => {
+            if (!elements.pixCode?.textContent) return;
+            navigator.clipboard.writeText(elements.pixCode.textContent).then(() => {
+                alert('Código Pix copiado!');
+            });
+        });
     }
 }
 
 function preencherParcelas() {
     const total = cart.reduce((s, i) => s + i.preco*i.quantity, 0);
-    const select = document.getElementById('parcelas-select');
+    const select = elements.parcelasSelect || document.getElementById('parcelas-select');
     select.innerHTML = '';
     
     for(let i=1; i<=12; i++) { 
@@ -1022,6 +1039,92 @@ function preencherParcelas() {
         
         select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} ${suffix}</option>`; 
     }
+}
+
+function toggleCardFields(show) {
+    if (!elements.cardFields) return;
+    elements.cardFields.classList.toggle('hidden', !show);
+}
+
+function resetPaymentResult() {
+    if (!elements.paymentResult) return;
+    elements.paymentResult.classList.add('hidden');
+    elements.paymentStatus.textContent = '';
+    elements.paymentQr.classList.add('hidden');
+    elements.paymentQrImg.src = '';
+    elements.pixCode.textContent = '';
+}
+
+async function obterTokenCartao(formData) {
+    const existingToken = formData.get('card_token');
+    if (existingToken) return existingToken;
+    if (window.EFI_TOKENIZE_CARD) {
+        const token = await window.EFI_TOKENIZE_CARD({
+            nome: formData.get('card_nome'),
+            numero: formData.get('card_numero'),
+            cvv: formData.get('card_cvv'),
+            validade: formData.get('card_validade'),
+            cpf: formData.get('card_cpf')
+        });
+        formData.set('card_token', token);
+        return token;
+    }
+    return null;
+}
+
+async function criarPagamentoEfi(pedidoId, pedido, formData) {
+    const pagamento = formData.get('pagamento');
+    const payloadBase = {
+        pedidoId,
+        total: pedido.total,
+        parcelas: pedido.parcelas,
+        cliente: pedido.cliente,
+        itens: pedido.produtos.map(item => ({
+            id: item.id,
+            nome: item.nome,
+            quantidade: item.quantity,
+            preco: item.preco
+        }))
+    };
+
+    if (pagamento === 'PIX') {
+        const response = await fetch(`${EFI_BACKEND_URL}/pix`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadBase)
+        });
+        if (!response.ok) throw new Error('Erro ao criar cobrança PIX');
+        return response.json();
+    }
+
+    if (pagamento === 'Cartão de Crédito') {
+        const [mes, ano] = (formData.get('card_validade') || '').split('/').map(v => v.trim());
+        const cardToken = await obterTokenCartao(formData);
+        if (!cardToken) {
+            throw new Error('Token do cartão não configurado. Ative a tokenização Efí.');
+        }
+        const cardPayload = {
+            ...payloadBase,
+            cartao: {
+                token: cardToken,
+                nome: formData.get('card_nome'),
+                numero: formData.get('card_numero'),
+                cvv: formData.get('card_cvv'),
+                mes,
+                ano,
+                cpf: formData.get('card_cpf')
+            }
+        };
+        const response = await fetch(`${EFI_BACKEND_URL}/cartao`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cardPayload)
+        });
+        if (!response.ok) throw new Error('Erro ao criar cobrança no cartão');
+        return response.json();
+    }
+
+    throw new Error('Forma de pagamento inválida.');
 }
 
 function validarELimparCarrinho() {
@@ -1055,6 +1158,8 @@ async function checkFavoriteStatus(pid) {
 async function openCheckoutModal() {
     if (cart.length === 0) return alert("Sua sacola está vazia.");
     updateCheckoutSummary();
+    resetPaymentResult();
+    toggleCardFields(false);
     if (currentUser) {
         try {
             const doc = await db.collection('usuarios').doc(currentUser.uid).get();
@@ -1107,7 +1212,8 @@ function updateCheckoutSummary() {
         final -= desc; 
         summary.innerHTML += `<div class="flex justify-between text-sm text-green-600 font-medium mt-1"><span>Desconto PIX</span><span>-${formatarReal(desc)}</span></div>`; 
     } else if (pgto === 'Cartão de Crédito') {
-        const parcelas = parseInt(document.getElementById('parcelas-select').value) || 1;
+        const parcelasEl = elements.parcelasSelect || document.getElementById('parcelas-select');
+        const parcelas = parseInt(parcelasEl?.value) || 1;
         if(parcelas > 2) { 
             const taxa = total * TAXA_JUROS;
             final += taxa;
@@ -1132,13 +1238,13 @@ function updateCheckoutSummary() {
 }
 
 async function finalizarPedido(formData) {
-    const cliente = { nome: formData.get('nome'), telefone: formData.get('telefone'), email: formData.get('email'), endereco: { rua: formData.get('rua'), numero: formData.get('numero'), cep: formData.get('cep'), cidade: formData.get('cidade') } };
+    const cliente = { nome: formData.get('nome'), telefone: formData.get('telefone'), email: formData.get('email'), cpf: formData.get('cpf'), endereco: { rua: formData.get('rua'), numero: formData.get('numero'), cep: formData.get('cep'), cidade: formData.get('cidade') } };
     if(currentUser) db.collection('usuarios').doc(currentUser.uid).set({ nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, { merge: true });
     
     const pedido = { 
         cliente, 
         pagamento: formData.get('pagamento'), 
-        parcelas: formData.get('pagamento') === 'Cartão de Crédito' ? document.getElementById('parcelas-select').value : 1, 
+        parcelas: formData.get('pagamento') === 'Cartão de Crédito' ? (elements.parcelasSelect?.value || 1) : 1, 
         produtos: cart, 
         total: parseFloat(elements.checkoutTotal.textContent.replace(/[^\d,]/g,'').replace(',','.')), 
         data: firebase.firestore.FieldValue.serverTimestamp(), 
@@ -1149,51 +1255,32 @@ async function finalizarPedido(formData) {
 
     try {
         const ref = await db.collection('pedidos').add(pedido);
-        
-        let msg = `*Novo Pedido #${ref.id.slice(0,6).toUpperCase()}*\n`;
-        msg += `*Cliente:* ${cliente.nome}\n`;
-        msg += `*Pagamento:* ${pedido.pagamento}`;
-        if (pedido.pagamento === 'Cartão de Crédito') msg += ` (${pedido.parcelas}x)`;
-        msg += `\n\n*Itens do Pedido:*\n`;
-        
-        cart.forEach(item => {
-            msg += `------------------------------\n`;
-            msg += `• *${item.quantity}x ${item.nome}*\n`;
-            
-            if (item.isCombo && item.comboSelections) {
-                msg += `  _Combo Personalizado:_\n`;
-                item.componentes.forEach((comp, idx) => {
-                    const sel = item.comboSelections[idx];
-                    const cor = sel?.cor?.nome || 'Padrão';
-                    const tam = sel?.tamanho !== 'Único' ? `(${sel.tamanho})` : '';
-                    msg += `  - ${comp.quantidade}x ${comp.nome} [${cor} ${tam}]\n`;
-                });
-            } else {
-                const tam = item.tamanho && item.tamanho !== 'Único' ? `Tam: ${item.tamanho}` : '';
-                const cor = item.cor ? `Cor: ${item.cor.nome}` : '';
-                const details = [tam, cor].filter(Boolean).join(' | ');
-                if (details) msg += `  (${details})\n`;
-            }
-            msg += `  Valor: ${formatarReal(item.preco * item.quantity)}\n`;
-        });
-        
-        msg += `------------------------------\n`;
-        msg += `*Total Final:* ${formatarReal(pedido.total)}\n`;
-        
-        if (isSudeste(cliente.endereco.cep) && cart.some(i => isHanukahProduct(i)) && pedido.total >= 500) {
-             msg += `\n🎁 *Frete Grátis Aplicado (Promoção Hanukah)*`;
+        resetPaymentResult();
+
+        const pagamentoResponse = await criarPagamentoEfi(ref.id, pedido, formData);
+        await db.collection('pedidos').doc(ref.id).set({
+            pagamentoStatus: pagamentoResponse.status || 'pendente',
+            pagamentoId: pagamentoResponse.chargeId || pagamentoResponse.pixId || null,
+            pagamentoPayload: pagamentoResponse
+        }, { merge: true });
+
+        if (elements.paymentResult) {
+            elements.paymentResult.classList.remove('hidden');
+            elements.paymentStatus.textContent = pagamentoResponse.message || 'Pagamento iniciado. Aguarde a confirmação.';
         }
 
-        window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(msg)}`, '_blank');
-        
-        cart = []; 
-        localStorage.setItem('lamedCart', '[]'); 
-        updateCartUI(); 
-        closeCheckoutModal();
-        
+        if (pedido.pagamento === 'PIX' && pagamentoResponse.qrCodeImage) {
+            elements.paymentQr.classList.remove('hidden');
+            elements.paymentQrImg.src = pagamentoResponse.qrCodeImage;
+            elements.pixCode.textContent = pagamentoResponse.pixCopiaCola || '';
+        }
+
+        if (pagamentoResponse.redirectUrl) {
+            window.open(pagamentoResponse.redirectUrl, '_blank');
+        }
     } catch (e) { 
         console.error(e);
-        alert("Erro ao enviar pedido: " + e.message); 
+        alert("Erro ao iniciar pagamento: " + e.message); 
     }
 }
 
