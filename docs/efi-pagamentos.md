@@ -37,9 +37,36 @@ window.EFI_BACKEND_URL = 'https://seu-backend.com/api/efi';
 
 ## Hospedagem recomendada (seu site está na Vercel)
 - **Front-end**: continue hospedando na **Vercel** (ótimo para site estático).
-- **Backend Efí**: use **Vercel Functions** *ou* **Firebase Functions**.
-  - Vercel Functions: simples de manter no mesmo domínio do site.
-  - Firebase Functions: boa escolha se você já usa Firestore/Auth.
+- **Backend Efí**: **Firebase Functions** (você pediu essa opção).
+  - Ela funciona bem com Firestore/Auth e mantém o backend separado do front-end.
+
+## Firebase Functions (passo a passo)
+1. Instale o CLI do Firebase (uma vez):
+   ```
+   npm install -g firebase-tools
+   ```
+2. Faça login e selecione o projeto:
+   ```
+   firebase login
+   firebase use --add
+   ```
+3. Configure as variáveis de ambiente (sandbox):
+   ```
+   firebase functions:config:set efi.base_url="https://pix-h.api.efipay.com.br" \\
+     efi.client_id="SEU_CLIENT_ID" \\
+     efi.client_secret="SEU_CLIENT_SECRET" \\
+     efi.pix_key="SUA_CHAVE_PIX" \\
+     efi.cert_base64="BASE64_CERT" \\
+     efi.cert_passphrase="SENHA_SE_HOUVER"
+   ```
+4. Publique as funções:
+   ```
+   firebase deploy --only functions
+   ```
+5. Use a URL publicada no front-end:
+   ```
+   window.EFI_BACKEND_URL = 'https://us-central1-SEU-PROJETO.cloudfunctions.net/efiApi';
+   ```
 
 ## Pix
 - Cria cobrança em `/v2/cob`.
