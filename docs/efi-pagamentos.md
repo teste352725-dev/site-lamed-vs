@@ -35,6 +35,12 @@ O front-end aponta para `/api/efi` por padrão. Se seu backend estiver em outro 
 window.EFI_BACKEND_URL = 'https://seu-backend.com/api/efi';
 ```
 
+## Hospedagem recomendada (seu site está na Vercel)
+- **Front-end**: continue hospedando na **Vercel** (ótimo para site estático).
+- **Backend Efí**: use **Vercel Functions** *ou* **Firebase Functions**.
+  - Vercel Functions: simples de manter no mesmo domínio do site.
+  - Firebase Functions: boa escolha se você já usa Firestore/Auth.
+
 ## Pix
 - Cria cobrança em `/v2/cob`.
 - Gera QR Code em `/v2/loc/{id}/qrcode`.
