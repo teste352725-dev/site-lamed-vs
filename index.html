@@ -39,6 +39,11 @@
   });
 </script>
 
+    <!-- Configuração de integração Efí (ajuste para o seu backend) -->
+    <script>
+        window.EFI_BACKEND_URL = '/api/efi';
+    </script>
+
     <!-- CSS Personalizado -->
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -49,7 +54,7 @@
     <header class="sticky top-0 z-50 transition-all border-b border-[#E5E0D8]" style="background-color: var(--cor-fundo);">
         <div class="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
             
-            <!-- Esquerda: Menu Hamburguer -->
+            <!-- Esquerda: Menu Hambúrguer -->
             <div class="flex items-center justify-start">
                 <button id="sidebar-toggle" class="text-2xl text-[--cor-texto] focus:outline-none hover:text-[--cor-ouro-acento] transition p-2">
                     <i class="fa-solid fa-bars"></i>
@@ -388,6 +393,7 @@
                     <input type="tel" name="telefone" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="WhatsApp" required>
                     <input type="email" name="email" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="E-mail" required>
                 </div>
+                <input type="text" name="cpf" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF do titular" required>
 
                 <!-- Campos de Entrega -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Entrega</h3>
@@ -414,6 +420,15 @@
                     <select id="parcelas-select" class="w-full bg-transparent border-none outline-none text-sm"></select>
                 </div>
 
+                <div id="card-fields" class="hidden mt-3 grid grid-cols-2 gap-3">
+                    <input type="text" name="card_nome" class="col-span-2 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Nome impresso no cartão">
+                    <input type="text" name="card_numero" class="col-span-2 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Número do cartão">
+                    <input type="text" name="card_validade" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Validade (MM/AA)">
+                    <input type="text" name="card_cvv" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CVV">
+                    <input type="text" name="card_cpf" class="col-span-2 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF do titular">
+                    <input type="hidden" name="card_token">
+                </div>
+
                 <div class="bg-[#F8F6F0] p-4 rounded text-sm mt-4">
                     <div id="checkout-summary" class="space-y-1"></div>
                     <div class="flex justify-between mt-2 pt-2 border-t border-[#dcdcdc] font-bold text-[--cor-texto]">
@@ -421,8 +436,18 @@
                     </div>
                 </div>
 
+                <div id="payment-result" class="hidden bg-white border border-[#E5E0D8] rounded p-4 text-sm mt-4">
+                    <p class="font-semibold text-[--cor-texto] mb-2">Pagamento Efí</p>
+                    <p id="payment-status" class="text-gray-600"></p>
+                    <div id="payment-qr" class="hidden mt-3 text-center">
+                        <img id="payment-qr-img" alt="QR Code Pix" class="mx-auto w-40 h-40">
+                        <button type="button" id="copy-pix-code" class="mt-2 text-xs text-[--cor-marrom-cta] underline">Copiar código Pix</button>
+                        <p id="pix-code" class="mt-2 break-all text-[10px] text-gray-500"></p>
+                    </div>
+                </div>
+
                 <button type="submit" class="w-full bg-green-600 text-white py-4 rounded text-sm font-bold uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
-                    <i class="fa-brands fa-whatsapp"></i> Enviar Pedido
+                    <i class="fa-solid fa-lock"></i> Finalizar Pagamento
                 </button>
             </form>
         </div>
