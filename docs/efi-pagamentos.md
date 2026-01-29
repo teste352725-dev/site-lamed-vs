@@ -35,6 +35,15 @@ O front-end aponta para `/api/efi` por padrão. Se seu backend estiver em outro 
 window.EFI_BACKEND_URL = 'https://seu-backend.com/api/efi';
 ```
 
+## Dica para testes no Replit
+Se acessar a URL raiz do Replit e aparecer `Cannot GET /`, isso é esperado: o backend não serve página inicial.
+Use o endpoint de saúde para validar se está online:
+```
+https://seu-replit.replit.app/api/efi/health
+```
+O aviso de **Content Security Policy** no console do navegador costuma vir do próprio embed do Replit e não impede o funcionamento do backend.
+Se aparecer o erro `does not provide an export named ...`, verifique se o seu `package.json` está com `"type": "module"` para que os arquivos `services/*.js` sejam interpretados como ES Modules.
+
 ## Hospedagem recomendada (seu site está na Vercel)
 - **Front-end**: continue hospedando na **Vercel** (ótimo para site estático).
 - **Backend Efí**: **Firebase Functions** (você pediu essa opção).
