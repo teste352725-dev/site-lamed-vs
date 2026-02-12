@@ -8,124 +8,285 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { --cor-marrom-cta: #643f21; --cor-ouro-acento: #A58A5C; }
+        :root {
+            --cor-marrom-cta: #643f21;
+            --cor-ouro-acento: #A58A5C;
+        }
         body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #333; }
-        .sidebar-item.active { background-color: rgba(165, 138, 92, 0.1); border-left: 4px solid var(--cor-ouro-acento); color: var(--cor-ouro-acento); }
-        .btn-primary { background-color: var(--cor-marrom-cta); color: white; transition: all 0.3s; }
-        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
         
-        /* CORREÇÃO DE VISIBILIDADE: SELOS ATIVO/INATIVO */
-        .status-badge { 
-            position: absolute; 
-            top: 10px; 
-            right: 10px; 
-            padding: 6px 12px; 
-            border-radius: 6px; 
-            font-size: 11px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            z-index: 20; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        .sidebar-item.active {
+            background-color: rgba(165, 138, 92, 0.1);
+            border-left: 4px solid var(--cor-ouro-acento);
+            color: var(--cor-ouro-acento);
+        }
+
+        .btn-primary {
+            background-color: var(--cor-marrom-cta);
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* CORREÇÃO DE VISIBILIDADE DOS SELOS EM CIMA DA PEÇA */
+        .status-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            z-index: 30;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
             letter-spacing: 0.5px;
         }
-        .status-active { background-color: #059669; color: white; border: 1px solid rgba(255,255,255,0.2); }
-        .status-inactive { background-color: #1f2937; color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .status-active { 
+            background-color: #10b981; /* Verde sólido */
+            color: white; 
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .status-inactive { 
+            background-color: #1f2937; /* Cinza escuro sólido */
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .view-content { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--cor-ouro-acento);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="flex min-h-screen">
+
     <!-- Sidebar -->
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full">
         <div class="p-6 border-b border-gray-100">
             <h1 class="text-2xl font-serif text-[--cor-marrom-cta]">Painel Laméd</h1>
         </div>
+        
         <nav class="flex-grow p-4 space-y-2">
-            <button onclick="changeView('overview')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50 active" id="btn-overview"><i class="fa-solid fa-chart-line mr-3"></i> Visão Geral</button>
-            <button onclick="changeView('products')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-products"><i class="fa-solid fa-box mr-3"></i> Peças</button>
-            <button onclick="changeView('orders')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-orders"><i class="fa-solid fa-cart-shopping mr-3"></i> Pedidos</button>
+            <button onclick="changeView('overview')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50 active" id="btn-overview">
+                <i class="fa-solid fa-chart-line mr-3"></i> Visão Geral
+            </button>
+            <button onclick="changeView('products')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-products">
+                <i class="fa-solid fa-box mr-3"></i> Peças
+            </button>
+            <button onclick="changeView('orders')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-orders">
+                <i class="fa-solid fa-cart-shopping mr-3"></i> Pedidos
+            </button>
         </nav>
+
         <div class="p-4 border-t border-gray-100">
-            <button onclick="logout()" class="w-full flex items-center p-3 text-red-500 hover:bg-red-50"><i class="fa-solid fa-right-from-bracket mr-3"></i> Sair</button>
+            <button onclick="logout()" class="w-full flex items-center p-3 text-red-500 hover:bg-red-50 rounded-lg transition">
+                <i class="fa-solid fa-right-from-bracket mr-3"></i> Sair
+            </button>
         </div>
     </aside>
 
-    <!-- Conteúdo Principal -->
+    <!-- Main Content -->
     <main class="ml-64 flex-grow p-8">
+        
+        <!-- View: Overview -->
         <div id="view-overview" class="view-content space-y-8">
-            <h2 class="text-2xl font-bold">Resumo da Loja</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-gray-500 text-sm mb-1">Total de Peças</p><h3 class="text-3xl font-bold" id="stat-total-products">0</h3></div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-gray-500 text-sm mb-1">Pedidos Pendentes</p><h3 class="text-3xl font-bold text-orange-600" id="stat-pending-orders">0</h3></div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-gray-500 text-sm mb-1">Vendas (Total)</p><h3 class="text-3xl font-bold text-green-600" id="stat-total-sales">R$ 0,00</h3></div>
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold">Resumo da Loja</h2>
+                    <p class="text-gray-500">Acompanhe seus resultados em tempo real.</p>
+                </div>
             </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-sm mb-1">Total de Peças</p>
+                    <h3 class="text-3xl font-bold" id="stat-total-products">0</h3>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-sm mb-1">Pedidos Pendentes</p>
+                    <h3 class="text-3xl font-bold text-orange-600" id="stat-pending-orders">0</h3>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-sm mb-1">Vendas (Total)</p>
+                    <h3 class="text-3xl font-bold text-green-600" id="stat-total-sales">R$ 0,00</h3>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-rotate text-blue-500 mr-3"></i>
+                    <div>
+                        <p class="text-blue-700 text-sm font-medium">Sincronização de Estoque</p>
+                        <p class="text-blue-600 text-xs">Baixe o estoque dos pedidos que foram feitos mas ainda não processados.</p>
+                    </div>
+                </div>
+                <button onclick="baixarEstoquePedidosPendentes()" class="bg-blue-600 text-white text-xs px-4 py-2 rounded hover:bg-blue-700 transition">Sincronizar Agora</button>
+            </div>
+            <div id="sync-status" class="hidden text-xs font-bold text-center p-2 bg-gray-100 rounded">Processando estoque...</div>
         </div>
 
+        <!-- View: Products -->
         <div id="view-products" class="view-content hidden space-y-6">
             <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-bold">Gestão de Peças</h2>
-                <button onclick="openProductModal()" class="btn-primary px-6 py-2 rounded-lg font-medium shadow-md"><i class="fa-solid fa-plus mr-2"></i> Nova Peça</button>
+                <div>
+                    <h2 class="text-2xl font-bold">Gestão de Peças</h2>
+                    <p class="text-gray-500">Cadastre e edite os produtos da sua loja.</p>
+                </div>
+                <button onclick="openProductModal()" class="btn-primary px-6 py-2 rounded-lg font-medium shadow-md flex items-center">
+                    <i class="fa-solid fa-plus mr-2"></i> Nova Peça
+                </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6" id="products-grid"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6" id="products-grid">
+                <!-- Products loaded here -->
+            </div>
         </div>
 
+        <!-- View: Orders -->
         <div id="view-orders" class="view-content hidden space-y-6">
             <h2 class="text-2xl font-bold">Pedidos Recebidos</h2>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <table class="w-full text-left">
-                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase"><tr class="border-b"><th class="p-4">Pedido</th><th class="p-4">Cliente</th><th class="p-4">Total</th><th class="p-4">Status</th><th class="p-4">Ação</th></tr></thead>
-                    <tbody id="orders-table-body"></tbody>
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                        <tr class="border-b">
+                            <th class="p-4">ID Pedido</th>
+                            <th class="p-4">Cliente</th>
+                            <th class="p-4">Data</th>
+                            <th class="p-4">Total</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4">Estoque</th>
+                            <th class="p-4">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <!-- Orders loaded here -->
+                    </tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <!-- Modal de Cadastro/Edição -->
+    <!-- Product Modal -->
     <div id="product-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl">
+        <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl relative">
             <div class="flex justify-between items-center mb-6 border-b pb-4">
-                <h3 class="text-xl font-bold" id="modal-title">Adicionar Peça</h3>
-                <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-2xl"></i></button>
+                <h3 class="text-xl font-bold" id="modal-title">Adicionar Nova Peça</h3>
+                <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                </button>
             </div>
+
             <form id="product-form" class="space-y-6">
                 <input type="hidden" id="edit-id">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Coluna Esquerda: Info Básica -->
                     <div class="space-y-4">
-                        <div><label class="block text-sm font-semibold mb-1">Nome da Peça</label><input type="text" id="p-nome" class="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-[--cor-ouro-acento] outline-none" required></div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-sm font-semibold mb-1">Preço (R$)</label><input type="number" id="p-preco" step="0.01" class="w-full border rounded-lg p-2.5" required></div>
-                            <div><label class="block text-sm font-semibold mb-1">Desconto (%)</label><input type="number" id="p-desconto" class="w-full border rounded-lg p-2.5" value="0"></div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Nome da Peça</label>
+                            <input type="text" id="p-nome" class="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-[--cor-ouro-acento] outline-none" required>
                         </div>
-                        <div><label class="block text-sm font-semibold mb-1">Coleção</label><select id="p-colecao" class="w-full border rounded-lg p-2.5"></select></div>
-                        <div><label class="block text-sm font-semibold mb-1">Categoria</label><select id="p-categoria" class="w-full border rounded-lg p-2.5"><option value="vestido">Vestido</option><option value="camisa">Camisa</option><option value="calca">Calça</option><option value="lugar_americano">Lugar Americano</option><option value="guardanapo">Guardanapo</option><option value="caminho_mesa">Caminho de Mesa</option><option value="porta_guardanapo">Porta Guardanapo</option><option value="combo">Combo/Kit</option></select></div>
                         
-                        <!-- NOVA OPÇÃO: PERSONALIZAÇÃO -->
-                        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Preço Base (R$)</label>
+                                <input type="number" id="p-preco" step="0.01" class="w-full border rounded-lg p-2.5" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Desconto (%)</label>
+                                <input type="number" id="p-desconto" class="w-full border rounded-lg p-2.5" value="0">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Coleção</label>
+                            <select id="p-colecao" class="w-full border rounded-lg p-2.5"></select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Categoria</label>
+                            <select id="p-categoria" class="w-full border rounded-lg p-2.5">
+                                <option value="vestido">Vestido</option>
+                                <option value="camisa">Camisa</option>
+                                <option value="calca">Calça</option>
+                                <option value="lugar_americano">Lugar Americano</option>
+                                <option value="guardanapo">Guardanapo</option>
+                                <option value="caminho_mesa">Caminho de Mesa</option>
+                                <option value="porta_guardanapo">Porta Guardanapo</option>
+                                <option value="combo">Combo/Kit</option>
+                            </select>
+                        </div>
+
+                        <!-- OPÇÃO PERSONALIZADA (DENTRO DA CATEGORIA/BLOCO DE CONFIG) -->
+                        <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" id="p-personalizavel" class="w-5 h-5 rounded border-gray-300 text-[--cor-ouro-acento] focus:ring-[--cor-ouro-acento]">
                                 <span class="ml-3">
-                                    <span class="block text-sm font-bold text-amber-900">Produto Personalizável?</span>
-                                    <span class="block text-xs text-amber-700">O cliente poderá preencher um campo de texto no site.</span>
+                                    <span class="block text-sm font-bold text-amber-900">Peça Personalizável?</span>
+                                    <span class="block text-xs text-amber-700">Se ativo, o cliente poderá digitar um texto (como nome ou letra) no site.</span>
                                 </span>
                             </label>
                         </div>
                     </div>
+
+                    <!-- Coluna Direita: Imagens e Estoque -->
                     <div class="space-y-4">
-                        <div><label class="block text-sm font-semibold mb-1">Imagens (URLs separadas por vírgula)</label><textarea id="p-imagens" class="w-full border rounded-lg p-2.5 h-24" placeholder="URL da imagem 1, URL da imagem 2..."></textarea></div>
-                        <div><label class="block text-sm font-semibold mb-1">Estoque por Cor</label><div id="colors-container" class="space-y-2"></div><button type="button" onclick="addColorField()" class="text-xs text-[--cor-ouro-acento] font-bold mt-2 hover:underline">+ Adicionar Cor</button></div>
-                        <div><label class="block text-sm font-semibold mb-1">Status de Visibilidade</label><select id="p-status" class="w-full border rounded-lg p-2.5"><option value="active">Ativo (Visível na Loja)</option><option value="inactive">Inativo (Oculto)</option></select></div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">URLs das Imagens (Separadas por vírgula)</label>
+                            <textarea id="p-imagens" class="w-full border rounded-lg p-2.5 h-24 text-xs" placeholder="https://exemplo.com/foto1.jpg, https://exemplo.com/foto2.jpg"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Cores e Quantidades em Estoque</label>
+                            <div id="colors-container" class="space-y-2">
+                                <!-- Color inputs here -->
+                            </div>
+                            <button type="button" onclick="addColorField()" class="text-xs text-[--cor-ouro-acento] font-bold mt-2 hover:underline">+ Adicionar Variante</button>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Status na Loja</label>
+                            <select id="p-status" class="w-full border rounded-lg p-2.5">
+                                <option value="active">Ativo (Público)</option>
+                                <option value="inactive">Inativo (Oculto)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div><label class="block text-sm font-semibold mb-1">Descrição</label><textarea id="p-desc" class="w-full border rounded-lg p-2.5 h-32"></textarea></div>
-                <div class="flex justify-end gap-3 pt-6 border-t"><button type="button" onclick="closeProductModal()" class="px-6 py-2.5 rounded-lg border text-gray-500 hover:bg-gray-50">Cancelar</button><button type="submit" class="btn-primary px-10 py-2.5 rounded-lg font-bold shadow-lg">Salvar Peça</button></div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Descrição Detalhada</label>
+                    <textarea id="p-desc" class="w-full border rounded-lg p-2.5 h-32"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-6 border-t">
+                    <button type="button" onclick="closeProductModal()" class="px-6 py-2.5 rounded-lg border text-gray-500 hover:bg-gray-50 font-medium">Cancelar</button>
+                    <button type="submit" class="btn-primary px-10 py-2.5 rounded-lg font-bold shadow-lg">Salvar Peça</button>
+                </div>
             </form>
         </div>
     </div>
 
     <script>
+        // Configurações do Firebase
         const appFirebaseConfig = {
             apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
             authDomain: "site-lamed.firebaseapp.com",
@@ -141,7 +302,11 @@
         let allProducts = [];
         let allCollections = [];
 
-        auth.onAuthStateChanged(user => { if(!user) window.location.href = 'index.html'; else initDashboard(); });
+        // Auth Guard
+        auth.onAuthStateChanged(user => {
+            if (!user) window.location.href = 'index.html';
+            else initDashboard();
+        });
 
         async function initDashboard() {
             loadCollections();
@@ -159,7 +324,8 @@
         async function loadCollections() {
             const snap = await db.collection('colecoes').get();
             allCollections = snap.docs.map(d => ({id: d.id, ...d.data()}));
-            document.getElementById('p-colecao').innerHTML = allCollections.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+            const select = document.getElementById('p-colecao');
+            select.innerHTML = allCollections.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
         }
 
         async function loadProducts() {
@@ -177,13 +343,17 @@
                 return `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative group">
                     <div class="status-badge ${statusClass}">${statusLabel}</div>
-                    <img src="${p.imagens[0]}" class="w-full aspect-[3/4] object-cover">
-                    <div class="p-4">
+                    <img src="${p.imagens[0]}" class="w-full aspect-[3/4] object-cover group-hover:scale-105 transition duration-500">
+                    <div class="p-4 bg-white relative">
                         <h4 class="font-bold text-sm truncate">${p.nome}</h4>
                         <p class="text-[--cor-marrom-cta] font-bold text-lg">R$ ${parseFloat(p.preco).toFixed(2)}</p>
                         <div class="flex gap-2 mt-4">
-                            <button onclick="editProduct('${p.id}')" class="flex-grow bg-gray-100 text-gray-600 py-2 rounded text-xs font-bold hover:bg-gray-200">Editar</button>
-                            <button onclick="deleteProduct('${p.id}')" class="w-10 bg-red-50 text-red-500 py-2 rounded hover:bg-red-100"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="editProduct('${p.id}')" class="flex-grow bg-gray-100 text-gray-600 py-2 rounded text-xs font-bold hover:bg-gray-200 transition">
+                                <i class="fa-solid fa-pen mr-1"></i> Editar
+                            </button>
+                            <button onclick="deleteProduct('${p.id}')" class="w-10 bg-red-50 text-red-500 py-2 rounded hover:bg-red-100 transition">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                 </div>`;
@@ -193,13 +363,32 @@
         async function loadOrders() {
             const snap = await db.collection('pedidos').orderBy('data', 'desc').get();
             const orders = snap.docs.map(d => ({id: d.id, ...d.data()}));
-            document.getElementById('orders-table-body').innerHTML = orders.map(o => `
+            
+            document.getElementById('stat-pending-orders').textContent = orders.filter(o => o.status === 'pendente').length;
+            const totalVal = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+            document.getElementById('stat-total-sales').textContent = `R$ ${totalVal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            
+            const tbody = document.getElementById('orders-table-body');
+            tbody.innerHTML = orders.map(o => `
                 <tr class="border-b hover:bg-gray-50 text-sm">
-                    <td class="p-4 font-bold">#${o.id.slice(0,6)}</td>
-                    <td class="p-4">${o.cliente.nome}</td>
-                    <td class="p-4">R$ ${o.total.toFixed(2)}</td>
-                    <td class="p-4"><span class="px-2 py-1 rounded-full text-[10px] font-bold ${o.status === 'pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}">${o.status.toUpperCase()}</span></td>
-                    <td class="p-4"><button onclick="viewOrder('${o.id}')" class="text-[--cor-ouro-acento] font-bold">Ver</button></td>
+                    <td class="p-4 font-mono font-bold text-xs">#${o.id.slice(0,6).toUpperCase()}</td>
+                    <td class="p-4">
+                        <div class="font-medium">${o.cliente.nome}</div>
+                        <div class="text-[10px] text-gray-400">${o.cliente.telefone}</div>
+                    </td>
+                    <td class="p-4 text-xs text-gray-500">${new Date(o.data).toLocaleDateString('pt-BR')}</td>
+                    <td class="p-4 font-bold">R$ ${o.total.toFixed(2)}</td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 rounded-full text-[10px] font-bold ${o.status === 'pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}">
+                            ${o.status.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        ${o.estoque_baixado ? '<i class="fa-solid fa-circle-check text-green-500"></i>' : '<i class="fa-solid fa-circle-minus text-gray-300"></i>'}
+                    </td>
+                    <td class="p-4">
+                        <button onclick="viewOrder('${o.id}')" class="text-[--cor-ouro-acento] hover:underline font-bold text-xs uppercase tracking-wider">Ver Detalhes</button>
+                    </td>
                 </tr>
             `).join('');
         }
@@ -207,12 +396,12 @@
         function addColorField(nome = '', hex = '#000000', qtd = 0) {
             const container = document.getElementById('colors-container');
             const div = document.createElement('div');
-            div.className = "flex gap-2 items-center bg-gray-50 p-2 rounded";
+            div.className = "flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-100";
             div.innerHTML = `
-                <input type="text" placeholder="Cor" value="${nome}" class="flex-grow border rounded p-1.5 text-xs" required>
-                <input type="color" value="${hex}" class="w-8 h-8 rounded border p-0">
+                <input type="text" placeholder="Nome Cor" value="${nome}" class="flex-grow border rounded p-1.5 text-xs" required>
+                <input type="color" value="${hex}" class="w-8 h-8 rounded border p-0 overflow-hidden cursor-pointer">
                 <input type="number" placeholder="Qtd" value="${qtd}" class="w-16 border rounded p-1.5 text-xs" required>
-                <button type="button" onclick="this.parentElement.remove()" class="text-red-400"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
             `;
             container.appendChild(div);
         }
@@ -220,16 +409,23 @@
         function openProductModal() {
             document.getElementById('product-form').reset();
             document.getElementById('edit-id').value = '';
+            document.getElementById('modal-title').textContent = 'Adicionar Nova Peça';
             document.getElementById('colors-container').innerHTML = '';
-            document.getElementById('product-modal').classList.replace('hidden', 'flex');
+            document.getElementById('product-modal').classList.remove('hidden');
+            document.getElementById('product-modal').classList.add('flex');
         }
 
-        function closeProductModal() { document.getElementById('product-modal').classList.replace('flex', 'hidden'); }
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+            document.getElementById('product-modal').classList.remove('flex');
+        }
 
         function editProduct(id) {
             const p = allProducts.find(x => x.id === id);
-            if(!p) return;
+            if (!p) return;
+            
             openProductModal();
+            document.getElementById('modal-title').textContent = 'Editar Peça';
             document.getElementById('edit-id').value = p.id;
             document.getElementById('p-nome').value = p.nome;
             document.getElementById('p-preco').value = p.preco;
@@ -240,16 +436,25 @@
             document.getElementById('p-status').value = p.status;
             document.getElementById('p-desc').value = p.descricao || '';
             document.getElementById('p-personalizavel').checked = p.personalizavel || false;
+            
             p.cores.forEach(c => addColorField(c.nome, c.hex, c.quantidade));
         }
 
         document.getElementById('product-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('edit-id').value;
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Salvando...';
+
             const cores = [];
             document.getElementById('colors-container').querySelectorAll('div').forEach(div => {
                 const inputs = div.querySelectorAll('input');
-                cores.push({ nome: inputs[0].value, hex: inputs[1].value, quantidade: parseInt(inputs[2].value) });
+                cores.push({
+                    nome: inputs[0].value,
+                    hex: inputs[1].value,
+                    quantidade: parseInt(inputs[2].value)
+                });
             });
 
             const data = {
@@ -266,13 +471,86 @@
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            if(id) await db.collection('pecas').doc(id).update(data);
-            else { data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('pecas').add(data); }
-            closeProductModal(); loadProducts();
+            try {
+                if (id) {
+                    await db.collection('pecas').doc(id).update(data);
+                } else {
+                    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                    await db.collection('pecas').add(data);
+                }
+                closeProductModal();
+                loadProducts();
+            } catch (err) {
+                alert("Erro ao salvar: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Salvar Peça';
+            }
         });
 
-        async function deleteProduct(id) { if(confirm('Excluir?')) { await db.collection('pecas').doc(id).delete(); loadProducts(); } }
-        function logout() { auth.signOut(); }
+        async function deleteProduct(id) {
+            if (confirm('Deseja excluir esta peça permanentemente?')) {
+                await db.collection('pecas').doc(id).delete();
+                loadProducts();
+            }
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        async function baixarEstoquePedidosPendentes() {
+            const statusDiv = document.getElementById('sync-status');
+            statusDiv.classList.remove('hidden');
+            statusDiv.textContent = "🔍 Procurando pedidos com estoque pendente...";
+            
+            const pedidosSnap = await db.collection('pedidos')
+                .where('estoque_baixado', '==', false)
+                .get();
+            
+            if (pedidosSnap.empty) {
+                statusDiv.textContent = "✅ Nenhum pedido pendente para baixar estoque.";
+                setTimeout(() => statusDiv.classList.add('hidden'), 2000);
+                return;
+            }
+
+            statusDiv.textContent = `📦 Processando ${pedidosSnap.size} pedido(s)...`;
+
+            for (const pedidoDoc of pedidosSnap.docs) {
+                const pedidoId = pedidoDoc.id;
+                const pedido = pedidoDoc.data();
+
+                try {
+                    await db.runTransaction(async (transaction) => {
+                        for (const item of pedido.produtos) {
+                            const produtoRef = db.collection('pecas').doc(item.id);
+                            const produtoSnap = await transaction.get(produtoRef);
+
+                            if (produtoSnap.exists) {
+                                const prodData = produtoSnap.data();
+                                const novasCores = prodData.cores.map(cor => {
+                                    if (cor.nome === item.cor?.nome) {
+                                        const novaQtd = parseInt(cor.quantidade || 0) - item.quantity;
+                                        cor.quantidade = novaQtd < 0 ? 0 : novaQtd;
+                                    }
+                                    return cor;
+                                });
+                                transaction.update(produtoRef, { cores: novasCores });
+                            }
+                        }
+                        transaction.update(pedidoDoc.ref, { estoque_baixado: true });
+                    });
+                } catch (err) {
+                    console.error("Erro no pedido " + pedidoId, err);
+                }
+            }
+
+            statusDiv.textContent = "✅ Estoque sincronizado com sucesso!";
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+                loadOrders();
+            }, 2000);
+        }
     </script>
 </body>
 </html>
