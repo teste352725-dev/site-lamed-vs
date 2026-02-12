@@ -550,6 +550,9 @@ function showProductDetail(id) {
     if (existingComboSelector) existingComboSelector.remove();
     const existingColorContainer = document.querySelector('.color-selector-container');
     if (existingColorContainer) existingColorContainer.remove();
+    // Limpeza campo customizável
+    const customInputContainer = document.getElementById('custom-input-container');
+    if (customInputContainer) customInputContainer.remove();
 
     if (isCombo) {
         if(sizeSection) sizeSection.classList.add('hidden');
@@ -575,6 +578,26 @@ function showProductDetail(id) {
         }
         selectedSize = null;
         renderColors();
+    }
+
+    // --- Lógica de Personalização (Nova) ---
+    // Verifica se o nome contém "letra" ou "personaliz"
+    const nomeLower = currentProduct.nome.toLowerCase();
+    const needsCustomization = nomeLower.includes('letra') || nomeLower.includes('personaliz');
+    
+    if (needsCustomization) {
+        const customDiv = document.createElement('div');
+        customDiv.id = 'custom-input-container';
+        customDiv.className = 'mb-6 mt-4 p-4 bg-gray-50 border border-gray-200 rounded';
+        customDiv.innerHTML = `
+            <label class="block text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">
+                Personalização (Qual Letra/Nome?) <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="product-custom-text" class="w-full border border-gray-300 p-2 rounded text-sm focus:border-[#A58A5C] focus:ring-1 focus:ring-[#A58A5C] outline-none" placeholder="Ex: Letra A, Família Silva...">
+            <p class="text-[10px] text-gray-500 mt-1">Digite exatamente como deseja a personalização.</p>
+        `;
+        const btn = document.getElementById('add-to-cart-button');
+        if(btn) btn.parentElement.insertBefore(customDiv, btn);
     }
     
     // --- LÓGICA DO GUIA DE MEDIDAS (DINÂMICO) ---
@@ -907,7 +930,19 @@ function addToCart() {
     const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
     const tamanhoFinal = (isMesaPosta || isCombo) ? (isCombo ? 'Combo' : 'Único') : selectedSize;
     
-    const cartId = isCombo ? `${currentProduct.id}-combo-${Date.now()}` : `${currentProduct.id}-${tamanhoFinal}-${corObj?.nome || 'unico'}`;
+    // Captura do input de customização
+    const customInput = document.getElementById('product-custom-text');
+    const customNotes = customInput ? customInput.value.trim() : null;
+    
+    // Validação opcional (se quiser obrigar a digitar)
+    const nomeLower = currentProduct.nome.toLowerCase();
+    const needsCustomization = nomeLower.includes('letra') || nomeLower.includes('personaliz');
+    if (needsCustomization && (!customNotes || customNotes === '')) {
+        alert("Por favor, digite a personalização desejada (Ex: Qual letra?).");
+        return;
+    }
+
+    const cartId = isCombo ? `${currentProduct.id}-combo-${Date.now()}` : `${currentProduct.id}-${tamanhoFinal}-${corObj?.nome || 'unico'}-${customNotes ? customNotes.replace(/\s+/g, '-') : ''}`;
     const existing = cart.find(i => i.cartId === cartId);
     
     if (existing) existing.quantity++;
@@ -922,7 +957,8 @@ function addToCart() {
         quantity: 1,
         isCombo: isCombo,
         componentes: isCombo ? currentProduct.componentes : null,
-        comboSelections: isCombo ? comboSelections : null
+        comboSelections: isCombo ? comboSelections : null,
+        customNotes: customNotes // Armazena a nota
     });
     
     localStorage.setItem('lamedCart', JSON.stringify(cart));
@@ -951,6 +987,11 @@ function updateCartUI() {
             detailsHtml += `</div>`;
         } else {
             detailsHtml = `<p class="text-xs text-gray-500 mb-1">${item.tamanho} ${item.cor ? `| ${item.cor.nome}` : ''}</p>`;
+        }
+
+        // Mostra a personalização no carrinho
+        if (item.customNotes) {
+            detailsHtml += `<div class="text-[10px] text-[--cor-marrom-cta] font-bold mt-1 bg-yellow-50 p-1 rounded border border-yellow-100"><i class="fa-solid fa-pen-nib mr-1"></i>${item.customNotes}</div>`;
         }
 
         container.innerHTML += `
@@ -1089,8 +1130,14 @@ function updateCheckoutSummary() {
         let desc = item.nome;
         if (item.isCombo) desc += " (Combo)";
         
+        // Inclui a personalização no resumo do checkout visual
+        let customHtml = '';
+        if (item.customNotes) {
+            customHtml = `<div class="text-[10px] text-gray-500 italic ml-4">↳ Personalização: ${item.customNotes}</div>`;
+        }
+        
         summary.innerHTML += `<div class="flex justify-between text-sm mb-1 pb-1 border-b border-dashed border-[#dcdcdc]">
-            <div><span class="font-medium text-[--cor-texto]">${item.quantity}x ${desc}</span></div>
+            <div><span class="font-medium text-[--cor-texto]">${item.quantity}x ${desc}</span>${customHtml}</div>
             <span>${formatarReal(itemTotal)}</span>
         </div>`; 
     });
@@ -1170,6 +1217,12 @@ async function finalizarPedido(formData) {
                 const details = [tam, cor].filter(Boolean).join(' | ');
                 if (details) msg += `  (${details})\n`;
             }
+            
+            // Adiciona a nota de personalização na mensagem do WhatsApp
+            if (item.customNotes) {
+                msg += `  ✍️ *Personalização:* ${item.customNotes}\n`;
+            }
+
             msg += `  Valor: ${formatarReal(item.preco * item.quantity)}\n`;
         });
         
