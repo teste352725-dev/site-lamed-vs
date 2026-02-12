@@ -8,362 +8,271 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
     <style>
-        :root {
-            --cor-marrom-cta: #643f21;
-            --cor-ouro-acento: #A58A5C;
-        }
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .font-allura { font-family: 'Allura', cursive; }
+        :root { --cor-marrom-cta: #643f21; --cor-ouro-acento: #A58A5C; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #333; }
+        .sidebar-item.active { background-color: rgba(165, 138, 92, 0.1); border-left: 4px solid var(--cor-ouro-acento); color: var(--cor-ouro-acento); }
+        .btn-primary { background-color: var(--cor-marrom-cta); color: white; transition: all 0.3s; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
         
-        /* Cards */
-        .stat-card {
-            background: white; border-radius: 0.75rem; padding: 1.25rem;
-            border: 1px solid #e2e8f0; transition: all 0.2s;
+        /* CORREÇÃO DE VISIBILIDADE: SELOS ATIVO/INATIVO */
+        .status-badge { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            padding: 6px 12px; 
+            border-radius: 6px; 
+            font-size: 11px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            z-index: 20; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            letter-spacing: 0.5px;
         }
-        .stat-card:active { transform: scale(0.98); }
-        
-        /* Botões de Atalho */
-        .quick-action {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: white; border-radius: 0.75rem; padding: 1.5rem;
-            border: 1px solid #e2e8f0; transition: all 0.2s; text-align: center;
-            cursor: pointer;
-            height: 100%;
-        }
-        .quick-action:hover { border-color: var(--cor-ouro-acento); background-color: #fffbeb; transform: translateY(-2px); shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        
-        /* Menu Mobile */
-        #mobile-menu {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: white; border-top: 1px solid #e2e8f0;
-            display: flex; justify-content: space-around; padding: 0.75rem;
-            z-index: 50; box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.1);
-        }
-        .menu-item {
-            display: flex; flex-direction: column; align-items: center;
-            color: #6b7280; font-size: 0.75rem; text-decoration: none;
-        }
-        .menu-item.active { color: var(--cor-marrom-cta); font-weight: 600; }
-        .menu-item i { font-size: 1.25rem; margin-bottom: 0.25rem; }
-        
-        /* Loading */
-        .loading-spinner {
-            width: 24px; height: 24px; border: 3px solid #f3f4f6;
-            border-top-color: var(--cor-ouro-acento);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .status-active { background-color: #059669; color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .status-inactive { background-color: #1f2937; color: white; border: 1px solid rgba(255,255,255,0.2); }
     </style>
 </head>
-<body class="min-h-screen pb-20">
-
-    <!-- Cabeçalho -->
-    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <h1 class="font-allura text-3xl text-gray-800">Laméd vs</h1>
-            <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full font-medium">Admin</span>
+<body class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full">
+        <div class="p-6 border-b border-gray-100">
+            <h1 class="text-2xl font-serif text-[--cor-marrom-cta]">Painel Laméd</h1>
         </div>
-        <button id="logout-btn" class="text-gray-500 hover:text-red-600 transition-colors">
-            <i class="fa-solid fa-arrow-right-from-bracket text-lg"></i>
-        </button>
-    </header>
-
-    <main class="max-w-7xl mx-auto p-4 space-y-6">
-        <!-- Boas Vindas -->
-        <div>
-            <h2 class="text-xl font-semibold text-gray-800">Visão Geral</h2>
-            <p class="text-gray-500 text-sm">Bem-vindo de volta.</p>
+        <nav class="flex-grow p-4 space-y-2">
+            <button onclick="changeView('overview')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50 active" id="btn-overview"><i class="fa-solid fa-chart-line mr-3"></i> Visão Geral</button>
+            <button onclick="changeView('products')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-products"><i class="fa-solid fa-box mr-3"></i> Peças</button>
+            <button onclick="changeView('orders')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-orders"><i class="fa-solid fa-cart-shopping mr-3"></i> Pedidos</button>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="logout()" class="w-full flex items-center p-3 text-red-500 hover:bg-red-50"><i class="fa-solid fa-right-from-bracket mr-3"></i> Sair</button>
         </div>
+    </aside>
 
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="stat-card">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-gray-500 text-xs uppercase font-bold">Pedidos</span>
-                    <i class="fa-solid fa-shopping-bag text-blue-500"></i>
-                </div>
-                <span class="text-2xl font-bold text-gray-800" id="total-pedidos">-</span>
-                <p class="text-xs text-gray-400 mt-1">Total</p>
-            </div>
-            <div class="stat-card">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-gray-500 text-xs uppercase font-bold">Receita</span>
-                    <i class="fa-solid fa-dollar-sign text-green-500"></i>
-                </div>
-                <span class="text-2xl font-bold text-gray-800" id="receita-total">-</span>
-                <p class="text-xs text-gray-400 mt-1">Estimada</p>
-            </div>
-            <div class="stat-card">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-gray-500 text-xs uppercase font-bold">Produtos</span>
-                    <i class="fa-solid fa-shirt text-purple-500"></i>
-                </div>
-                <span class="text-2xl font-bold text-gray-800" id="total-produtos">-</span>
-                <p class="text-xs text-gray-400 mt-1">Cadastrados</p>
-            </div>
-            <div class="stat-card">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-gray-500 text-xs uppercase font-bold">Coleções</span>
-                    <i class="fa-solid fa-layer-group text-orange-500"></i>
-                </div>
-                <span class="text-2xl font-bold text-gray-800" id="colecoes-ativas">-</span>
-                <p class="text-xs text-green-600 mt-1">Ativas</p>
+    <!-- Conteúdo Principal -->
+    <main class="ml-64 flex-grow p-8">
+        <div id="view-overview" class="view-content space-y-8">
+            <h2 class="text-2xl font-bold">Resumo da Loja</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-gray-500 text-sm mb-1">Total de Peças</p><h3 class="text-3xl font-bold" id="stat-total-products">0</h3></div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-gray-500 text-sm mb-1">Pedidos Pendentes</p><h3 class="text-3xl font-bold text-orange-600" id="stat-pending-orders">0</h3></div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p class="text-gray-500 text-sm mb-1">Vendas (Total)</p><h3 class="text-3xl font-bold text-green-600" id="stat-total-sales">R$ 0,00</h3></div>
             </div>
         </div>
 
-        <!-- Ações Rápidas -->
-        <div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-3">Acesso Rápido</h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <!-- 1. Produtos -->
-                <a href="produtos.html" class="quick-action">
-                    <i class="fa-solid fa-shirt text-2xl text-[--cor-marrom-cta] mb-2"></i>
-                    <span class="font-medium text-sm">Produtos</span>
-                </a>
-                
-                <!-- 2. Pedidos -->
-                <a href="pedidos.html" class="quick-action">
-                    <i class="fa-solid fa-box text-2xl text-[--cor-marrom-cta] mb-2"></i>
-                    <span class="font-medium text-sm">Pedidos</span>
-                </a>
-                
-                <!-- 3. Chat Clientes -->
-                <a href="chat-admin.html" class="quick-action border-2 border-green-100 bg-green-50 hover:bg-green-100">
-                    <i class="fa-brands fa-whatsapp text-2xl text-green-600 mb-2"></i>
-                    <span class="font-medium text-sm text-green-800">Chat Clientes</span>
-                </a>
-                
-                <!-- 4. Galeria -->
-                <a href="galeria.html" class="quick-action">
-                    <i class="fa-solid fa-images text-2xl text-[--cor-marrom-cta] mb-2"></i>
-                    <span class="font-medium text-sm">Galeria</span>
-                </a>
-                
-                <!-- 5. Coleções -->
-                <a href="colecoes.html" class="quick-action">
-                    <i class="fa-solid fa-layer-group text-2xl text-[--cor-marrom-cta] mb-2"></i>
-                    <span class="font-medium text-sm">Coleções</span>
-                </a>
-                
-                <!-- 6. Editor -->
-                <a href="editor-imagem.html" class="quick-action">
-                    <i class="fa-solid fa-crop-simple text-2xl text-gray-500 mb-2"></i>
-                    <span class="font-medium text-sm">Editor</span>
-                </a>
-                
-                <!-- 7. Calculadora (NOVO) -->
-                <a href="calcularvalordapeça.html" class="quick-action border-2 border-[--cor-ouro-acento] bg-[#fffbeb]">
-                    <i class="fa-solid fa-calculator text-2xl text-[--cor-marrom-cta] mb-2"></i>
-                    <span class="font-medium text-sm">Calculadora</span>
-                </a>
+        <div id="view-products" class="view-content hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold">Gestão de Peças</h2>
+                <button onclick="openProductModal()" class="btn-primary px-6 py-2 rounded-lg font-medium shadow-md"><i class="fa-solid fa-plus mr-2"></i> Nova Peça</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6" id="products-grid"></div>
+        </div>
 
-                <!-- 8. Scripts -->
-                <a href="executor_scripts.html" class="quick-action">
-                    <i class="fa-solid fa-terminal text-2xl text-gray-500 mb-2"></i>
-                    <span class="font-medium text-sm">Scripts</span>
-                </a>
+        <div id="view-orders" class="view-content hidden space-y-6">
+            <h2 class="text-2xl font-bold">Pedidos Recebidos</h2>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase"><tr class="border-b"><th class="p-4">Pedido</th><th class="p-4">Cliente</th><th class="p-4">Total</th><th class="p-4">Status</th><th class="p-4">Ação</th></tr></thead>
+                    <tbody id="orders-table-body"></tbody>
+                </table>
             </div>
         </div>
     </main>
 
-    <!-- Menu Navegação Mobile -->
-    <nav id="mobile-menu" class="md:hidden">
-        <a href="dashboard.html" class="menu-item active">
-            <i class="fa-solid fa-home"></i>
-            <span>Home</span>
-        </a>
-        <a href="pedidos.html" class="menu-item">
-            <i class="fa-solid fa-box"></i>
-            <span>Pedidos</span>
-        </a>
-        <a href="produtos.html" class="menu-item">
-            <i class="fa-solid fa-shirt"></i>
-            <span>Produtos</span>
-        </a>
-        <a href="chat-admin.html" class="menu-item">
-            <i class="fa-solid fa-comments"></i>
-            <span>Chat</span>
-        </a>
-    </nav>
-
-    <!-- Notificação de Estoque -->
-    <div id="estoque-status" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded shadow-lg z-50 text-xs hidden">
-        <i class="fa-solid fa-sync fa-spin mr-2"></i> Processando estoque...
+    <!-- Modal de Cadastro/Edição -->
+    <div id="product-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h3 class="text-xl font-bold" id="modal-title">Adicionar Peça</h3>
+                <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+            <form id="product-form" class="space-y-6">
+                <input type="hidden" id="edit-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-semibold mb-1">Nome da Peça</label><input type="text" id="p-nome" class="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-[--cor-ouro-acento] outline-none" required></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-semibold mb-1">Preço (R$)</label><input type="number" id="p-preco" step="0.01" class="w-full border rounded-lg p-2.5" required></div>
+                            <div><label class="block text-sm font-semibold mb-1">Desconto (%)</label><input type="number" id="p-desconto" class="w-full border rounded-lg p-2.5" value="0"></div>
+                        </div>
+                        <div><label class="block text-sm font-semibold mb-1">Coleção</label><select id="p-colecao" class="w-full border rounded-lg p-2.5"></select></div>
+                        <div><label class="block text-sm font-semibold mb-1">Categoria</label><select id="p-categoria" class="w-full border rounded-lg p-2.5"><option value="vestido">Vestido</option><option value="camisa">Camisa</option><option value="calca">Calça</option><option value="lugar_americano">Lugar Americano</option><option value="guardanapo">Guardanapo</option><option value="caminho_mesa">Caminho de Mesa</option><option value="porta_guardanapo">Porta Guardanapo</option><option value="combo">Combo/Kit</option></select></div>
+                        
+                        <!-- NOVA OPÇÃO: PERSONALIZAÇÃO -->
+                        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="p-personalizavel" class="w-5 h-5 rounded border-gray-300 text-[--cor-ouro-acento] focus:ring-[--cor-ouro-acento]">
+                                <span class="ml-3">
+                                    <span class="block text-sm font-bold text-amber-900">Produto Personalizável?</span>
+                                    <span class="block text-xs text-amber-700">O cliente poderá preencher um campo de texto no site.</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-semibold mb-1">Imagens (URLs separadas por vírgula)</label><textarea id="p-imagens" class="w-full border rounded-lg p-2.5 h-24" placeholder="URL da imagem 1, URL da imagem 2..."></textarea></div>
+                        <div><label class="block text-sm font-semibold mb-1">Estoque por Cor</label><div id="colors-container" class="space-y-2"></div><button type="button" onclick="addColorField()" class="text-xs text-[--cor-ouro-acento] font-bold mt-2 hover:underline">+ Adicionar Cor</button></div>
+                        <div><label class="block text-sm font-semibold mb-1">Status de Visibilidade</label><select id="p-status" class="w-full border rounded-lg p-2.5"><option value="active">Ativo (Visível na Loja)</option><option value="inactive">Inativo (Oculto)</option></select></div>
+                    </div>
+                </div>
+                <div><label class="block text-sm font-semibold mb-1">Descrição</label><textarea id="p-desc" class="w-full border rounded-lg p-2.5 h-32"></textarea></div>
+                <div class="flex justify-end gap-3 pt-6 border-t"><button type="button" onclick="closeProductModal()" class="px-6 py-2.5 rounded-lg border text-gray-500 hover:bg-gray-50">Cancelar</button><button type="submit" class="btn-primary px-10 py-2.5 rounded-lg font-bold shadow-lg">Salvar Peça</button></div>
+            </form>
+        </div>
     </div>
 
     <script>
-        const firebaseConfig = {
+        const appFirebaseConfig = {
             apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
             authDomain: "site-lamed.firebaseapp.com",
-            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
             projectId: "site-lamed",
             storageBucket: "site-lamed.firebasestorage.app",
             messagingSenderId: "862756160215",
-            appId: "1:862756160215:web:d0fded233682bf93eaa692",
-            measurementId: "G-BL1G961PGT"
+            appId: "1:862756160215:web:d0fded233682bf93eaa692"
         };
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        firebase.initializeApp(appFirebaseConfig);
         const db = firebase.firestore();
-        
-        // Validação de Admin (Proteção Front-End)
-        const ADMIN_UID = "NoGsCqiKc0VJwWb6rppk7QVLV1B2";
+        const auth = firebase.auth();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            auth.onAuthStateChanged(user => {
-                if (!user) {
-                    window.location.href = 'login-admin.html';
-                } else if (user.uid !== ADMIN_UID) {
-                    // Se logado mas não for o admin correto, manda para a loja
-                    console.log("UID Logado:", user.uid); 
-                    console.log("UID Esperado:", ADMIN_UID); 
-                    alert("Acesso restrito: Seu usuário não é administrador.");
-                    window.location.href = 'index.html';
-                } else {
-                    // É o admin, carrega tudo e inicia o robô
-                    carregarStats();
-                    iniciarRoboDeEstoque();
-                }
+        let allProducts = [];
+        let allCollections = [];
+
+        auth.onAuthStateChanged(user => { if(!user) window.location.href = 'index.html'; else initDashboard(); });
+
+        async function initDashboard() {
+            loadCollections();
+            loadProducts();
+            loadOrders();
+        }
+
+        function changeView(view) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${view}`).classList.add('active');
+        }
+
+        async function loadCollections() {
+            const snap = await db.collection('colecoes').get();
+            allCollections = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            document.getElementById('p-colecao').innerHTML = allCollections.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+        }
+
+        async function loadProducts() {
+            const snap = await db.collection('pecas').orderBy('createdAt', 'desc').get();
+            allProducts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            document.getElementById('stat-total-products').textContent = allProducts.length;
+            renderProducts();
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('products-grid');
+            grid.innerHTML = allProducts.map(p => {
+                const statusClass = p.status === 'active' ? 'status-active' : 'status-inactive';
+                const statusLabel = p.status === 'active' ? 'Ativo' : 'Inativo';
+                return `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative group">
+                    <div class="status-badge ${statusClass}">${statusLabel}</div>
+                    <img src="${p.imagens[0]}" class="w-full aspect-[3/4] object-cover">
+                    <div class="p-4">
+                        <h4 class="font-bold text-sm truncate">${p.nome}</h4>
+                        <p class="text-[--cor-marrom-cta] font-bold text-lg">R$ ${parseFloat(p.preco).toFixed(2)}</p>
+                        <div class="flex gap-2 mt-4">
+                            <button onclick="editProduct('${p.id}')" class="flex-grow bg-gray-100 text-gray-600 py-2 rounded text-xs font-bold hover:bg-gray-200">Editar</button>
+                            <button onclick="deleteProduct('${p.id}')" class="w-10 bg-red-50 text-red-500 py-2 rounded hover:bg-red-100"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function loadOrders() {
+            const snap = await db.collection('pedidos').orderBy('data', 'desc').get();
+            const orders = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            document.getElementById('orders-table-body').innerHTML = orders.map(o => `
+                <tr class="border-b hover:bg-gray-50 text-sm">
+                    <td class="p-4 font-bold">#${o.id.slice(0,6)}</td>
+                    <td class="p-4">${o.cliente.nome}</td>
+                    <td class="p-4">R$ ${o.total.toFixed(2)}</td>
+                    <td class="p-4"><span class="px-2 py-1 rounded-full text-[10px] font-bold ${o.status === 'pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}">${o.status.toUpperCase()}</span></td>
+                    <td class="p-4"><button onclick="viewOrder('${o.id}')" class="text-[--cor-ouro-acento] font-bold">Ver</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function addColorField(nome = '', hex = '#000000', qtd = 0) {
+            const container = document.getElementById('colors-container');
+            const div = document.createElement('div');
+            div.className = "flex gap-2 items-center bg-gray-50 p-2 rounded";
+            div.innerHTML = `
+                <input type="text" placeholder="Cor" value="${nome}" class="flex-grow border rounded p-1.5 text-xs" required>
+                <input type="color" value="${hex}" class="w-8 h-8 rounded border p-0">
+                <input type="number" placeholder="Qtd" value="${qtd}" class="w-16 border rounded p-1.5 text-xs" required>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-400"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function openProductModal() {
+            document.getElementById('product-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('colors-container').innerHTML = '';
+            document.getElementById('product-modal').classList.replace('hidden', 'flex');
+        }
+
+        function closeProductModal() { document.getElementById('product-modal').classList.replace('flex', 'hidden'); }
+
+        function editProduct(id) {
+            const p = allProducts.find(x => x.id === id);
+            if(!p) return;
+            openProductModal();
+            document.getElementById('edit-id').value = p.id;
+            document.getElementById('p-nome').value = p.nome;
+            document.getElementById('p-preco').value = p.preco;
+            document.getElementById('p-desconto').value = p.desconto || 0;
+            document.getElementById('p-colecao').value = p.colecaoId;
+            document.getElementById('p-categoria').value = p.categoria;
+            document.getElementById('p-imagens').value = p.imagens.join(', ');
+            document.getElementById('p-status').value = p.status;
+            document.getElementById('p-desc').value = p.descricao || '';
+            document.getElementById('p-personalizavel').checked = p.personalizavel || false;
+            p.cores.forEach(c => addColorField(c.nome, c.hex, c.quantidade));
+        }
+
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const cores = [];
+            document.getElementById('colors-container').querySelectorAll('div').forEach(div => {
+                const inputs = div.querySelectorAll('input');
+                cores.push({ nome: inputs[0].value, hex: inputs[1].value, quantidade: parseInt(inputs[2].value) });
             });
 
-            document.getElementById('logout-btn').onclick = () => auth.signOut();
+            const data = {
+                nome: document.getElementById('p-nome').value,
+                preco: parseFloat(document.getElementById('p-preco').value),
+                desconto: parseInt(document.getElementById('p-desconto').value),
+                colecaoId: document.getElementById('p-colecao').value,
+                categoria: document.getElementById('p-categoria').value,
+                imagens: document.getElementById('p-imagens').value.split(',').map(s => s.trim()).filter(s => s),
+                status: document.getElementById('p-status').value,
+                descricao: document.getElementById('p-desc').value,
+                personalizavel: document.getElementById('p-personalizavel').checked,
+                cores: cores,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if(id) await db.collection('pecas').doc(id).update(data);
+            else { data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('pecas').add(data); }
+            closeProductModal(); loadProducts();
         });
 
-        async function carregarStats() {
-            // Pedidos
-            db.collection('pedidos').get().then(snap => {
-                document.getElementById('total-pedidos').textContent = snap.size;
-                let total = 0;
-                snap.forEach(doc => total += (doc.data().total || 0));
-                document.getElementById('receita-total').textContent = `R$ ${total.toFixed(0)}`;
-            });
-
-            // Produtos
-            db.collection('pecas').get().then(snap => {
-                document.getElementById('total-produtos').textContent = snap.size;
-            });
-
-            // Coleções Ativas
-            db.collection('colecoes').where('ativa', '==', true).get().then(snap => {
-                document.getElementById('colecoes-ativas').textContent = snap.size;
-            });
-        }
-
-        // --- ROBÔ DE ESTOQUE ---
-        function iniciarRoboDeEstoque() {
-            console.log("🤖 Robô de Estoque iniciado no Dashboard...");
-            
-            // Vigia pedidos onde estoque_baixado é falso
-            db.collection('pedidos')
-              .where('estoque_baixado', '==', false)
-              .onSnapshot(async (snapshot) => {
-                  
-                // Se não tiver pedidos pendentes, não faz nada
-                if(snapshot.empty) return;
-
-                const statusDiv = document.getElementById('estoque-status');
-                statusDiv.classList.remove('hidden');
-
-                // Processa cada pedido pendente
-                for (const docPedido of snapshot.docs) {
-                    const pedido = docPedido.data();
-                    const pedidoId = docPedido.id;
-                    
-                    console.log(`🔄 Baixando estoque do pedido ${pedidoId}...`);
-
-                    try {
-                        await db.runTransaction(async (transaction) => {
-                            // Iterar sobre os itens do pedido
-                            for (const item of pedido.produtos) {
-                                // Lógica para Kits
-                                if (item.isKit && item.componentes && item.kitSelections) {
-                                    // Para cada componente do kit
-                                    for (let i = 0; i < item.componentes.length; i++) {
-                                        const comp = item.componentes[i];
-                                        // Cor escolhida para este componente (baseado no índice)
-                                        // Nota: kitSelections é um objeto { "0": {nome: "Azul"}, "1": ... }
-                                        const selectedColorName = item.kitSelections[i] ? item.kitSelections[i].nome : null;
-                                        
-                                        if (selectedColorName) {
-                                            const compRef = db.collection('pecas').doc(comp.id);
-                                            const compDoc = await transaction.get(compRef);
-                                            
-                                            if (compDoc.exists) {
-                                                const dadosComp = compDoc.data();
-                                                const cores = dadosComp.cores || [];
-                                                
-                                                // Encontra a cor e baixa estoque
-                                                const colorIndex = cores.findIndex(c => c.nome === selectedColorName);
-                                                
-                                                if (colorIndex !== -1) {
-                                                    const qtdBaixar = item.quantity * comp.quantidade;
-                                                    const novaQtd = (parseInt(cores[colorIndex].quantidade) || 0) - qtdBaixar;
-                                                    cores[colorIndex].quantidade = novaQtd < 0 ? 0 : novaQtd;
-                                                    transaction.update(compRef, { cores: cores });
-                                                }
-                                            }
-                                        }
-                                    }
-                                } 
-                                // Lógica para Produtos Normais
-                                else if (item.id) {
-                                    const produtoRef = db.collection('pecas').doc(item.id);
-                                    const produtoDoc = await transaction.get(produtoRef);
-
-                                    if (!produtoDoc.exists) {
-                                        console.warn(`Produto ${item.id} não encontrado, ignorando.`);
-                                        continue;
-                                    }
-
-                                    const dadosProd = produtoDoc.data();
-                                    const cores = dadosProd.cores || [];
-                                    let estoqueAlterado = false;
-
-                                    // Atualizar a quantidade da cor específica
-                                    const novasCores = cores.map(cor => {
-                                        // Tenta casar a cor do pedido com a cor do produto
-                                        const nomeCorPedido = item.cor ? item.cor.nome : null;
-                                        
-                                        // Se for a cor certa OU se o produto só tiver uma cor
-                                        if (cor.nome === nomeCorPedido || (!nomeCorPedido && cores.length === 1)) {
-                                            const novaQtd = parseInt(cor.quantidade || 0) - item.quantity;
-                                            cor.quantidade = novaQtd < 0 ? 0 : novaQtd; // Evita negativo
-                                            estoqueAlterado = true;
-                                        }
-                                        return cor;
-                                    });
-
-                                    // Salvar atualização no produto
-                                    if (estoqueAlterado) {
-                                        transaction.update(produtoRef, { cores: novasCores });
-                                    }
-                                }
-                            }
-
-                            // Marcar pedido como processado
-                            const pedidoRef = db.collection('pedidos').doc(pedidoId);
-                            transaction.update(pedidoRef, { estoque_baixado: true });
-                        });
-                        
-                        console.log(`✅ Pedido ${pedidoId} processado com sucesso!`);
-
-                    } catch (err) {
-                        console.error(`Erro no pedido ${pedidoId}:`, err);
-                    }
-                }
-
-                // Esconde o aviso depois de 2 segundos
-                setTimeout(() => statusDiv.classList.add('hidden'), 2000);
-              });
-        }
+        async function deleteProduct(id) { if(confirm('Excluir?')) { await db.collection('pecas').doc(id).delete(); loadProducts(); } }
+        function logout() { auth.signOut(); }
     </script>
 </body>
 </html>
