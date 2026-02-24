@@ -20,6 +20,47 @@ try {
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+
+const storage = firebase.storage();
+
+// Cache simples de URLs resolvidas (evita muitos requests)
+const __imgUrlCache = new Map();
+
+// Converte caminhos do Storage (ex: "produtos/arquivo.jpg" ou "/produtos/arquivo.jpg" ou "gs://bucket/produtos/arquivo.jpg")
+// em downloadURL. Se já for http(s), retorna como está.
+async function resolveStorageUrl(pathOrUrl) {
+    try {
+        if (!pathOrUrl) return "";
+        if (typeof pathOrUrl !== "string") return "";
+
+        // Já é URL
+        if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl;
+
+        // Normaliza gs://bucket/...
+        let cleanPath = pathOrUrl.trim();
+        if (cleanPath.startsWith("gs://")) {
+            // remove gs://bucket/
+            const without = cleanPath.replace(/^gs:\/\//, "");
+            const slash = without.indexOf("/");
+            cleanPath = slash >= 0 ? without.slice(slash + 1) : "";
+        }
+
+        // remove "/" inicial
+        cleanPath = cleanPath.replace(/^\/+/, "");
+
+        if (!cleanPath) return "";
+
+        // Cache
+        if (__imgUrlCache.has(cleanPath)) return __imgUrlCache.get(cleanPath);
+
+        const url = await storage.ref(cleanPath).getDownloadURL();
+        __imgUrlCache.set(cleanPath, url);
+        return url;
+    } catch (e) {
+        console.warn("Falha ao resolver URL do Storage:", pathOrUrl, e?.code || e);
+        return ""; // evita quebrar render
+    }
+}
 // Variáveis Globais
 let products = [];
 let activeCollections = []; 
@@ -44,7 +85,25 @@ async function loadStoreData() {
         const cSnap = await db.collection('colecoes').get();
         activeCollections = cSnap.docs.map(d => ({id: d.id, ...d.data()}));
         
-        renderCollections();
+        
+        // --- Resolve URLs de imagens (aceita path, gs:// e url completa) ---
+        products = await Promise.all(products.map(async (p) => {
+            const imgs = Array.isArray(p.imagens) ? p.imagens : (p.img ? [p.img] : []);
+            const resolved = await Promise.all(imgs.map(resolveStorageUrl));
+            const finalImgs = resolved.filter(Boolean);
+            return {
+                ...p,
+                imagens: finalImgs.length ? finalImgs : imgs, // fallback se algo falhar
+                img: finalImgs[0] || p.img || imgs[0] || ""
+            };
+        }));
+
+        activeCollections = await Promise.all(activeCollections.map(async (c) => {
+            const img = c.imagemDestaque || c.imagem || c.img || "";
+            const resolved = await resolveStorageUrl(img);
+            return { ...c, imagemDestaque: resolved || img };
+        }));
+renderCollections();
     } catch (err) {
         console.error("Erro ao carregar dados:", err);
     }
@@ -79,7 +138,7 @@ function renderProductCard(p) {
     return `
         <div class="group cursor-pointer" onclick="showProductDetail('${p.id}')">
             <div class="relative overflow-hidden aspect-[3/4] mb-4 bg-gray-100">
-                <img src="${p.imagens[0]}" class="w-full h-full object-cover transition duration-700 group-hover:scale-105">
+                <img src="${(p.imagens && p.imagens[0]) ? p.imagens[0] : (p.img || '')}" class="w-full h-full object-cover transition duration-700 group-hover:scale-105">
                 ${p.desconto > 0 ? `<div class="absolute top-4 left-4 bg-white px-3 py-1 text-[10px] font-bold tracking-widest text-red-600 shadow-sm">-${p.desconto}%</div>` : ''}
             </div>
             <h3 class="text-xs uppercase tracking-widest text-gray-500 mb-1 font-medium">${p.categoria.replace('_', ' ')}</h3>
