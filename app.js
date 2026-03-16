@@ -4,7 +4,7 @@ const appFirebaseConfig = {
     authDomain: "site-lamed.firebaseapp.com",
     databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
     projectId: "site-lamed",
-    storageBucket: "site-lamed.firebasestorage.app",
+    storageBucket: "site-lamed.appspot.com", // ← CORREÇÃO AQUI
     messagingSenderId: "862756160215",
     appId: "1:862756160215:web:d0fded233682bf93eaa692",
     measurementId: "G-BL1G961PGT"
