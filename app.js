@@ -77,13 +77,20 @@ const elements = {
     // Auth Modal
     authPromptModal: document.getElementById('auth-prompt-modal'),
     closeAuthPromptBtn: document.getElementById('close-auth-prompt'),
-    dismissAuthPromptBtn: document.getElementById('auth-prompt-dismiss')
+    dismissAuthPromptBtn: document.getElementById('auth-prompt-dismiss'),
+
+    // Popup de prazo
+    deliveryPopupOverlay: document.getElementById('delivery-popup-overlay'),
+    dismissDeliveryPopupBtn: document.getElementById('dismiss-delivery-popup'),
+    closeDeliveryPopupBtn: document.getElementById('close-delivery-popup')
 };
 
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
     
+    checkDeliveryPopup();
+
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         atualizarInterfaceUsuario(user);
@@ -100,6 +107,34 @@ function init() {
         entries.forEach((entry) => { if (entry.isIntersecting) entry.target.classList.add('is-visible'); });
     }, { threshold: 0.1 });
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
+}
+
+function checkDeliveryPopup() {
+    const popup = elements.deliveryPopupOverlay;
+    if (!popup) return;
+
+    const hideNotice = localStorage.getItem('lamed_hide_delivery_notice');
+    const shownInSession = sessionStorage.getItem('lamed_delivery_notice_shown');
+
+    if (hideNotice === 'true' || shownInSession === 'true') return;
+
+    setTimeout(() => {
+        popup.classList.add('active');
+        sessionStorage.setItem('lamed_delivery_notice_shown', 'true');
+        document.body.style.overflow = 'hidden';
+    }, 800);
+}
+
+function closeDeliveryPopup(hideForever = false) {
+    const popup = elements.deliveryPopupOverlay;
+    if (!popup) return;
+
+    popup.classList.remove('active');
+    document.body.style.overflow = '';
+
+    if (hideForever) {
+        localStorage.setItem('lamed_hide_delivery_notice', 'true');
+    }
 }
 
 // --- SETUP EVENT LISTENERS (Restaurada) ---
@@ -147,6 +182,22 @@ function setupEventListeners() {
         elements.authPromptModal.classList.add('hidden');
         elements.authPromptModal.classList.remove('flex');
     });
+
+        if (elements.closeDeliveryPopupBtn) {
+        elements.closeDeliveryPopupBtn.addEventListener('click', () => closeDeliveryPopup(false));
+    }
+
+    if (elements.dismissDeliveryPopupBtn) {
+        elements.dismissDeliveryPopupBtn.addEventListener('click', () => closeDeliveryPopup(true));
+    }
+
+    if (elements.deliveryPopupOverlay) {
+        elements.deliveryPopupOverlay.addEventListener('click', (event) => {
+            if (event.target === elements.deliveryPopupOverlay) {
+                closeDeliveryPopup(false);
+            }
+        });
+    }
 
     if(elements.checkoutCepInput) {
         elements.checkoutCepInput.addEventListener('blur', updateCheckoutSummary);
