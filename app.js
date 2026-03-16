@@ -348,6 +348,37 @@ async function finalizeOrder() {
     window.open(url, '_blank');
 }
 
+
+
+function exibirPopupPrazoEntrega() {
+    const popup = document.getElementById('delivery-popup');
+    const btnOk = document.getElementById('delivery-popup-ok');
+    const btnHide = document.getElementById('delivery-popup-hide');
+
+    if (!popup || !btnOk || !btnHide) return;
+
+    const hideForever = localStorage.getItem('lamed_hide_delivery_popup') === 'true';
+    if (hideForever) return;
+
+    const closePopup = () => {
+        popup.classList.remove('active');
+        popup.setAttribute('aria-hidden', 'true');
+    };
+
+    popup.classList.add('active');
+    popup.setAttribute('aria-hidden', 'false');
+
+    btnOk.onclick = closePopup;
+    btnHide.onclick = () => {
+        localStorage.setItem('lamed_hide_delivery_popup', 'true');
+        closePopup();
+    };
+
+    popup.onclick = (event) => {
+        if (event.target === popup) closePopup();
+    };
+}
+
 // --- INICIALIZAÇÃO ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -355,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedCart = localStorage.getItem('lamedCart');
     if (savedCart) cart = JSON.parse(savedCart);
     updateCartUI();
+    exibirPopupPrazoEntrega();
 });
 
 function backToHome() {
