@@ -36,6 +36,41 @@ body {
 }
 .gold-accent { color: var(--cor-ouro-acento); }
 
+.home-filter-btn {
+    border: 1px solid #d8d1c5;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cor-texto);
+    transition: all 0.2s ease;
+}
+
+.home-filter-btn:hover,
+.home-filter-btn.active {
+    background: var(--cor-marrom-cta);
+    border-color: var(--cor-marrom-cta);
+    color: #fff;
+}
+
+.home-pagination-btn {
+    border: 1px solid #d8d1c5;
+    padding: 0.5rem 0.95rem;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.2s ease;
+}
+
+.home-pagination-btn:hover:not(:disabled) {
+    background: #f1ebe0;
+}
+
+.home-pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 
 /* Popup de prazo de entrega */
 .delivery-popup-overlay {

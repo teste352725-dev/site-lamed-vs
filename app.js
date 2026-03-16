@@ -30,6 +30,9 @@ let selectedColor = null;
 let comboSelections = {};
 let currentUser = null;
 const TAXA_JUROS = 0.0549;
+let currentHomeFilter = 'all';
+let currentHomePage = 1;
+const HOME_PAGE_SIZE = 10;
 
 // Controle Carrossel
 let mainSplideInstance = null;
@@ -224,7 +227,7 @@ function isHanukahProduct(item) {
 }
 
 function checkIsMesaPosta(categoria) {
-    const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'porta_guardanapo'];
+    const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'anel_guardanapo', 'porta_guardanapo', 'trilho_velas'];
     return catsMesa.includes(categoria);
 }
 
@@ -381,7 +384,9 @@ async function carregarDadosLoja() {
         products = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
         
         renderizarSecoesColecoes(); 
-        popularPreviewColecao();    
+        popularPreviewColecao();
+        setupHomeShopFilters();
+        renderHomeShopGrid();
         
         // Garante que a rota correta seja carregada após ter os dados
         handleRouting();
@@ -429,23 +434,102 @@ function renderizarSecoesColecoes() {
 }
 
 function popularPreviewColecao() {
-    const list = document.getElementById('home-splide-list');
-    if (!list) return;
-    const lancamentos = [...products].sort((a, b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0, 6);
-    
-    list.innerHTML = '';
-    if (lancamentos.length === 0) {
-        list.innerHTML = '<li class="w-full text-center text-gray-400 py-8">Nenhum lançamento no momento.</li>';
+    const grid = document.getElementById('home-featured-grid');
+    if (!grid) return;
+
+    const destaques = products
+        .filter(p => checkIsMesaPosta(p.categoria))
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        .slice(0, 4);
+    grid.innerHTML = '';
+
+    if (destaques.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peça em destaque no momento.</div>';
         return;
     }
 
-    lancamentos.forEach(peca => {
-        const slide = document.createElement('li');
-        slide.className = 'splide__slide';
-        slide.appendChild(criarCardProduto(peca));
-        list.appendChild(slide);
+    destaques.forEach(peca => {
+        grid.appendChild(criarCardProduto(peca));
     });
-    new Splide('#home-splide', { type: 'slide', perPage: 4, gap: '20px', pagination: false, breakpoints: { 640: { perPage: 1, padding: '40px' }, 1024: { perPage: 3 } } }).mount();
+}
+
+function setupHomeShopFilters() {
+    const filterButtons = document.querySelectorAll('.home-filter-btn');
+    if (filterButtons.length === 0) return;
+
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentHomeFilter = btn.dataset.filter || 'all';
+            currentHomePage = 1;
+            filterButtons.forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            renderHomeShopGrid();
+        });
+    });
+
+    const prevBtn = document.getElementById('home-shop-prev');
+    const nextBtn = document.getElementById('home-shop-next');
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentHomePage > 1) {
+                currentHomePage -= 1;
+                renderHomeShopGrid();
+            }
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const totalPages = getHomeShopTotalPages();
+            if (currentHomePage < totalPages) {
+                currentHomePage += 1;
+                renderHomeShopGrid();
+            }
+        });
+    }
+}
+
+function getHomeShopProducts() {
+    const mesaProducts = products
+        .filter(p => checkIsMesaPosta(p.categoria))
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    if (currentHomeFilter === 'all') return mesaProducts;
+    if (currentHomeFilter === 'anel_guardanapo') {
+        return mesaProducts.filter(p => p.categoria === 'anel_guardanapo' || p.categoria === 'porta_guardanapo');
+    }
+    return mesaProducts.filter(p => p.categoria === currentHomeFilter);
+}
+
+function getHomeShopTotalPages() {
+    const total = getHomeShopProducts().length;
+    return Math.max(1, Math.ceil(total / HOME_PAGE_SIZE));
+}
+
+function renderHomeShopGrid() {
+    const grid = document.getElementById('home-shop-grid');
+    const pageInfo = document.getElementById('home-shop-page-info');
+    const prevBtn = document.getElementById('home-shop-prev');
+    const nextBtn = document.getElementById('home-shop-next');
+    if (!grid) return;
+
+    const filtered = getHomeShopProducts();
+    const totalPages = getHomeShopTotalPages();
+    if (currentHomePage > totalPages) currentHomePage = totalPages;
+
+    const start = (currentHomePage - 1) * HOME_PAGE_SIZE;
+    const pageItems = filtered.slice(start, start + HOME_PAGE_SIZE);
+
+    grid.innerHTML = '';
+    if (pageItems.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peça encontrada para este filtro.</div>';
+    } else {
+        pageItems.forEach(peca => grid.appendChild(criarCardProduto(peca)));
+    }
+
+    if (pageInfo) pageInfo.textContent = `Página ${currentHomePage} de ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = currentHomePage <= 1;
+    if (nextBtn) nextBtn.disabled = currentHomePage >= totalPages;
 }
 
 function renderizarListaDeColecoes() {
@@ -497,11 +581,11 @@ function renderizarGridCategoria(catSlug) {
     const nomesCategorias = {
         'combo': 'Kits de Mesa Posta',
         'mesa_posta': 'Mesa Posta',
-        'lugar_americano': 'Lugares Americanos',
-        'vestido': 'Vestidos',
-        'calca': 'Calças',
-        'camisa': 'Camisas',
-        'conjunto': 'Conjuntos'
+        'lugar_americano': 'Lugar Americano',
+        'guardanapo': 'Guardanapos',
+        'anel_guardanapo': 'Anel de Guardanapo',
+        'trilho_velas': 'Trilho para Velas',
+        'caminho_mesa': 'Caminho de Mesa'
     };
 
     if (title) title.textContent = nomesCategorias[catSlug] || catSlug.toUpperCase();
@@ -511,8 +595,6 @@ function renderizarGridCategoria(catSlug) {
             // Filtro específico: Produto é tipo Combo E é da categoria Mesa Posta (ou subcategorias)
             return p.tipo === 'combo' && checkIsMesaPosta(p.categoria);
         }
-        // Para categorias normais, mostra tudo que pertence àquela categoria
-        // (Isso inclui combos de roupas na categoria 'conjunto' ou 'vestido' se assim forem cadastrados)
         return p.categoria === catSlug;
     });
 
