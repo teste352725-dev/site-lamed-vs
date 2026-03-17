@@ -14,7 +14,7 @@ let app;
 try { app = firebase.app(); } catch (e) { app = firebase.initializeApp(firebaseConfig); }
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
+const storage = (typeof firebase.storage === 'function') ? firebase.storage() : null;
 
 // Variáveis de Estado
 let currentUser = null;
@@ -170,6 +170,7 @@ window.uploadFotoPerfil = async (input) => {
     imgPreview.style.opacity = '0.5';
     
     try {
+        if (!storage) throw new Error('Firebase Storage indisponível nesta página.');
         const ref = storage.ref(`profile_images/${currentUser.uid}_${Date.now()}`);
         await ref.put(file);
         const url = await ref.getDownloadURL();
