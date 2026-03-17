@@ -1,4 +1,4 @@
-const CACHE_NAME = "lamed-v3"; // 🔥 MUDA ISSO A CADA ATUALIZAÇÃO
+const CACHE_NAME = "lamed-v4"; // 🔥 MUDA ISSO A CADA ATUALIZAÇÃO
 
 const URLS_TO_CACHE = [
   "/",
