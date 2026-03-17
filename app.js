@@ -378,7 +378,16 @@ async function carregarDadosLoja() {
         activeCollections = colecoesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.ordem||0) - (b.ordem||0));
         
         const produtosSnap = await db.collection("pecas").where("status", "==", "active").get();
-        products = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
+        products = produtosSnap.docs.map(doc => {
+            const data = doc.data() || {};
+            return {
+                id: doc.id,
+                ...data,
+                imagens: Array.isArray(data.imagens) ? data.imagens.filter(Boolean) : [],
+                preco: parseFloat(data.preco || 0),
+                desconto: Number(data.desconto || 0)
+            };
+        });
         
         renderizarSecoesColecoes(); 
         popularPreviewColecao();
@@ -387,7 +396,13 @@ async function carregarDadosLoja() {
         
         // Garante que a rota correta seja carregada após ter os dados
         handleRouting();
-    } catch (err) { console.error("Erro dados:", err); }
+    } catch (err) {
+        console.error("Erro dados:", err);
+        const featuredGrid = document.getElementById('home-featured-grid');
+        const homeShopGrid = document.getElementById('home-shop-grid');
+        if (featuredGrid) featuredGrid.innerHTML = '<div class="col-span-full text-center text-red-400 py-8">Não foi possível carregar as peças no momento.</div>';
+        if (homeShopGrid) homeShopGrid.innerHTML = '<div class="col-span-full text-center text-red-400 py-8">Falha ao carregar a loja. Tente atualizar a página.</div>';
+    }
 }
 
 function renderizarSecoesColecoes() {
@@ -606,25 +621,28 @@ function renderizarGridCategoria(catSlug) {
 function criarCardProduto(peca) {
     const card = document.createElement('div');
     card.className = "h-full bg-[#FDFBF6] group cursor-pointer flex flex-col";
-    const precoFinal = peca.preco * (1 - (peca.desconto || 0)/100);
-    const imgPrincipal = peca.imagens[0];
-    const imgHover = peca.imagens[1] || peca.imagens[0];
+    const precoBase = Number(peca?.preco || 0);
+    const desconto = Number(peca?.desconto || 0);
+    const precoFinal = precoBase * (1 - desconto / 100);
+    const imagens = Array.isArray(peca?.imagens) ? peca.imagens.filter(Boolean) : [];
+    const imgPrincipal = imagens[0] || 'https://placehold.co/600x800/eee/999?text=Sem+Imagem';
+    const imgHover = imagens[1] || imgPrincipal;
     
     let priceHtml = '';
-    if (peca.desconto > 0) {
+    if (desconto > 0) {
         priceHtml = `
             <div class="flex flex-col items-center mt-2">
-                <span class="text-xs text-gray-400 line-through">${formatarReal(peca.preco)}</span>
+                <span class="text-xs text-gray-400 line-through">${formatarReal(precoBase)}</span>
                 <span class="text-base font-bold text-[--cor-marrom-cta]">${formatarReal(precoFinal)}</span>
             </div>
         `;
     } else {
-        priceHtml = `<div class="mt-2 text-base font-bold text-[--cor-texto]">${formatarReal(peca.preco)}</div>`;
+        priceHtml = `<div class="mt-2 text-base font-bold text-[--cor-texto]">${formatarReal(precoBase)}</div>`;
     }
 
     const badge = peca.tipo === 'combo' 
         ? '<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">COMBO</div>' 
-        : (peca.desconto > 0 ? `<div class="absolute top-2 left-2 bg-[--cor-marrom-cta] text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">-${peca.desconto}%</div>` : '');
+        : (desconto > 0 ? `<div class="absolute top-2 left-2 bg-[--cor-marrom-cta] text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">-${desconto}%</div>` : '');
 
     const isMesa = checkIsMesaPosta(peca.categoria);
     const catLabel = isMesa ? 'Mesa Posta' : (peca.tipo === 'combo' ? 'Monte seu Combo' : (peca.categoria || 'Coleção'));
@@ -637,7 +655,7 @@ function criarCardProduto(peca) {
              <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
         </div>
         <div class="text-center px-2">
-            <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${peca.nome}</h4>
+            <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${peca.nome || 'Peça Laméd'}</h4>
             ${priceHtml}
             <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${catLabel}</p>
         </div>
