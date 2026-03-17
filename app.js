@@ -91,6 +91,7 @@ const elements = {
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
+    setupImageLoadingOptimization();
     
     checkDeliveryPopup();
 
@@ -110,6 +111,47 @@ function init() {
         entries.forEach((entry) => { if (entry.isIntersecting) entry.target.classList.add('is-visible'); });
     }, { threshold: 0.1 });
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
+}
+
+function applyImageLoadingAttributes(imageElement) {
+    if (!imageElement || imageElement.dataset.imgOptimized === 'true') return;
+
+    const isPriorityImage = imageElement.dataset.priority === 'high' || imageElement.classList.contains('hero-image');
+
+    if (!isPriorityImage && !imageElement.hasAttribute('loading')) {
+        imageElement.loading = 'lazy';
+    }
+
+    if (!imageElement.hasAttribute('decoding')) {
+        imageElement.decoding = 'async';
+    }
+
+    if (!imageElement.hasAttribute('fetchpriority')) {
+        imageElement.setAttribute('fetchpriority', isPriorityImage ? 'high' : 'low');
+    }
+
+    imageElement.dataset.imgOptimized = 'true';
+}
+
+function setupImageLoadingOptimization() {
+    document.querySelectorAll('img').forEach(applyImageLoadingAttributes);
+
+    const domObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+                if (node.tagName === 'IMG') {
+                    applyImageLoadingAttributes(node);
+                    return;
+                }
+
+                node.querySelectorAll?.('img').forEach(applyImageLoadingAttributes);
+            });
+        });
+    });
+
+    domObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 function checkDeliveryPopup() {
