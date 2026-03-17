@@ -38,102 +38,6 @@ const HOME_PAGE_SIZE = 10;
 let mainSplideInstance = null;
 let thumbSplideInstance = null;
 
-
-const PLACEHOLDER_IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
-const DEFAULT_PRODUCT_IMAGE = 'https://placehold.co/600x800/eee/ccc?text=Sem+imagem';
-const DEFAULT_COLLECTION_IMAGE = 'https://placehold.co/600x400/eee/ccc?text=Sem+Imagem';
-let imageObserver = null;
-let recommendedProductsCache = [];
-
-function initImageObserver() {
-    if (imageObserver || !('IntersectionObserver' in window)) return;
-
-    imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (!entry.isIntersecting) return;
-            const img = entry.target;
-            const realSrc = img.dataset.src;
-            const realSrcset = img.dataset.srcset;
-
-            if (realSrcset) img.srcset = realSrcset;
-            if (realSrc && img.src !== realSrc) img.src = realSrc;
-
-            img.classList.add('img-loading');
-            observer.unobserve(img);
-        });
-    }, {
-        rootMargin: '200px 0px',
-        threshold: 0.01
-    });
-
-    container.appendChild(fragment);
-}
-
-function markImageLoaded(img) {
-    img.classList.remove('img-loading');
-    img.classList.add('img-loaded');
-}
-
-function applyImageLoadingBehavior(img, src, options = {}) {
-    if (!img || !src) return img;
-
-    const {
-        alt = '',
-        className = '',
-        eager = false,
-        contain = false,
-        width = null,
-        height = null,
-    } = options;
-
-    img.alt = alt;
-    if (className) img.className = className;
-    if (width) img.width = width;
-    if (height) img.height = height;
-
-    img.decoding = 'async';
-    img.referrerPolicy = 'no-referrer';
-    img.loading = eager ? 'eager' : 'lazy';
-    if (eager) img.fetchPriority = 'high';
-
-    img.addEventListener('load', () => markImageLoaded(img), { once: true });
-    img.addEventListener('error', () => {
-        if (img.src !== DEFAULT_PRODUCT_IMAGE) img.src = DEFAULT_PRODUCT_IMAGE;
-        markImageLoaded(img);
-    }, { once: true });
-
-    img.style.contentVisibility = 'auto';
-    img.style.containIntrinsicSize = contain ? '600px 800px' : '400px 533px';
-
-    if (eager || !('IntersectionObserver' in window)) {
-        img.src = src;
-    } else {
-        initImageObserver();
-        img.src = PLACEHOLDER_IMG;
-        img.dataset.src = src;
-        imageObserver.observe(img);
-    }
-
-    return img;
-}
-
-function createOptimizedImage(src, options = {}) {
-    const img = document.createElement('img');
-    return applyImageLoadingBehavior(img, src || DEFAULT_PRODUCT_IMAGE, options);
-}
-
-function preloadImage(src) {
-    if (!src) return;
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
-    link.href = src;
-    link.setAttribute('data-temp-preload', 'true');
-    document.head.appendChild(link);
-    setTimeout(() => link.remove(), 10000);
-}
-
-
 // Elementos DOM
 const elements = {
     // Sidebar
@@ -187,8 +91,7 @@ const elements = {
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
-
-    initImageObserver();
+    
     checkDeliveryPopup();
 
     auth.onAuthStateChanged(async (user) => {
@@ -493,8 +396,6 @@ function renderizarSecoesColecoes() {
     container.innerHTML = ''; 
     if (activeCollections.length === 0) return;
 
-    const fragment = document.createDocumentFragment();
-
     activeCollections.forEach((colecao, index) => {
         const prods = products.filter(p => p.colecaoId === colecao.id);
         if (prods.length === 0) return; 
@@ -510,7 +411,7 @@ function renderizarSecoesColecoes() {
                 <button class="main-button py-3 px-8 rounded-full uppercase text-xs tracking-widest" onclick="location.hash='#/colecao/${colecao.id}'">Ver Tudo</button>
             </div>
         `;
-        fragment.appendChild(section);
+        container.appendChild(section);
         
         const list = section.querySelector('.splide__list');
         prods.slice(0, 8).forEach(peca => {
@@ -544,9 +445,9 @@ function popularPreviewColecao() {
         return;
     }
 
-    const fragment = document.createDocumentFragment();
-    destaques.forEach(peca => fragment.appendChild(criarCardProduto(peca)));
-    grid.appendChild(fragment);
+    destaques.forEach(peca => {
+        grid.appendChild(criarCardProduto(peca));
+    });
 }
 
 function setupHomeShopFilters() {
@@ -620,9 +521,7 @@ function renderHomeShopGrid() {
     if (pageItems.length === 0) {
         grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peça encontrada para este filtro.</div>';
     } else {
-        const fragment = document.createDocumentFragment();
-        pageItems.forEach(peca => fragment.appendChild(criarCardProduto(peca)));
-        grid.appendChild(fragment);
+        pageItems.forEach(peca => grid.appendChild(criarCardProduto(peca)));
     }
 
     if (pageInfo) pageInfo.textContent = `Página ${currentHomePage} de ${totalPages}`;
@@ -638,35 +537,24 @@ function renderizarListaDeColecoes() {
         grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-20">Nenhuma coleção ativa no momento.</p>';
         return;
     }
-    const fragment = document.createDocumentFragment();
     activeCollections.forEach(col => {
         const count = products.filter(p => p.colecaoId === col.id).length;
-        const img = col.imagemDestaque || DEFAULT_COLLECTION_IMAGE;
+        const img = col.imagemDestaque || 'https://placehold.co/600x400/eee/ccc?text=Sem+Imagem';
         const card = document.createElement('div');
         card.className = "group cursor-pointer";
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'relative overflow-hidden aspect-[4/3] mb-4 bg-gray-100';
-
-        const image = createOptimizedImage(img, {
-            alt: col.nome || 'Coleção',
-            className: 'w-full h-full object-cover transition-transform duration-700 group-hover:scale-105',
-            contain: true
-        });
-
-        const overlay = document.createElement('div');
-        overlay.className = 'absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors';
-
-        const textBox = document.createElement('div');
-        textBox.className = 'absolute bottom-6 left-6 text-white';
-        textBox.innerHTML = `<h3 class="serif text-3xl mb-1">${col.nome}</h3><p class="text-xs uppercase tracking-widest opacity-90">${count} Peças</p>`;
-
-        wrapper.append(image, overlay, textBox);
-        card.appendChild(wrapper);
+        card.innerHTML = `
+            <div class="relative overflow-hidden aspect-[4/3] mb-4 bg-gray-100">
+                <img src="${img}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+                <div class="absolute bottom-6 left-6 text-white">
+                    <h3 class="serif text-3xl mb-1">${col.nome}</h3>
+                    <p class="text-xs uppercase tracking-widest opacity-90">${count} Peças</p>
+                </div>
+            </div>
+        `;
         card.onclick = () => window.location.hash = `#/colecao/${col.id}`;
-        fragment.appendChild(card);
+        grid.appendChild(card);
     });
-    grid.appendChild(fragment);
 }
 
 function renderizarGridColecao(collectionId) {
@@ -678,9 +566,7 @@ function renderizarGridColecao(collectionId) {
     if (col && title) title.textContent = col.nome;
     const prods = products.filter(p => p.colecaoId === collectionId);
     if (prods.length === 0) { grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>'; return; }
-    const fragment = document.createDocumentFragment();
-    prods.forEach(peca => fragment.appendChild(criarCardProduto(peca)));
-    grid.appendChild(fragment);
+    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
 }
 
 function renderizarGridCategoria(catSlug) {
@@ -714,20 +600,16 @@ function renderizarGridCategoria(catSlug) {
         return; 
     }
     
-    const fragment = document.createDocumentFragment();
-    prods.forEach(peca => fragment.appendChild(criarCardProduto(peca)));
-    grid.appendChild(fragment);
+    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
 }
 
 function criarCardProduto(peca) {
     const card = document.createElement('div');
     card.className = "h-full bg-[#FDFBF6] group cursor-pointer flex flex-col";
-
-    const precoFinal = peca.preco * (1 - (peca.desconto || 0) / 100);
-    const imagens = Array.isArray(peca.imagens) ? peca.imagens.filter(Boolean) : [];
-    const imgPrincipal = imagens[0] || DEFAULT_PRODUCT_IMAGE;
-    const imgHover = imagens[1] || imgPrincipal;
-
+    const precoFinal = peca.preco * (1 - (peca.desconto || 0)/100);
+    const imgPrincipal = peca.imagens[0];
+    const imgHover = peca.imagens[1] || peca.imagens[0];
+    
     let priceHtml = '';
     if (peca.desconto > 0) {
         priceHtml = `
@@ -740,42 +622,26 @@ function criarCardProduto(peca) {
         priceHtml = `<div class="mt-2 text-base font-bold text-[--cor-texto]">${formatarReal(peca.preco)}</div>`;
     }
 
-    const badge = peca.tipo === 'combo'
-        ? '<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">COMBO</div>'
+    const badge = peca.tipo === 'combo' 
+        ? '<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">COMBO</div>' 
         : (peca.desconto > 0 ? `<div class="absolute top-2 left-2 bg-[--cor-marrom-cta] text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">-${peca.desconto}%</div>` : '');
 
     const isMesa = checkIsMesaPosta(peca.categoria);
     const catLabel = isMesa ? 'Mesa Posta' : (peca.tipo === 'combo' ? 'Monte seu Combo' : (peca.categoria || 'Coleção'));
 
-    const imageWrapper = document.createElement('div');
-    imageWrapper.className = 'aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper';
-
-    const mainImg = createOptimizedImage(imgPrincipal, {
-        alt: peca.nome || 'Produto',
-        className: 'card-img-main w-full h-full object-cover',
-        contain: true,
-    });
-    const hoverImg = createOptimizedImage(imgHover, {
-        alt: `${peca.nome || 'Produto'} - imagem adicional`,
-        className: 'card-img-hover w-full h-full object-cover',
-        contain: true,
-    });
-
-    imageWrapper.appendChild(mainImg);
-    if (imgHover) imageWrapper.appendChild(hoverImg);
-
-    if (badge) imageWrapper.insertAdjacentHTML('beforeend', badge);
-    imageWrapper.insertAdjacentHTML('beforeend', '<div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>');
-
-    const info = document.createElement('div');
-    info.className = 'text-center px-2';
-    info.innerHTML = `
-        <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${peca.nome}</h4>
-        ${priceHtml}
-        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${catLabel}</p>
+    card.innerHTML = `
+        <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">
+             <img src="${imgPrincipal}" class="card-img-main w-full h-full object-cover">
+             <img src="${imgHover}" class="card-img-hover w-full h-full object-cover">
+             ${badge}
+             <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
+        </div>
+        <div class="text-center px-2">
+            <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${peca.nome}</h4>
+            ${priceHtml}
+            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${catLabel}</p>
+        </div>
     `;
-
-    card.append(imageWrapper, info);
     card.addEventListener('click', () => window.location.hash = `#/produto/${peca.id}`);
     return card;
 }
@@ -1075,10 +941,7 @@ function renderRecommendations(current) {
     const container = document.getElementById('related-products-container');
     if (!container) return;
     container.innerHTML = '';
-    if (!recommendedProductsCache.length || recommendedProductsCache.some(p => !products.find(prod => prod.id === p.id))) {
-        recommendedProductsCache = [...products].sort(() => Math.random() - 0.5);
-    }
-    const suggestions = recommendedProductsCache.filter(p => p.id !== current.id).slice(0, 4);
+    const suggestions = products.filter(p => p.id !== current.id).sort(() => 0.5 - Math.random()).slice(0, 4);
     if (suggestions.length > 0) {
         const title = document.createElement('h3');
         title.className = "serif text-2xl text-center mt-12 mb-6 text-[--cor-texto]";
@@ -1086,9 +949,7 @@ function renderRecommendations(current) {
         container.appendChild(title);
         const grid = document.createElement('div');
         grid.className = "grid grid-cols-2 md:grid-cols-4 gap-4";
-        const fragment = document.createDocumentFragment();
-        suggestions.forEach(p => fragment.appendChild(criarCardProduto(p)));
-        grid.appendChild(fragment);
+        suggestions.forEach(p => grid.appendChild(criarCardProduto(p)));
         container.appendChild(grid);
     }
 }
@@ -1099,50 +960,17 @@ function setupSplideCarousel() {
 
     const mainList = document.getElementById('main-carousel-list');
     const thumbList = document.getElementById('thumbnail-carousel-list');
-    if (!mainList || !thumbList) return;
-
-    mainList.innerHTML = '';
-    thumbList.innerHTML = '';
-
-    const images = Array.isArray(currentProduct.imagens) && currentProduct.imagens.length > 0
-        ? currentProduct.imagens.filter(Boolean)
-        : [DEFAULT_PRODUCT_IMAGE];
-
-    preloadImage(images[0]);
-
-    const mainFragment = document.createDocumentFragment();
-    const thumbFragment = document.createDocumentFragment();
-
-    images.forEach((imgSrc, index) => {
-        const mainSlide = document.createElement('li');
-        mainSlide.className = 'splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]';
-        const mainImg = createOptimizedImage(imgSrc, {
-            alt: `${currentProduct.nome || 'Produto'} ${index + 1}`,
-            className: 'h-full w-auto object-contain',
-            eager: index === 0,
-            contain: true,
-        });
-        mainSlide.appendChild(mainImg);
-        mainFragment.appendChild(mainSlide);
-
-        const thumbSlide = document.createElement('li');
-        thumbSlide.className = 'splide__slide thumbnail-slide opacity-60';
-        const thumbImg = createOptimizedImage(imgSrc, {
-            alt: `${currentProduct.nome || 'Produto'} miniatura ${index + 1}`,
-            className: 'w-full h-full object-cover rounded cursor-pointer',
-            eager: index === 0,
-            contain: true,
-        });
-        thumbSlide.appendChild(thumbImg);
-        thumbFragment.appendChild(thumbSlide);
+    mainList.innerHTML = ''; thumbList.innerHTML = '';
+    
+    const images = currentProduct.imagens.length > 0 ? currentProduct.imagens : ['https://placehold.co/600x800/eee/ccc?text=Sem+imagem'];
+    images.forEach((img) => {
+        mainList.innerHTML += `<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" class="h-full w-auto object-contain"></li>`;
+        thumbList.innerHTML += `<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer"></li>`;
     });
-
-    mainList.appendChild(mainFragment);
-    thumbList.appendChild(thumbFragment);
 
     mainSplideInstance = new Splide('#main-carousel', { type: 'fade', rewind: true, pagination: false, arrows: true });
     thumbSplideInstance = new Splide('#thumbnail-carousel', { fixedWidth: 60, fixedHeight: 60, gap: 10, rewind: true, pagination: false, isNavigation: true, arrows: false });
-
+    
     mainSplideInstance.sync(thumbSplideInstance);
     mainSplideInstance.mount();
     thumbSplideInstance.mount();
@@ -1233,35 +1061,14 @@ function addToCart() {
 
 function updateCartUI() {
     const container = elements.cartItemsContainer;
-    if (!container) return;
-
-    let total = 0;
-    let count = 0;
+    let total = 0, count = 0;
     container.innerHTML = '';
-
-    if (cart.length === 0) {
-        elements.cartEmptyMsg?.classList.remove('hidden');
-        if (elements.cartCountBadge) elements.cartCountBadge.style.display = 'none';
-        if (elements.cartSubtotalEl) elements.cartSubtotalEl.textContent = 'R$ 0,00';
-        return;
-    }
-
-    elements.cartEmptyMsg?.classList.add('hidden');
-    const fragment = document.createDocumentFragment();
-
+    if (cart.length === 0) { elements.cartEmptyMsg.classList.remove('hidden'); elements.cartCountBadge.style.display = 'none'; elements.cartSubtotalEl.textContent = 'R$ 0,00'; return; }
+    elements.cartEmptyMsg.classList.add('hidden');
+    
     cart.forEach(item => {
-        total += item.preco * item.quantity;
-        count += item.quantity;
-
-        const row = document.createElement('div');
-        row.className = 'flex gap-4 mb-4 border-b border-[#E5E0D8] pb-4 last:border-0';
-
-        const image = createOptimizedImage(item.imagem || DEFAULT_PRODUCT_IMAGE, {
-            alt: item.nome || 'Produto no carrinho',
-            className: 'w-16 h-20 object-cover rounded-sm border border-[#E5E0D8]',
-            contain: true,
-        });
-
+        total += item.preco * item.quantity; count += item.quantity;
+        
         let detailsHtml = '';
         if (item.isCombo && item.comboSelections) {
             detailsHtml = `<div class="text-[10px] text-gray-500 mt-1 pl-2 border-l-2 border-purple-200">`;
@@ -1276,30 +1083,26 @@ function updateCartUI() {
             detailsHtml = `<p class="text-xs text-gray-500 mb-1">${item.tamanho} ${item.cor ? `| ${item.cor.nome}` : ''}</p>`;
         }
 
-        const content = document.createElement('div');
-        content.className = 'flex-grow';
-        content.innerHTML = `
-            <h4 class="font-medium text-sm text-[--cor-texto]">${item.nome}</h4>
-            ${detailsHtml}
-            <div class="flex justify-between items-center mt-1">
-                <span class="font-semibold text-sm">${formatarReal(item.preco)}</span>
-                <div class="flex items-center border border-[#dcdcdc] rounded bg-white">
-                    <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="dec" data-id="${item.cartId}">-</button>
-                    <span class="px-2 text-xs">${item.quantity}</span>
-                    <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="inc" data-id="${item.cartId}">+</button>
+        container.innerHTML += `
+            <div class="flex gap-4 mb-4 border-b border-[#E5E0D8] pb-4 last:border-0">
+                <img src="${item.imagem}" class="w-16 h-20 object-cover rounded-sm border border-[#E5E0D8]">
+                <div class="flex-grow">
+                    <h4 class="font-medium text-sm text-[--cor-texto]">${item.nome}</h4>
+                    ${detailsHtml}
+                    <div class="flex justify-between items-center mt-1">
+                        <span class="font-semibold text-sm">${formatarReal(item.preco)}</span>
+                        <div class="flex items-center border border-[#dcdcdc] rounded bg-white">
+                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="dec" data-id="${item.cartId}">-</button>
+                            <span class="px-2 text-xs">${item.quantity}</span>
+                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="inc" data-id="${item.cartId}">+</button>
+                        </div>
+                    </div>
                 </div>
             </div>`;
-
-        row.append(image, content);
-        fragment.appendChild(row);
     });
-
-    container.appendChild(fragment);
-    if (elements.cartSubtotalEl) elements.cartSubtotalEl.textContent = formatarReal(total);
-    if (elements.cartCountBadge) {
-        elements.cartCountBadge.textContent = count;
-        elements.cartCountBadge.style.display = 'flex';
-    }
+    elements.cartSubtotalEl.textContent = formatarReal(total);
+    elements.cartCountBadge.textContent = count;
+    elements.cartCountBadge.style.display = 'flex';
 }
 
 function handleCartItemClick(e) {
@@ -1314,8 +1117,8 @@ function handleCartItemClick(e) {
     updateCartUI();
 }
 
-function openCart() { elements.cartOverlay.classList.add('visivel'); elements.cartDrawer.classList.add('open'); document.body.style.overflow = 'hidden'; }
-function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); document.body.style.overflow = ''; }
+function openCart() { elements.cartOverlay.classList.add('visivel'); elements.cartDrawer.classList.add('open'); }
+function closeCart() { elements.cartDrawer.classList.remove('open'); elements.cartOverlay.classList.remove('visivel'); }
 function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggle('hidden'); e.currentTarget.querySelector('.accordion-icon').classList.toggle('rotate'); }
 
 function setupPaymentOptions() {
@@ -1333,20 +1136,18 @@ function preencherParcelas() {
     const select = document.getElementById('parcelas-select');
     select.innerHTML = '';
     
-    const options = [];
-    for (let i = 1; i <= 12; i++) {
+    for(let i=1; i<=12; i++) { 
         let val = total;
         let suffix = '(sem juros)';
-
-        if (i > 2) {
+        
+        if(i > 2) {
             val = total * (1 + TAXA_JUROS);
             suffix = '(c/ juros)';
         }
-
-        options.push(`<option value="${i}">${i}x de ${formatarReal(val / i)} ${suffix}</option>`);
+        
+        select.innerHTML += `<option value="${i}">${i}x de ${formatarReal(val/i)} ${suffix}</option>`; 
     }
-    select.innerHTML = options.join('');
-    select.onchange = updateCheckoutSummary;
+    select.addEventListener('change', updateCheckoutSummary);
 }
 
 function validarELimparCarrinho() {
