@@ -117,13 +117,10 @@ function checkDeliveryPopup() {
     if (!popup) return;
 
     const hideNotice = localStorage.getItem('lamed_hide_delivery_notice');
-    const shownInSession = sessionStorage.getItem('lamed_delivery_notice_shown');
-
-    if (hideNotice === 'true' || shownInSession === 'true') return;
+    if (hideNotice === 'true') return;
 
     setTimeout(() => {
         popup.classList.add('active');
-        sessionStorage.setItem('lamed_delivery_notice_shown', 'true');
         document.body.style.overflow = 'hidden';
     }, 800);
 }
