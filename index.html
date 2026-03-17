@@ -111,19 +111,19 @@
                                 Mesa Posta Completa
                             </a>
                             <a href="#/categoria/lugar_americano" class="block px-10 py-2 text-[11px] text-gray-500 hover:text-[--cor-marrom-cta]">
-                                • Lugares Americanos
+                                • Lugar Americano
                             </a>
-                            <a href="#/categoria/vestido" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
-                                Vestidos
+                            <a href="#/categoria/guardanapo" class="block px-10 py-2 text-[11px] text-gray-500 hover:text-[--cor-marrom-cta]">
+                                • Guardanapo
                             </a>
-                            <a href="#/categoria/conjunto" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
-                                Conjuntos
+                            <a href="#/categoria/anel_guardanapo" class="block px-10 py-2 text-[11px] text-gray-500 hover:text-[--cor-marrom-cta]">
+                                • Anel de Guardanapo
                             </a>
-                            <a href="#/categoria/camisa" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
-                                Camisas
+                            <a href="#/categoria/trilho_velas" class="block px-10 py-2 text-[11px] text-gray-500 hover:text-[--cor-marrom-cta]">
+                                • Trilho para Velas
                             </a>
-                            <a href="#/categoria/calca" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">
-                                Calças
+                            <a href="#/categoria/caminho_mesa" class="block px-10 py-2 text-[11px] text-gray-500 hover:text-[--cor-marrom-cta]">
+                                • Caminho de Mesa
                             </a>
                         </div>
                     </div>
@@ -155,37 +155,55 @@
             
             <!-- Hero Section -->
             <section class="hero-section flex items-center justify-center text-center relative overflow-hidden h-[70vh] w-full">
-                <img src="https://i.supaimg.com/843f581a-5106-4617-a59d-b6d2df49a5e1.webp" alt="Coleção Laméd" class="absolute inset-0 w-full h-full object-cover">
+                <img src="https://i.supaimg.com/24744ff6-247c-4e17-9e94-6455c96da980/bf59713f-69b5-4c2e-8fc6-25c26ce229e8.jpg" alt="Coleção Laméd" class="absolute inset-0 w-full h-full object-cover">
                 <div class="hero-overlay"></div>
                 <div class="hero-content p-8 md:p-12 rounded-sm shadow-xl max-w-lg mx-4" style="background-color: rgba(253, 251, 246, 0.95);">
-                    <h2 class="serif text-4xl md:text-5xl font-light mb-4 text-[--cor-texto]">Nova Coleção</h2>
-                    <p class="text-sm md:text-base mb-8 tracking-[0.2em] text-[--cor-texto] uppercase">Na Terra como no Céu</p>
-                    <a href="#colecoes" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition">Ver Coleção</a>
+                    <h2 class="serif text-4xl md:text-5xl font-light mb-4 text-[--cor-texto]">Mesa Posta Laméd</h2>
+                    <p class="text-sm md:text-base mb-8 tracking-[0.2em] text-[--cor-texto] uppercase">Peças artesanais para transformar sua mesa</p>
+                    <a href="#conheca-loja" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition">Conheça a Loja</a>
                 </div>
             </section>
             
-            <!-- Carrossel de Lançamentos -->
+            <!-- Destaques da Home -->
             <section id="home-collection-preview" class="py-16 px-4 scroll-animate">
                 <div class="container mx-auto max-w-7xl text-center">
-                    <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Lançamentos</h3>
+                    <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Peças em Destaque</h3>
                     <div class="w-16 h-0.5 bg-[--cor-ouro-acento] mx-auto mb-10"></div>
-                    
-                    <div id="home-splide" class="splide mb-12">
-                        <div class="splide__track">
-                            <ul class="splide__list" id="home-splide-list">
-                                <!-- O JS preenche isso -->
-                                <li class="splide__slide flex justify-center items-center h-40">
-                                    <div class="text-gray-400 text-sm">Carregando novidades...</div>
-                                </li>
-                            </ul>
-                        </div>
+
+                    <div id="home-featured-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-12">
+                        <div class="col-span-full text-gray-400 text-sm py-8">Carregando peças...</div>
                     </div>
-                    <a href="#colecoes" class="inline-block border border-[#dcdcdc] text-[--cor-texto] font-medium py-3 px-10 text-xs uppercase tracking-widest hover:bg-[#F0EEE6] transition">Ver Loja Completa</a>
+                    <a href="#conheca-loja" class="inline-block border border-[#dcdcdc] text-[--cor-texto] font-medium py-3 px-10 text-xs uppercase tracking-widest hover:bg-[#F0EEE6] transition">Ver Loja Completa</a>
                 </div>
             </section>
             
-            <!-- Container para Coleções Dinâmicas -->
-            <div id="collections-container"></div>
+            <!-- Conheça a Loja -->
+            <section id="conheca-loja" class="py-16 px-4 border-y border-[#E5E0D8]">
+                <div class="container mx-auto max-w-7xl text-center">
+                    <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Conheça nossa Loja</h3>
+                    <p class="text-sm text-gray-500 mb-6">Somente peças de mesa posta • 10 itens por página</p>
+
+                    <div id="home-shop-filters" class="flex flex-wrap justify-center gap-2 mb-8">
+                        <button class="home-filter-btn active" data-filter="all">Todas</button>
+                        <button class="home-filter-btn" data-filter="mesa_posta">Mesa Posta</button>
+                        <button class="home-filter-btn" data-filter="lugar_americano">Lugar Americano</button>
+                        <button class="home-filter-btn" data-filter="guardanapo">Guardanapo</button>
+                        <button class="home-filter-btn" data-filter="anel_guardanapo">Anel de Guardanapo</button>
+                        <button class="home-filter-btn" data-filter="trilho_velas">Trilho para Velas</button>
+                        <button class="home-filter-btn" data-filter="caminho_mesa">Caminho de Mesa</button>
+                    </div>
+
+                    <div id="home-shop-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
+                        <div class="col-span-full text-gray-400 text-sm py-8">Carregando peças...</div>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-4">
+                        <button id="home-shop-prev" class="home-pagination-btn" type="button">Anterior</button>
+                        <span id="home-shop-page-info" class="text-xs uppercase tracking-widest text-gray-400">Página 1</span>
+                        <button id="home-shop-next" class="home-pagination-btn" type="button">Próxima</button>
+                    </div>
+                </div>
+            </section>
 
             <!-- Seção Nossa Filosofia -->
             <section id="sobre" class="py-20 px-4 scroll-animate border-t border-[#E5E0D8]" style="background-color: #F8F6F0;">
