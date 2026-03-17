@@ -649,8 +649,8 @@ function criarCardProduto(peca) {
 
     card.innerHTML = `
         <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">
-             <img src="${imgPrincipal}" class="card-img-main w-full h-full object-cover">
-             <img src="${imgHover}" class="card-img-hover w-full h-full object-cover">
+             <img src="${imgPrincipal}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low" width="600" height="800">
+             <img src="${imgHover}" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low" width="600" height="800">
              ${badge}
              <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
         </div>
@@ -981,9 +981,12 @@ function setupSplideCarousel() {
     mainList.innerHTML = ''; thumbList.innerHTML = '';
     
     const images = currentProduct.imagens.length > 0 ? currentProduct.imagens : ['https://placehold.co/600x800/eee/ccc?text=Sem+imagem'];
-    images.forEach((img) => {
-        mainList.innerHTML += `<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" class="h-full w-auto object-contain"></li>`;
-        thumbList.innerHTML += `<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer"></li>`;
+    images.forEach((img, idx) => {
+        const isFirst = idx === 0;
+        const loadingMode = isFirst ? 'eager' : 'lazy';
+        const priority = isFirst ? 'high' : 'low';
+        mainList.innerHTML += `<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" class="h-full w-auto object-contain" loading="${loadingMode}" decoding="async" fetchpriority="${priority}"></li>`;
+        thumbList.innerHTML += `<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer" loading="lazy" decoding="async" fetchpriority="low" width="120" height="120"></li>`;
     });
 
     mainSplideInstance = new Splide('#main-carousel', { type: 'fade', rewind: true, pagination: false, arrows: true });

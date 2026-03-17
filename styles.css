@@ -395,3 +395,37 @@ body {
     background-color: #E5E0D8;
     border-radius: 4px;
 }
+
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --cor-fundo: #16120d;
+        --cor-texto: #f3e8d5;
+        --cor-cta-escuro: #7a5635;
+        --cor-ouro-acento: #c8ad7d;
+        --cor-marrom-cta: #c8ad7d;
+        color-scheme: dark;
+    }
+
+    body,
+    header,
+    footer {
+        background-color: var(--cor-fundo) !important;
+        color: var(--cor-texto) !important;
+    }
+
+    .delivery-popup-card {
+        background: #241b14;
+        border-color: #3a2e24;
+    }
+
+    .home-pagination-btn,
+    .home-filter-btn {
+        border-color: #4a3a2d;
+        color: var(--cor-texto);
+    }
+
+    .home-pagination-btn:hover:not(:disabled) {
+        background: #2a2018;
+    }
+}
