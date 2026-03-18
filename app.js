@@ -224,7 +224,7 @@ function isHanukahProduct(item) {
 }
 
 function checkIsMesaPosta(categoria) {
-    const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'anel_guardanapo', 'porta_guardanapo', 'trilho_velas'];
+    const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'anel_guardanapo', 'porta_guardanapo', 'trilho_velas', 'capa_de_matza'];
     return catsMesa.includes(categoria);
 }
 
@@ -583,7 +583,7 @@ function renderizarGridCategoria(catSlug) {
         'anel_guardanapo': 'Anel de Guardanapo',
         'trilho_velas': 'Trilho para Velas',
         'caminho_mesa': 'Caminho de Mesa',
-        'capa_de_matza': 'Capa de Matzá'
+        'capa_de_matza': 'Capa de Matzá Bordada'
     };
 
     if (title) title.textContent = nomesCategorias[catSlug] || catSlug.toUpperCase();
