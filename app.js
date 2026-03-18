@@ -708,77 +708,226 @@ function showProductDetail(id) {
         renderColors();
     }
     
-    // --- LÓGICA DO GUIA DE MEDIDAS (DINÂMICO) ---
-    const buttons = document.querySelectorAll('.accordion-button');
-    let sizeGuideContainer = null;
-    buttons.forEach(btn => {
-        if(btn.textContent.includes('Guia de Medidas')) {
-            sizeGuideContainer = btn.nextElementSibling;
-        }
-    });
+// --- LÓGICA DO GUIA DE MEDIDAS (DINÂMICO) ---
+const buttons = document.querySelectorAll('.accordion-button');
+let sizeGuideContainer = null;
 
-    if (sizeGuideContainer) {
-        // Salva o original (Roupas) se ainda não salvou
-        if (!window.originalSizeGuideHTML) {
-            window.originalSizeGuideHTML = sizeGuideContainer.innerHTML;
-        }
+buttons.forEach(btn => {
+    if (btn.textContent.includes('Guia de Medidas')) {
+        sizeGuideContainer = btn.nextElementSibling;
+    }
+});
 
-        const mesaPostaGuideHTML = `
+if (sizeGuideContainer) {
+    if (!window.originalSizeGuideHTML) {
+        window.originalSizeGuideHTML = sizeGuideContainer.innerHTML;
+    }
+
+    const mesaPostaGuides = {
+        guardanapo: `
             <div class="space-y-4 text-sm text-[--cor-texto]">
                 <div class="border-b pb-2">
                     <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
-                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Mesa Posta
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Guardanapo
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">Produção artesanal em algodão ou linho (variação 1–2 cm).</p>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1–2 cm podem ocorrer.</p>
                 </div>
 
                 <div>
                     <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🧵 Guardanapos</h5>
                     <ul class="text-xs space-y-1">
-                        <li><strong>Tamanho:</strong> 41 cm x 41 cm</li>
+                        <li><strong>Tamanho:</strong> 42,5 x 42,5 cm</li>
                         <li><strong>Material:</strong> 100% algodão</li>
-                        <li><em>Ideal para mesas formais e dobras.</em></li>
+                    </ul>
+                </div>
+
+                <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
+                </div>
+            </div>
+        `,
+
+        lugar_americano: `
+            <div class="space-y-4 text-sm text-[--cor-texto]">
+                <div class="border-b pb-2">
+                    <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Lugar Americano
+                    </h4>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1–2 cm podem ocorrer.</p>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🟦 Lugares Americanos</h5>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <p class="font-bold">Brancos, Pretos e Pérolas</p>
+                            <p><strong>Medidas:</strong> 47 x 34 cm</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 98% algodão, 2% elastano</p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Rosa</p>
+                            <p><strong>Medidas:</strong> 44 x 33 cm</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 100% algodão</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
+                </div>
+            </div>
+        `,
+
+        trilho_velas: `
+            <div class="space-y-4 text-sm text-[--cor-texto]">
+                <div class="border-b pb-2">
+                    <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Trilho de Velas
+                    </h4>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1–2 cm podem ocorrer.</p>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🕯 Trilhos de Velas</h5>
+                    <ul class="text-xs space-y-1">
+                        <li><strong>Medidas:</strong> 47 x 23 cm</li>
+                        <li><strong>Composição:</strong> 98% algodão, 2% elastano</li>
+                    </ul>
+                </div>
+
+                <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
+                </div>
+            </div>
+        `,
+
+        caminho_mesa: `
+            <div class="space-y-4 text-sm text-[--cor-texto]">
+                <div class="border-b pb-2">
+                    <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Caminho de Mesa
+                    </h4>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1–2 cm podem ocorrer.</p>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🕯 Caminhos de Mesa</h5>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <p class="font-bold">Tamanho P</p>
+                            <p><strong>Medidas:</strong> 135 x 40 cm</p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Tamanho M</p>
+                            <p><strong>Medidas:</strong> 180 x 46 cm</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
+                </div>
+            </div>
+        `,
+
+        capa_de_matza: `
+            <div class="space-y-4 text-sm text-[--cor-texto]">
+                <div class="border-b pb-2">
+                    <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Capa de Matzá
+                    </h4>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1–2 cm podem ocorrer.</p>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🍞 Capa de Matzá</h5>
+                    <ul class="text-xs space-y-1">
+                        <li><strong>Medidas:</strong> 21 x 21 cm</li>
+                    </ul>
+                </div>
+
+                <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
+                </div>
+            </div>
+        `,
+
+        mesa_posta: `
+            <div class="space-y-4 text-sm text-[--cor-texto]">
+                <div class="border-b pb-2">
+                    <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas – Mesa Posta
+                    </h4>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1–2 cm podem ocorrer.</p>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🧵 Guardanapos</h5>
+                    <ul class="text-xs space-y-1">
+                        <li><strong>Tamanho:</strong> 42,5 x 42,5 cm</li>
+                        <li><strong>Material:</strong> 100% algodão</li>
                     </ul>
                 </div>
 
                 <div>
                     <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🟦 Lugares Americanos</h5>
-                    <div class="space-y-2 text-xs">
+                    <div class="space-y-3 text-xs">
                         <div>
-                            <p class="font-bold">Modelo Padrão (44 x 32 cm)</p>
-                            <p class="text-gray-500">Shabat Shalom, Muralhas de Jerusalém</p>
+                            <p class="font-bold">Brancos, Pretos e Pérolas</p>
+                            <p><strong>Medidas:</strong> 47 x 34 cm</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 98% algodão, 2% elastano</p>
                         </div>
                         <div>
-                            <p class="font-bold">Modelo Grande (47 x 33 cm)</p>
-                            <p class="text-gray-500">Chanukiá Grande, Chanukiá Pequena</p>
-                        </div>
-                        <div>
-                            <p class="font-bold">Modelo Frase (46 x 34 cm)</p>
-                            <p class="text-gray-500">Chegou um Tempo Novo, Na Terra Como no Céu</p>
+                            <p class="font-bold">Rosa</p>
+                            <p><strong>Medidas:</strong> 44 x 33 cm</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 100% algodão</p>
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🕯 Caminho de Mesa</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🕯 Trilhos de Velas</h5>
                     <ul class="text-xs space-y-1">
-                        <li><strong>Chanukiá Sameach:</strong> 140 cm x 33 cm</li>
-                        <li><em>Ideal para mesas retangulares (4-6 lugares).</em></li>
+                        <li><strong>Medidas:</strong> 47 x 23 cm</li>
+                        <li><strong>Composição:</strong> 98% algodão, 2% elastano</li>
                     </ul>
                 </div>
-                
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🕯 Caminhos de Mesa</h5>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <p class="font-bold">Tamanho P</p>
+                            <p><strong>Medidas:</strong> 135 x 40 cm</p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Tamanho M</p>
+                            <p><strong>Medidas:</strong> 180 x 46 cm</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">🍞 Capa de Matzá</h5>
+                    <ul class="text-xs space-y-1">
+                        <li><strong>Medidas:</strong> 21 x 21 cm</li>
+                    </ul>
+                </div>
+
                 <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
-                    <p><strong>Nota:</strong> Bordados variam (dourado, branco, ocre). Medidas pensadas para pratos de 26-32cm.</p>
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
                 </div>
             </div>
-        `;
+        `
+    };
 
-        if (isMesaPosta) {
-            sizeGuideContainer.innerHTML = mesaPostaGuideHTML;
-        } else {
-            sizeGuideContainer.innerHTML = window.originalSizeGuideHTML;
-        }
+    if (isMesaPosta) {
+        const categoriaAtual = currentProduct.categoria;
+        sizeGuideContainer.innerHTML = mesaPostaGuides[categoriaAtual] || mesaPostaGuides.mesa_posta;
+    } else {
+        sizeGuideContainer.innerHTML = window.originalSizeGuideHTML;
     }
+}
 
     renderRecommendations(currentProduct);
     updateAddToCartButton();
