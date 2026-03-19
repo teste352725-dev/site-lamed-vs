@@ -575,11 +575,6 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                         throw new Error(`Uma cor do combo "${canonicalItem.nome}" nao esta mais disponivel.`);
                     }
 
-                    const availableQty = parseInt(matchedColor.quantidade, 10);
-                    if (Number.isFinite(availableQty) && availableQty >= 0 && availableQty < componentQuantity * quantity) {
-                        throw new Error(`Estoque insuficiente para "${canonicalComponent.nome}" no combo "${canonicalItem.nome}".`);
-                    }
-
                     canonicalColor = {
                         nome: sanitizePlainText(matchedColor.nome, 40),
                         hex: sanitizeHexColor(matchedColor.hex)
@@ -609,11 +604,6 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                 const matchedColor = availableColors.find((color) => sanitizePlainText(color.nome, 40) === requestedColorName);
                 if (!matchedColor) {
                     throw new Error(`A cor selecionada para "${canonicalItem.nome}" nao esta mais disponivel.`);
-                }
-
-                const availableQty = parseInt(matchedColor.quantidade, 10);
-                if (Number.isFinite(availableQty) && availableQty >= 0 && availableQty < quantity) {
-                    throw new Error(`Estoque insuficiente para "${canonicalItem.nome}".`);
                 }
 
                 canonicalItem.cor = {

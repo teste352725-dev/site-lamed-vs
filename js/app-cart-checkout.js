@@ -354,7 +354,7 @@ async function finalizarPedido(formData) {
         updateCheckoutSummary();
 
         if (cartWasAdjusted || Math.abs(displayedTotal - totals.final) > 0.01) {
-            throw new Error('Seu carrinho foi atualizado com os valores e estoques mais recentes. Revise o pedido e confirme novamente.');
+            throw new Error('Seu carrinho foi atualizado com os valores e configuracoes mais recentes. Revise o pedido e confirme novamente.');
         }
 
         if (currentUser) {

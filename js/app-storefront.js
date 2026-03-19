@@ -715,12 +715,11 @@ function renderComboSelectors() {
         </div>
     `;
 
-    currentProduct.componentes.forEach((comp, idx) => {
-        const productOriginal = products.find(p => p.id === comp.id);
-        const coresDisponiveis = productOriginal ? (productOriginal.cores || []) : [];
-        const componentQuantity = Math.max(1, parseInt(comp.quantidade, 10) || 1);
-        const imagemPeca = productOriginal && productOriginal.imagens && productOriginal.imagens.length > 0 ? productOriginal.imagens[0] : 'https://placehold.co/100x100';
-        const categoriaLabel = comp.categoria ? comp.categoria.replace('_', ' ').toUpperCase() : 'ITEM';
+        currentProduct.componentes.forEach((comp, idx) => {
+            const productOriginal = products.find(p => p.id === comp.id);
+            const coresDisponiveis = productOriginal ? (productOriginal.cores || []) : [];
+            const imagemPeca = productOriginal && productOriginal.imagens && productOriginal.imagens.length > 0 ? productOriginal.imagens[0] : 'https://placehold.co/100x100';
+            const categoriaLabel = comp.categoria ? comp.categoria.replace('_', ' ').toUpperCase() : 'ITEM';
 
         const compDiv = document.createElement('div');
         compDiv.className = 'combo-component-card border border-gray-200 rounded-lg p-4 bg-white shadow-sm';
@@ -745,20 +744,15 @@ function renderComboSelectors() {
             
             coresDisponiveis.forEach(cor => {
                 const btn = document.createElement('div');
-                const estoqueCor = parseInt(cor.quantidade, 10) || 0;
-                const indisponivel = estoqueCor < componentQuantity;
-                btn.className = `combo-color-btn border border-gray-200 p-1.5 rounded-md flex items-center gap-2 transition min-w-[100px] ${indisponivel ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:bg-gray-50'}`;
+                btn.className = "combo-color-btn border border-gray-200 p-1.5 rounded-md flex items-center gap-2 transition min-w-[100px] cursor-pointer hover:bg-gray-50";
                 btn.innerHTML = `
                     <div class="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style="background-color:${cor.hex}"></div>
                     <div class="flex flex-col">
                         <span class="text-xs font-medium text-gray-700">${cor.nome}</span>
-                        <span class="text-[9px] text-gray-400">${cor.quantidade} un.${indisponivel ? ' indisponivel' : ''}</span>
+                        <span class="text-[9px] text-gray-400">Sob demanda</span>
                     </div>
                 `;
-                btn.onclick = () => {
-                    if (indisponivel) return;
-                    selectComboColor(idx, cor.nome, cor.hex, btn);
-                };
+                btn.onclick = () => selectComboColor(idx, cor.nome, cor.hex, btn);
                 colorsGrid.appendChild(btn);
             });
             colorSection.appendChild(colorsGrid);
@@ -836,24 +830,18 @@ function renderColors() {
     }
 
     const div = document.createElement('div');
-    const availableIndexes = cores
-        .map((cor, index) => ({ cor, index }))
-        .filter(({ cor }) => (parseInt(cor.quantidade, 10) || 0) > 0)
-        .map(({ index }) => index);
-
     div.className = 'color-selector-container mb-6';
     div.innerHTML = `<p class="text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">Cor</p><div class="flex gap-3 flex-wrap">${cores.map((c, i) => {
-        const indisponivel = (parseInt(c.quantidade, 10) || 0) <= 0;
-        const stockBadge = `<span class="text-[10px] text-gray-500 font-medium ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full border border-gray-200">${c.quantidade} un</span>`;
-        return `<div class="color-option group relative ${indisponivel ? 'opacity-45 is-disabled' : ''}" data-idx="${i}"><div class="w-4 h-4 rounded-full border border-gray-300 shadow-sm" style="background-color:${c.hex}"></div><span class="text-xs font-medium text-gray-700">${c.nome}</span>${stockBadge}</div>`;
+        const madeToOrderBadge = `<span class="text-[10px] text-gray-500 font-medium ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full border border-gray-200">sob demanda</span>`;
+        return `<div class="color-option group relative" data-idx="${i}"><div class="w-4 h-4 rounded-full border border-gray-300 shadow-sm" style="background-color:${c.hex}"></div><span class="text-xs font-medium text-gray-700">${c.nome}</span>${madeToOrderBadge}</div>`;
     }).join('')}</div>`;
     
     const sizeSelector = document.querySelector('.size-selector');
     if (sizeSelector && sizeSelector.parentElement) sizeSelector.parentElement.after(div);
     else document.getElementById('detail-price').after(div);
 
-    if (availableIndexes.length === 1) {
-        selectedColor = availableIndexes[0];
+    if (cores.length === 1) {
+        selectedColor = 0;
         div.querySelector(`.color-option[data-idx="${selectedColor}"]`)?.classList.add('selected');
     } else {
         selectedColor = null;
@@ -861,7 +849,6 @@ function renderColors() {
 
     div.querySelectorAll('.color-option').forEach(btn => {
         btn.addEventListener('click', () => {
-            if (btn.classList.contains('is-disabled')) return;
             div.querySelectorAll('.color-option').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             selectedColor = parseInt(btn.dataset.idx);
@@ -965,25 +952,13 @@ function updateAddToCartButton() {
     if(!btn) return;
     
     const hasTrackedColors = Array.isArray(currentProduct.cores) && currentProduct.cores.length > 0;
-    const stockTotal = hasTrackedColors ? currentProduct.cores.reduce((acc, c) => acc + (parseInt(c.quantidade) || 0), 0) : 0;
-    
-    if (hasTrackedColors && stockTotal <= 0 && currentProduct.tipo !== 'combo') {
-        btn.disabled = true;
-        btn.textContent = "ESGOTADO";
-        btn.classList.add('bg-gray-400');
-        btn.classList.remove('hover:bg-[#4a2e18]');
-        return;
-    } else {
-        btn.classList.remove('bg-gray-400');
-        btn.classList.add('hover:bg-[#4a2e18]');
-    }
+    btn.classList.remove('bg-gray-400');
+    btn.classList.add('hover:bg-[#4a2e18]');
 
     const isCombo = currentProduct.tipo === 'combo';
     const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
     const hasSize = selectedSize !== null;
     const hasColor = !hasTrackedColors || selectedColor !== null;
-    const selectedColorObject = hasTrackedColors && selectedColor !== null ? currentProduct.cores[selectedColor] : null;
-    const selectedColorInStock = !hasTrackedColors || ((parseInt(selectedColorObject?.quantidade, 10) || 0) > 0);
 
     let canAdd = false;
     if (isCombo) {
@@ -997,7 +972,7 @@ function updateAddToCartButton() {
         }
         canAdd = selectedCount === totalComponents;
     } else {
-        canAdd = (isMesaPosta || hasSize) && hasColor && selectedColorInStock;
+        canAdd = (isMesaPosta || hasSize) && hasColor;
     }
 
     if (canAdd) {
@@ -1006,9 +981,7 @@ function updateAddToCartButton() {
         btn.textContent = currentProduct.personalizavel ? "ADICIONAR PECA PERSONALIZADA" : "ADICIONAR A SACOLA";
     } else {
         btn.disabled = true; 
-        btn.textContent = !selectedColorInStock
-            ? "Cor sem estoque"
-            : (isCombo ? "Selecione opÃ§Ãµes de TODOS os itens" : "Selecione OpÃ§Ãµes");
+        btn.textContent = isCombo ? "Selecione opÃ§Ãµes de TODOS os itens" : "Selecione OpÃ§Ãµes";
         btn.classList.add('bg-gray-400');
         btn.classList.remove('hover:bg-[#4a2e18]');
     }

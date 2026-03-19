@@ -682,8 +682,8 @@
                     </div>
                     <h1 class="hero-title font-display">Produtos com cara de atelie, nao de planilha.</h1>
                     <p class="hero-subtitle">
-                        Organize o catalogo, cuide do estoque por cor, monte combos, defina a capa certa e deixe
-                        as pecas personalizaveis prontas para venda sem sair desta tela.
+                        Organize o catalogo, ajuste variacoes por cor, monte combos, defina a capa certa e deixe
+                        as pecas personalizaveis prontas para venda sob demanda sem sair desta tela.
                     </p>
                 </div>
 
@@ -721,9 +721,9 @@
                     <div class="metric-caption">Conjuntos montados no admin</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-label">Baixo estoque</div>
-                    <div id="products-low-stock-count" class="metric-value">0</div>
-                    <div class="metric-caption">Ate 3 unidades disponiveis</div>
+                    <div class="metric-label">Sob demanda</div>
+                    <div id="products-made-to-order-count" class="metric-value">0</div>
+                    <div class="metric-caption">Pecas feitas apos o pedido</div>
                 </div>
             </div>
         </header>
@@ -825,7 +825,7 @@
                         </div>
                         <h2 id="modal-title" class="modal-title font-display">Crie um produto com tudo no lugar.</h2>
                         <p id="modal-subtitle" class="modal-subtitle">
-                            Defina o posicionamento na vitrine, estoque por cor, composicao de combo e galeria final antes de publicar.
+                    Defina o posicionamento na vitrine, variacoes por cor, composicao de combo e galeria final antes de publicar.
                         </p>
                     </div>
                     <button type="button" onclick="fecharModalProduto()" class="modal-close" aria-label="Fechar">
@@ -835,7 +835,7 @@
 
                 <div class="modal-tabs">
                     <button type="button" class="tab-button is-active" data-tab="basic"><i class="fa-solid fa-swatchbook"></i>Informacoes</button>
-                    <button type="button" id="tab-btn-colors" class="tab-button" data-tab="colors"><i class="fa-solid fa-droplet"></i>Cores e estoque</button>
+                        <button type="button" id="tab-btn-colors" class="tab-button" data-tab="colors"><i class="fa-solid fa-droplet"></i>Cores da peca</button>
                     <button type="button" id="tab-btn-combo" class="tab-button hidden" data-tab="combo"><i class="fa-solid fa-layer-group"></i>Montar combo</button>
                     <button type="button" class="tab-button" data-tab="images"><i class="fa-solid fa-images"></i>Imagens</button>
                 </div>
@@ -858,7 +858,7 @@
                                 </label>
                                 <div class="stack-field">
                                     <span class="field-label">Como ele funciona</span>
-                                    <div id="type-description" class="price-preview">Produto fisico com controle de estoque direto.</div>
+                            <div id="type-description" class="price-preview">Produto fisico com variacoes por cor e producao sob demanda.</div>
                                 </div>
                             </div>
                         </div>
@@ -960,7 +960,7 @@
                         <div class="modal-grid two-up">
                             <div class="modal-panel">
                                 <h3 class="panel-title">Adicionar nova cor</h3>
-                                <p class="panel-copy">Crie variacoes de estoque com nome, tom e quantidade inicial.</p>
+                                <p class="panel-copy">Crie variacoes com nome e tom para a cliente escolher no site.</p>
                                 <div class="modal-grid">
                                     <div class="modal-grid two-up">
                                         <label class="stack-field">
@@ -972,22 +972,16 @@
                                             <input type="text" id="new-color-name" placeholder="Ex: areia rosada">
                                         </label>
                                     </div>
-                                    <div class="modal-grid two-up">
-                                        <label class="stack-field">
-                                            <span class="field-label">Quantidade</span>
-                                            <input type="number" id="new-color-quantity" placeholder="0">
-                                        </label>
-                                        <div class="stack-field">
-                                            <span class="field-label">Acao</span>
-                                            <button type="button" onclick="adicionarCor()" class="primary-button"><i class="fa-solid fa-plus"></i>Adicionar cor</button>
-                                        </div>
+                                    <div class="stack-field">
+                                        <span class="field-label">Acao</span>
+                                        <button type="button" onclick="adicionarCor()" class="primary-button"><i class="fa-solid fa-plus"></i>Adicionar cor</button>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="modal-panel">
-                                <h3 class="panel-title">Direcao de estoque</h3>
-                                <p class="panel-copy">Edite nome, tom e quantidade direto nas linhas abaixo, sem apagar e criar de novo.</p>
+                                <h3 class="panel-title">Variacoes ativas</h3>
+                                <p class="panel-copy">Edite nome e tom direto nas linhas abaixo, sem apagar e criar de novo.</p>
                                 <div class="empty-inline">Use o bloco ao lado para iniciar as variacoes deste produto.</div>
                             </div>
                         </div>
@@ -1164,9 +1158,8 @@
             return true;
         }
 
-        function getProductStockTotal(product) {
-            if (!Array.isArray(product?.cores)) return 0;
-            return product.cores.reduce((sum, cor) => sum + (parseInt(cor?.quantidade, 10) || 0), 0);
+        function getProductColorCount(product) {
+            return Array.isArray(product?.cores) ? product.cores.length : 0;
         }
 
         function formatCategoryLabel(value) {
@@ -1182,13 +1175,13 @@
             const activeCount = produtos.filter((product) => product.status === "active").length;
             const comboCount = produtos.filter((product) => product.tipo === "combo").length;
             const customCount = produtos.filter((product) => product.personalizavel === true).length;
-            const lowStockCount = produtos.filter((product) => product.tipo !== "combo" && getProductStockTotal(product) > 0 && getProductStockTotal(product) <= 3).length;
+            const madeToOrderCount = produtos.filter((product) => product.tipo !== "combo").length;
 
             document.getElementById("products-total-count").textContent = String(produtos.length);
             document.getElementById("products-active-count").textContent = String(activeCount);
             document.getElementById("products-combo-count").textContent = String(comboCount);
             document.getElementById("products-custom-count").textContent = String(customCount);
-            document.getElementById("products-low-stock-count").textContent = String(lowStockCount);
+            document.getElementById("products-made-to-order-count").textContent = String(madeToOrderCount);
 
             const visibleCount = Array.isArray(visibleList) ? visibleList.length : produtos.length;
             document.getElementById("products-results-count").textContent = `${visibleCount} resultado(s) visiveis`;
@@ -1271,14 +1264,14 @@
                     ? product.imagens[0]
                     : "https://placehold.co/900x1080/e8ddcd/6b4a37?text=Sem+imagem";
 
-                const stockTotal = getProductStockTotal(product);
                 const collectionLabel = formatCollectionLabel(product);
                 const categoryLabel = formatCategoryLabel(product.categoria);
                 const description = String(product.descricao || "Sem descricao cadastrada ainda.").trim();
                 const shortDescription = description.length > 92 ? `${description.slice(0, 89)}...` : description;
                 const statusClass = product.status === "active" ? "pill-emerald" : "pill-slate";
                 const statusLabel = product.status === "active" ? "Ativo" : "Inativo";
-                const stockLabel = product.tipo === "combo" ? "Combo" : `${stockTotal} un.`;
+                const stockLabel = product.tipo === "combo" ? "Combo" : "Sob demanda";
+                const colorCount = getProductColorCount(product);
                 const extraBadge = product.personalizavel ? '<span class="pill pill-gold"><i class="fa-solid fa-wand-magic-sparkles"></i>Personalizavel</span>' : "";
 
                 return `
@@ -1294,11 +1287,12 @@
                                 <span class="pill pill-dark">${escapeHtml(stockLabel)}</span>
                             </div>
                         </div>
-                        <div class="product-card-body">
-                            <div class="product-card-meta">
-                                <span class="product-tag"><i class="fa-solid fa-tag"></i>${escapeHtml(categoryLabel)}</span>
-                                <span class="product-tag"><i class="fa-solid fa-bookmark"></i>${escapeHtml(collectionLabel)}</span>
-                            </div>
+                            <div class="product-card-body">
+                                <div class="product-card-meta">
+                                    <span class="product-tag"><i class="fa-solid fa-tag"></i>${escapeHtml(categoryLabel)}</span>
+                                    <span class="product-tag"><i class="fa-solid fa-bookmark"></i>${escapeHtml(collectionLabel)}</span>
+                                    ${product.tipo !== "combo" ? `<span class="product-tag"><i class="fa-solid fa-droplet"></i>${colorCount} cor(es)</span>` : ""}
+                                </div>
                             <h3 class="product-card-title">${escapeHtml(product.nome || "Produto sem nome")}</h3>
                             <p class="product-card-copy">${escapeHtml(shortDescription)}</p>
                             <div class="product-card-footer">
@@ -1357,7 +1351,7 @@
             } else {
                 comboTab.classList.add("hidden");
                 colorsTab.classList.remove("hidden");
-                description.textContent = "Produto fisico com controle de estoque direto por cor.";
+                description.textContent = "Produto fisico com variacoes por cor e producao sob demanda.";
                 if (activeTab === "combo") switchTab("colors");
             }
 
@@ -1506,12 +1500,12 @@
                 if (!product) return;
                 preencherFormularioProduto(product);
                 document.getElementById("modal-title").textContent = "Edite a peca com controle total.";
-                document.getElementById("modal-subtitle").textContent = "Atualize preco, estoque, galeria e posicionamento sem sair deste workspace.";
+                document.getElementById("modal-subtitle").textContent = "Atualize preco, cores, galeria e posicionamento sem sair deste workspace.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Editando produto';
                 document.getElementById("delete-product-btn").classList.remove("hidden");
             } else {
                 document.getElementById("modal-title").textContent = "Crie um produto com tudo no lugar.";
-                document.getElementById("modal-subtitle").textContent = "Defina o posicionamento na vitrine, estoque por cor, composicao de combo e galeria final antes de publicar.";
+                document.getElementById("modal-subtitle").textContent = "Defina o posicionamento na vitrine, cores da peca, composicao de combo e galeria final antes de publicar.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pencil-ruler"></i> Novo produto';
                 document.getElementById("delete-product-btn").classList.add("hidden");
             }
@@ -1559,7 +1553,7 @@
 
             selectedProductImages = Array.isArray(produto.imagens) ? produto.imagens.map(normalizeImageUrl).filter(Boolean) : [];
             productColors = Array.isArray(produto.cores)
-                ? produto.cores.map((cor) => ({ nome: cor?.nome || "", hex: cor?.hex || "#000000", quantidade: Math.max(0, parseInt(cor?.quantidade, 10) || 0) }))
+                ? produto.cores.map((cor) => ({ nome: cor?.nome || "", hex: cor?.hex || "#000000" }))
                 : [];
             comboComponents = Array.isArray(produto.componentes)
                 ? produto.componentes.map((component) => ({ id: component.id, nome: component.nome, categoria: component.categoria, imagem: component.imagem || null, quantidade: Math.max(1, parseInt(component.quantidade, 10) || 1) }))
@@ -1603,7 +1597,14 @@
                 colecaoId: document.getElementById("product-collection").value || null,
                 imagens: selectedProductImages,
                 personalizavel: tipo === "standard" ? document.getElementById("product-personalizable").checked : false,
-                cores: tipo === "standard" ? productColors : [],
+                cores: tipo === "standard"
+                    ? productColors
+                        .map((cor) => ({
+                            nome: String(cor?.nome || "").trim(),
+                            hex: String(cor?.hex || "#000000").trim() || "#000000"
+                        }))
+                        .filter((cor) => cor.nome)
+                    : [],
                 componentes: tipo === "combo" ? comboComponents : [],
                 updatedAt: new Date()
             };
@@ -1643,28 +1644,20 @@
         window.adicionarCor = function() {
             const nome = document.getElementById("new-color-name").value.trim();
             const hex = document.getElementById("new-color-hex-text").value.trim() || "#000000";
-            const quantidade = parseInt(document.getElementById("new-color-quantity").value, 10) || 0;
             if (!nome) {
                 alert("Digite o nome da cor.");
                 return;
             }
 
-            productColors.push({ nome, hex, quantidade: Math.max(0, quantidade) });
+            productColors.push({ nome, hex });
             document.getElementById("new-color-name").value = "";
-            document.getElementById("new-color-quantity").value = "";
             document.getElementById("new-color-hex-text").value = "#000000";
             atualizarListaCores();
         };
 
         window.atualizarCorCampo = function(index, field, value) {
             if (!productColors[index]) return;
-            productColors[index][field] = field === "quantidade" ? Math.max(0, parseInt(value, 10) || 0) : value;
-        };
-
-        window.ajustarQuantidadeCor = function(index, delta) {
-            if (!productColors[index]) return;
-            productColors[index].quantidade = Math.max(0, (parseInt(productColors[index].quantidade, 10) || 0) + delta);
-            atualizarListaCores();
+            productColors[index][field] = value;
         };
 
         function atualizarListaCores() {
@@ -1681,19 +1674,14 @@
                             <div class="color-preview" style="background:${escapeHtmlAttr(cor.hex || "#000000")}"></div>
                             <div>
                                 <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-[rgba(95,61,47,0.58)]">Cor ${index + 1}</div>
-                                <div class="text-sm font-semibold text-[var(--mocha-deep)]">Edite nome, tom e quantidade direto aqui.</div>
+                                <div class="text-sm font-semibold text-[var(--mocha-deep)]">Edite nome e tom direto aqui.</div>
                             </div>
                         </div>
                         <button type="button" onclick="removerCor(${index})" class="danger-button"><i class="fa-solid fa-trash"></i>Remover</button>
                     </div>
-                    <div class="mt-4 grid gap-3 md:grid-cols-[1fr_110px_170px]">
+                    <div class="mt-4 grid gap-3 md:grid-cols-[1fr_110px]">
                         <input type="text" value="${escapeHtmlAttr(cor.nome)}" oninput="atualizarCorCampo(${index}, 'nome', this.value)" placeholder="Nome da cor">
                         <input type="color" value="${escapeHtmlAttr(cor.hex || "#000000")}" onchange="atualizarCorCampo(${index}, 'hex', this.value)" class="min-h-[54px]">
-                        <div class="inline-flex items-center justify-between gap-2 rounded-[18px] border border-[rgba(95,61,47,0.1)] bg-white px-3">
-                            <button type="button" class="image-action-btn" onclick="ajustarQuantidadeCor(${index}, -1)">-</button>
-                            <input type="number" min="0" value="${escapeHtmlAttr(cor.quantidade)}" oninput="atualizarCorCampo(${index}, 'quantidade', this.value)" class="min-h-[52px] border-none bg-transparent text-center text-sm font-extrabold">
-                            <button type="button" class="image-action-btn" onclick="ajustarQuantidadeCor(${index}, 1)">+</button>
-                        </div>
                     </div>
                 </div>
             `).join("");

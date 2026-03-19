@@ -217,8 +217,8 @@
             <div class="rounded-[24px] border border-[#eee4d5] bg-[linear-gradient(180deg,#fff,#f8f1e8)] p-5">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Sincronizacao</p>
-                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Estoque x pedidos</h2>
+                  <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Operacao</p>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Pedidos sob demanda</h2>
                 </div>
                 <div class="flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
                   <span class="loading-dot"></span>
@@ -227,12 +227,12 @@
               </div>
 
               <p class="mt-4 text-sm leading-6 text-slate-600">
-                Se entrou pedido antigo sem baixar estoque, voce pode sincronizar tudo daqui e o painel atualiza na hora.
+                Como a producao acontece apos a compra, o painel agora prioriza cores, personalizacao e acompanhamento do pedido, sem baixa de estoque.
               </p>
 
-              <button onclick="baixarEstoquePedidosPendentes()" class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]">
-                <i class="fa-solid fa-boxes-stacked"></i>
-                Baixar estoque de pedidos pendentes
+              <button onclick="changeView('orders')" class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]">
+                <i class="fa-solid fa-receipt"></i>
+                Abrir fila de pedidos
               </button>
 
               <div id="sync-status" class="mt-4 hidden rounded-2xl border border-[#d7e5df] bg-white px-4 py-3 text-sm text-slate-600"></div>
@@ -321,7 +321,7 @@
                   <i class="fa-solid fa-box-open"></i>
                 </span>
                 <p class="text-sm font-semibold text-slate-900">Produtos e combos</p>
-                <p class="mt-1 text-xs leading-5 text-slate-500">Catalogo, estoque, imagens e peca personalizavel.</p>
+              <p class="mt-1 text-xs leading-5 text-slate-500">Catalogo, cores, imagens e peca personalizavel.</p>
               </button>
 
               <button onclick="changeView('collections')" class="quick-action rounded-[22px] p-4 text-left">
@@ -374,7 +374,7 @@
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
               <h2 class="mt-2 text-2xl font-semibold text-slate-900">Produtos e combos</h2>
-              <p class="mt-2 text-sm text-slate-500">Gerencie estoque, imagens, combos e pecas personalizaveis sem sair do dashboard.</p>
+              <p class="mt-2 text-sm text-slate-500">Gerencie cores, imagens, combos e pecas personalizaveis sem sair do dashboard.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button onclick="reloadWorkspace('products')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
