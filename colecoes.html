@@ -269,7 +269,9 @@
             const loading = document.getElementById('loading-state');
 
             db.collection("colecoes").orderBy("ordem", "asc").onSnapshot((snapshot) => {
-                colecoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                colecoes = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(colecao => colecao.id !== "__catalog_settings" && colecao.kind !== "catalog_settings");
                 console.log("Coleções carregadas:", colecoes.length);
                 renderizarTela();
                 loading.classList.add('hidden');

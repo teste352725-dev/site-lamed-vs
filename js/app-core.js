@@ -113,10 +113,14 @@ function updateMobileBottomNavState() {
     const hash = window.location.hash;
     let activeHref = '#home';
 
-    if (hash === '#colecoes' || hash.startsWith('#/colecao/') || hash.startsWith('#/categoria/')) {
+    if (hash === '#loja' || hash.startsWith('#/categoria/')) {
+        activeHref = '#loja';
+    } else if (hash === '#colecoes' || hash.startsWith('#/colecao/')) {
         activeHref = '#colecoes';
     } else if (hash === '#conheca-loja') {
         activeHref = '#conheca-loja';
+    } else if (hash === '#sacola') {
+        activeHref = '';
     }
 
     mobileBottomNavLinks.forEach((link) => {
@@ -216,16 +220,35 @@ function setupEventListeners() {
 
     // Links da Sidebar para fechar ao clicar
     document.querySelectorAll('.sidebar-link').forEach(link => {
-        link.addEventListener('click', toggleSidebar);
+        link.addEventListener('click', () => {
+            if (typeof closeCart === 'function') closeCart();
+            toggleSidebar();
+        });
     });
 
     const backBtn = document.getElementById('back-to-gallery');
     if(backBtn) backBtn.addEventListener('click', () => { window.history.back(); });
     
     if (elements.cartButton) elements.cartButton.addEventListener('click', openCart);
-    if (elements.mobileCartButton) elements.mobileCartButton.addEventListener('click', openCart);
+    if (elements.mobileCartButton) {
+        elements.mobileCartButton.addEventListener('click', () => {
+            if (window.location.hash === '#sacola') {
+                openCart();
+                return;
+            }
+
+            window.location.hash = '#sacola';
+        });
+    }
     if (elements.closeCartButton) elements.closeCartButton.addEventListener('click', closeCart);
     if (elements.cartOverlay) elements.cartOverlay.addEventListener('click', closeCart);
+
+    mobileBottomNavLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+            if (typeof closeCart === 'function') closeCart();
+            if (elements.sidebarMenu?.classList.contains('open')) toggleSidebar();
+        });
+    });
     
     if (elements.finalizarPedidoBtn) elements.finalizarPedidoBtn.addEventListener('click', openCheckoutModal);
     document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeCheckoutModal));

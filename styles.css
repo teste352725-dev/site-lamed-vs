@@ -436,6 +436,7 @@ body.no-scroll {
         border-top: 1px solid #E5E0D8;
         backdrop-filter: blur(10px);
         box-shadow: 0 -8px 24px rgba(69, 48, 31, 0.08);
+        transition: transform 0.2s ease, opacity 0.2s ease;
     }
 
     .mobile-bottom-link {
@@ -478,6 +479,12 @@ body.no-scroll {
         width: 54px;
         height: 54px;
         font-size: 1.8rem;
+    }
+
+    body.no-scroll .mobile-bottom-nav {
+        transform: translateY(120%);
+        opacity: 0;
+        pointer-events: none;
     }
 }
 

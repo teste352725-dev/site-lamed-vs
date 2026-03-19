@@ -173,7 +173,7 @@
                 <div class="hero-content p-8 md:p-12 rounded-sm shadow-xl max-w-lg mx-4" style="background-color: rgba(253, 251, 246, 0.95);">
                     <h2 class="serif text-4xl md:text-5xl font-light mb-4 text-[--cor-texto]">Mesa Posta Laméd</h2>
                     <p class="text-sm md:text-base mb-8 tracking-[0.2em] text-[--cor-texto] uppercase">Peças artesanais para transformar sua mesa</p>
-                    <a href="#conheca-loja" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition">Conheça a Loja</a>
+                    <a href="#loja" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition">Conheça a Loja</a>
                 </div>
             </section>
             
@@ -185,7 +185,7 @@
                     <div id="home-featured-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-12">
                         <div class="col-span-full text-gray-400 text-sm py-8">Carregando peças...</div>
                     </div>
-                    <a href="#conheca-loja" class="inline-block border border-[#dcdcdc] text-[--cor-texto] font-medium py-3 px-10 text-xs uppercase tracking-widest hover:bg-[#F0EEE6] transition">Ver Loja Completa</a>
+                    <a href="#loja" class="inline-block border border-[#dcdcdc] text-[--cor-texto] font-medium py-3 px-10 text-xs uppercase tracking-widest hover:bg-[#F0EEE6] transition">Ver Loja Completa</a>
                 </div>
             </section>
             
@@ -195,14 +195,7 @@
                     <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Conheça nossa Loja</h3>
 
                     <div id="home-shop-filters" class="flex flex-wrap justify-center gap-2 mb-8">
-                        <button class="home-filter-btn active" data-filter="all">Todas</button>
-                        <button class="home-filter-btn" data-filter="mesa_posta">Mesa Posta</button>
-                        <button class="home-filter-btn" data-filter="lugar_americano">Lugar Americano</button>
-                        <button class="home-filter-btn" data-filter="guardanapo">Guardanapo</button>
-                        <button class="home-filter-btn" data-filter="anel_guardanapo">Anel de Guardanapo</button>
-                        <button class="home-filter-btn" data-filter="trilho_velas">Trilho para Velas</button>
-                        <button class="home-filter-btn" data-filter="caminho_mesa">Caminho de Mesa</button>
-                        <button class="home-filter-btn" data-filter="capa_de_matza">Capa de Matzá Bordada</button>
+                        <span class="text-xs uppercase tracking-widest text-gray-400">Carregando categorias...</span>
                     </div>
 
                     <div id="home-shop-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
@@ -257,6 +250,35 @@
         </div>
 
         <!-- PÁGINA DE PRODUTOS (Detalhe e Grid) -->
+        <div id="page-shop" class="page">
+            <section class="py-12 px-4 min-h-screen">
+                <div class="container mx-auto max-w-7xl">
+                    <div class="mx-auto max-w-3xl text-center">
+                        <p class="text-xs uppercase tracking-[0.3em] text-[--cor-ouro-acento] mb-4">Loja completa</p>
+                        <h3 class="serif text-3xl md:text-5xl font-light text-[--cor-texto]">Todas as peÃ§as em um lugar so.</h3>
+                        <p class="mt-4 text-sm md:text-base text-gray-500">Filtre por categoria, busque pelo nome da peÃ§a e navegue por todo o catalogo da LamÃ©d.</p>
+                    </div>
+
+                    <div class="mt-10 rounded-[24px] border border-[#E5E0D8] bg-white/80 p-4 md:p-6 shadow-sm">
+                        <div class="grid gap-4 md:grid-cols-[1.3fr_0.7fr] md:items-center">
+                            <label class="flex items-center gap-3 rounded-full border border-[#E5E0D8] px-4 py-3 bg-[#FDFBF6]">
+                                <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                                <input id="shop-search-input" type="text" placeholder="Buscar por nome da peÃ§a..." class="w-full bg-transparent text-sm outline-none">
+                            </label>
+                            <div class="text-center md:text-right">
+                                <p id="shop-results-copy" class="text-xs uppercase tracking-[0.24em] text-gray-400">Carregando catalogo</p>
+                            </div>
+                        </div>
+                        <div id="shop-category-filters" class="mt-5 flex flex-wrap justify-center gap-2"></div>
+                    </div>
+
+                    <div id="shop-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 mt-10">
+                        <div class="col-span-full text-center text-gray-400 text-sm py-10">Carregando peÃ§as...</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
         <div id="page-collection" class="page">
             <section class="py-8 px-4 min-h-screen">
                 <!-- Grid da Coleção -->
@@ -354,8 +376,8 @@
     </main>
 
     <!-- GAVETA DO CARRINHO (Minha Encomenda) -->
-    <div id="cart-overlay" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] transition-opacity"></div>
-    <div id="cart-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#FDFBF6] shadow-2xl z-[80] flex flex-col transform transition-transform translate-x-full duration-300">
+    <div id="cart-overlay" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[95] transition-opacity"></div>
+    <div id="cart-drawer" class="fixed top-0 right-0 h-[100dvh] max-h-[100dvh] w-full max-w-md bg-[#FDFBF6] shadow-2xl z-[100] flex flex-col transform transition-transform translate-x-full duration-300">
         <div class="flex justify-between items-center p-5 border-b border-[#E5E0D8]">
             <h2 class="text-lg font-serif text-[--cor-texto]">Minha Encomenda</h2>
             <button id="close-cart-btn" class="text-gray-400 hover:text-gray-800 text-xl px-2">&times;</button>
@@ -368,7 +390,7 @@
             </div>
         </div>
         
-        <div class="p-5 border-t border-[#E5E0D8] bg-[#F8F6F0]">
+        <div class="p-5 border-t border-[#E5E0D8] bg-[#F8F6F0] pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-5">
             <div class="flex justify-between items-end mb-4">
                 <span class="text-sm text-gray-500">Subtotal</span>
                 <span id="cart-subtotal" class="text-xl font-serif text-[--cor-texto]">R$ 0,00</span>
@@ -520,7 +542,7 @@
             <i class="fa-solid fa-layer-group"></i>
             <span>Coleções</span>
         </a>
-        <a href="#conheca-loja" class="mobile-bottom-link">
+        <a href="#loja" class="mobile-bottom-link">
             <i class="fa-solid fa-store"></i>
             <span>Loja</span>
         </a>

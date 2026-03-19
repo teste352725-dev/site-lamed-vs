@@ -51,6 +51,55 @@
         /* Upload Overlay */
         .avatar-container:hover .avatar-overlay { opacity: 1; }
         .avatar-overlay { opacity: 0; transition: opacity 0.2s; background: rgba(0,0,0,0.5); }
+
+        .account-mobile-nav { display: none; }
+
+        @media (max-width: 767px) {
+            body {
+                padding-bottom: calc(5.6rem + env(safe-area-inset-bottom));
+                background: #fdfbf6;
+            }
+
+            .account-mobile-nav {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 60;
+                display: grid;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                padding: 0.55rem 0.4rem calc(0.55rem + env(safe-area-inset-bottom));
+                border-top: 1px solid #E5E0D8;
+                background: rgba(253, 251, 246, 0.96);
+                backdrop-filter: blur(10px);
+                box-shadow: 0 -8px 24px rgba(69, 48, 31, 0.08);
+            }
+
+            .account-mobile-link {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.3rem;
+                min-height: 3.4rem;
+                color: #45301F;
+                text-decoration: none;
+                font-size: 0.62rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .account-mobile-link i {
+                color: var(--cor-ouro);
+                font-size: 1rem;
+            }
+
+            .account-mobile-link.is-active,
+            .account-mobile-link.is-active i {
+                color: var(--cor-marrom);
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -238,6 +287,28 @@
     </div>
 
     <script src="user.js"></script>
+    <nav class="account-mobile-nav" aria-label="Navegação rápida">
+        <a href="index.html#home" class="account-mobile-link">
+            <i class="fa-solid fa-house"></i>
+            <span>Início</span>
+        </a>
+        <a href="index.html#colecoes" class="account-mobile-link">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Coleções</span>
+        </a>
+        <a href="index.html#loja" class="account-mobile-link">
+            <i class="fa-solid fa-store"></i>
+            <span>Loja</span>
+        </a>
+        <a href="minha-conta.html" class="account-mobile-link is-active" aria-current="page">
+            <i class="fa-regular fa-user"></i>
+            <span>Conta</span>
+        </a>
+        <a href="index.html#sacola" class="account-mobile-link">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <span>Sacola</span>
+        </a>
+    </nav>
     <script>
         function buscarEndereco(cep) {
             cep = cep.replace(/\D/g, '');

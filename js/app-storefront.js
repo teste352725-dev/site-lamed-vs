@@ -2,13 +2,19 @@
     const hash = window.location.hash;
     
     if(elements.sidebarMenu && elements.sidebarMenu.classList.contains('open')) toggleSidebar();
+    if (typeof closeCart === 'function' && hash !== '#sacola') closeCart();
 
-    if (hash.startsWith('#/produto/')) {
+    if (hash === '#sacola') {
+        showPage('page-home');
+        if (typeof openCart === 'function') openCart();
+    }
+    else if (hash.startsWith('#/produto/')) {
         const prodId = hash.split('/')[2];
         showPage('page-product-detail', prodId);
     }
     else if (hash.startsWith('#/colecao/')) showPage('page-single-collection', null, hash.split('/')[2]);
-    else if (hash.startsWith('#/categoria/')) showPage('page-category-view', null, hash.split('/')[2]);
+    else if (hash.startsWith('#/categoria/')) showPage('page-shop', null, hash.split('/')[2]);
+    else if (hash === '#loja') showPage('page-shop');
     else if (hash === '#colecoes') showPage('page-collections-list');
     else showPage('page-home');
 }
@@ -31,6 +37,10 @@ function showPage(pageId, param1 = null, param2 = null) {
         document.getElementById('collection-gallery').classList.remove('hidden');
         renderizarGridCategoria(param2);
     }
+    else if (pageId === 'page-shop') {
+        document.getElementById('page-shop').classList.add('active');
+        renderShopPage(param2);
+    }
     else if (pageId === 'page-product-detail') {
         document.getElementById('page-collection').classList.add('active');
         if (products.length === 0) {
@@ -47,11 +57,225 @@ function showPage(pageId, param1 = null, param2 = null) {
 }
 
 let homeShopFiltersBound = false;
+let shopPageFiltersBound = false;
 let collectionCarouselObserver = null;
 const mountedCollectionCarousels = new Set();
+let siteCategories = [];
+let currentShopFilter = 'all';
+let currentShopSearch = '';
 const canUseHoverPreviews = window.matchMedia
     ? window.matchMedia('(hover: hover) and (pointer: fine)').matches
     : false;
+
+const DEFAULT_SITE_CATEGORIES = [
+    { slug: 'vestido', nome: 'Vestidos', ordem: 10, ativa: true },
+    { slug: 'conjunto', nome: 'Conjuntos', ordem: 20, ativa: true },
+    { slug: 'calca', nome: 'Calcas', ordem: 30, ativa: true },
+    { slug: 'camisa', nome: 'Camisas', ordem: 40, ativa: true },
+    { slug: 'saia', nome: 'Saias', ordem: 50, ativa: true },
+    { slug: 'mesa_posta', nome: 'Mesa Posta', ordem: 60, ativa: true },
+    { slug: 'lugar_americano', nome: 'Lugar Americano', ordem: 70, ativa: true },
+    { slug: 'guardanapo', nome: 'Guardanapo', ordem: 80, ativa: true },
+    { slug: 'anel_guardanapo', nome: 'Anel de Guardanapo', ordem: 90, ativa: true },
+    { slug: 'trilho_velas', nome: 'Trilho para Velas', ordem: 100, ativa: true },
+    { slug: 'caminho_mesa', nome: 'Caminho de Mesa', ordem: 110, ativa: true },
+    { slug: 'capa_de_matza', nome: 'Capa de Matza Bordada', ordem: 120, ativa: true }
+];
+
+function slugifyCategoryName(value) {
+    return stripAccents(String(value || ''))
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'categoria';
+}
+
+function normalizeCategoryEntry(entry, fallbackOrder = 999) {
+    if (!entry) return null;
+
+    const slug = sanitizePlainText(entry.slug || slugifyCategoryName(entry.nome), 60);
+    const nome = sanitizePlainText(entry.nome || entry.label || entry.slug, 80);
+    if (!slug || !nome) return null;
+
+    return {
+        slug,
+        nome,
+        ordem: Number.isFinite(Number(entry.ordem)) ? Number(entry.ordem) : fallbackOrder,
+        ativa: entry.ativa !== false
+    };
+}
+
+function mergeSiteCategories(configEntries, productEntries) {
+    const merged = new Map();
+    const append = (entry) => {
+        const normalized = normalizeCategoryEntry(entry, merged.size * 10 + 10);
+        if (!normalized) return;
+
+        const existing = merged.get(normalized.slug) || {};
+        merged.set(normalized.slug, {
+            ...existing,
+            ...normalized,
+            nome: normalized.nome || existing.nome || normalized.slug
+        });
+    };
+
+    DEFAULT_SITE_CATEGORIES.forEach(append);
+    (Array.isArray(productEntries) ? productEntries : []).forEach((slug, index) => append({ slug, nome: formatCategoryLabel(slug), ordem: 500 + index, ativa: true }));
+    (Array.isArray(configEntries) ? configEntries : []).forEach(append);
+
+    return [...merged.values()]
+        .filter((entry) => entry.ativa !== false)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+function getSiteCategoryLabel(slug) {
+    const match = siteCategories.find((category) => category.slug === slug);
+    return match?.nome || formatCategoryLabel(slug);
+}
+
+function renderSidebarCategoryLinks() {
+    const submenu = document.getElementById('sidebar-submenu');
+    if (!submenu) return;
+
+    const categoryLinks = siteCategories.map((category) =>         `<a href="#/categoria/${category.slug}" class="sidebar-link block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">${category.nome}</a>`
+    ).join('');
+
+    submenu.innerHTML =         `<a href="#loja" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Loja Completa</a>
+        <a href="#colecoes" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Todas as Colecoes</a>
+        <a href="#/categoria/combo" class="sidebar-link block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50 flex items-center gap-2"><i class="fa-solid fa-star text-[10px] text-purple-400"></i> Combos / Kits</a>
+        ${categoryLinks}`;
+
+    submenu.querySelectorAll('.sidebar-link').forEach((link) => {
+        link.addEventListener('click', () => {
+            if (typeof closeCart === 'function') closeCart();
+            if (elements.sidebarMenu?.classList.contains('open')) toggleSidebar();
+        });
+    });
+}
+
+function getHomeFilterEntries() {
+    const categoryUsage = new Set(products.map((product) => product.categoria).filter(Boolean));
+    const entries = [{ slug: 'all', nome: 'Todas' }];
+
+    if (products.some((product) => product.tipo === 'combo')) {
+        entries.push({ slug: 'combo', nome: 'Combos / Kits' });
+    }
+
+    siteCategories.forEach((category) => {
+        if (categoryUsage.has(category.slug)) {
+            entries.push(category);
+        }
+    });
+
+    return entries;
+}
+
+function renderHomeShopFilters() {
+    const container = document.getElementById('home-shop-filters');
+    if (!container) return;
+
+    const filterEntries = getHomeFilterEntries();
+    if (!filterEntries.some((entry) => entry.slug === currentHomeFilter)) {
+        currentHomeFilter = 'all';
+    }
+
+    container.innerHTML = filterEntries.map((entry) => (
+        `<button class="home-filter-btn ${currentHomeFilter === entry.slug ? 'active' : ''}" data-filter="${entry.slug}">${entry.nome}</button>`
+    )).join('');
+}
+
+function setupShopPageFilters() {
+    const searchInput = document.getElementById('shop-search-input');
+    const filtersContainer = document.getElementById('shop-category-filters');
+    if (!searchInput || !filtersContainer || shopPageFiltersBound) return;
+    shopPageFiltersBound = true;
+
+    searchInput.addEventListener('input', () => {
+        currentShopSearch = searchInput.value.trim().toLowerCase();
+        renderShopPage();
+    });
+
+    filtersContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-shop-filter]');
+        if (!button) return;
+
+        const nextFilter = button.dataset.shopFilter || 'all';
+        window.location.hash = nextFilter === 'all' ? '#loja' : `#/categoria/${nextFilter}`;
+    });
+}
+
+function getShopFilteredProducts() {
+    const normalizedSearch = currentShopSearch.trim();
+
+    return [...products]
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
+        .filter((product) => {
+            if (currentShopFilter === 'combo') {
+                if (product.tipo !== 'combo') return false;
+            } else if (currentShopFilter !== 'all' && product.categoria !== currentShopFilter) {
+                return false;
+            }
+
+            if (!normalizedSearch) return true;
+            return String(product.nome || '').toLowerCase().includes(normalizedSearch);
+        });
+}
+
+function renderShopFilterButtons() {
+    const container = document.getElementById('shop-category-filters');
+    if (!container) return;
+
+    const filterEntries = [{ slug: 'all', nome: 'Todas' }];
+
+    if (products.some((product) => product.tipo === 'combo')) {
+        filterEntries.push({ slug: 'combo', nome: 'Combos / Kits' });
+    }
+
+    filterEntries.push(...siteCategories);
+
+    container.innerHTML = filterEntries.map((entry) =>         `<button type="button" class="home-filter-btn ${currentShopFilter === entry.slug ? 'active' : ''}" data-shop-filter="${entry.slug}">${entry.nome}</button>`
+    ).join('');
+}
+
+function renderShopPage(initialFilter = null) {
+    const grid = document.getElementById('shop-grid');
+    const searchInput = document.getElementById('shop-search-input');
+    const copy = document.getElementById('shop-results-copy');
+    if (!grid) return;
+
+    setupShopPageFilters();
+
+    if (typeof initialFilter === 'string') {
+        currentShopFilter = initialFilter || 'all';
+    } else if (!currentShopFilter) {
+        currentShopFilter = 'all';
+    }
+
+    const availableShopFilters = new Set(['all']);
+    if (products.some((product) => product.tipo === 'combo')) {
+        availableShopFilters.add('combo');
+    }
+    siteCategories.forEach((category) => availableShopFilters.add(category.slug));
+    if (!availableShopFilters.has(currentShopFilter)) {
+        currentShopFilter = 'all';
+    }
+
+    if (searchInput && searchInput.value.trim().toLowerCase() !== currentShopSearch) {
+        searchInput.value = currentShopSearch;
+    }
+
+    renderShopFilterButtons();
+
+    const filteredProducts = getShopFilteredProducts();
+    if (copy) copy.textContent = `${filteredProducts.length} item(ns) encontrados`;
+
+    if (!filteredProducts.length) {
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 text-sm py-10">Nenhuma peca encontrada com esse filtro.</div>';
+        return;
+    }
+
+    grid.innerHTML = '';
+    filteredProducts.forEach((product) => grid.appendChild(criarCardProduto(product)));
+}
 
 function scheduleNonCriticalStorefrontTask(task, delay = 80) {
     if (typeof task !== 'function') return;
@@ -111,9 +335,10 @@ function observeCollectionCarousel(section, splideId) {
 // --- CARREGAMENTO DE DADOS ---
 async function carregarDadosLoja() {
     try {
-        const [colecoesSnap, produtosSnap] = await Promise.all([
+        const [colecoesSnap, produtosSnap, catalogSettingsSnap] = await Promise.all([
             db.collection("colecoes").where("ativa", "==", true).get(),
-            db.collection("pecas").where("status", "==", "active").get()
+            db.collection("pecas").where("status", "==", "active").get(),
+            db.collection("colecoes").doc("__catalog_settings").get()
         ]);
 
         activeCollections = colecoesSnap.docs
@@ -123,8 +348,17 @@ async function carregarDadosLoja() {
         products = produtosSnap.docs
             .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
 
+        const configCategories = catalogSettingsSnap.exists
+            ? catalogSettingsSnap.data()?.categorias
+            : [];
+        const productCategories = [...new Set(products.map((product) => product.categoria).filter(Boolean))];
+        siteCategories = mergeSiteCategories(configCategories, productCategories);
+
+        renderSidebarCategoryLinks();
+        renderHomeShopFilters();
         setupHomeShopFilters();
         renderHomeShopGrid();
+        renderShopPage();
 
         // Garante que a rota correta seja carregada apÃ³s ter os dados
         handleRouting();
@@ -201,18 +435,19 @@ function popularPreviewColecao() {
 }
 
 function setupHomeShopFilters() {
-    const filterButtons = document.querySelectorAll('.home-filter-btn');
-    if (filterButtons.length === 0 || homeShopFiltersBound) return;
+    const filtersContainer = document.getElementById('home-shop-filters');
+    if (!filtersContainer || homeShopFiltersBound) return;
     homeShopFiltersBound = true;
 
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentHomeFilter = btn.dataset.filter || 'all';
-            currentHomePage = 1;
-            filterButtons.forEach(el => el.classList.remove('active'));
-            btn.classList.add('active');
-            renderHomeShopGrid();
-        });
+    filtersContainer.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-filter]');
+        if (!btn) return;
+
+        currentHomeFilter = btn.dataset.filter || 'all';
+        currentHomePage = 1;
+        filtersContainer.querySelectorAll('.home-filter-btn').forEach((el) => el.classList.remove('active'));
+        btn.classList.add('active');
+        renderHomeShopGrid();
     });
 
     const prevBtn = document.getElementById('home-shop-prev');
@@ -239,14 +474,16 @@ function setupHomeShopFilters() {
 }
 
 function getHomeShopProducts() {
-    const mesaProducts = products
-        .filter(p => checkIsMesaPosta(p.categoria))
-        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-    if (currentHomeFilter === 'all') return mesaProducts;
+    const orderedProducts = [...products]
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+
+    if (currentHomeFilter === 'all') return orderedProducts;
+    if (currentHomeFilter === 'combo') return orderedProducts.filter((product) => product.tipo === 'combo');
     if (currentHomeFilter === 'anel_guardanapo') {
-        return mesaProducts.filter(p => p.categoria === 'anel_guardanapo' || p.categoria === 'porta_guardanapo');
+        return orderedProducts.filter((product) => product.categoria === 'anel_guardanapo' || product.categoria === 'porta_guardanapo');
     }
-    return mesaProducts.filter(p => p.categoria === currentHomeFilter);
+
+    return orderedProducts.filter((product) => product.categoria === currentHomeFilter);
 }
 
 function getHomeShopTotalPages() {
@@ -261,6 +498,8 @@ function renderHomeShopGrid() {
     const nextBtn = document.getElementById('home-shop-next');
     if (!grid) return;
 
+    renderHomeShopFilters();
+
     const filtered = getHomeShopProducts();
     const totalPages = getHomeShopTotalPages();
     if (currentHomePage > totalPages) currentHomePage = totalPages;
@@ -270,12 +509,12 @@ function renderHomeShopGrid() {
 
     grid.innerHTML = '';
     if (pageItems.length === 0) {
-        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peÃ§a encontrada para este filtro.</div>';
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peca encontrada para este filtro.</div>';
     } else {
-        pageItems.forEach(peca => grid.appendChild(criarCardProduto(peca)));
+        pageItems.forEach((peca) => grid.appendChild(criarCardProduto(peca)));
     }
 
-    if (pageInfo) pageInfo.textContent = `PÃ¡gina ${currentHomePage} de ${totalPages}`;
+    if (pageInfo) pageInfo.textContent = `Pagina ${currentHomePage} de ${totalPages}`;
     if (prevBtn) prevBtn.disabled = currentHomePage <= 1;
     if (nextBtn) nextBtn.disabled = currentHomePage >= totalPages;
 }
@@ -384,7 +623,7 @@ function criarCardProduto(peca) {
         : '';
 
     const isMesa = checkIsMesaPosta(peca.categoria);
-    const catLabel = isMesa ? 'Mesa Posta' : (peca.tipo === 'combo' ? 'Monte seu Combo' : (peca.categoria || 'ColeÃ§Ã£o'));
+    const catLabel = isMesa ? 'Mesa Posta' : (peca.tipo === 'combo' ? 'Monte seu Combo' : getSiteCategoryLabel(peca.categoria || 'colecao'));
 
     card.innerHTML = `
         <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">

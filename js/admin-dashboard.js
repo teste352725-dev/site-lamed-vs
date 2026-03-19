@@ -104,6 +104,7 @@ function ensureWorkspaceLoaded(view) {
     const frame = document.getElementById(`frame-${view}`);
     if (!frame || frame.dataset.loaded === "true") return;
 
+    frame.style.height = "1100px";
     frame.src = frame.dataset.src;
     frame.dataset.loaded = "true";
 }
@@ -114,6 +115,7 @@ window.reloadWorkspace = function reloadWorkspace(view) {
     if (!frame) return;
 
     const baseSrc = frame.dataset.src || WORKSPACE_VIEWS[view];
+    frame.style.height = "1100px";
     frame.src = `${baseSrc}${baseSrc.includes("?") ? "&" : "?"}ts=${Date.now()}`;
     frame.dataset.loaded = "true";
 };
@@ -123,6 +125,15 @@ window.openWorkspaceInNewTab = function openWorkspaceInNewTab(view) {
     const cleanUrl = WORKSPACE_VIEWS[view].replace("?embedded=1", "");
     window.open(cleanUrl, "_blank");
 };
+
+function syncWorkspaceFrameHeight(sourceWindow, nextHeight) {
+    if (!sourceWindow || !Number.isFinite(nextHeight) || nextHeight < 100) return;
+
+    document.querySelectorAll(".workspace-frame").forEach((frame) => {
+        if (frame.contentWindow !== sourceWindow) return;
+        frame.style.height = `${Math.max(920, Math.ceil(nextHeight) + 16)}px`;
+    });
+}
 
 function renderRecentOrders(orders) {
     const container = document.getElementById("recent-orders-list");
@@ -193,7 +204,9 @@ async function refreshOverview() {
 
         const products = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         const orders = ordersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        const collections = collectionsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const collections = collectionsSnap.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }))
+            .filter((collection) => collection.id !== "__catalog_settings" && collection.kind !== "catalog_settings");
         const chats = chatsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
         const pendingOrders = orders.filter((order) => normalizeOrderStatus(order.status) === "pendente");
@@ -275,4 +288,11 @@ window.addEventListener("hashchange", () => {
     if (nextView !== currentAdminView) {
         changeView(nextView);
     }
+});
+
+window.addEventListener("message", (event) => {
+    if (event.origin !== window.location.origin) return;
+    if (event.data?.type !== "admin-embedded-size") return;
+
+    syncWorkspaceFrameHeight(event.source, Number(event.data.height));
 });

@@ -30,17 +30,100 @@
             padding-top: 1rem !important;
             padding-bottom: 1.25rem !important;
         }
+
+        body.admin-embedded .page-shell {
+            max-width: none !important;
+            padding: 0 0 1.25rem !important;
+        }
+
+        body.admin-embedded .hero-panel {
+            position: static !important;
+            top: auto !important;
+            margin-bottom: 1rem !important;
+        }
+
+        body.admin-embedded .ghost-button {
+            display: none !important;
+        }
+
+        body.admin-embedded .modal {
+            padding: 0 !important;
+        }
+
+        body.admin-embedded .modal-shell,
+        body.admin-embedded .gallery-shell {
+            width: 100% !important;
+            max-height: 100vh !important;
+            min-height: 100vh !important;
+            border-radius: 0 !important;
+        }
     `;
     document.head.appendChild(style);
+
+    let resizeFrameRequest = null;
+
+    const sendHeightToParent = () => {
+        resizeFrameRequest = null;
+        if (window.parent === window) return;
+
+        const height = Math.max(
+            document.documentElement.scrollHeight,
+            document.body?.scrollHeight || 0,
+            document.documentElement.offsetHeight,
+            document.body?.offsetHeight || 0
+        );
+
+        window.parent.postMessage({
+            type: "admin-embedded-size",
+            page: window.location.pathname.split("/").pop(),
+            height
+        }, window.location.origin);
+    };
+
+    const scheduleResizeMessage = () => {
+        if (resizeFrameRequest !== null) {
+            cancelAnimationFrame(resizeFrameRequest);
+        }
+
+        resizeFrameRequest = requestAnimationFrame(sendHeightToParent);
+    };
 
     const activate = () => {
         if (!document.body) return;
         document.body.classList.add("admin-embedded");
+        scheduleResizeMessage();
     };
 
     if (document.body) {
         activate();
     } else {
         document.addEventListener("DOMContentLoaded", activate, { once: true });
+    }
+
+    window.addEventListener("load", scheduleResizeMessage);
+    window.addEventListener("resize", scheduleResizeMessage);
+    window.addEventListener("orientationchange", scheduleResizeMessage);
+
+    const startObservers = () => {
+        if (!document.body) return;
+
+        if ("ResizeObserver" in window) {
+            const resizeObserver = new ResizeObserver(() => scheduleResizeMessage());
+            resizeObserver.observe(document.body);
+            resizeObserver.observe(document.documentElement);
+        }
+
+        const mutationObserver = new MutationObserver(() => scheduleResizeMessage());
+        mutationObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true
+        });
+    };
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", startObservers, { once: true });
+    } else {
+        startObservers();
     }
 })();
