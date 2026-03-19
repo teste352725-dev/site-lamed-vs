@@ -132,15 +132,27 @@
 
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, setPersistence, browserLocalPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, setPersistence, browserSessionPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Inicialização
         try {
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
-            setLogLevel('debug'); // Ativa logs detalhados do Firestore no console
+            const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
+
+            async function isAuthorizedAdmin(user) {
+                if (!user) return false;
+                if (ADMIN_UIDS.includes(user.uid)) return true;
+
+                try {
+                    const tokenResult = await user.getIdTokenResult();
+                    return tokenResult?.claims?.admin === true;
+                } catch (error) {
+                    return false;
+                }
+            }
 
             // Lógica da Página
             const loginForm = document.getElementById('login-form');
@@ -168,9 +180,14 @@
 
                 try {
                     // Define a persistência da sessão
-                    await setPersistence(auth, browserLocalPersistence);
+                    await setPersistence(auth, browserSessionPersistence);
                     
                     const userCredential = await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                    const isAdmin = await isAuthorizedAdmin(userCredential.user);
+                    if (!isAdmin) {
+                        await signOut(auth);
+                        throw new Error('AUTH_NOT_ADMIN');
+                    }
                     
                     console.log("Login com sucesso! Redirecionando...");
                     
@@ -185,6 +202,8 @@
                     
                     if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
                         errorMessage.textContent = 'Email ou senha inválidos.';
+                    } else if (error.message === 'AUTH_NOT_ADMIN') {
+                        errorMessage.textContent = 'Sua conta nÃ£o tem acesso administrativo.';
                     } else if (error.code === 'auth/invalid-email') {
                          errorMessage.textContent = 'O formato do email é inválido.';
                     // CORRIGIDO: Convertido error.code para String() para evitar o TypeError
@@ -194,6 +213,10 @@
                     else {
                         errorMessage.textContent = 'Ocorreu um erro. Tente novamente.';
                     }
+
+                    if (error.message === 'AUTH_NOT_ADMIN') {
+                        errorMessage.textContent = 'Sua conta nao tem acesso administrativo.';
+                    }
                 } finally {
                     submitButton.disabled = false;
                     submitButton.textContent = 'Entrar';
@@ -202,11 +225,13 @@
 
             // --- Verificação de Sessão ---
             // Se o usuário já estiver logado, redireciona
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
+            onAuthStateChanged(auth, async (user) => {
+                if (await isAuthorizedAdmin(user)) {
                     console.log("Usuário já está logado. Redirecionando...");
                     // CORRIGIDO: Adicionado "./" para formar um URL relativo válido
                     window.location.href = './dashboard.html';
+                } else if (user) {
+                    await signOut(auth);
                 } else {
                     console.log("Nenhum usuário logado.");
                 }

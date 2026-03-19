@@ -3,65 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Admin | Laméd vs</title>
+    <title>Chat Admin | Lamed vs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDK -->
+
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="js/admin-embedded-mode.js" defer></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .chat-list-item:hover { background-color: #f3f4f6; cursor: pointer; }
-        .chat-list-item.active { background-color: #e5e7eb; }
-        .msg-bubble { max-width: 80%; padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; font-size: 0.9rem; }
-        .msg-admin { background-color: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; margin-left: auto; }
-        .msg-user { background-color: #ffffff; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #e5e7eb; }
+        :root {
+            --chat-bg: #efe5d9;
+            --chat-brown: #643f21;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+        }
+
+        .surface-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+        }
+
+        .chat-list-item {
+            transition: 0.2s ease;
+        }
+
+        .chat-list-item:hover {
+            background: #f8fafc;
+        }
+
+        .chat-list-item.active {
+            background: rgba(100, 63, 33, 0.08);
+            border-color: rgba(165, 138, 92, 0.24);
+        }
+
+        .msg-bubble {
+            max-width: min(82%, 560px);
+            padding: 0.8rem 0.95rem;
+            border-radius: 1rem;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .msg-admin {
+            background: #dcf8c6;
+            margin-left: auto;
+            border-bottom-right-radius: 0.2rem;
+        }
+
+        .msg-user {
+            background: white;
+            margin-right: auto;
+            border: 1px solid #e5e7eb;
+            border-bottom-left-radius: 0.2rem;
+        }
+
+        .date-separator {
+            display: inline-flex;
+            align-self: center;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            color: #6b7280;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col">
-
-    <header class="bg-white shadow-sm px-4 py-3 flex justify-between items-center border-b z-10">
+    <header class="bg-white shadow-sm px-4 py-3 border-b z-10">
         <div class="flex items-center gap-3">
             <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
-            <h1 class="text-xl font-bold text-gray-800">Atendimento ao Cliente</h1>
+            <div>
+                <h1 class="text-xl font-bold text-gray-900">Atendimento ao Cliente</h1>
+                <p class="text-xs text-gray-500">Busca real, contexto do cliente e respostas mais rapidas.</p>
+            </div>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-        <!-- Lista de Chats -->
-        <aside class="w-1/3 border-r bg-white flex flex-col min-w-[250px]">
-            <div class="p-4 border-b">
-                <input type="text" placeholder="Buscar cliente..." class="w-full p-2 border rounded bg-gray-50 text-sm">
+        <aside class="w-full max-w-sm border-r bg-white flex flex-col">
+            <div class="p-4 border-b space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="surface-card p-3">
+                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Conversas</p>
+                        <p id="stat-total-chats" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+                    </div>
+                    <div class="surface-card p-3">
+                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Nao lidas</p>
+                        <p id="stat-unread-chats" class="mt-2 text-2xl font-bold text-emerald-700">0</p>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <input type="text" id="chat-search-input" placeholder="Buscar cliente, mensagem ou ID..." class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-[--chat-brown]">
+                </div>
             </div>
-            <div id="chat-list" class="flex-1 overflow-y-auto">
+
+            <div id="chat-list-feedback" class="hidden mx-4 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"></div>
+            <div id="chat-list" class="flex-1 overflow-y-auto p-3 space-y-2">
                 <div class="text-center py-8 text-gray-400 text-sm">Carregando conversas...</div>
             </div>
         </aside>
 
-        <!-- Área de Conversa -->
-        <main class="flex-1 flex flex-col bg-[#e5ded8]">
-            <div id="chat-header" class="bg-white p-3 border-b flex items-center gap-3 hidden">
-                <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-lg" id="chat-avatar">U</div>
-                <div>
-                    <h3 class="font-semibold text-gray-800" id="chat-username">Nome do Cliente</h3>
-                    <p class="text-xs text-gray-500" id="chat-status">Online</p>
+        <main class="flex-1 flex flex-col bg-[var(--chat-bg)]">
+            <div id="chat-empty-state" class="flex-1 flex flex-col items-center justify-center px-6 text-center text-gray-500">
+                <i class="fa-regular fa-comments text-5xl mb-4 text-gray-300"></i>
+                <h2 class="text-xl font-semibold text-gray-700">Selecione uma conversa</h2>
+                <p class="mt-2 max-w-md text-sm leading-6">Quando voce abrir um chat, aqui vao aparecer as mensagens, os dados do cliente e atalhos rapidos de resposta.</p>
+            </div>
+
+            <div id="chat-workspace" class="hidden flex-1 flex flex-col min-h-0">
+                <div class="bg-white border-b px-4 py-4">
+                    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div id="chat-avatar" class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-lg">C</div>
+                            <div class="min-w-0">
+                                <h3 id="chat-username" class="font-semibold text-gray-900 truncate">Cliente</h3>
+                                <p id="chat-subtitle" class="text-xs text-gray-500">Carregando contexto...</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <a id="chat-whatsapp-link" href="#" target="_blank" class="hidden px-4 py-2 rounded-xl bg-green-500 text-white text-sm font-semibold">
+                                <i class="fa-brands fa-whatsapp mr-2"></i>WhatsApp
+                            </a>
+                            <button onclick="reabrirChatAtual()" class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700">
+                                <i class="fa-solid fa-rotate-right mr-2"></i>Atualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-3 mt-4">
+                        <div class="surface-card p-3">
+                            <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Telefone</p>
+                            <p id="chat-user-phone" class="mt-2 text-sm font-medium text-gray-800">-</p>
+                        </div>
+                        <div class="surface-card p-3">
+                            <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Email</p>
+                            <p id="chat-user-email" class="mt-2 text-sm font-medium text-gray-800 break-all">-</p>
+                        </div>
+                        <div class="surface-card p-3">
+                            <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Pedidos do cliente</p>
+                            <p id="chat-user-orders" class="mt-2 text-sm font-medium text-gray-800">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col"></div>
+
+                <div class="bg-white border-t px-4 py-3 space-y-3">
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="quick-reply px-3 py-2 rounded-full bg-gray-100 text-xs font-semibold text-gray-700" data-reply="Ola! Ja vi sua mensagem e vou te ajudar agora.">Ola e suporte</button>
+                        <button type="button" class="quick-reply px-3 py-2 rounded-full bg-gray-100 text-xs font-semibold text-gray-700" data-reply="Posso verificar disponibilidade, cores e tamanhos para voce.">Disponibilidade</button>
+                        <button type="button" class="quick-reply px-3 py-2 rounded-full bg-gray-100 text-xs font-semibold text-gray-700" data-reply="Se quiser, eu tambem posso te orientar pelo WhatsApp.">Migrar para WhatsApp</button>
+                    </div>
+
+                    <form id="admin-chat-form" class="flex gap-3 items-end">
+                        <textarea id="admin-message-input" rows="2" class="flex-1 rounded-2xl border border-gray-200 px-4 py-3 focus:outline-none focus:border-[--chat-brown] resize-none" placeholder="Digite sua resposta... Enter envia, Shift+Enter quebra linha."></textarea>
+                        <button type="submit" class="h-12 px-5 rounded-2xl bg-[--chat-brown] text-white font-semibold hover:opacity-90 transition">
+                            <i class="fa-solid fa-paper-plane mr-2"></i>Enviar
+                        </button>
+                    </form>
                 </div>
             </div>
-
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col space-y-2">
-                <div class="text-center text-gray-500 mt-20">Selecione um chat para iniciar o atendimento.</div>
-            </div>
-
-            <form id="admin-chat-form" class="p-3 bg-gray-100 border-t flex gap-2 hidden">
-                <input type="text" id="admin-message-input" class="flex-1 rounded-full border-0 px-4 py-2 focus:ring-2 focus:ring-green-500" placeholder="Digite sua resposta...">
-                <button type="submit" class="bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-green-700 transition">
-                    <i class="fa-solid fa-paper-plane"></i>
-                </button>
-            </form>
         </main>
     </div>
 
@@ -80,115 +196,318 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
-        
+        const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
+
         let currentChatId = null;
         let unsubscribeMessages = null;
+        let chatsMeta = [];
+        let currentSearchTerm = '';
 
-        // Verificar Admin
-        auth.onAuthStateChanged(user => {
-            if(!user) window.location.href = 'login-admin.html';
-            else carregarListaChats();
-        });
+        async function isAuthorizedAdmin(user) {
+            if (!user) return false;
+            if (ADMIN_UIDS.includes(user.uid)) return true;
 
-        function carregarListaChats() {
+            try {
+                const tokenResult = await user.getIdTokenResult();
+                return tokenResult?.claims?.admin === true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function sanitizePlainText(value, maxLength = 240) {
+            return String(value ?? '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, maxLength);
+        }
+
+        function buildInitial(name) {
+            const safeName = sanitizePlainText(name, 80);
+            return safeName ? safeName.charAt(0).toUpperCase() : 'C';
+        }
+
+        function formatDateTime(value) {
+            if (!value?.seconds) return '-';
+            return new Date(value.seconds * 1000).toLocaleString('pt-BR', {
+                dateStyle: 'short',
+                timeStyle: 'short'
+            });
+        }
+
+        function formatTime(value) {
+            if (!value?.seconds) return '';
+            return new Date(value.seconds * 1000).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function dateKeyFromTimestamp(value) {
+            if (!value?.seconds) return 'sem-data';
+            return new Date(value.seconds * 1000).toLocaleDateString('pt-BR');
+        }
+
+        function atualizarEstatisticasChat() {
+            document.getElementById('stat-total-chats').textContent = String(chatsMeta.length);
+            document.getElementById('stat-unread-chats').textContent = String(chatsMeta.filter((chat) => chat.unread === true).length);
+        }
+
+        function obterChatsFiltrados() {
+            if (!currentSearchTerm) return chatsMeta;
+
+            return chatsMeta.filter((chat) => {
+                const searchable = [
+                    chat.id,
+                    chat.userName,
+                    chat.lastMessage
+                ];
+
+                return searchable.some((value) => String(value || '').toLowerCase().includes(currentSearchTerm));
+            });
+        }
+
+        function renderizarListaChats() {
             const listEl = document.getElementById('chat-list');
-            
-            // Escuta a coleção de metadados dos chats
-            db.collection('chats_ativos')
-              .orderBy('lastUpdate', 'desc')
-              .onSnapshot(snap => {
-                  listEl.innerHTML = '';
-                  if(snap.empty) {
-                      listEl.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">Nenhuma conversa iniciada.</div>';
-                      return;
-                  }
+            const feedback = document.getElementById('chat-list-feedback');
+            const filtered = obterChatsFiltrados();
 
-                  snap.forEach(doc => {
-                      const chat = doc.data();
-                      const time = chat.lastUpdate ? new Date(chat.lastUpdate.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-                      const activeClass = currentChatId === doc.id ? 'active' : '';
-                      const unreadDot = chat.unread ? '<span class="w-2 h-2 bg-green-500 rounded-full ml-2"></span>' : '';
+            listEl.replaceChildren();
 
-                      listEl.innerHTML += `
-                          <div class="chat-list-item p-3 border-b flex items-center gap-3 ${activeClass}" onclick="abrirChat('${doc.id}', '${chat.userName}')">
-                              <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
-                                  ${chat.userName ? chat.userName.charAt(0).toUpperCase() : 'C'}
-                              </div>
-                              <div class="flex-1 min-w-0">
-                                  <div class="flex justify-between items-baseline">
-                                      <h4 class="font-medium text-sm truncate text-gray-800">${chat.userName || 'Cliente'}</h4>
-                                      <span class="text-xs text-gray-400">${time}</span>
-                                  </div>
-                                  <div class="flex justify-between items-center">
-                                      <p class="text-xs text-gray-500 truncate pr-2">${chat.lastMessage || '...'}</p>
-                                      ${unreadDot}
-                                  </div>
-                              </div>
-                          </div>
-                      `;
-                  });
-              });
+            if (!filtered.length) {
+                const empty = document.createElement('div');
+                empty.className = 'surface-card p-6 text-center text-sm text-gray-500';
+                empty.textContent = currentSearchTerm
+                    ? 'Nenhuma conversa encontrada com essa busca.'
+                    : 'Nenhuma conversa iniciada.';
+                listEl.appendChild(empty);
+            } else {
+                filtered.forEach((chat) => {
+                    const userName = sanitizePlainText(chat.userName, 80) || 'Cliente';
+                    const lastMessage = sanitizePlainText(chat.lastMessage, 160) || 'Sem mensagens ainda.';
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'chat-list-item surface-card w-full p-3 text-left';
+                    if (currentChatId === chat.id) item.classList.add('active');
+                    item.addEventListener('click', () => abrirChat(chat.id, userName));
+
+                    item.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <div class="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold shrink-0">${buildInitial(userName)}</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-2">
+                                    <h4 class="font-semibold text-sm text-gray-900 truncate">${userName}</h4>
+                                    <span class="text-[11px] text-gray-400 shrink-0">${formatTime(chat.lastUpdate)}</span>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500 line-clamp-2">${lastMessage}</p>
+                                <div class="mt-2 flex items-center justify-between gap-2">
+                                    <span class="text-[11px] text-gray-400">${sanitizePlainText(chat.id, 20)}</span>
+                                    ${chat.unread ? '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>novo</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    listEl.appendChild(item);
+                });
+            }
+
+            if (currentSearchTerm && filtered.length) {
+                feedback.textContent = `${filtered.length} conversa(s) encontradas para a busca atual.`;
+                feedback.classList.remove('hidden');
+            } else if (currentSearchTerm) {
+                feedback.textContent = 'Nenhuma conversa encontrada com essa busca.';
+                feedback.classList.remove('hidden');
+            } else {
+                feedback.classList.add('hidden');
+            }
+        }
+
+        async function carregarContextoCliente(chatId, fallbackName) {
+            const name = sanitizePlainText(fallbackName, 80) || 'Cliente';
+            let userData = null;
+            let orderCount = 0;
+
+            try {
+                const [userDoc, orderSnap] = await Promise.all([
+                    db.collection('usuarios').doc(chatId).get(),
+                    db.collection('pedidos').where('userId', '==', chatId).get()
+                ]);
+
+                userData = userDoc.exists ? userDoc.data() : null;
+                orderCount = orderSnap.size;
+            } catch (error) {
+                orderCount = 0;
+            }
+
+            const phone = sanitizePlainText(userData?.telefone, 30);
+            const email = sanitizePlainText(userData?.email, 120);
+            const whatsappLink = document.getElementById('chat-whatsapp-link');
+
+            document.getElementById('chat-avatar').textContent = buildInitial(name);
+            document.getElementById('chat-username').textContent = name;
+            document.getElementById('chat-user-phone').textContent = phone || 'Nao informado';
+            document.getElementById('chat-user-email').textContent = email || 'Nao informado';
+            document.getElementById('chat-user-orders').textContent = orderCount ? `${orderCount} pedido(s)` : 'Nenhum pedido com login';
+            document.getElementById('chat-subtitle').textContent = `Chat ID: ${sanitizePlainText(chatId, 40)} • ${orderCount} pedido(s) vinculados`;
+
+            if (phone) {
+                whatsappLink.href = `https://wa.me/55${phone.replace(/\D/g, '')}`;
+                whatsappLink.classList.remove('hidden');
+            } else {
+                whatsappLink.classList.add('hidden');
+            }
+        }
+
+        function renderizarMensagens(snapshot) {
+            const messagesDiv = document.getElementById('chat-messages');
+            messagesDiv.replaceChildren();
+
+            if (snapshot.empty) {
+                const empty = document.createElement('div');
+                empty.className = 'text-center text-sm text-gray-500 py-12';
+                empty.textContent = 'Nenhuma mensagem ainda nesta conversa.';
+                messagesDiv.appendChild(empty);
+                return;
+            }
+
+            let lastDateKey = null;
+            snapshot.forEach((doc) => {
+                const msg = doc.data() || {};
+                const dateKey = dateKeyFromTimestamp(msg.timestamp);
+
+                if (dateKey !== lastDateKey) {
+                    const separator = document.createElement('div');
+                    separator.className = 'date-separator';
+                    separator.textContent = dateKey;
+                    messagesDiv.appendChild(separator);
+                    lastDateKey = dateKey;
+                }
+
+                const bubble = document.createElement('div');
+                bubble.className = `msg-bubble ${msg.sender === 'admin' ? 'msg-admin' : 'msg-user'}`;
+
+                const textEl = document.createElement('p');
+                textEl.textContent = sanitizePlainText(msg.text, 1600);
+
+                const timeEl = document.createElement('span');
+                timeEl.className = 'block text-[10px] opacity-60 mt-2 text-right';
+                timeEl.textContent = formatTime(msg.timestamp) || '...';
+
+                bubble.appendChild(textEl);
+                bubble.appendChild(timeEl);
+                messagesDiv.appendChild(bubble);
+            });
+
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
         function abrirChat(chatId, userName) {
             currentChatId = chatId;
-            
-            // UI Updates
-            document.getElementById('chat-header').classList.remove('hidden');
-            document.getElementById('admin-chat-form').classList.remove('hidden');
-            document.getElementById('chat-username').textContent = userName || 'Cliente';
-            document.getElementById('chat-avatar').textContent = (userName || 'C').charAt(0).toUpperCase();
-            
-            // Marcar como lido
-            db.collection('chats_ativos').doc(chatId).update({ unread: false });
+            document.getElementById('chat-empty-state').classList.add('hidden');
+            document.getElementById('chat-workspace').classList.remove('hidden');
 
-            // Carregar Mensagens (Nova Estrutura)
-            if(unsubscribeMessages) unsubscribeMessages();
-            
-            const messagesDiv = document.getElementById('chat-messages');
-            
-            // CORREÇÃO: Usando a nova coleção 'chats'
+            db.collection('chats_ativos').doc(chatId).update({ unread: false }).catch(() => {});
+
+            renderizarListaChats();
+            carregarContextoCliente(chatId, userName);
+
+            if (unsubscribeMessages) unsubscribeMessages();
+
             unsubscribeMessages = db.collection('chats').doc(chatId).collection('messages')
                 .orderBy('timestamp', 'asc')
-                .onSnapshot(snap => {
-                    messagesDiv.innerHTML = '';
-                    snap.forEach(doc => {
-                        const msg = doc.data();
-                        const isAdmin = msg.sender === 'admin'; 
-                        const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...';
-                        
-                        messagesDiv.innerHTML += `
-                            <div class="msg-bubble ${isAdmin ? 'msg-admin' : 'msg-user'} shadow-sm">
-                                <p>${msg.text}</p>
-                                <span class="text-[10px] opacity-60 block text-right mt-1 font-mono">${time}</span>
-                            </div>
-                        `;
-                    });
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                .onSnapshot((snap) => renderizarMensagens(snap));
+        }
+
+        function reabrirChatAtual() {
+            if (!currentChatId) return;
+            const chat = chatsMeta.find((item) => item.id === currentChatId);
+            if (!chat) return;
+            abrirChat(chat.id, sanitizePlainText(chat.userName, 80));
+        }
+
+        function carregarListaChats() {
+            db.collection('chats_ativos')
+                .orderBy('lastUpdate', 'desc')
+                .onSnapshot((snap) => {
+                    chatsMeta = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+                    atualizarEstatisticasChat();
+                    renderizarListaChats();
+
+                    if (currentChatId && !chatsMeta.find((item) => item.id === currentChatId)) {
+                        currentChatId = null;
+                        if (unsubscribeMessages) unsubscribeMessages();
+                        document.getElementById('chat-workspace').classList.add('hidden');
+                        document.getElementById('chat-empty-state').classList.remove('hidden');
+                    }
                 });
         }
 
-        document.getElementById('admin-chat-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const input = document.getElementById('admin-message-input');
-            const text = input.value.trim();
-            
-            if(!text || !currentChatId) return;
-            
-            input.value = '';
-            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+        async function enviarMensagem(text) {
+            if (!currentChatId) return;
+            const cleanText = sanitizePlainText(text, 1000);
+            if (!cleanText) return;
 
-            // Salvar mensagem (Nova Estrutura)
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
             await db.collection('chats').doc(currentChatId).collection('messages').add({
-                text: text,
+                text: cleanText,
                 sender: 'admin',
-                timestamp: timestamp
+                timestamp
             });
 
-            // Atualizar metadados
-            await db.collection('chats_ativos').doc(currentChatId).update({
-                lastMessage: `Você: ${text}`,
-                lastUpdate: timestamp
+            await db.collection('chats_ativos').doc(currentChatId).set({
+                lastMessage: `Voce: ${cleanText}`,
+                lastUpdate: timestamp,
+                unread: false
+            }, { merge: true });
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            if (!(await isAuthorizedAdmin(user))) {
+                auth.signOut().catch(() => {});
+                window.location.href = 'login-admin.html';
+                return;
+            }
+
+            carregarListaChats();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('chat-search-input').addEventListener('input', (event) => {
+                currentSearchTerm = String(event.target.value || '').trim().toLowerCase();
+                renderizarListaChats();
+            });
+
+            document.querySelectorAll('.quick-reply').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const input = document.getElementById('admin-message-input');
+                    const reply = button.dataset.reply || '';
+                    input.value = input.value ? `${input.value}\n${reply}` : reply;
+                    input.focus();
+                });
+            });
+
+            document.getElementById('admin-chat-form').addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const input = document.getElementById('admin-message-input');
+                const text = input.value;
+                if (!text.trim() || !currentChatId) return;
+
+                await enviarMensagem(text);
+                input.value = '';
+                input.focus();
+            });
+
+            document.getElementById('admin-message-input').addEventListener('keydown', async (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    const input = event.currentTarget;
+                    const text = input.value;
+                    if (!text.trim() || !currentChatId) return;
+
+                    await enviarMensagem(text);
+                    input.value = '';
+                }
             });
         });
     </script>

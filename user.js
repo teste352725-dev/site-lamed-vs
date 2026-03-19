@@ -20,6 +20,38 @@ const storage = firebase.storage();
 let currentUser = null;
 let unsubscribeChat = null;
 
+function sanitizePlainText(value, maxLength = 160) {
+    return String(value ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLength);
+}
+
+function sanitizePhone(value) {
+    return String(value ?? '')
+        .replace(/[^\d+\-() ]/g, '')
+        .trim()
+        .slice(0, 30);
+}
+
+function normalizeImageUrl(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    try {
+        const parsed = new URL(raw, window.location.origin);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+        return parsed.toString();
+    } catch (error) {
+        return '';
+    }
+}
+
+function buildAvatarUrl(name) {
+    const safeName = sanitizePlainText(name || 'U', 80) || 'U';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}&background=A58A5C&color=fff`;
+}
+
 // --- GERENCIAMENTO DE ESTADO ---
 
 auth.onAuthStateChanged(async (user) => {
@@ -38,6 +70,10 @@ auth.onAuthStateChanged(async (user) => {
         
     } else {
         currentUser = null;
+        if (unsubscribeChat) {
+            unsubscribeChat();
+            unsubscribeChat = null;
+        }
         if(authContainer) authContainer.classList.remove('hidden');
         if(userPanel) userPanel.classList.add('hidden');
         switchAuthView('login');
@@ -67,15 +103,15 @@ if(regForm) {
         e.preventDefault();
         const email = document.getElementById('reg-email').value;
         const pass = document.getElementById('reg-pass').value;
-        const nome = document.getElementById('reg-nome').value;
-        const sobrenome = document.getElementById('reg-sobrenome').value;
-        const phone = document.getElementById('reg-phone').value;
+        const nome = sanitizePlainText(document.getElementById('reg-nome').value, 60);
+        const sobrenome = sanitizePlainText(document.getElementById('reg-sobrenome').value, 60);
+        const phone = sanitizePhone(document.getElementById('reg-phone').value);
         
         const endereco = {
-            cep: document.getElementById('reg-cep').value,
-            cidade: document.getElementById('reg-cidade').value,
-            rua: document.getElementById('reg-rua').value,
-            numero: document.getElementById('reg-numero').value
+            cep: sanitizePlainText(document.getElementById('reg-cep').value, 12),
+            cidade: sanitizePlainText(document.getElementById('reg-cidade').value, 80),
+            rua: sanitizePlainText(document.getElementById('reg-rua').value, 120),
+            numero: sanitizePlainText(document.getElementById('reg-numero').value, 40)
         };
 
         try {
@@ -85,7 +121,7 @@ if(regForm) {
 
             const userCred = await auth.createUserWithEmailAndPassword(email, pass);
             const user = userCred.user;
-            const nomeCompleto = `${nome} ${sobrenome}`;
+            const nomeCompleto = sanitizePlainText(`${nome} ${sobrenome}`, 80);
             
             await user.updateProfile({ displayName: nomeCompleto });
             
@@ -135,21 +171,22 @@ window.fazerLogout = () => auth.signOut();
 async function carregarPerfilUsuario() {
     if(!currentUser) return;
     
-    document.getElementById('user-name-display').textContent = currentUser.displayName || 'Cliente';
+    const safeDisplayName = sanitizePlainText(currentUser.displayName || 'Cliente', 80) || 'Cliente';
+    document.getElementById('user-name-display').textContent = safeDisplayName;
     const avatarEl = document.getElementById('user-avatar-display');
     
     try {
         const doc = await db.collection('usuarios').doc(currentUser.uid).get();
         const data = doc.data() || {};
         
-        const photo = data.fotoUrl || currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName || 'U'}&background=A58A5C&color=fff`;
+        const photo = normalizeImageUrl(data.fotoUrl) || normalizeImageUrl(currentUser.photoURL) || buildAvatarUrl(safeDisplayName);
         if(avatarEl) avatarEl.src = photo;
 
         const editAvatar = document.getElementById('profile-edit-avatar');
         if(editAvatar) editAvatar.src = photo;
         
         document.getElementById('profile-photo-url').value = data.fotoUrl || '';
-        document.getElementById('profile-nome').value = data.nome || currentUser.displayName || '';
+        document.getElementById('profile-nome').value = data.nome || safeDisplayName || '';
         document.getElementById('profile-phone').value = data.telefone || '';
         
         if(data.endereco) {
@@ -202,18 +239,23 @@ if(profileForm) {
         btn.textContent = 'Salvando...';
         btn.disabled = true;
 
-        const nome = document.getElementById('profile-nome').value;
-        const phone = document.getElementById('profile-phone').value;
-        const fotoUrl = document.getElementById('profile-photo-url').value;
+        const nome = sanitizePlainText(document.getElementById('profile-nome').value, 80);
+        const phone = sanitizePhone(document.getElementById('profile-phone').value);
+        const fotoUrl = normalizeImageUrl(document.getElementById('profile-photo-url').value);
         const endereco = {
-            cep: document.getElementById('profile-cep').value,
-            cidade: document.getElementById('profile-cidade').value,
-            rua: document.getElementById('profile-rua').value,
-            numero: document.getElementById('profile-numero').value
+            cep: sanitizePlainText(document.getElementById('profile-cep').value, 12),
+            cidade: sanitizePlainText(document.getElementById('profile-cidade').value, 80),
+            rua: sanitizePlainText(document.getElementById('profile-rua').value, 120),
+            numero: sanitizePlainText(document.getElementById('profile-numero').value, 40)
         };
 
         try {
-            if(nome) await currentUser.updateProfile({ displayName: nome, photoURL: fotoUrl || currentUser.photoURL });
+            if(nome) {
+                await currentUser.updateProfile({
+                    displayName: nome,
+                    photoURL: fotoUrl || normalizeImageUrl(currentUser.photoURL) || null
+                });
+            }
             
             await db.collection('usuarios').doc(currentUser.uid).set({
                 nome, telefone: phone, fotoUrl, endereco
@@ -370,11 +412,14 @@ function iniciarChat() {
     if (unsubscribeChat) unsubscribeChat();
     unsubscribeChat = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp')
         .onSnapshot(snap => {
-            div.innerHTML = '';
+            div.replaceChildren();
             snap.forEach(doc => {
                 const msg = doc.data();
                 const cls = msg.sender === 'user' ? 'msg-user' : 'msg-admin';
-                div.innerHTML += `<div class="mb-2 text-sm ${cls} break-words shadow-sm">${msg.text}</div>`;
+                const bubble = document.createElement('div');
+                bubble.className = `mb-2 text-sm ${cls} break-words shadow-sm`;
+                bubble.textContent = sanitizePlainText(msg.text, 1000);
+                div.appendChild(bubble);
             });
             rolarChatParaBaixo();
         });
@@ -386,16 +431,24 @@ function iniciarChat() {
     newForm.onsubmit = async (e) => {
         e.preventDefault();
         const inp = document.getElementById('message-input');
-        const text = inp.value.trim();
+        const text = sanitizePlainText(inp.value, 1000);
         if(!text) return;
         inp.value = '';
+        const userName = sanitizePlainText(currentUser.displayName || 'Cliente', 80) || 'Cliente';
         
         const ts = firebase.firestore.FieldValue.serverTimestamp();
         await db.collection('chats').doc(chatId).collection('messages').add({
-            text, sender: 'user', timestamp: ts, userName: currentUser.displayName
+            text,
+            sender: 'user',
+            timestamp: ts,
+            userName
         });
         await db.collection('chats_ativos').doc(chatId).set({
-            lastMessage: text, lastUpdate: ts, userName: currentUser.displayName, userId: chatId, unread: true
+            lastMessage: text.slice(0, 140),
+            lastUpdate: ts,
+            userName,
+            userId: chatId,
+            unread: true
         }, {merge: true});
     }
 }

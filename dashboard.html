@@ -3,888 +3,506 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard | Painel Administrativo - Laméd vs</title>
+  <title>Dashboard | Central Admin Lamed</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <style>
     :root {
-      --cor-marrom-cta: #643f21;
-      --cor-ouro-acento: #A58A5C;
+      --admin-brown: #643f21;
+      --admin-gold: #a58a5c;
+      --admin-cream: #f6f1ea;
+      --admin-ink: #1f2937;
+      --admin-line: #e8dfd1;
     }
 
     body {
       font-family: 'Inter', sans-serif;
-      background-color: #f8f9fa;
-      color: #333;
+      background:
+        radial-gradient(circle at top left, rgba(165, 138, 92, 0.16), transparent 30%),
+        linear-gradient(180deg, #fcfaf7 0%, #f6f1ea 48%, #f8f9fb 100%);
+      color: var(--admin-ink);
     }
 
-    .sidebar-item.active {
-      background-color: rgba(165, 138, 92, 0.1);
-      border-left: 4px solid var(--cor-ouro-acento);
-      color: var(--cor-ouro-acento);
+    .font-brand {
+      font-family: 'Allura', cursive;
     }
 
-    .btn-primary {
-      background-color: var(--cor-marrom-cta);
-      color: white;
-      transition: all 0.3s;
+    .admin-shell {
+      min-height: 100vh;
     }
 
-    .btn-primary:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
+    .sidebar-link {
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
     }
 
-    .status-badge {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      z-index: 30;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-      letter-spacing: 0.5px;
+    .sidebar-link.active {
+      background: rgba(100, 63, 33, 0.08);
+      border-color: rgba(165, 138, 92, 0.28);
+      color: var(--admin-brown);
+      box-shadow: inset 3px 0 0 var(--admin-gold);
     }
 
-    .status-active {
-      background-color: #10b981;
-      color: white;
-      border: 1px solid rgba(255,255,255,0.3);
+    .stat-card,
+    .panel-card,
+    .workspace-card {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(232, 223, 209, 0.95);
+      box-shadow: 0 24px 60px rgba(100, 63, 33, 0.08);
+      backdrop-filter: blur(12px);
     }
 
-    .status-inactive {
-      background-color: #1f2937;
-      color: white;
-      border: 1px solid rgba(255,255,255,0.3);
-    }
-
-    .view-content {
-      animation: fadeIn 0.3s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .image-preview-item {
-      position: relative;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid #e5e7eb;
-      background: #f3f4f6;
-      aspect-ratio: 1 / 1;
-    }
-
-    .image-preview-item img {
+    .workspace-frame {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      min-height: 76vh;
+      border: 0;
+      background: #f8fafc;
     }
 
-    .image-preview-actions {
-      position: absolute;
-      inset: auto 0 0 0;
-      background: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,.15));
-      padding: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
+    .quick-action {
+      border: 1px solid rgba(165, 138, 92, 0.18);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 242, 235, 0.96));
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .image-action-btn {
-      border: none;
+    .quick-action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 40px rgba(100, 63, 33, 0.1);
+    }
+
+    .mobile-overlay {
+      background: rgba(15, 23, 42, 0.45);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 999px;
-      font-size: 11px;
-      padding: 5px 8px;
-      cursor: pointer;
-      background: rgba(255,255,255,.92);
-      color: #222;
+      font-size: 0.72rem;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
-    .image-action-btn.danger {
-      background: rgba(220,38,38,.95);
-      color: #fff;
-    }
+    .status-pendente { background: #fff5d8; color: #a16207; }
+    .status-processando { background: #dbeafe; color: #1d4ed8; }
+    .status-enviado { background: #dcfce7; color: #047857; }
+    .status-entregue { background: #dcfce7; color: #166534; }
+    .status-cancelado { background: #fee2e2; color: #b91c1c; }
 
-    .image-action-btn.cover {
-      background: rgba(165,138,92,.96);
-      color: #fff;
-    }
-
-    .image-cover-badge {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: rgba(165,138,92,.96);
-      color: white;
-      font-size: 10px;
-      font-weight: 800;
-      padding: 5px 8px;
+    .loading-dot {
+      width: 8px;
+      height: 8px;
       border-radius: 999px;
-      z-index: 2;
+      background: var(--admin-gold);
+      animation: pulse 1.2s infinite ease-in-out;
     }
 
-    .upload-btn-loading {
-      pointer-events: none;
-      opacity: 0.7;
-    }
-
-    .sidebar-mobile-overlay {
-      background: rgba(0,0,0,0.45);
-    }
-
-    .tab-button.active {
-      color: var(--cor-marrom-cta);
-      border-color: var(--cor-marrom-cta);
-      font-weight: 700;
-    }
-
-    .tab-panel.hidden {
-      display: none;
-    }
-
-    @media (max-width: 767px) {
-      .status-badge {
-        top: 8px;
-        right: 8px;
-        padding: 5px 9px;
-        font-size: 10px;
-      }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.35; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1); }
     }
   </style>
 </head>
-<body class="min-h-screen bg-[#f8f9fa]">
+<body>
+  <div id="mobile-overlay" class="mobile-overlay fixed inset-0 z-40 hidden md:hidden" onclick="toggleAdminSidebar(false)"></div>
 
-  <header class="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-    <button onclick="toggleMobileSidebar(true)" class="w-10 h-10 rounded-lg border border-gray-200 text-gray-700">
-      <i class="fa-solid fa-bars"></i>
-    </button>
-    <h1 class="text-lg font-semibold text-[--cor-marrom-cta]">Painel Laméd</h1>
-    <div class="w-10 h-10"></div>
+  <header class="sticky top-0 z-30 border-b border-white/60 bg-white/75 backdrop-blur md:hidden">
+    <div class="flex items-center justify-between px-4 py-3">
+      <button onclick="toggleAdminSidebar(true)" class="h-10 w-10 rounded-xl border border-[#e8dfd1] text-slate-700">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="text-center">
+        <p class="font-brand text-3xl leading-none text-[--admin-brown]">Lamed</p>
+        <p class="text-[10px] uppercase tracking-[0.22em] text-slate-500">Central Admin</p>
+      </div>
+      <button onclick="refreshOverview()" class="h-10 w-10 rounded-xl border border-[#e8dfd1] text-slate-700">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
   </header>
 
-  <div id="mobile-sidebar-overlay" class="fixed inset-0 z-40 sidebar-mobile-overlay hidden md:hidden" onclick="toggleMobileSidebar(false)"></div>
-
-  <div class="flex min-h-screen">
-    <aside id="sidebar"
-      class="fixed top-0 left-0 z-50 h-full w-72 bg-white border-r border-gray-200 flex flex-col transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:w-64 md:z-30">
-      <div class="p-6 border-b border-gray-100 flex items-center justify-between">
-        <h1 class="text-2xl font-serif text-[--cor-marrom-cta]">Painel Laméd</h1>
-        <button onclick="toggleMobileSidebar(false)" class="md:hidden text-gray-500 hover:text-gray-700">
-          <i class="fa-solid fa-xmark text-2xl"></i>
+  <div class="admin-shell flex">
+    <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col border-r border-white/60 bg-[#fffdf9]/95 p-5 shadow-2xl backdrop-blur transition-transform duration-300 md:translate-x-0">
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <p class="font-brand text-5xl leading-none text-[--admin-brown]">Lamed</p>
+          <p class="mt-2 text-[11px] uppercase tracking-[0.28em] text-slate-500">Central Admin</p>
+        </div>
+        <button onclick="toggleAdminSidebar(false)" class="rounded-xl p-2 text-slate-500 md:hidden">
+          <i class="fa-solid fa-xmark text-xl"></i>
         </button>
       </div>
 
-      <nav class="flex-grow p-4 space-y-2">
-        <button onclick="changeView('overview')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50 active" id="btn-overview">
-          <i class="fa-solid fa-chart-line mr-3"></i> Visão Geral
+      <div class="mb-5 rounded-2xl bg-[var(--admin-cream)] p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Operacao unificada</p>
+        <p class="mt-2 text-sm leading-6 text-slate-600">
+          Produtos, pedidos, chat, colecoes, galeria e scripts agora ficam no mesmo painel.
+        </p>
+      </div>
+
+      <nav class="flex-1 space-y-2 text-sm">
+        <button id="nav-overview" class="sidebar-link active flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('overview')">
+          <i class="fa-solid fa-chart-pie w-5 text-center"></i> Visao geral
         </button>
-        <button onclick="changeView('products')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-products">
-          <i class="fa-solid fa-box mr-3"></i> Peças
+        <button id="nav-products" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('products')">
+          <i class="fa-solid fa-box-open w-5 text-center"></i> Produtos
         </button>
-        <button onclick="changeView('orders')" class="sidebar-item w-full flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-50" id="btn-orders">
-          <i class="fa-solid fa-cart-shopping mr-3"></i> Pedidos
+        <button id="nav-orders" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('orders')">
+          <i class="fa-solid fa-cart-shopping w-5 text-center"></i> Pedidos
+        </button>
+        <button id="nav-collections" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('collections')">
+          <i class="fa-solid fa-layer-group w-5 text-center"></i> Colecoes
+        </button>
+        <button id="nav-gallery" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('gallery')">
+          <i class="fa-solid fa-images w-5 text-center"></i> Galeria
+        </button>
+        <button id="nav-pricing" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('pricing')">
+          <i class="fa-solid fa-ruler-combined w-5 text-center"></i> Precificacao
+        </button>
+        <button id="nav-chat" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('chat')">
+          <i class="fa-solid fa-comments w-5 text-center"></i> Atendimento
+        </button>
+        <button id="nav-scripts" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('scripts')">
+          <i class="fa-solid fa-terminal w-5 text-center"></i> Scripts
         </button>
       </nav>
 
-      <div class="p-4 border-t border-gray-100">
-        <button onclick="logout()" class="w-full flex items-center p-3 text-red-500 hover:bg-red-50 rounded-lg transition">
-          <i class="fa-solid fa-right-from-bracket mr-3"></i> Sair
+      <div class="mt-6 space-y-3 border-t border-[#ece4d8] pt-4">
+        <a href="index.html" target="_blank" class="flex items-center gap-3 rounded-2xl border border-[#ece4d8] px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
+          <i class="fa-solid fa-arrow-up-right-from-square w-5 text-center"></i> Abrir site publico
+        </a>
+        <button onclick="logout()" class="flex w-full items-center gap-3 rounded-2xl border border-red-100 px-4 py-3 text-left text-sm font-medium text-red-500 transition hover:bg-red-50">
+          <i class="fa-solid fa-right-from-bracket w-5 text-center"></i> Sair
         </button>
       </div>
     </aside>
 
-    <main class="flex-grow w-full md:ml-64 p-4 sm:p-6 md:p-8">
-      <div id="view-overview" class="view-content space-y-6 md:space-y-8">
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
-          <div>
-            <h2 class="text-xl md:text-2xl font-bold">Resumo da Loja</h2>
-            <p class="text-sm md:text-base text-gray-500">Acompanhe seus resultados em tempo real.</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-          <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-gray-100">
-            <p class="text-gray-500 text-sm mb-1">Total de Peças</p>
-            <h3 class="text-2xl md:text-3xl font-bold" id="stat-total-products">0</h3>
-          </div>
-          <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-gray-100">
-            <p class="text-gray-500 text-sm mb-1">Pedidos Pendentes</p>
-            <h3 class="text-2xl md:text-3xl font-bold text-orange-600" id="stat-pending-orders">0</h3>
-          </div>
-          <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-gray-100 sm:col-span-2 xl:col-span-1">
-            <p class="text-gray-500 text-sm mb-1">Vendas (Total)</p>
-            <h3 class="text-2xl md:text-3xl font-bold text-green-600" id="stat-total-sales">R$ 0,00</h3>
-          </div>
-        </div>
-
-        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div class="flex items-start">
-            <i class="fa-solid fa-rotate text-blue-500 mr-3 mt-1"></i>
+    <main class="min-w-0 flex-1 px-4 py-6 md:ml-72 md:px-8 md:py-8">
+      <section id="view-overview" class="admin-view space-y-6">
+        <div class="panel-card overflow-hidden rounded-[28px]">
+          <div class="grid gap-6 px-6 py-7 md:grid-cols-[1.25fr_0.9fr] md:px-8">
             <div>
-              <p class="text-blue-700 text-sm font-medium">Sincronização de Estoque</p>
-              <p class="text-blue-600 text-xs">Baixe o estoque dos pedidos que foram feitos mas ainda não processados.</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500">Dashboard unificado</p>
+              <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+                Tudo do admin num lugar so.
+              </h1>
+              <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
+                Agora voce consegue operar loja, pedidos, colecoes, galeria, chat e automacoes sem ficar pulando de pagina.
+                Tambem deixei o fluxo de personalizacao e de combos alinhado com o carrinho e com os pedidos.
+              </p>
+
+              <div class="mt-6 flex flex-wrap gap-3">
+                <button onclick="changeView('products')" class="rounded-full bg-[--admin-brown] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90">
+                  Organizar catalogo
+                </button>
+                <button onclick="changeView('orders')" class="rounded-full border border-[#dfd3c0] bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
+                  Revisar pedidos
+                </button>
+                <button onclick="refreshOverview()" class="rounded-full border border-[#dfd3c0] bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
+                  Atualizar painel
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-[24px] border border-[#eee4d5] bg-[linear-gradient(180deg,#fff,#f8f1e8)] p-5">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Sincronizacao</p>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Estoque x pedidos</h2>
+                </div>
+                <div class="flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
+                  <span class="loading-dot"></span>
+                  Operacional
+                </div>
+              </div>
+
+              <p class="mt-4 text-sm leading-6 text-slate-600">
+                Se entrou pedido antigo sem baixar estoque, voce pode sincronizar tudo daqui e o painel atualiza na hora.
+              </p>
+
+              <button onclick="baixarEstoquePedidosPendentes()" class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                Baixar estoque de pedidos pendentes
+              </button>
+
+              <div id="sync-status" class="mt-4 hidden rounded-2xl border border-[#d7e5df] bg-white px-4 py-3 text-sm text-slate-600"></div>
             </div>
           </div>
-          <button onclick="baixarEstoquePedidosPendentes()" class="bg-blue-600 text-white text-xs px-4 py-2 rounded hover:bg-blue-700 transition w-full md:w-auto">
-            Sincronizar Agora
-          </button>
         </div>
 
-        <div id="sync-status" class="hidden text-xs font-bold text-center p-2 bg-gray-100 rounded">
-          Processando estoque...
-        </div>
-      </div>
-
-      <div id="view-products" class="view-content hidden space-y-6">
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-          <div>
-            <h2 class="text-xl md:text-2xl font-bold">Gestão de Peças</h2>
-            <p class="text-sm md:text-base text-gray-500">Cadastre e edite os produtos da sua loja.</p>
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div class="stat-card rounded-[24px] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Produtos ativos</p>
+            <div class="mt-4 flex items-end justify-between">
+              <strong id="stat-products" class="text-4xl font-semibold text-slate-900">0</strong>
+              <span id="stat-custom-products" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">0 personalizaveis</span>
+            </div>
           </div>
-          <button onclick="openProductModal()" class="btn-primary px-5 py-2.5 rounded-lg font-medium shadow-md flex items-center justify-center w-full sm:w-auto">
-            <i class="fa-solid fa-plus mr-2"></i> Nova Peça
-          </button>
-        </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6" id="products-grid"></div>
-      </div>
+          <div class="stat-card rounded-[24px] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Pedidos pendentes</p>
+            <div class="mt-4 flex items-end justify-between">
+              <strong id="stat-pending" class="text-4xl font-semibold text-slate-900">0</strong>
+              <span id="stat-orders" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">0 pedidos totais</span>
+            </div>
+          </div>
 
-      <div id="view-orders" class="view-content hidden space-y-6">
-        <h2 class="text-xl md:text-2xl font-bold">Pedidos Recebidos</h2>
+          <div class="stat-card rounded-[24px] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Faturamento bruto</p>
+            <div class="mt-4 flex items-end justify-between">
+              <strong id="stat-sales" class="text-4xl font-semibold text-slate-900">R$ 0,00</strong>
+              <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Pedidos confirmados</span>
+            </div>
+          </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[760px] text-left">
-              <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-                <tr class="border-b">
-                  <th class="p-4">ID Pedido</th>
-                  <th class="p-4">Cliente</th>
-                  <th class="p-4">Data</th>
-                  <th class="p-4">Total</th>
-                  <th class="p-4">Status</th>
-                  <th class="p-4">Estoque</th>
-                  <th class="p-4">Ação</th>
-                </tr>
-              </thead>
-              <tbody id="orders-table-body"></tbody>
-            </table>
+          <div class="stat-card rounded-[24px] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Colecoes ativas</p>
+            <div class="mt-4 flex items-end justify-between">
+              <strong id="stat-collections" class="text-4xl font-semibold text-slate-900">0</strong>
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-[#eadfcd]">Limite recomendado: 2</span>
+            </div>
+          </div>
+
+          <div class="stat-card rounded-[24px] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Galeria pronta</p>
+            <div class="mt-4 flex items-end justify-between">
+              <strong id="stat-gallery" class="text-4xl font-semibold text-slate-900">0</strong>
+              <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">imagens salvas</span>
+            </div>
+          </div>
+
+          <div class="stat-card rounded-[24px] p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Atendimento</p>
+            <div class="mt-4 flex items-end justify-between">
+              <strong id="stat-chats" class="text-4xl font-semibold text-slate-900">0</strong>
+              <span id="stat-unread-chats" class="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">0 com alerta</span>
+            </div>
           </div>
         </div>
-      </div>
+
+        <div class="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+          <div class="panel-card rounded-[28px] p-6">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Pedidos recentes</p>
+                <h2 class="mt-2 text-2xl font-semibold text-slate-900">Ultimas entradas da loja</h2>
+              </div>
+              <button onclick="changeView('orders')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
+                Ir para pedidos
+              </button>
+            </div>
+
+            <div id="recent-orders-list" class="mt-6 space-y-3">
+              <div class="rounded-2xl border border-dashed border-[#e6dccd] px-4 py-8 text-center text-sm text-slate-500">
+                Carregando pedidos recentes...
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-card rounded-[28px] p-6">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Acessos rapidos</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Operar sem atrito</h2>
+            </div>
+
+            <div class="mt-6 grid gap-3 sm:grid-cols-2">
+              <button onclick="changeView('products')" class="quick-action rounded-[22px] p-4 text-left">
+                <span class="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(100,63,33,0.08)] text-[--admin-brown]">
+                  <i class="fa-solid fa-box-open"></i>
+                </span>
+                <p class="text-sm font-semibold text-slate-900">Produtos e combos</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Catalogo, estoque, imagens e peca personalizavel.</p>
+              </button>
+
+              <button onclick="changeView('collections')" class="quick-action rounded-[22px] p-4 text-left">
+                <span class="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(29,78,216,0.08)] text-blue-700">
+                  <i class="fa-solid fa-layer-group"></i>
+                </span>
+                <p class="text-sm font-semibold text-slate-900">Colecoes do site</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Ative, pause, ordene e revise o visual das colecoes.</p>
+              </button>
+
+              <button onclick="changeView('gallery')" class="quick-action rounded-[22px] p-4 text-left">
+                <span class="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(2,132,199,0.08)] text-sky-700">
+                  <i class="fa-solid fa-images"></i>
+                </span>
+                <p class="text-sm font-semibold text-slate-900">Banco de imagens</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Suba fotos novas e reaproveite rapido no catalogo.</p>
+              </button>
+
+              <button onclick="changeView('pricing')" class="quick-action rounded-[22px] p-4 text-left">
+                <span class="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(5,150,105,0.08)] text-emerald-700">
+                  <i class="fa-solid fa-ruler-combined"></i>
+                </span>
+                <p class="text-sm font-semibold text-slate-900">Precificacao e sob medida</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Calcule custo real e alinhe com pecas do site.</p>
+              </button>
+
+              <button onclick="changeView('chat')" class="quick-action rounded-[22px] p-4 text-left">
+                <span class="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(21,128,61,0.08)] text-green-700">
+                  <i class="fa-solid fa-comments"></i>
+                </span>
+                <p class="text-sm font-semibold text-slate-900">Atendimento</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Responda clientes com tudo salvo e protegido contra XSS.</p>
+              </button>
+
+              <button onclick="changeView('scripts')" class="quick-action rounded-[22px] p-4 text-left">
+                <span class="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(15,23,42,0.08)] text-slate-700">
+                  <i class="fa-solid fa-terminal"></i>
+                </span>
+                <p class="text-sm font-semibold text-slate-900">Scripts internos</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Backups, manutencao e tarefas operacionais num clique.</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-products" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Produtos e combos</h2>
+              <p class="mt-2 text-sm text-slate-500">Gerencie estoque, imagens, combos e pecas personalizaveis sem sair do dashboard.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('products')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('products')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-products" class="workspace-frame" title="Produtos" loading="lazy" data-src="produtos.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-orders" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Pedidos e operacao</h2>
+              <p class="mt-2 text-sm text-slate-500">Acompanhe status, detalhes do cliente e observacoes de personalizacao no mesmo fluxo.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('orders')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('orders')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-orders" class="workspace-frame" title="Pedidos" loading="lazy" data-src="pedidos.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-collections" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Colecoes</h2>
+              <p class="mt-2 text-sm text-slate-500">Organize a vitrine principal e a narrativa das colecoes sem sair do painel.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('collections')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('collections')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-collections" class="workspace-frame" title="Colecoes" loading="lazy" data-src="colecoes.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-gallery" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Galeria</h2>
+              <p class="mt-2 text-sm text-slate-500">Suba imagens novas, limpe arquivos antigos e alimente o catalogo com rapidez.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('gallery')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('gallery')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-gallery" class="workspace-frame" title="Galeria" loading="lazy" data-src="galeria.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-pricing" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Precificacao e peca sob medida</h2>
+              <p class="mt-2 text-sm text-slate-500">Calcule custo, margem e revise se a proposta da peca personalizada faz sentido para a loja.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('pricing')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('pricing')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-pricing" class="workspace-frame" title="Precificacao" loading="lazy" data-src="calcularvalordapeça.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-chat" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Atendimento ao cliente</h2>
+              <p class="mt-2 text-sm text-slate-500">Responda o chat direto do painel central e acompanhe conversas abertas sem sair do fluxo.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('chat')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('chat')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-chat" class="workspace-frame" title="Atendimento" loading="lazy" data-src="chat-admin.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-scripts" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Scripts e manutencao</h2>
+              <p class="mt-2 text-sm text-slate-500">Backup, limpeza, correcoes em lote e manutencao operacional sem sair do dashboard.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('scripts')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('scripts')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-scripts" class="workspace-frame" title="Scripts" loading="lazy" data-src="executor_scripts.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
-  <div id="product-modal" class="fixed inset-0 bg-black/50 hidden items-end md:items-center justify-center z-[60] p-0 md:p-4">
-    <div class="bg-white w-full h-[95vh] md:h-auto md:max-h-[90vh] md:max-w-4xl rounded-t-2xl md:rounded-xl overflow-y-auto p-4 sm:p-6 md:p-8 shadow-2xl relative">
-      <div class="flex justify-between items-center mb-4 border-b pb-4 sticky top-0 bg-white z-20">
-        <h3 class="text-lg md:text-xl font-bold" id="modal-title">Adicionar Nova Peça</h3>
-        <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600">
-          <i class="fa-solid fa-xmark text-2xl"></i>
-        </button>
-      </div>
-
-      <form id="product-form" class="space-y-6">
-        <input type="hidden" id="edit-id">
-
-        <div class="border-b border-gray-200">
-          <nav class="flex gap-6 overflow-x-auto">
-            <button type="button" class="tab-button active py-3 border-b-2 border-[--cor-marrom-cta] text-sm whitespace-nowrap" data-tab="info">
-              Informações
-            </button>
-            <button type="button" class="tab-button py-3 border-b-2 border-transparent text-sm text-gray-500 whitespace-nowrap" data-tab="images">
-              Imagens
-            </button>
-            <button type="button" class="tab-button py-3 border-b-2 border-transparent text-sm text-gray-500 whitespace-nowrap" data-tab="stock">
-              Estoque
-            </button>
-          </nav>
-        </div>
-
-        <div id="tab-info" class="tab-panel space-y-4">
-          <div>
-            <label class="block text-sm font-semibold mb-1">Nome da Peça</label>
-            <input type="text" id="p-nome" class="w-full border rounded-lg p-3" required>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-semibold mb-1">Preço Base (R$)</label>
-              <input type="number" id="p-preco" step="0.01" class="w-full border rounded-lg p-3" required>
-            </div>
-            <div>
-              <label class="block text-sm font-semibold mb-1">Desconto (%)</label>
-              <input type="number" id="p-desconto" class="w-full border rounded-lg p-3" value="0">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Coleção</label>
-            <select id="p-colecao" class="w-full border rounded-lg p-3"></select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Categoria</label>
-            <select id="p-categoria" class="w-full border rounded-lg p-3">
-              <option value="vestido">Vestido</option>
-              <option value="camisa">Camisa</option>
-              <option value="calca">Calça</option>
-              <option value="lugar_americano">Lugar Americano</option>
-              <option value="guardanapo">Guardanapo</option>
-              <option value="trilho_velas">Trilho para Velas</option>
-              <option value="caminho_mesa">Caminho de Mesa</option>
-              <option value="porta_guardanapo">Porta Guardanapo</option>
-              <option value="capa_de_matza">Capa de Matzá Bordada</option>
-              <option value="combo">Combo/Kit</option>
-            </select>
-          </div>
-
-          <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="p-personalizavel" class="w-5 h-5 mt-0.5 rounded border-gray-300 text-[--cor-ouro-acento]">
-              <span class="ml-3">
-                <span class="block text-sm font-bold text-amber-900">Peça Personalizável?</span>
-                <span class="block text-xs text-amber-700">Se ativo, o cliente poderá digitar um texto no site.</span>
-              </span>
-            </label>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Status na Loja</label>
-            <select id="p-status" class="w-full border rounded-lg p-3">
-              <option value="active">Ativo (Público)</option>
-              <option value="inactive">Inativo (Oculto)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Descrição Detalhada</label>
-            <textarea id="p-desc" class="w-full border rounded-lg p-3 h-32"></textarea>
-          </div>
-        </div>
-
-        <div id="tab-images" class="tab-panel hidden space-y-4">
-          <div class="bg-gray-50 border rounded-lg p-4 space-y-4">
-            <label class="block text-sm font-semibold">Imagens do Produto</label>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                id="upload-trigger-btn"
-                onclick="document.getElementById('p-upload-imagens').click()"
-                class="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:bg-gray-100 transition text-sm font-medium"
-              >
-                <i class="fa-solid fa-cloud-arrow-up mr-2 text-[--cor-ouro-acento]"></i>
-                Fazer Upload
-              </button>
-
-              <div class="flex gap-2">
-                <input type="url" id="p-image-url" class="flex-1 border rounded-lg p-3 text-sm" placeholder="https://exemplo.com/foto.jpg">
-                <button type="button" onclick="addImageByUrl()" class="px-4 rounded-lg border hover:bg-gray-100">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-            </div>
-
-            <input type="file" id="p-upload-imagens" class="hidden" accept="image/*" multiple onchange="handleImageUpload(this)">
-
-            <div id="images-preview" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
-
-            <div class="text-xs text-gray-500 space-y-1">
-              <p>A imagem marcada como <strong>CAPA</strong> será a principal.</p>
-              <p>Use <strong>←</strong> e <strong>→</strong> para reorganizar a ordem.</p>
-            </div>
-          </div>
-        </div>
-
-        <div id="tab-stock" class="tab-panel hidden space-y-4">
-          <div>
-            <label class="block text-sm font-semibold mb-1">Cores e Quantidades em Estoque</label>
-            <div id="colors-container" class="space-y-2"></div>
-            <button type="button" onclick="addColorField()" class="text-xs text-[--cor-ouro-acento] font-bold mt-2 hover:underline">
-              + Adicionar Variante
-            </button>
-          </div>
-        </div>
-
-        <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-6 border-t sticky bottom-0 bg-white pb-2">
-          <button type="button" onclick="closeProductModal()" class="px-6 py-3 rounded-lg border text-gray-500 hover:bg-gray-50 font-medium w-full sm:w-auto">
-            Cancelar
-          </button>
-          <button type="submit" class="btn-primary px-10 py-3 rounded-lg font-bold shadow-lg w-full sm:w-auto">
-            Salvar Peça
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <script>
-    const appFirebaseConfig = {
-      apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
-      authDomain: "site-lamed.firebaseapp.com",
-      projectId: "site-lamed",
-      storageBucket: "site-lamed.firebasestorage.app",
-      messagingSenderId: "862756160215",
-      appId: "1:862756160215:web:d0fded233682bf93eaa692"
-    };
-
-    firebase.initializeApp(appFirebaseConfig);
-
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    const storage = firebase.storage();
-
-    let allProducts = [];
-    let allCollections = [];
-    let selectedProductImages = [];
-
-    function toggleMobileSidebar(show) {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('mobile-sidebar-overlay');
-
-      if (show) {
-        sidebar.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
-        document.body.classList.add('overflow-hidden');
-      } else {
-        sidebar.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
-      }
-    }
-
-    function setupTabs() {
-      document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-      });
-    }
-
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.classList.remove('active', 'border-[--cor-marrom-cta]', 'text-[--cor-marrom-cta]');
-        btn.classList.add('border-transparent', 'text-gray-500');
-      });
-
-      const activeBtn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
-      if (activeBtn) {
-        activeBtn.classList.add('active', 'border-[--cor-marrom-cta]', 'text-[--cor-marrom-cta]');
-        activeBtn.classList.remove('border-transparent', 'text-gray-500');
-      }
-
-      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
-      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    }
-
-    auth.onAuthStateChanged(user => {
-      if (!user) window.location.href = 'index.html';
-      else initDashboard();
-    });
-
-    async function initDashboard() {
-      setupTabs();
-      await loadCollections();
-      await loadProducts();
-      await loadOrders();
-    }
-
-    function changeView(view) {
-      document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
-      document.getElementById(`view-${view}`).classList.remove('hidden');
-      document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
-      document.getElementById(`btn-${view}`).classList.add('active');
-
-      if (window.innerWidth < 768) toggleMobileSidebar(false);
-    }
-
-    async function loadCollections() {
-      const snap = await db.collection('colecoes').get();
-      allCollections = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      const select = document.getElementById('p-colecao');
-      select.innerHTML = allCollections.length
-        ? allCollections.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
-        : '<option value="">Sem coleção</option>';
-    }
-
-    async function loadProducts() {
-      const snap = await db.collection('pecas').orderBy('createdAt', 'desc').get();
-      allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      document.getElementById('stat-total-products').textContent = allProducts.length;
-      renderProducts();
-    }
-
-    function getProductCoverImage(product) {
-      if (product && Array.isArray(product.imagens) && product.imagens.length > 0 && product.imagens[0]) {
-        return product.imagens[0];
-      }
-      return 'https://placehold.co/600x800/eeeeee/999999?text=Sem+Imagem';
-    }
-
-    function renderProducts() {
-      const grid = document.getElementById('products-grid');
-
-      grid.innerHTML = allProducts.map(p => {
-        const statusClass = p.status === 'active' ? 'status-active' : 'status-inactive';
-        const statusLabel = p.status === 'active' ? 'Ativo' : 'Inativo';
-        const cover = getProductCoverImage(p);
-
-        return `
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative group">
-            <div class="status-badge ${statusClass}">${statusLabel}</div>
-            <img
-              src="${cover}"
-              onerror="this.src='https://placehold.co/600x800/eeeeee/999999?text=Sem+Imagem'"
-              class="w-full aspect-[3/4] object-cover group-hover:scale-105 transition duration-500"
-            >
-            <div class="p-4 bg-white relative">
-              <h4 class="font-bold text-sm truncate">${p.nome || 'Sem nome'}</h4>
-              <p class="text-[--cor-marrom-cta] font-bold text-lg">R$ ${parseFloat(p.preco || 0).toFixed(2)}</p>
-              <div class="flex gap-2 mt-4">
-                <button onclick="editProduct('${p.id}')" class="flex-grow bg-gray-100 text-gray-600 py-2 rounded text-xs font-bold hover:bg-gray-200 transition">
-                  <i class="fa-solid fa-pen mr-1"></i> Editar
-                </button>
-                <button onclick="deleteProduct('${p.id}')" class="w-10 bg-red-50 text-red-500 py-2 rounded hover:bg-red-100 transition">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    async function loadOrders() {
-      const snap = await db.collection('pedidos').orderBy('data', 'desc').get();
-      const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      document.getElementById('stat-pending-orders').textContent =
-        orders.filter(o => o.status === 'pendente').length;
-
-      const totalVal = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-      document.getElementById('stat-total-sales').textContent =
-        `R$ ${totalVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-
-      const tbody = document.getElementById('orders-table-body');
-      tbody.innerHTML = orders.map(o => `
-        <tr class="border-b hover:bg-gray-50 text-sm">
-          <td class="p-4 font-mono font-bold text-xs">#${(o.id || '').slice(0, 6).toUpperCase()}</td>
-          <td class="p-4">
-            <div class="font-medium">${o.cliente?.nome || '-'}</div>
-            <div class="text-[10px] text-gray-400">${o.cliente?.telefone || '-'}</div>
-          </td>
-          <td class="p-4 text-xs text-gray-500">${o.data ? new Date(o.data).toLocaleDateString('pt-BR') : '-'}</td>
-          <td class="p-4 font-bold">R$ ${(o.total || 0).toFixed(2)}</td>
-          <td class="p-4">
-            <span class="px-2 py-1 rounded-full text-[10px] font-bold ${o.status === 'pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}">
-              ${(o.status || '').toUpperCase()}
-            </span>
-          </td>
-          <td class="p-4">
-            ${o.estoque_baixado
-              ? '<i class="fa-solid fa-circle-check text-green-500"></i>'
-              : '<i class="fa-solid fa-circle-minus text-gray-300"></i>'}
-          </td>
-          <td class="p-4">
-            <button onclick="viewOrder('${o.id}')" class="text-[--cor-ouro-acento] hover:underline font-bold text-xs uppercase tracking-wider">
-              Ver Detalhes
-            </button>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function addColorField(nome = '', hex = '#000000', qtd = 0) {
-      const container = document.getElementById('colors-container');
-      const div = document.createElement('div');
-      div.className = "grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center bg-gray-50 p-2 rounded border border-gray-100";
-      div.innerHTML = `
-        <input type="text" placeholder="Nome Cor" value="${nome}" class="min-w-0 w-full border rounded p-2 text-xs" required>
-        <input type="color" value="${hex}" class="w-10 h-10 rounded border p-0 overflow-hidden cursor-pointer">
-        <input type="number" placeholder="Qtd" value="${qtd}" class="w-16 border rounded p-2 text-xs" required>
-        <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 w-9 h-9">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      `;
-      container.appendChild(div);
-    }
-
-    function openProductModal() {
-      document.getElementById('product-form').reset();
-      document.getElementById('edit-id').value = '';
-      document.getElementById('modal-title').textContent = 'Adicionar Nova Peça';
-      document.getElementById('colors-container').innerHTML = '';
-      selectedProductImages = [];
-      renderImagePreviews();
-      switchTab('info');
-      document.getElementById('product-modal').classList.remove('hidden');
-      document.getElementById('product-modal').classList.add('flex');
-      document.body.classList.add('overflow-hidden');
-    }
-
-    function closeProductModal() {
-      document.getElementById('product-modal').classList.add('hidden');
-      document.getElementById('product-modal').classList.remove('flex');
-      document.body.classList.remove('overflow-hidden');
-    }
-
-    function editProduct(id) {
-      const p = allProducts.find(x => x.id === id);
-      if (!p) return;
-
-      openProductModal();
-
-      document.getElementById('modal-title').textContent = 'Editar Peça';
-      document.getElementById('edit-id').value = p.id;
-      document.getElementById('p-nome').value = p.nome || '';
-      document.getElementById('p-preco').value = p.preco || '';
-      document.getElementById('p-desconto').value = p.desconto || 0;
-      document.getElementById('p-colecao').value = p.colecaoId || '';
-      document.getElementById('p-categoria').value = p.categoria || 'vestido';
-      document.getElementById('p-status').value = p.status || 'active';
-      document.getElementById('p-desc').value = p.descricao || '';
-      document.getElementById('p-personalizavel').checked = !!p.personalizavel;
-      selectedProductImages = Array.isArray(p.imagens) ? [...p.imagens] : [];
-      renderImagePreviews();
-
-      document.getElementById('colors-container').innerHTML = '';
-      (p.cores || []).forEach(c => addColorField(c.nome, c.hex, c.quantidade));
-    }
-
-    function addImageByUrl() {
-      const input = document.getElementById('p-image-url');
-      const url = input.value.trim();
-      if (!url) return;
-      selectedProductImages.push(url);
-      input.value = '';
-      renderImagePreviews();
-      switchTab('images');
-    }
-
-    async function handleImageUpload(input) {
-      const files = Array.from(input.files || []);
-      if (!files.length) return;
-
-      const uploadBtn = document.getElementById('upload-trigger-btn');
-      const originalHtml = uploadBtn.innerHTML;
-
-      try {
-        uploadBtn.classList.add('upload-btn-loading');
-        uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2 text-[--cor-ouro-acento]"></i>Enviando...';
-
-        for (const file of files) {
-          const safeName = file.name.replace(/\s+/g, '_');
-          const fileName = `${Date.now()}_${safeName}`;
-          const ref = storage.ref().child(`produtos/${fileName}`);
-          await ref.put(file);
-          const downloadURL = await ref.getDownloadURL();
-          selectedProductImages.push(downloadURL);
-        }
-
-        renderImagePreviews();
-        switchTab('images');
-      } catch (err) {
-        alert('Erro ao enviar imagem: ' + err.message);
-      } finally {
-        uploadBtn.classList.remove('upload-btn-loading');
-        uploadBtn.innerHTML = originalHtml;
-        input.value = '';
-      }
-    }
-
-    function setImageAsCover(index) {
-      if (index <= 0) return;
-      const [img] = selectedProductImages.splice(index, 1);
-      selectedProductImages.unshift(img);
-      renderImagePreviews();
-    }
-
-    function moveImageLeft(index) {
-      if (index <= 0) return;
-      [selectedProductImages[index - 1], selectedProductImages[index]] = [selectedProductImages[index], selectedProductImages[index - 1]];
-      renderImagePreviews();
-    }
-
-    function moveImageRight(index) {
-      if (index >= selectedProductImages.length - 1) return;
-      [selectedProductImages[index + 1], selectedProductImages[index]] = [selectedProductImages[index], selectedProductImages[index + 1]];
-      renderImagePreviews();
-    }
-
-    function removeImage(index) {
-      selectedProductImages.splice(index, 1);
-      renderImagePreviews();
-    }
-
-    function renderImagePreviews() {
-      const container = document.getElementById('images-preview');
-
-      if (!selectedProductImages.length) {
-        container.innerHTML = `
-          <div class="col-span-full text-center text-sm text-gray-400 border-2 border-dashed rounded-lg py-8">
-            Nenhuma imagem adicionada.
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = selectedProductImages.map((url, index) => `
-        <div class="image-preview-item">
-          ${index === 0 ? '<div class="image-cover-badge">CAPA</div>' : ''}
-          <img src="${url}" onerror="this.src='https://placehold.co/400x400/eeeeee/999999?text=Erro+na+Imagem'" alt="Imagem ${index + 1}">
-          <div class="image-preview-actions">
-            ${index !== 0 ? `<button type="button" class="image-action-btn cover" onclick="setImageAsCover(${index})">Definir capa</button>` : ''}
-            <button type="button" class="image-action-btn" onclick="moveImageLeft(${index})" ${index === 0 ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>←</button>
-            <button type="button" class="image-action-btn" onclick="moveImageRight(${index})" ${index === selectedProductImages.length - 1 ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>→</button>
-            <button type="button" class="image-action-btn danger" onclick="removeImage(${index})">Excluir</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    document.getElementById('product-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const id = document.getElementById('edit-id').value;
-      const btn = e.target.querySelector('button[type="submit"]');
-      const originalText = btn.innerHTML;
-
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Salvando...';
-
-      const cores = [];
-      document.getElementById('colors-container').querySelectorAll('div').forEach(div => {
-        const inputs = div.querySelectorAll('input');
-        cores.push({
-          nome: inputs[0].value,
-          hex: inputs[1].value,
-          quantidade: parseInt(inputs[2].value) || 0
-        });
-      });
-
-      const data = {
-        nome: document.getElementById('p-nome').value.trim(),
-        preco: parseFloat(document.getElementById('p-preco').value) || 0,
-        desconto: parseInt(document.getElementById('p-desconto').value) || 0,
-        colecaoId: document.getElementById('p-colecao').value || '',
-        categoria: document.getElementById('p-categoria').value,
-        imagens: selectedProductImages,
-        status: document.getElementById('p-status').value,
-        descricao: document.getElementById('p-desc').value.trim(),
-        personalizavel: document.getElementById('p-personalizavel').checked,
-        cores,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      try {
-        if (id) {
-          await db.collection('pecas').doc(id).update(data);
-        } else {
-          data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-          await db.collection('pecas').add(data);
-        }
-
-        closeProductModal();
-        await loadProducts();
-      } catch (err) {
-        alert("Erro ao salvar: " + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
-    });
-
-    async function deleteProduct(id) {
-      if (!confirm('Deseja excluir esta peça permanentemente?')) return;
-
-      try {
-        await db.collection('pecas').doc(id).delete();
-        await loadProducts();
-      } catch (err) {
-        alert('Erro ao excluir: ' + err.message);
-      }
-    }
-
-    function logout() {
-      auth.signOut();
-    }
-
-    async function baixarEstoquePedidosPendentes() {
-      const statusDiv = document.getElementById('sync-status');
-      statusDiv.classList.remove('hidden');
-      statusDiv.textContent = "🔍 Procurando pedidos com estoque pendente...";
-
-      const pedidosSnap = await db.collection('pedidos')
-        .where('estoque_baixado', '==', false)
-        .get();
-
-      if (pedidosSnap.empty) {
-        statusDiv.textContent = "✅ Nenhum pedido pendente para baixar estoque.";
-        setTimeout(() => statusDiv.classList.add('hidden'), 2000);
-        return;
-      }
-
-      statusDiv.textContent = `📦 Processando ${pedidosSnap.size} pedido(s)...`;
-
-      for (const pedidoDoc of pedidosSnap.docs) {
-        const pedidoId = pedidoDoc.id;
-        const pedido = pedidoDoc.data();
-
-        try {
-          await db.runTransaction(async (transaction) => {
-            for (const item of (pedido.produtos || [])) {
-              const produtoRef = db.collection('pecas').doc(item.id);
-              const produtoSnap = await transaction.get(produtoRef);
-
-              if (produtoSnap.exists) {
-                const prodData = produtoSnap.data();
-                const coresAtuais = Array.isArray(prodData.cores) ? prodData.cores : [];
-
-                const novasCores = coresAtuais.map(cor => {
-                  if (cor.nome === item.cor?.nome) {
-                    const novaQtd = parseInt(cor.quantidade || 0) - (item.quantity || 0);
-                    return { ...cor, quantidade: novaQtd < 0 ? 0 : novaQtd };
-                  }
-                  return cor;
-                });
-
-                transaction.update(produtoRef, { cores: novasCores });
-              }
-            }
-
-            transaction.update(pedidoDoc.ref, { estoque_baixado: true });
-          });
-        } catch (err) {
-          console.error("Erro no pedido " + pedidoId, err);
-        }
-      }
-
-      statusDiv.textContent = "✅ Estoque sincronizado com sucesso!";
-
-      setTimeout(() => {
-        statusDiv.classList.add('hidden');
-        loadOrders();
-        loadProducts();
-      }, 2000);
-    }
-
-    function viewOrder(id) {
-      alert(`Detalhes do pedido ${id} ainda não foram implementados nesta tela.`);
-    }
-  </script>
+  <script src="js/admin-dashboard.js" defer></script>
 </body>
 </html>

@@ -12,6 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="js/admin-embedded-mode.js" defer></script>
 
     <style>
         :root {
@@ -230,6 +231,19 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
+        const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
+
+        async function isAuthorizedAdmin(user) {
+            if (!user) return false;
+            if (ADMIN_UIDS.includes(user.uid)) return true;
+
+            try {
+                const tokenResult = await user.getIdTokenResult();
+                return tokenResult?.claims?.admin === true;
+            } catch (error) {
+                return false;
+            }
+        }
 
         let colecoes = [];
         let currentCollectionId = null;
@@ -237,8 +251,9 @@
         // --- Inicialização ---
         document.addEventListener('DOMContentLoaded', () => {
             console.log("Iniciando...");
-            auth.onAuthStateChanged(user => {
-                if (!user) {
+            auth.onAuthStateChanged(async (user) => {
+                if (!(await isAuthorizedAdmin(user))) {
+                    auth.signOut().catch(() => {});
                     console.log("Não autenticado, redirecionando...");
                     window.location.href = './login-admin.html';
                 } else {

@@ -12,6 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="js/admin-embedded-mode.js" defer></script>
 
     <style>
         :root {
@@ -294,10 +295,22 @@ placeholder="// Escreva seu código JavaScript aqui.
 
         // --- Autenticação ---
         // ATUALIZADO COM SEU NOVO ID
-        const ADMIN_UID = "NoGsCqiKc0VJwWb6rppk7QVLV1B2";
+        const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 
-        auth.onAuthStateChanged(user => {
-            if (!user || user.uid !== ADMIN_UID) {
+        async function isAuthorizedAdmin(user) {
+            if (!user) return false;
+            if (ADMIN_UIDS.includes(user.uid)) return true;
+
+            try {
+                const tokenResult = await user.getIdTokenResult();
+                return tokenResult?.claims?.admin === true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            if (!(await isAuthorizedAdmin(user))) {
                 log("Acesso negado. Redirecionando...", "error");
                 setTimeout(() => window.location.href = 'login-admin.html', 2000);
             } else {
@@ -316,7 +329,12 @@ placeholder="// Escreva seu código JavaScript aqui.
             // Converte objetos para string para leitura
             const text = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
             
-            div.innerHTML = `<span class="opacity-50">[${time}]</span> ${text}`;
+            const timestamp = document.createElement('span');
+            timestamp.className = 'opacity-50';
+            timestamp.textContent = `[${time}]`;
+
+            div.appendChild(timestamp);
+            div.appendChild(document.createTextNode(` ${text}`));
             
             consoleBox.appendChild(div);
             consoleBox.scrollTop = consoleBox.scrollHeight;
@@ -326,7 +344,13 @@ placeholder="// Escreva seu código JavaScript aqui.
         window.log = log;
 
         window.limparConsole = () => {
-            document.getElementById('console-output').innerHTML = '<div class="text-gray-500">// Console limpo</div>';
+            const consoleBox = document.getElementById('console-output');
+            consoleBox.replaceChildren();
+
+            const line = document.createElement('div');
+            line.className = 'text-gray-500';
+            line.textContent = '// Console limpo';
+            consoleBox.appendChild(line);
         }
 
         // --- Executores de Scripts ---

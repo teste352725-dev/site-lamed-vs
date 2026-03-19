@@ -6,13 +6,52 @@ import fs from "fs";
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function isLocalRequest(req) {
+  const ip = req.ip || req.socket?.remoteAddress || "";
+  const host = req.hostname || "";
+  return ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(ip) || ["localhost", "127.0.0.1"].includes(host);
+}
+
+function requireDiagnosticAccess(req, res, next) {
+  const diagnosticToken = process.env.DIAGNOSTIC_TOKEN;
+  if (diagnosticToken && req.get("x-diagnostic-token") === diagnosticToken) {
+    return next();
+  }
+
+  if (!diagnosticToken && isLocalRequest(req)) {
+    return next();
+  }
+
+  return res.status(403).json({ ok: false, error: "Forbidden" });
+}
+
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.length === 0) return callback(null, false);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  }
+}));
+app.use(express.json({ limit: "100kb" }));
 
 /* =========================
    STATUS
 ========================= */
-app.get("/api/status", (req, res) => {
+app.get("/api/status", requireDiagnosticAccess, (req, res) => {
   res.json({
     ok: true,
     message: "Backend online 🚀",
@@ -24,7 +63,7 @@ app.get("/api/status", (req, res) => {
 /* =========================
    EFI: HEALTH (confere .env)
 ========================= */
-app.get("/api/efi/health", (req, res) => {
+app.get("/api/efi/health", requireDiagnosticAccess, (req, res) => {
   const required = [
     "EFI_BASE_URL",
     "EFI_CLIENT_ID",
@@ -43,13 +82,13 @@ app.get("/api/efi/health", (req, res) => {
 /* =========================
    EFI: CERT CHECK (.p12)
 ========================= */
-app.get("/api/efi/cert-check", (req, res) => {
+app.get("/api/efi/cert-check", requireDiagnosticAccess, (req, res) => {
   try {
     if (process.env.EFI_CERT_PATH) {
       const exists = fs.existsSync(process.env.EFI_CERT_PATH);
       return res.json({
         method: "path",
-        path: process.env.EFI_CERT_PATH,
+        pathConfigured: true,
         exists
       });
     }

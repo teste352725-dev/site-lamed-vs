@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.uid == "NoGsCqiKc0VJwWb6rppk7QVLV1B2" ||
+        request.auth.token.admin == true
+      );
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function validString(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    function validOptionalString(value, max) {
+      return value == null || (value is string && value.size() <= max);
+    }
+
+    function validEndereco(endereco) {
+      return endereco is map &&
+        endereco.keys().hasAll(['rua', 'numero', 'cep', 'cidade']) &&
+        endereco.keys().hasOnly(['rua', 'numero', 'cep', 'cidade']) &&
+        validString(endereco.rua, 1, 140) &&
+        validString(endereco.numero, 1, 40) &&
+        validString(endereco.cep, 8, 12) &&
+        validString(endereco.cidade, 1, 120);
+    }
+
+    function validCliente(cliente) {
+      return cliente is map &&
+        cliente.keys().hasAll(['nome', 'telefone', 'email', 'endereco']) &&
+        cliente.keys().hasOnly(['nome', 'telefone', 'email', 'endereco']) &&
+        validString(cliente.nome, 2, 120) &&
+        validString(cliente.telefone, 8, 30) &&
+        validString(cliente.email, 5, 120) &&
+        validEndereco(cliente.endereco);
+    }
+
+    function validAjustes(ajustes) {
+      return ajustes is map &&
+        ajustes.keys().hasAll(['pixDiscount', 'cardFee', 'freeShipping']) &&
+        ajustes.keys().hasOnly(['pixDiscount', 'cardFee', 'freeShipping']) &&
+        ajustes.pixDiscount is number &&
+        ajustes.pixDiscount >= 0 &&
+        ajustes.cardFee is number &&
+        ajustes.cardFee >= 0 &&
+        ajustes.freeShipping is bool;
+    }
+
+    function validPagamento(pagamento, parcelas) {
+      return (
+        pagamento == 'PIX' &&
+        parcelas == 1
+      ) || (
+        (pagamento == 'Cartao de Credito' || pagamento == 'Cartão de Crédito') &&
+        parcelas >= 1 &&
+        parcelas <= 12
+      );
+    }
+
+    function validPedidoCreate() {
+      return request.resource.data.keys().hasAll([
+          'cliente',
+          'pagamento',
+          'parcelas',
+          'produtos',
+          'subtotal',
+          'total',
+          'ajustes',
+          'data',
+          'status',
+          'userId',
+          'estoque_baixado'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'cliente',
+          'pagamento',
+          'parcelas',
+          'produtos',
+          'subtotal',
+          'total',
+          'ajustes',
+          'data',
+          'status',
+          'userId',
+          'estoque_baixado'
+        ]) &&
+        validCliente(request.resource.data.cliente) &&
+        request.resource.data.parcelas is int &&
+        validPagamento(request.resource.data.pagamento, request.resource.data.parcelas) &&
+        request.resource.data.produtos is list &&
+        request.resource.data.produtos.size() > 0 &&
+        request.resource.data.produtos.size() <= 50 &&
+        request.resource.data.subtotal is number &&
+        request.resource.data.subtotal >= 0 &&
+        request.resource.data.subtotal <= 100000 &&
+        request.resource.data.total is number &&
+        request.resource.data.total >= 0 &&
+        request.resource.data.total <= 100000 &&
+        validAjustes(request.resource.data.ajustes) &&
+        request.resource.data.status == 'pendente' &&
+        request.resource.data.estoque_baixado == false &&
+        request.resource.data.data == request.time &&
+        (
+          (!signedIn() && request.resource.data.userId == null) ||
+          (signedIn() && request.resource.data.userId == request.auth.uid)
+        );
+    }
+
+    match /usuarios/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /chats/{chatId}/messages/{msgId} {
+      allow read, write: if isOwner(chatId) || isAdmin();
+    }
+
+    match /chats_ativos/{chatId} {
+      allow read, write: if isOwner(chatId) || isAdmin();
+    }
+
+    match /pedidos/{pedidoId} {
+      allow create: if validPedidoCreate();
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /pecas/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /colecoes/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /galeria/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /visitas/{document=**} {
+      allow create: if true;
+      allow read: if isAdmin();
+    }
+
+    match /precificacoes/{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

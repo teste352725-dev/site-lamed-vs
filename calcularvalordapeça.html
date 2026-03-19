@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="js/admin-embedded-mode.js" defer></script>
 
     <style>
         :root { --cor-marrom-cta: #643f21; --cor-ouro-acento: #A58A5C; }
@@ -309,15 +310,31 @@
 
         let itensSimulacao = [];
         let produtosSite = [];
+        const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
+
+        async function isAuthorizedAdmin(user) {
+            if (!user) return false;
+            if (ADMIN_UIDS.includes(user.uid)) return true;
+
+            try {
+                const tokenResult = await user.getIdTokenResult();
+                return tokenResult?.claims?.admin === true;
+            } catch (error) {
+                return false;
+            }
+        }
 
         // --- INICIALIZAÇÃO ---
         document.addEventListener('DOMContentLoaded', () => {
-            auth.onAuthStateChanged(user => {
-                if (!user) window.location.href = 'login-admin.html';
-                else {
-                    carregarProdutosDoSite(); // Carrega dropdown
-                    monitorarHistorico();     // Carrega sidebar
+            auth.onAuthStateChanged(async (user) => {
+                if (!(await isAuthorizedAdmin(user))) {
+                    auth.signOut().catch(() => {});
+                    window.location.href = 'login-admin.html';
+                    return;
                 }
+
+                carregarProdutosDoSite(); // Carrega dropdown
+                monitorarHistorico();     // Carrega sidebar
             });
             
             selecionarModelo('camisa');

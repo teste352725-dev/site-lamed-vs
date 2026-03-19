@@ -7,7 +7,14 @@
     <meta name="description" content="Laméd vs | Criações em fibras naturais. Peças atemporais que unem elegância, bem-estar e propósito.">
 
     <!-- PWA -->
-    <link rel="manifest" href="/manifest.json">
+    <script>
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+            const manifestLink = document.createElement('link');
+            manifestLink.rel = 'manifest';
+            manifestLink.href = './manifest.json';
+            document.head.appendChild(manifestLink);
+        }
+    </script>
     <meta name="theme-color" content="#FDFBF6">
     <link rel="icon" type="image/png" href="https://i.ibb.co/mr93jDHT/JM.png">
     <link rel="apple-touch-icon" href="https://i.ibb.co/mr93jDHT/JM.png">
@@ -15,6 +22,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <!-- Bibliotecas -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,9 +33,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">    
     
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
     <!-- CSS Personalizado -->
     <link rel="stylesheet" href="styles.css">
@@ -158,7 +168,7 @@
             
             <!-- Hero Section -->
             <section class="hero-section flex items-center justify-center text-center relative overflow-hidden h-[70vh] w-full">
-                <img src="https://i.supaimg.com/24744ff6-247c-4e17-9e94-6455c96da980/bf59713f-69b5-4c2e-8fc6-25c26ce229e8.jpg" alt="Coleção Laméd" class="absolute inset-0 w-full h-full object-cover">
+                <img src="https://i.supaimg.com/24744ff6-247c-4e17-9e94-6455c96da980/bf59713f-69b5-4c2e-8fc6-25c26ce229e8.jpg" alt="Coleção Laméd" class="absolute inset-0 w-full h-full object-cover" fetchpriority="high" loading="eager" decoding="async">
                 <div class="hero-overlay"></div>
                 <div class="hero-content p-8 md:p-12 rounded-sm shadow-xl max-w-lg mx-4" style="background-color: rgba(253, 251, 246, 0.95);">
                     <h2 class="serif text-4xl md:text-5xl font-light mb-4 text-[--cor-texto]">Mesa Posta Laméd</h2>
@@ -168,7 +178,7 @@
             </section>
             
             <!-- Destaques da Home -->
-            <section id="home-collection-preview" class="py-16 px-4 scroll-animate">
+            <section id="home-collection-preview" class="py-16 px-4 scroll-animate deferred-section">
                 <div class="container mx-auto max-w-7xl text-center">
                     <div class="w-16 h-0.5 bg-[--cor-ouro-acento] mx-auto mb-10"></div>
 
@@ -180,7 +190,7 @@
             </section>
             
             <!-- Conheça a Loja -->
-            <section id="conheca-loja" class="py-16 px-4 border-y border-[#E5E0D8]">
+            <section id="conheca-loja" class="py-16 px-4 border-y border-[#E5E0D8] deferred-section">
                 <div class="container mx-auto max-w-7xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Conheça nossa Loja</h3>
 
@@ -208,7 +218,7 @@
             </section>
 
             <!-- Seção Nossa Filosofia -->
-            <section id="sobre" class="py-20 px-4 scroll-animate border-t border-[#E5E0D8]" style="background-color: #F8F6F0;">
+            <section id="sobre" class="py-20 px-4 scroll-animate border-t border-[#E5E0D8] deferred-section" style="background-color: #F8F6F0;">
                  <div class="container mx-auto max-w-4xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Nossa Filosofia</h3>
                     <p class="text-[--cor-texto] text-lg leading-relaxed font-light">
@@ -218,7 +228,7 @@
             </section>
             
             <!-- Seção Uma Mensagem Para Você -->
-            <section id="mensagem" class="py-20 px-4 scroll-animate" style="background-color: var(--cor-fundo);">
+            <section id="mensagem" class="py-20 px-4 scroll-animate deferred-section" style="background-color: var(--cor-fundo);">
                  <div class="container mx-auto max-w-4xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Uma Mensagem Para Você</h3>
                     <div class="text-[--cor-texto] text-lg leading-relaxed space-y-6 font-light">
@@ -467,7 +477,7 @@
     </div>
 
     <!-- RODAPÉ -->
-    <footer id="contato" class="bg-[#F8F6F0] text-[--cor-texto] py-16 px-4 mt-auto border-t border-[#E5E0D8]">
+    <footer id="contato" class="bg-[#F8F6F0] text-[--cor-texto] py-16 px-4 mt-auto border-t border-[#E5E0D8] deferred-section">
         <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 text-center md:text-left">
             <div>
                 <div class="mb-6 group inline-block text-left">
@@ -501,17 +511,46 @@
         </div>
     </footer>
 
+    <nav class="mobile-bottom-nav md:hidden" aria-label="Navegação rápida">
+        <a href="#home" class="mobile-bottom-link">
+            <i class="fa-solid fa-house"></i>
+            <span>Início</span>
+        </a>
+        <a href="#colecoes" class="mobile-bottom-link">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Coleções</span>
+        </a>
+        <a href="#conheca-loja" class="mobile-bottom-link">
+            <i class="fa-solid fa-store"></i>
+            <span>Loja</span>
+        </a>
+        <a href="minha-conta.html" class="mobile-bottom-link">
+            <i class="fa-regular fa-user"></i>
+            <span>Conta</span>
+        </a>
+        <button type="button" id="mobile-cart-btn" class="mobile-bottom-link mobile-bottom-link-button">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <span>Sacola</span>
+        </button>
+    </nav>
+
     <a href="https://wa.me/5527999287657" target="_blank" class="floating-whatsapp fixed bottom-6 right-6 w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center text-white text-3xl shadow-lg z-40 hover:scale-110 transition-transform duration-300">
         <i class="fa-brands fa-whatsapp"></i>
     </a>
 
-    <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
-    <script src="app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
+    <script defer src="js/app-core.js"></script>
+    <script defer src="js/app-storefront.js"></script>
+    <script defer src="js/app-cart-checkout.js"></script>
     
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('SW registrado:', reg))
+        const canUseServiceWorker = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+        if ('serviceWorker' in navigator && canUseServiceWorker) {
+            navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+                .then(reg => {
+                    reg.update().catch(() => {});
+                    console.log('SW registrado:', reg);
+                })
                 .catch(err => console.log('Falha SW:', err));
         }
     </script>

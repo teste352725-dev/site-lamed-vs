@@ -209,6 +209,329 @@ function setupEventListeners() {
 // --- UTILITÁRIOS ---
 function formatarReal(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
+function sanitizePlainText(value, maxLength = 160) {
+    return String(value ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLength);
+}
+
+function stripAccents(value) {
+    return String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+function normalizeUrl(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    try {
+        if (!cart.length) {
+            throw new Error('Sua sacola esta vazia.');
+        }
+        const parsed = new URL(raw, window.location.origin);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+        return parsed.toString();
+    } catch (error) {
+        return '';
+    }
+}
+
+function buildAvatarUrl(name) {
+    const safeName = sanitizePlainText(name || 'Cliente', 80) || 'Cliente';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}&background=A58A5C&color=fff`;
+}
+
+function getPaymentKey(value) {
+    return stripAccents(sanitizePlainText(value, 40)).toLowerCase();
+}
+
+function roundCurrency(value) {
+    return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function parseCurrencyText(value) {
+    return roundCurrency(parseFloat(String(value ?? '').replace(/[^\d,.-]/g, '').replace(',', '.')) || 0);
+}
+
+function sanitizeHexColor(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '#000000';
+    const normalized = raw.startsWith('#') ? raw : `#${raw}`;
+    return /^#[0-9a-fA-F]{3,8}$/.test(normalized) ? normalized : '#000000';
+}
+
+function normalizeColorSelection(color) {
+    if (!color || typeof color !== 'object') return null;
+    const nome = sanitizePlainText(color.nome, 40);
+    if (!nome) return null;
+
+    return {
+        nome,
+        hex: sanitizeHexColor(color.hex)
+    };
+}
+
+function normalizeComboSelections(input) {
+    if (!input || typeof input !== 'object') return {};
+
+    return Object.entries(input).reduce((acc, [key, value]) => {
+        const idx = parseInt(key, 10);
+        if (!Number.isInteger(idx) || idx < 0 || !value || typeof value !== 'object') return acc;
+
+        const nextValue = {};
+        const safeColor = normalizeColorSelection(value.cor);
+        const safeSize = sanitizePlainText(value.tamanho, 20);
+
+        if (safeColor) nextValue.cor = safeColor;
+        if (safeSize) nextValue.tamanho = safeSize;
+        if (Object.keys(nextValue).length > 0) acc[idx] = nextValue;
+        return acc;
+    }, {});
+}
+
+function sanitizeCartItem(item) {
+    if (!item || typeof item !== 'object') return null;
+
+    const cartId = sanitizePlainText(item.cartId, 120);
+    const nome = sanitizePlainText(item.nome, 120);
+    const preco = roundCurrency(Number(item.preco));
+    const quantity = Math.max(1, Math.min(99, parseInt(item.quantity, 10) || 0));
+
+    if (!cartId || !nome || !Number.isFinite(preco) || preco < 0 || quantity < 1) return null;
+
+    return {
+        cartId,
+        id: sanitizePlainText(item.id, 120),
+        nome,
+        preco,
+        imagem: normalizeUrl(item.imagem),
+        tamanho: sanitizePlainText(item.tamanho, 20),
+        cor: normalizeColorSelection(item.cor),
+        quantity,
+        isCombo: item.isCombo === true,
+        componentes: Array.isArray(item.componentes)
+            ? item.componentes.map((comp) => ({
+                id: sanitizePlainText(comp?.id, 120),
+                nome: sanitizePlainText(comp?.nome, 120),
+                quantidade: Math.max(1, parseInt(comp?.quantidade, 10) || 1),
+                categoria: sanitizePlainText(comp?.categoria, 40)
+            }))
+            : null,
+        comboSelections: normalizeComboSelections(item.comboSelections)
+    };
+}
+
+function isRoupaCategory(categoria) {
+    return ['vestido', 'conjunto', 'calca', 'camisa', 'saia'].includes(categoria);
+}
+
+function normalizeSizeLabel(value) {
+    const safe = sanitizePlainText(value, 20);
+    if (!safe) return '';
+
+    const upper = stripAccents(safe).toUpperCase();
+    if (upper === 'UNICO') return 'Unico';
+    if (upper === 'UNICO') return 'Único';
+    if (['PP', 'P', 'M', 'G', 'GG', 'COMBO'].includes(upper)) return upper;
+    return safe;
+}
+
+function isUniqueSize(value) {
+    return stripAccents(sanitizePlainText(value, 20)).toUpperCase() === 'UNICO';
+}
+
+function getDiscountedProductPrice(product) {
+    const price = Number(product?.preco || 0);
+    const discount = Number(product?.desconto || 0);
+    return roundCurrency(price * (1 - discount / 100));
+}
+
+function calculateCheckoutTotals(cartItems, pagamento, parcelas, cep) {
+    const subtotal = roundCurrency(cartItems.reduce((acc, item) => acc + (item.preco * item.quantity), 0));
+    const hanukahSubtotal = roundCurrency(cartItems.reduce((acc, item) => acc + (isHanukahProduct(item) ? item.preco * item.quantity : 0), 0));
+    let final = subtotal;
+    let pixDiscount = 0;
+    let cardFee = 0;
+
+    const paymentKey = getPaymentKey(pagamento);
+
+    if (paymentKey === 'pix') {
+        pixDiscount = roundCurrency(subtotal * 0.05);
+        final = roundCurrency(final - pixDiscount);
+    } else if (paymentKey.includes('cartao') && parcelas > 2) {
+        cardFee = roundCurrency(subtotal * TAXA_JUROS);
+        final = roundCurrency(final + cardFee);
+    }
+
+    return {
+        subtotal,
+        hanukahSubtotal,
+        pixDiscount,
+        cardFee,
+        final,
+        freeShipping: isSudeste(cep) && hanukahSubtotal >= 500
+    };
+}
+
+async function getProductMapByIds(ids) {
+    const productMap = new Map(products.map((product) => [product.id, product]));
+    const missingIds = [...new Set(ids.filter((id) => id && !productMap.has(id)))];
+
+    if (missingIds.length > 0) {
+        const snapshots = await Promise.all(missingIds.map((id) => db.collection('pecas').doc(id).get()));
+        snapshots.forEach((snapshot) => {
+            if (!snapshot.exists) return;
+            const data = snapshot.data();
+            productMap.set(snapshot.id, { id: snapshot.id, ...data, preco: parseFloat(data.preco || 0) });
+        });
+    }
+
+    return productMap;
+}
+
+async function ensureProductLoaded(productMap, id) {
+    if (productMap.has(id)) return productMap.get(id);
+    if (!id) return null;
+
+    const snapshot = await db.collection('pecas').doc(id).get();
+    if (!snapshot.exists) return null;
+
+    const data = snapshot.data();
+    const product = { id: snapshot.id, ...data, preco: parseFloat(data.preco || 0) };
+    productMap.set(snapshot.id, product);
+    return product;
+}
+
+async function buildCanonicalCartSnapshot(sourceCart) {
+    const baseIds = Array.isArray(sourceCart) ? sourceCart.map((item) => sanitizePlainText(item?.id, 120)).filter(Boolean) : [];
+    const productMap = await getProductMapByIds(baseIds);
+    const canonicalCart = [];
+
+    for (const rawItem of sourceCart) {
+        const sourceItem = sanitizeCartItem(rawItem);
+        if (!sourceItem?.id) {
+            throw new Error('Seu carrinho contem itens invalidos. Atualize a pagina e tente novamente.');
+        }
+
+        const product = await ensureProductLoaded(productMap, sourceItem.id);
+        if (!product || product.status !== 'active') {
+            throw new Error(`O produto "${sourceItem.nome}" nao esta mais disponivel.`);
+        }
+
+        const quantity = Math.max(1, Math.min(99, parseInt(sourceItem.quantity, 10) || 0));
+        const canonicalItem = {
+            cartId: sourceItem.cartId,
+            id: product.id,
+            nome: sanitizePlainText(product.nome, 120) || sourceItem.nome,
+            preco: getDiscountedProductPrice(product),
+            imagem: normalizeUrl(Array.isArray(product.imagens) ? product.imagens[0] : '') || 'https://placehold.co/600x800/eee/ccc?text=Sem+imagem',
+            quantity
+        };
+
+        if (product.tipo === 'combo') {
+            if (!Array.isArray(product.componentes) || product.componentes.length === 0) {
+                throw new Error(`O combo "${canonicalItem.nome}" esta incompleto no cadastro.`);
+            }
+
+            const canonicalSelections = {};
+            canonicalItem.isCombo = true;
+            canonicalItem.tamanho = 'Combo';
+            canonicalItem.cor = null;
+            canonicalItem.componentes = [];
+
+            for (let idx = 0; idx < product.componentes.length; idx++) {
+                const component = product.componentes[idx];
+                const componentProduct = await ensureProductLoaded(productMap, component.id);
+                if (!componentProduct) {
+                    throw new Error(`Um item do combo "${canonicalItem.nome}" nao foi encontrado.`);
+                }
+
+                const requestedSelection = sourceItem.comboSelections?.[idx] || sourceItem.comboSelections?.[String(idx)] || {};
+                const componentQuantity = Math.max(1, parseInt(component.quantidade, 10) || 1);
+                const canonicalComponent = {
+                    id: sanitizePlainText(component.id, 120),
+                    nome: sanitizePlainText(component.nome || componentProduct.nome, 120) || 'Item do combo',
+                    quantidade: componentQuantity,
+                    categoria: sanitizePlainText(component.categoria || componentProduct.categoria, 40)
+                };
+
+                const availableColors = Array.isArray(componentProduct.cores) ? componentProduct.cores : [];
+                let canonicalColor = { nome: 'PadrÃ£o', hex: '#000000' };
+
+                if (availableColors.length > 0) {
+                    const requestedColorName = sanitizePlainText(requestedSelection.cor?.nome, 40);
+                    const matchedColor = availableColors.find((color) => sanitizePlainText(color.nome, 40) === requestedColorName);
+                    if (!matchedColor) {
+                        throw new Error(`Uma cor do combo "${canonicalItem.nome}" nao esta mais disponivel.`);
+                    }
+
+                    const availableQty = parseInt(matchedColor.quantidade, 10);
+                    if (Number.isFinite(availableQty) && availableQty >= 0 && availableQty < componentQuantity * quantity) {
+                        throw new Error(`Estoque insuficiente para "${canonicalComponent.nome}" no combo "${canonicalItem.nome}".`);
+                    }
+
+                    canonicalColor = {
+                        nome: sanitizePlainText(matchedColor.nome, 40),
+                        hex: sanitizeHexColor(matchedColor.hex)
+                    };
+                }
+
+                let canonicalSize = 'Único';
+                if (isRoupaCategory(canonicalComponent.categoria)) {
+                    canonicalSize = normalizeSizeLabel(requestedSelection.tamanho);
+                    if (!['PP', 'P', 'M', 'G', 'GG'].includes(canonicalSize)) {
+                        throw new Error(`Um tamanho do combo "${canonicalItem.nome}" precisa ser selecionado novamente.`);
+                    }
+                }
+
+                canonicalSelections[idx] = { cor: canonicalColor, tamanho: canonicalSize };
+                canonicalItem.componentes.push(canonicalComponent);
+            }
+
+            canonicalItem.comboSelections = canonicalSelections;
+        } else {
+            const availableColors = Array.isArray(product.cores) ? product.cores : [];
+            canonicalItem.isCombo = false;
+
+            if (availableColors.length > 0) {
+                const requestedColorName = sanitizePlainText(sourceItem.cor?.nome, 40);
+                const matchedColor = availableColors.find((color) => sanitizePlainText(color.nome, 40) === requestedColorName);
+                if (!matchedColor) {
+                    throw new Error(`A cor selecionada para "${canonicalItem.nome}" nao esta mais disponivel.`);
+                }
+
+                const availableQty = parseInt(matchedColor.quantidade, 10);
+                if (Number.isFinite(availableQty) && availableQty >= 0 && availableQty < quantity) {
+                    throw new Error(`Estoque insuficiente para "${canonicalItem.nome}".`);
+                }
+
+                canonicalItem.cor = {
+                    nome: sanitizePlainText(matchedColor.nome, 40),
+                    hex: sanitizeHexColor(matchedColor.hex)
+                };
+            } else {
+                canonicalItem.cor = null;
+            }
+
+            const canonicalSize = checkIsMesaPosta(product.categoria)
+                ? 'Único'
+                : normalizeSizeLabel(sourceItem.tamanho);
+
+            if (!canonicalSize || canonicalSize === 'Combo') {
+                throw new Error(`As opcoes de "${canonicalItem.nome}" precisam ser selecionadas novamente.`);
+            }
+
+            canonicalItem.tamanho = canonicalSize;
+        }
+
+        canonicalCart.push(canonicalItem);
+    }
+
+    return canonicalCart;
+}
+
 function isSudeste(cep) {
     if (!cep) return false;
     const cepClean = cep.replace(/\D/g, '');
@@ -288,19 +611,44 @@ async function atualizarInterfaceUsuario(user) {
 
     if (user) {
         let photoURL = user.photoURL;
-        let displayName = user.displayName || 'Cliente';
+        let displayName = sanitizePlainText(user.displayName || 'Cliente', 80) || 'Cliente';
         
         if (!photoURL) {
             try {
                 const doc = await db.collection('usuarios').doc(user.uid).get();
                 if (doc.exists) {
                     const d = doc.data();
-                    if(d.fotoUrl) photoURL = d.fotoUrl;
-                    if(d.nome) displayName = d.nome;
+                    if(d.fotoUrl) photoURL = normalizeUrl(d.fotoUrl);
+                    if(d.nome) displayName = sanitizePlainText(d.nome, 80) || displayName;
                 }
             } catch(e) {}
         }
-        if (!photoURL) photoURL = `https://ui-avatars.com/api/?name=${displayName}&background=A58A5C&color=fff`;
+        if (!photoURL) photoURL = buildAvatarUrl(displayName);
+
+        const firstName = sanitizePlainText(displayName.split(' ')[0], 40) || 'Cliente';
+        sidebarUserArea.replaceChildren();
+
+        const avatar = document.createElement('img');
+        avatar.src = photoURL;
+        avatar.className = 'w-10 h-10 rounded-full border border-[#45301F] object-cover';
+
+        const textWrap = document.createElement('div');
+        textWrap.className = 'flex flex-col';
+
+        const hello = document.createElement('span');
+        hello.className = 'text-xs text-gray-400 uppercase tracking-widest';
+        hello.textContent = 'OlÃ¡,';
+
+        hello.textContent = 'Ola,';
+        const name = document.createElement('span');
+        name.className = 'font-serif text-lg text-[#45301F] leading-none';
+        name.textContent = firstName;
+
+        textWrap.appendChild(hello);
+        textWrap.appendChild(name);
+        sidebarUserArea.appendChild(avatar);
+        sidebarUserArea.appendChild(textWrap);
+        return;
         
         sidebarUserArea.innerHTML = `
             <img src="${photoURL}" class="w-10 h-10 rounded-full border border-[#45301F] object-cover">
@@ -1302,7 +1650,16 @@ function preencherParcelas() {
 
 function validarELimparCarrinho() {
     const s = localStorage.getItem('lamedCart');
-    if(s) { try { let t = JSON.parse(s); cart = Array.isArray(t) ? t.filter(i=>i&&i.cartId&&i.nome&&typeof i.preco==='number') : []; } catch(e){ cart=[]; } } else cart=[];
+    if(s) {
+        try {
+            let t = JSON.parse(s);
+            cart = Array.isArray(t) ? t.map((item) => sanitizeCartItem(item)).filter(Boolean) : [];
+        } catch(e){
+            cart = [];
+        }
+    } else {
+        cart = [];
+    }
 }
 
 async function toggleFavorite() {
@@ -1358,6 +1715,52 @@ function closeCheckoutModal() { elements.checkoutModal.classList.add('hidden'); 
 
 function updateCheckoutSummary() {
     const summary = elements.checkoutSummary;
+    summary.innerHTML = '';
+
+    cart.forEach(item => {
+        const itemTotal = item.preco * item.quantity;
+        let desc = sanitizePlainText(item.nome, 120);
+        if (item.isCombo) desc += " (Combo)";
+
+        summary.innerHTML += `<div class="flex justify-between text-sm mb-1 pb-1 border-b border-dashed border-[#dcdcdc]">
+            <div><span class="font-medium text-[--cor-texto]">${item.quantity}x ${desc}</span></div>
+            <span>${formatarReal(itemTotal)}</span>
+        </div>`;
+    });
+
+    const pgto = document.querySelector('input[name="pagamento"]:checked')?.value;
+    const parcelas = parseInt(document.getElementById('parcelas-select').value, 10) || 1;
+    const cepValue = document.getElementById('checkout-cep')?.value || '';
+    const msgBox = document.getElementById('shipping-cost-msg');
+    const totals = calculateCheckoutTotals(cart, pgto, parcelas, cepValue);
+
+    if (totals.pixDiscount > 0) {
+        summary.innerHTML += `<div class="flex justify-between text-sm text-green-600 font-medium mt-1"><span>Desconto PIX</span><span>-${formatarReal(totals.pixDiscount)}</span></div>`;
+    } else if (totals.cardFee > 0) {
+        summary.innerHTML += `<div class="flex justify-between text-sm text-gray-500 font-medium mt-1"><span>Taxa CartÃ£o (>2x)</span><span>+${formatarReal(totals.cardFee)}</span></div>`;
+    }
+
+    if (totals.freeShipping) {
+        summary.innerHTML += `<div class="flex justify-between text-sm text-green-700 font-bold mt-2 pt-2 border-t border-gray-200"><span>Frete (Hanukah Sudeste)</span><span>GRÃTIS</span></div>`;
+        if (msgBox) msgBox.innerHTML = `<i class="fa-solid fa-gift text-green-600"></i> <span class="text-green-700 font-bold">ParabÃ©ns! Frete GrÃ¡tis disponÃ­vel para sua regiÃ£o.</span>`;
+    } else {
+        summary.innerHTML += `<div class="flex justify-between text-sm text-gray-500 mt-2 pt-2 border-t border-gray-200"><span>Frete</span><span class="text-xs">A calcular (WhatsApp)</span></div>`;
+        if (msgBox) msgBox.innerHTML = `<i class="fa-solid fa-truck-fast"></i> O frete Ã© calculado e pago diretamente no WhatsApp.`;
+    }
+
+    summary.innerHTML = summary.innerHTML
+        .replace(/Taxa CartÃƒÂ£o/g, 'Taxa Cartao')
+        .replace(/GRÃƒÂTIS/g, 'GRATIS');
+    if (msgBox) {
+        msgBox.innerHTML = msgBox.innerHTML
+            .replace(/ParabÃƒÂ©ns! Frete GrÃƒÂ¡tis disponÃƒÂ­vel para sua regiÃƒÂ£o\./g, 'Parabens! Frete gratis disponivel para sua regiao.')
+            .replace(/O frete ÃƒÂ© calculado e pago diretamente no WhatsApp\./g, 'O frete e calculado e pago diretamente no WhatsApp.');
+    }
+
+    elements.checkoutTotal.textContent = formatarReal(totals.final);
+    return;
+    {
+    const summary = elements.checkoutSummary;
     summary.innerHTML = ''; let total = 0;
     let hanukahSubtotal = 0;
     
@@ -1405,9 +1808,132 @@ function updateCheckoutSummary() {
     }
 
     elements.checkoutTotal.textContent = formatarReal(final);
+    }
 }
 
+/* Legacy implementation retained only for reference.
 async function finalizarPedido(formData) {
+    const cliente = {
+        nome: sanitizePlainText(formData.get('nome'), 120),
+        telefone: sanitizePlainText(formData.get('telefone'), 30),
+        email: sanitizePlainText(formData.get('email'), 120),
+        endereco: {
+            rua: sanitizePlainText(formData.get('rua'), 140),
+            numero: sanitizePlainText(formData.get('numero'), 40),
+            cep: sanitizePlainText(formData.get('cep'), 12),
+            cidade: sanitizePlainText(formData.get('cidade'), 120)
+        }
+    };
+    const pagamento = sanitizePlainText(formData.get('pagamento'), 40);
+    const paymentKey = getPaymentKey(pagamento);
+    const parcelas = pagamento === 'CartÃ£o de CrÃ©dito'
+        ? (parseInt(document.getElementById('parcelas-select').value, 10) || 1)
+        : 1;
+    const parcelasSeguras = paymentKey.includes('cartao')
+        ? (parseInt(document.getElementById('parcelas-select').value, 10) || 1)
+        : 1;
+
+    try {
+        if (!cart.length) {
+            throw new Error('Sua sacola estÃ¡ vazia.');
+        }
+
+        if (!cliente.nome || !cliente.telefone || !cliente.email || !cliente.endereco.rua || !cliente.endereco.numero || !cliente.endereco.cep || !cliente.endereco.cidade) {
+            throw new Error('Preencha todos os dados obrigatorios antes de finalizar.');
+        }
+        if (!cliente.nome || !cliente.telefone || !cliente.email || !cliente.endereco.rua || !cliente.endereco.numero || !cliente.endereco.cep || !cliente.endereco.cidade) {
+            throw new Error('Preencha todos os dados obrigatÃ³rios antes de finalizar.');
+        }
+
+        const displayedTotal = parseCurrencyText(elements.checkoutTotal.textContent);
+        const canonicalCart = await buildCanonicalCartSnapshot(cart);
+        const totals = calculateCheckoutTotals(canonicalCart, pagamento, parcelasSeguras, cliente.endereco.cep);
+
+        cart = canonicalCart;
+        localStorage.setItem('lamedCart', JSON.stringify(canonicalCart));
+        updateCartUI();
+        updateCheckoutSummary();
+
+        if (Math.abs(displayedTotal - totals.final) > 0.01) {
+            throw new Error('Seu carrinho foi atualizado com os valores e estoques mais recentes. Revise o pedido e confirme novamente.');
+        }
+
+        if(currentUser) {
+            await db.collection('usuarios').doc(currentUser.uid).set({
+                nome: cliente.nome,
+                telefone: cliente.telefone,
+                endereco: cliente.endereco
+            }, { merge: true });
+        }
+
+        const pedido = {
+            cliente,
+            pagamento,
+            parcelas: parcelasSeguras,
+            produtos: canonicalCart,
+            subtotal: totals.subtotal,
+            total: totals.final,
+            ajustes: {
+                pixDiscount: totals.pixDiscount,
+                cardFee: totals.cardFee,
+                freeShipping: totals.freeShipping
+            },
+            data: firebase.firestore.FieldValue.serverTimestamp(),
+            status: 'pendente',
+            userId: currentUser ? currentUser.uid : null,
+            estoque_baixado: false
+        };
+
+        const ref = await db.collection('pedidos').add(pedido);
+
+        let msg = `*Novo Pedido #${ref.id.slice(0,6).toUpperCase()}*\n`;
+        msg += `*Cliente:* ${cliente.nome}\n`;
+        msg += `*Pagamento:* ${pedido.pagamento}`;
+        if (paymentKey.includes('cartao')) msg += ` (${pedido.parcelas}x)`;
+        if (pedido.pagamento === 'CartÃ£o de CrÃ©dito') msg += ` (${pedido.parcelas}x)`;
+        msg += `\n\n*Itens do Pedido:*\n`;
+
+        canonicalCart.forEach(item => {
+            msg += `------------------------------\n`;
+            msg += `- *${item.quantity}x ${item.nome}*\n`;
+
+            if (item.isCombo && item.comboSelections) {
+                msg += `  _Combo Personalizado:_\n`;
+                item.componentes.forEach((comp, idx) => {
+                    const sel = item.comboSelections[idx];
+                    const cor = sel?.cor?.nome || 'PadrÃ£o';
+                    const tam = sel?.tamanho !== 'Ãšnico' ? `(${sel.tamanho})` : '';
+                    msg += `  - ${comp.quantidade}x ${comp.nome} [${cor} ${tam}]\n`;
+                });
+            } else {
+                const tam = item.tamanho && item.tamanho !== 'Ãšnico' ? `Tam: ${item.tamanho}` : '';
+                const cor = item.cor ? `Cor: ${item.cor.nome}` : '';
+                const details = [tam, cor].filter(Boolean).join(' | ');
+                if (details) msg += `  (${details})\n`;
+            }
+            msg += `  Valor: ${formatarReal(item.preco * item.quantity)}\n`;
+        });
+
+        msg += `------------------------------\n`;
+        msg += `*Total Final:* ${formatarReal(pedido.total)}\n`;
+
+        if (totals.freeShipping) {
+             msg += `\n*Frete Gratis Aplicado (Promocao Hanukah)*`;
+        }
+
+        msg = msg
+            .replace(/PadrÃƒÂ£o/g, 'Padrao')
+            .replace(/ÃƒÅ¡nico/g, 'Unico')
+            .replace(/CartÃƒÂ£o de CrÃƒÂ©dito/g, 'Cartao de Credito')
+            .replace(/\((\d+x)\)\s*\(\1\)/g, '($1)');
+        window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(msg)}`, '_blank');
+
+        cart = [];
+        localStorage.setItem('lamedCart', '[]');
+        updateCartUI();
+        closeCheckoutModal();
+        return;
+        {
     const cliente = { nome: formData.get('nome'), telefone: formData.get('telefone'), email: formData.get('email'), endereco: { rua: formData.get('rua'), numero: formData.get('numero'), cep: formData.get('cep'), cidade: formData.get('cidade') } };
     if(currentUser) db.collection('usuarios').doc(currentUser.uid).set({ nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, { merge: true });
     
@@ -1467,9 +1993,372 @@ async function finalizarPedido(formData) {
         updateCartUI(); 
         closeCheckoutModal();
         
-    } catch (e) { 
+    } catch (e) {
         console.error(e);
-        alert("Erro ao enviar pedido: " + e.message); 
+        const safeMessage = String(e?.message || 'Erro inesperado')
+            .replace(/estÃƒÂ¡/g, 'esta')
+            .replace(/obrigatÃƒÂ³rios/g, 'obrigatorios')
+            .replace(/CartÃƒÂ£o de CrÃƒÂ©dito/g, 'Cartao de Credito');
+        alert("Erro ao enviar pedido: " + safeMessage);
+    }
+}
+}
+*/
+
+function normalizeUrl(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    try {
+        const parsed = new URL(raw, window.location.origin);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+        return parsed.toString();
+    } catch (error) {
+        return '';
+    }
+}
+
+function normalizeSizeLabel(value) {
+    const safe = sanitizePlainText(value, 20);
+    if (!safe) return '';
+
+    const upper = stripAccents(safe).toUpperCase();
+    if (upper === 'UNICO') return 'Unico';
+    if (['PP', 'P', 'M', 'G', 'GG', 'COMBO'].includes(upper)) return upper;
+    return safe;
+}
+
+function isHanukahProduct(item) {
+    if (!item || !item.nome) return false;
+    const term = stripAccents(String(item.nome)).toLowerCase();
+    return term.includes('hanukah') || term.includes('chanukia') || term.includes('chanuka') || term.includes('judaica');
+}
+
+async function atualizarInterfaceUsuario(user) {
+    const sidebarUserArea = elements.sidebarUserArea;
+    if (!sidebarUserArea) return;
+
+    sidebarUserArea.replaceChildren();
+
+    if (user) {
+        let photoURL = user.photoURL;
+        let displayName = sanitizePlainText(user.displayName || 'Cliente', 80) || 'Cliente';
+
+        if (!photoURL) {
+            try {
+                const doc = await db.collection('usuarios').doc(user.uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.fotoUrl) photoURL = normalizeUrl(data.fotoUrl);
+                    if (data.nome) displayName = sanitizePlainText(data.nome, 80) || displayName;
+                }
+            } catch (error) {}
+        }
+
+        if (!photoURL) photoURL = buildAvatarUrl(displayName);
+
+        const firstName = sanitizePlainText(displayName.split(' ')[0], 40) || 'Cliente';
+
+        const avatar = document.createElement('img');
+        avatar.src = photoURL;
+        avatar.alt = firstName;
+        avatar.className = 'w-10 h-10 rounded-full border border-[#45301F] object-cover';
+
+        const textWrap = document.createElement('div');
+        textWrap.className = 'flex flex-col';
+
+        const hello = document.createElement('span');
+        hello.className = 'text-xs text-gray-400 uppercase tracking-widest';
+        hello.textContent = 'Ola,';
+
+        const name = document.createElement('span');
+        name.className = 'font-serif text-lg text-[#45301F] leading-none';
+        name.textContent = firstName;
+
+        textWrap.appendChild(hello);
+        textWrap.appendChild(name);
+        sidebarUserArea.appendChild(avatar);
+        sidebarUserArea.appendChild(textWrap);
+        return;
+    }
+
+    const avatarPlaceholder = document.createElement('div');
+    avatarPlaceholder.className = 'w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400';
+
+    const icon = document.createElement('i');
+    icon.className = 'fa-regular fa-user';
+    avatarPlaceholder.appendChild(icon);
+
+    const textWrap = document.createElement('div');
+    textWrap.className = 'flex flex-col';
+
+    const welcome = document.createElement('span');
+    welcome.className = 'text-xs text-gray-400 uppercase tracking-widest';
+    welcome.textContent = 'Bem-vindo';
+
+    const link = document.createElement('a');
+    link.href = 'minha-conta.html';
+    link.className = 'font-bold text-[#A58A5C] text-sm hover:underline';
+    link.textContent = 'Entrar / Cadastrar';
+
+    textWrap.appendChild(welcome);
+    textWrap.appendChild(link);
+    sidebarUserArea.appendChild(avatarPlaceholder);
+    sidebarUserArea.appendChild(textWrap);
+}
+
+async function openCheckoutModal() {
+    if (cart.length === 0) return alert('Sua sacola esta vazia.');
+    updateCheckoutSummary();
+    if (currentUser) {
+        try {
+            const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+            if (doc.exists) {
+                const data = doc.data();
+                const form = elements.checkoutForm;
+                if (data.nome) form.nome.value = data.nome;
+                if (data.email) form.email.value = data.email;
+                if (data.telefone) form.telefone.value = data.telefone;
+                if (data.endereco) {
+                    form.rua.value = data.endereco.rua || '';
+                    form.numero.value = data.endereco.numero || '';
+                    form.cep.value = data.endereco.cep || '';
+                    form.cidade.value = data.endereco.cidade || '';
+                    if (data.endereco.cep) updateCheckoutSummary();
+                }
+            } else {
+                elements.checkoutForm.email.value = currentUser.email;
+                if (currentUser.displayName) elements.checkoutForm.nome.value = currentUser.displayName;
+            }
+        } catch (error) {}
+    }
+
+    elements.checkoutModal.classList.remove('hidden');
+    elements.checkoutModal.classList.add('flex');
+    closeCart();
+}
+
+function updateCheckoutSummary() {
+    const summary = elements.checkoutSummary;
+    if (!summary) return;
+
+    summary.replaceChildren();
+
+    const appendItemRow = (labelText, valueText) => {
+        const row = document.createElement('div');
+        row.className = 'flex justify-between text-sm mb-1 pb-1 border-b border-dashed border-[#dcdcdc]';
+
+        const info = document.createElement('div');
+        const label = document.createElement('span');
+        label.className = 'font-medium text-[--cor-texto]';
+        label.textContent = labelText;
+        info.appendChild(label);
+
+        const value = document.createElement('span');
+        value.textContent = valueText;
+
+        row.appendChild(info);
+        row.appendChild(value);
+        summary.appendChild(row);
+    };
+
+    const appendSummaryRow = (labelText, valueText, className = '') => {
+        const row = document.createElement('div');
+        row.className = `flex justify-between text-sm ${className}`.trim();
+
+        const label = document.createElement('span');
+        label.textContent = labelText;
+
+        const value = document.createElement('span');
+        value.textContent = valueText;
+
+        row.appendChild(label);
+        row.appendChild(value);
+        summary.appendChild(row);
+    };
+
+    const msgBox = document.getElementById('shipping-cost-msg');
+    const setShippingMessage = (iconClass, text, textClass = '') => {
+        if (!msgBox) return;
+
+        msgBox.replaceChildren();
+
+        const icon = document.createElement('i');
+        icon.className = iconClass;
+        msgBox.appendChild(icon);
+        msgBox.appendChild(document.createTextNode(' '));
+
+        if (textClass) {
+            const span = document.createElement('span');
+            span.className = textClass;
+            span.textContent = text;
+            msgBox.appendChild(span);
+            return;
+        }
+
+        msgBox.appendChild(document.createTextNode(text));
+    };
+
+    cart.forEach((item) => {
+        const itemTotal = item.preco * item.quantity;
+        let description = sanitizePlainText(item.nome, 120);
+        if (item.isCombo) description += ' (Combo)';
+        appendItemRow(`${item.quantity}x ${description}`, formatarReal(itemTotal));
+    });
+
+    const pagamento = document.querySelector('input[name="pagamento"]:checked')?.value;
+    const parcelas = parseInt(document.getElementById('parcelas-select')?.value, 10) || 1;
+    const cep = document.getElementById('checkout-cep')?.value || '';
+    const totals = calculateCheckoutTotals(cart, pagamento, parcelas, cep);
+
+    if (totals.pixDiscount > 0) {
+        appendSummaryRow('Desconto PIX', `-${formatarReal(totals.pixDiscount)}`, 'text-green-600 font-medium mt-1');
+    } else if (totals.cardFee > 0) {
+        appendSummaryRow('Taxa Cartao (>2x)', `+${formatarReal(totals.cardFee)}`, 'text-gray-500 font-medium mt-1');
+    }
+
+    if (totals.freeShipping) {
+        appendSummaryRow('Frete (Hanukah Sudeste)', 'GRATIS', 'text-green-700 font-bold mt-2 pt-2 border-t border-gray-200');
+        setShippingMessage(
+            'fa-solid fa-gift text-green-600',
+            'Parabens! Frete gratis disponivel para sua regiao.',
+            'text-green-700 font-bold'
+        );
+    } else {
+        appendSummaryRow('Frete', 'A calcular (WhatsApp)', 'text-gray-500 mt-2 pt-2 border-t border-gray-200');
+        setShippingMessage('fa-solid fa-truck-fast', 'O frete e calculado e pago diretamente no WhatsApp.');
+    }
+
+    elements.checkoutTotal.textContent = formatarReal(totals.final);
+}
+
+async function finalizarPedido(formData) {
+    const cliente = {
+        nome: sanitizePlainText(formData.get('nome'), 120),
+        telefone: sanitizePlainText(formData.get('telefone'), 30),
+        email: sanitizePlainText(formData.get('email'), 120),
+        endereco: {
+            rua: sanitizePlainText(formData.get('rua'), 140),
+            numero: sanitizePlainText(formData.get('numero'), 40),
+            cep: sanitizePlainText(formData.get('cep'), 12),
+            cidade: sanitizePlainText(formData.get('cidade'), 120)
+        }
+    };
+    const pagamento = sanitizePlainText(formData.get('pagamento'), 40);
+    const paymentKey = getPaymentKey(pagamento);
+    const parcelasSeguras = paymentKey.includes('cartao')
+        ? (parseInt(document.getElementById('parcelas-select')?.value, 10) || 1)
+        : 1;
+    const pagamentoSeguro = paymentKey.includes('cartao')
+        ? 'Cartao de Credito'
+        : paymentKey === 'pix'
+            ? 'PIX'
+            : pagamento;
+
+    try {
+        if (!cart.length) {
+            throw new Error('Sua sacola esta vazia.');
+        }
+
+        if (!cliente.nome || !cliente.telefone || !cliente.email || !cliente.endereco.rua || !cliente.endereco.numero || !cliente.endereco.cep || !cliente.endereco.cidade) {
+            throw new Error('Preencha todos os dados obrigatorios antes de finalizar.');
+        }
+
+        const displayedTotal = parseCurrencyText(elements.checkoutTotal.textContent);
+        const originalCartSnapshot = JSON.stringify(cart);
+        const canonicalCart = await buildCanonicalCartSnapshot(cart);
+
+        if (!canonicalCart.length) {
+            throw new Error('Os itens do carrinho nao estao mais disponiveis.');
+        }
+
+        const totals = calculateCheckoutTotals(canonicalCart, pagamentoSeguro, parcelasSeguras, cliente.endereco.cep);
+        const cartWasAdjusted = JSON.stringify(canonicalCart) !== originalCartSnapshot;
+
+        cart = canonicalCart;
+        localStorage.setItem('lamedCart', JSON.stringify(canonicalCart));
+        updateCartUI();
+        updateCheckoutSummary();
+
+        if (cartWasAdjusted || Math.abs(displayedTotal - totals.final) > 0.01) {
+            throw new Error('Seu carrinho foi atualizado com os valores e estoques mais recentes. Revise o pedido e confirme novamente.');
+        }
+
+        if (currentUser) {
+            await db.collection('usuarios').doc(currentUser.uid).set({
+                nome: cliente.nome,
+                telefone: cliente.telefone,
+                endereco: cliente.endereco
+            }, { merge: true });
+        }
+
+        const pedido = {
+            cliente,
+            pagamento: pagamentoSeguro,
+            parcelas: parcelasSeguras,
+            produtos: canonicalCart,
+            subtotal: totals.subtotal,
+            total: totals.final,
+            ajustes: {
+                pixDiscount: totals.pixDiscount,
+                cardFee: totals.cardFee,
+                freeShipping: totals.freeShipping
+            },
+            data: firebase.firestore.FieldValue.serverTimestamp(),
+            status: 'pendente',
+            userId: currentUser ? currentUser.uid : null,
+            estoque_baixado: false
+        };
+
+        const ref = await db.collection('pedidos').add(pedido);
+
+        let msg = `*Novo Pedido #${ref.id.slice(0, 6).toUpperCase()}*\n`;
+        msg += `*Cliente:* ${cliente.nome}\n`;
+        msg += `*Pagamento:* ${pedido.pagamento}`;
+        if (paymentKey.includes('cartao')) msg += ` (${pedido.parcelas}x)`;
+        msg += `\n\n*Itens do Pedido:*\n`;
+
+        canonicalCart.forEach((item) => {
+            msg += '------------------------------\n';
+            msg += `- *${item.quantity}x ${item.nome}*\n`;
+
+            if (item.isCombo && item.comboSelections) {
+                msg += '  _Combo Personalizado:_\n';
+                item.componentes.forEach((comp, idx) => {
+                    const selection = item.comboSelections[idx];
+                    const color = sanitizePlainText(selection?.cor?.nome, 40) || 'Padrao';
+                    const size = normalizeSizeLabel(selection?.tamanho);
+                    const detailParts = [color];
+                    if (size && size !== 'Unico') detailParts.push(`(${size})`);
+                    msg += `  - ${comp.quantidade}x ${comp.nome} [${detailParts.join(' ')}]\n`;
+                });
+            } else {
+                const detailParts = [];
+                const size = normalizeSizeLabel(item.tamanho);
+                if (size && size !== 'Unico') detailParts.push(`Tam: ${size}`);
+                if (item.cor?.nome) detailParts.push(`Cor: ${sanitizePlainText(item.cor.nome, 40)}`);
+                if (detailParts.length) msg += `  (${detailParts.join(' | ')})\n`;
+            }
+
+            msg += `  Valor: ${formatarReal(item.preco * item.quantity)}\n`;
+        });
+
+        msg += '------------------------------\n';
+        msg += `*Total Final:* ${formatarReal(pedido.total)}\n`;
+
+        if (totals.freeShipping) {
+            msg += '\n*Frete Gratis Aplicado (Promocao Hanukah)*';
+        }
+
+        window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(msg)}`, '_blank');
+
+        cart = [];
+        localStorage.setItem('lamedCart', '[]');
+        updateCartUI();
+        closeCheckoutModal();
+    } catch (error) {
+        console.error(error);
+        alert(`Erro ao enviar pedido: ${sanitizePlainText(error?.message || 'Erro inesperado', 220)}`);
     }
 }
 

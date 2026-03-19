@@ -1,0 +1,47 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.uid == "NoGsCqiKc0VJwWb6rppk7QVLV1B2" ||
+        request.auth.token.admin == true
+      );
+    }
+
+    function isOwnProfileImage(fileName) {
+      return signedIn() &&
+        fileName.matches('^' + request.auth.uid + '_.*$');
+    }
+
+    match /produtos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /galeria/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /profile_images/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwnProfileImage(fileName);
+    }
+
+    // Ajuste este prefixo para a pasta real usada pelo outro site que
+    // precisa continuar publica dentro deste mesmo bucket compartilhado.
+    match /legacy-open/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
