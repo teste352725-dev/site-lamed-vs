@@ -89,6 +89,13 @@ function slugifyCategoryName(value) {
         .replace(/^_+|_+$/g, '') || 'categoria';
 }
 
+function formatCategoryLabel(value) {
+    const safeValue = sanitizePlainText(value || 'sem_categoria', 80);
+    return safeValue
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function normalizeCategoryEntry(entry, fallbackOrder = 999) {
     if (!entry) return null;
 
