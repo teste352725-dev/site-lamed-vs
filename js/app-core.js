@@ -382,6 +382,13 @@ function resolveApiBaseUrl() {
     const configured = document.querySelector('meta[name="lamed-api-base-url"]')?.getAttribute('content')?.trim();
     if (configured) return configured.replace(/\/+$/, '');
 
+    try {
+        const stored = window.localStorage.getItem('lamed_api_base_url')?.trim();
+        if (stored) return stored.replace(/\/+$/, '');
+    } catch (error) {
+        // Ignora bloqueios de storage e segue para os fallbacks seguros.
+    }
+
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         return 'http://localhost:3001';
     }

@@ -2,6 +2,52 @@
 let shippingQuoteDebounceTimer = null;
 let shippingQuoteRequestToken = 0;
 
+function extractShippingErrorMessage(payload, response = null) {
+    const rawError = payload?.error;
+
+    if (typeof rawError === 'string' && rawError.trim()) {
+        return sanitizePlainText(rawError, 220);
+    }
+
+    if (rawError && typeof rawError === 'object') {
+        if (typeof rawError.message === 'string' && rawError.message.trim()) {
+            return sanitizePlainText(rawError.message, 220);
+        }
+
+        if (typeof rawError.error === 'string' && rawError.error.trim()) {
+            return sanitizePlainText(rawError.error, 220);
+        }
+    }
+
+    if (typeof payload?.message === 'string' && payload.message.trim()) {
+        return sanitizePlainText(payload.message, 220);
+    }
+
+    if (response?.status === 404) {
+        return API_BASE_URL
+            ? 'O endpoint de frete nao foi encontrado na API configurada.'
+            : 'O backend de frete ainda nao esta publicado neste dominio.';
+    }
+
+    if (response?.status >= 500) {
+        return 'O servidor de frete respondeu com erro. Tente novamente em instantes.';
+    }
+
+    return 'Nao foi possivel calcular o frete agora.';
+}
+
+function extractShippingRequestErrorMessage(error) {
+    const message = sanitizePlainText(error?.message || '', 220);
+
+    if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+        return API_BASE_URL
+            ? `Nao foi possivel conectar ao backend de frete em ${API_BASE_URL}.`
+            : 'O backend de frete nao esta disponivel neste dominio.';
+    }
+
+    return message || 'Falha ao calcular o frete.';
+}
+
 function createEmptyShippingQuoteState() {
     return {
         loading: false,
@@ -205,7 +251,7 @@ async function quoteShippingOptions({ force = false, cartItems = cart, destinati
         if (requestToken !== shippingQuoteRequestToken) return [];
 
         if (!response.ok || !payload?.ok) {
-            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel calcular o frete agora.', 220));
+            throw new Error(extractShippingErrorMessage(payload, response));
         }
 
         const options = Array.isArray(payload.options)
@@ -237,7 +283,7 @@ async function quoteShippingOptions({ force = false, cartItems = cart, destinati
             cartSignature,
             options: [],
             selectedOptionId: '',
-            error: sanitizePlainText(error?.message || 'Falha ao calcular o frete.', 220)
+            error: extractShippingRequestErrorMessage(error)
         };
 
         renderShippingOptions();
