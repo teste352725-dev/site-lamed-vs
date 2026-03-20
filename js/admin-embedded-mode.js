@@ -61,6 +61,8 @@
     document.head.appendChild(style);
 
     let resizeFrameRequest = null;
+    let resizeDebounceTimer = null;
+    let lastPostedHeight = 0;
 
     const sendHeightToParent = () => {
         resizeFrameRequest = null;
@@ -73,6 +75,9 @@
             document.body?.offsetHeight || 0
         );
 
+        if (Math.abs(height - lastPostedHeight) < 6) return;
+        lastPostedHeight = height;
+
         window.parent.postMessage({
             type: "admin-embedded-size",
             page: window.location.pathname.split("/").pop(),
@@ -80,12 +85,25 @@
         }, window.location.origin);
     };
 
-    const scheduleResizeMessage = () => {
+    const scheduleResizeMessage = (immediate = false) => {
         if (resizeFrameRequest !== null) {
             cancelAnimationFrame(resizeFrameRequest);
         }
+        if (resizeDebounceTimer !== null) {
+            clearTimeout(resizeDebounceTimer);
+        }
 
-        resizeFrameRequest = requestAnimationFrame(sendHeightToParent);
+        const queue = () => {
+            resizeDebounceTimer = null;
+            resizeFrameRequest = requestAnimationFrame(sendHeightToParent);
+        };
+
+        if (immediate) {
+            queue();
+            return;
+        }
+
+        resizeDebounceTimer = window.setTimeout(queue, 90);
     };
 
     const activate = () => {
@@ -100,9 +118,9 @@
         document.addEventListener("DOMContentLoaded", activate, { once: true });
     }
 
-    window.addEventListener("load", scheduleResizeMessage);
+    window.addEventListener("load", () => scheduleResizeMessage(true));
     window.addEventListener("resize", scheduleResizeMessage);
-    window.addEventListener("orientationchange", scheduleResizeMessage);
+    window.addEventListener("orientationchange", () => scheduleResizeMessage(true));
 
     const startObservers = () => {
         if (!document.body) return;
@@ -116,8 +134,7 @@
         const mutationObserver = new MutationObserver(() => scheduleResizeMessage());
         mutationObserver.observe(document.body, {
             childList: true,
-            subtree: true,
-            attributes: true
+            subtree: true
         });
     };
 

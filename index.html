@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -26,6 +26,9 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://i.supaimg.com" crossorigin>
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,7 +47,7 @@
 
 <body class="antialiased">
 
-    <!-- CABEÇALHO LIMPO -->
+    <!-- CABEÃ‡ALHO LIMPO -->
     <header class="sticky top-0 z-50 transition-all border-b border-[#E5E0D8]" style="background-color: var(--cor-fundo);">
         <div class="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
             
@@ -76,7 +79,7 @@
     
     <aside id="sidebar-menu" class="fixed top-0 left-0 h-full w-[80%] max-w-sm bg-[#FDFBF6] shadow-2xl z-[70] transform -translate-x-full transition-transform duration-300 flex flex-col">
         
-        <!-- Topo da Sidebar: Usuário -->
+        <!-- Topo da Sidebar: Usu?rio -->
         <div class="p-6 border-b border-[#E5E0D8] bg-[#F8F6F0]">
             <div class="flex justify-between items-start mb-4">
                 <div id="sidebar-user-area" class="flex items-center gap-3">
@@ -91,7 +94,7 @@
             <a href="minha-conta.html" class="text-xs uppercase tracking-widest text-[--cor-ouro-acento] font-bold hover:underline">Minha Conta</a>
         </div>
 
-        <!-- Links de Navegação -->
+        <!-- Links de Navega??o -->
         <nav class="flex-1 overflow-y-auto py-4">
             <ul class="space-y-1">
                 <li>
@@ -100,7 +103,7 @@
                     </a>
                 </li>
                 
-                <!-- Item com Sanfona: Coleções -->
+                <!-- Item com Sanfona: Cole??es -->
                 <li>
                     <div class="group">
                         <button id="sidebar-collections-toggle" class="w-full flex justify-between items-center px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6] focus:outline-none">
@@ -114,7 +117,7 @@
                                 Ver Todas as Coleções
                             </a>
                             
-                            <!-- Categorias Específicas -->
+                            <!-- Categorias Espec?ficas -->
                             <a href="#/categoria/combo" class="block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50 flex items-center gap-2">
                                 <i class="fa-solid fa-star text-[10px] text-purple-400"></i> Kits Mesa Posta
                             </a>
@@ -156,7 +159,7 @@
             </ul>
         </nav>
 
-        <!-- Rodapé da Sidebar -->
+        <!-- Rodap? da Sidebar -->
         <div class="p-6 border-t border-[#E5E0D8] bg-[#F8F6F0] text-center">
             <p class="text-[10px] text-gray-400">Laméd vs &copy; 2025</p>
         </div>
@@ -164,7 +167,7 @@
 
     <main class="main-container">
         
-        <!-- PÁGINA INICIAL (HOME) -->
+        <!-- P?GINA INICIAL (HOME) -->
         <div id="page-home" class="page active">
             
             <!-- Hero Section -->
@@ -190,7 +193,7 @@
                 </div>
             </section>
             
-            <!-- Conheça a Loja -->
+            <!-- Conhe?a a Loja -->
             <section id="conheca-loja" class="py-16 px-4 border-y border-[#E5E0D8] deferred-section">
                 <div class="container mx-auto max-w-7xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Conheça nossa Loja</h3>
@@ -211,27 +214,27 @@
                 </div>
             </section>
 
-            <!-- Seção Nossa Filosofia -->
+            <!-- Se??o Nossa Filosofia -->
             <section id="sobre" class="py-20 px-4 scroll-animate border-t border-[#E5E0D8] deferred-section" style="background-color: #F8F6F0;">
                  <div class="container mx-auto max-w-4xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Nossa Filosofia</h3>
                     <p class="text-[--cor-texto] text-lg leading-relaxed font-light">
-                        A <strong class="allura text-3xl text-[--cor-marrom-cta]">Laméd</strong><span class="text-xs gold-accent ml-1 uppercase tracking-widest">VS</span> nasce da harmonia entre elegância, propósito e cuidado com você. Cada peça é confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequência. Mais que roupas, criamos experiências atemporais, conscientes e únicas — feitas para vestir seu corpo e inspirar sua mente.
+                        A <strong class="allura text-3xl text-[--cor-marrom-cta]">Laméd</strong><span class="text-xs gold-accent ml-1 uppercase tracking-widest">VS</span> nasce da harmonia entre elegância, propósito e cuidado com você. Cada peça é confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequência. Mais que roupas, criamos experiências atemporais, conscientes e únicas - feitas para vestir seu corpo e inspirar sua mente.
                     </p>
                 </div>
             </section>
             
-            <!-- Seção Uma Mensagem Para Você -->
+            <!-- Se??o Uma Mensagem Para Voc? -->
             <section id="mensagem" class="py-20 px-4 scroll-animate deferred-section" style="background-color: var(--cor-fundo);">
                  <div class="container mx-auto max-w-4xl text-center">
                     <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Uma Mensagem Para Você</h3>
                     <div class="text-[--cor-texto] text-lg leading-relaxed space-y-6 font-light">
-                        <p>Ao escolher uma de nossas criações, você se conecta com a sua essência. Nossos produtos são um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem você é.</p>
-                        <p>Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensação de vitalidade e paz interior. Laméd vs fala de governo, é um lembrete do poder que reside em suas escolhas diárias, especialmente naquelas feitas com consciência e amor.</p>
+                    <p>Ao escolher uma de nossas criações, você se conecta com a sua essência. Nossos produtos são um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem você é.</p>
+                    <p>Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensação de vitalidade e paz interior. Laméd vs é um lembrete do poder que reside em suas escolhas diárias, especialmente naquelas feitas com consciência e amor.</p>
                         <div class="pt-8">
                             <p class="text-sm uppercase tracking-widest text-gray-400 mb-2">Com carinho,</p>
                             <div class="flex items-baseline justify-center gap-1">
-                                <span class="allura text-5xl text-[--cor-marrom-cta]">Laméd</span>
+                    <span class="allura text-5xl text-[--cor-marrom-cta]">Laméd</span>
                                 <span class="text-xl gold-accent serif">vs</span>
                             </div>
                         </div>
@@ -240,7 +243,7 @@
             </section>
         </div>
 
-        <!-- PÁGINA LISTA DE COLEÇÕES -->
+        <!-- P?GINA LISTA DE COLEÃ‡Ã•ES -->
         <div id="page-collections-list" class="page">
             <section class="py-16 px-4 min-h-screen">
                 <div class="container mx-auto max-w-7xl">
@@ -250,31 +253,31 @@
             </section>
         </div>
 
-        <!-- PÁGINA DE PRODUTOS (Detalhe e Grid) -->
+        <!-- P?GINA DE PRODUTOS (Detalhe e Grid) -->
         <div id="page-shop" class="page">
             <section class="py-12 px-4 min-h-screen">
                 <div class="container mx-auto max-w-7xl">
                     <div class="mx-auto max-w-3xl text-center">
                         <p class="text-xs uppercase tracking-[0.3em] text-[--cor-ouro-acento] mb-4">Loja completa</p>
-                        <h3 class="serif text-3xl md:text-5xl font-light text-[--cor-texto]">Todas as peÃ§as em um lugar so.</h3>
-                        <p class="mt-4 text-sm md:text-base text-gray-500">Filtre por categoria, busque pelo nome da peÃ§a e navegue por todo o catalogo da LamÃ©d.</p>
+                        <h3 class="serif text-3xl md:text-5xl font-light text-[--cor-texto]">Todas as peças em um lugar só.</h3>
+                        <p class="mt-4 text-sm md:text-base text-gray-500">Filtre por categoria, busque pelo nome da peça e navegue por todo o catálogo da Laméd.</p>
                     </div>
 
                     <div class="mt-10 rounded-[24px] border border-[#E5E0D8] bg-white/80 p-4 md:p-6 shadow-sm">
                         <div class="grid gap-4 md:grid-cols-[1.3fr_0.7fr] md:items-center">
                             <label class="flex items-center gap-3 rounded-full border border-[#E5E0D8] px-4 py-3 bg-[#FDFBF6]">
                                 <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
-                                <input id="shop-search-input" type="text" placeholder="Buscar por nome da peÃ§a..." class="w-full bg-transparent text-sm outline-none">
+                                <input id="shop-search-input" type="text" placeholder="Buscar por nome da peça..." class="w-full bg-transparent text-sm outline-none">
                             </label>
                             <div class="text-center md:text-right">
-                                <p id="shop-results-copy" class="text-xs uppercase tracking-[0.24em] text-gray-400">Carregando catalogo</p>
+                                <p id="shop-results-copy" class="text-xs uppercase tracking-[0.24em] text-gray-400">Carregando catálogo</p>
                             </div>
                         </div>
                         <div id="shop-category-filters" class="mt-5 flex flex-wrap justify-center gap-2"></div>
                     </div>
 
                     <div id="shop-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 mt-10">
-                        <div class="col-span-full text-center text-gray-400 text-sm py-10">Carregando peÃ§as...</div>
+                        <div class="col-span-full text-center text-gray-400 text-sm py-10">Carregando peças...</div>
                     </div>
                 </div>
             </section>
@@ -282,7 +285,7 @@
 
         <div id="page-collection" class="page">
             <section class="py-8 px-4 min-h-screen">
-                <!-- Grid da Coleção -->
+                <!-- Grid da Cole??o -->
                 <div id="collection-gallery" class="container mx-auto max-w-7xl">
                     <h3 class="serif text-3xl md:text-4xl font-light text-center mb-12 text-[--cor-texto] mt-8">Coleção</h3>
                     <div id="collection-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
@@ -306,7 +309,7 @@
                             <div id="thumbnail-carousel" class="splide px-1"><div class="splide__track"><ul class="splide__list" id="thumbnail-carousel-list"></ul></div></div>
                         </div>
                         
-                        <!-- Informações -->
+                        <!-- Informa??es -->
                         <div class="w-full md:w-1/2 lg:w-2/5 md:pl-4">
                             <div class="flex justify-between items-start mb-2">
                                 <h2 id="detail-title" class="serif text-3xl md:text-4xl font-light text-[--cor-texto]"></h2>
@@ -332,7 +335,7 @@
 
                             <div class="space-y-4 mb-8 pt-4 border-t border-[#E5E0D8]">
                                <button id="add-to-cart-button" class="w-full bg-[--cor-marrom-cta] text-white py-4 text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#4a2e18] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                   Selecione Opções
+                                Selecione Opções
                                </button>
                             </div>
 
@@ -352,7 +355,7 @@
                                         <span class="accordion-icon">+</span>
                                     </button>
                                     <div class="accordion-content hidden px-2 pb-4">
-                                        <!-- Conteúdo injetado via JS -->
+                                        <!-- Conte?do injetado via JS -->
                                         <table class="w-full text-xs text-[--cor-texto]">
                                             <thead class="bg-[#F8F6F0] font-medium"><tr><th class="p-2 text-left">Tam</th><th class="p-2">Busto</th><th class="p-2">Cintura</th><th class="p-2">Quadril</th></tr></thead>
                                             <tbody class="divide-y divide-[#E5E0D8]">
@@ -369,7 +372,7 @@
                         </div>
                     </div>
                     
-                    <!-- Recomendações -->
+                    <!-- Recomenda??es -->
                     <div id="related-products-container" class="pb-16 pt-8"></div>
                 </div>
             </section>
@@ -402,7 +405,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CHECKOUT (Formulário Completo) -->
+    <!-- MODAL DE CHECKOUT (Formul?rio Completo) -->
     <div id="checkout-modal" class="modal fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="modal-content w-full max-w-lg bg-[#FDFBF6] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center p-5 border-b border-[#E5E0D8]">
@@ -412,7 +415,7 @@
 
             <form id="checkout-form" class="p-6 space-y-6">
                 
-                <!-- AVISO DE PRODUÇÃO E FRETE -->
+                <!-- AVISO DE PRODUÃ‡ÃƒO E FRETE -->
                 <div id="shipping-message-box" class="bg-orange-50 border border-orange-100 p-4 rounded text-sm text-[#643f21] mb-4">
                     <p class="font-bold mb-1 flex items-center gap-2">
                         <i class="fa-solid fa-clock"></i> Atenção à Produção:
@@ -447,7 +450,7 @@
                         <span class="text-sm font-medium">PIX (-5%)</span>
                     </label>
                     <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
-                        <input type="radio" name="pagamento" value="Cartão de Crédito" required class="mr-2"> 
+                        <input type="radio" name="pagamento" value="Cartão de Crédito" required class="mr-2">
                         <span class="text-sm font-medium">Cartão</span>
                     </label>
                 </div>
@@ -499,7 +502,7 @@
         </div>
     </div>
 
-    <!-- RODAPÉ -->
+    <!-- RODAPÃ‰ -->
     <footer id="contato" class="bg-[#F8F6F0] text-[--cor-texto] py-16 px-4 mt-auto border-t border-[#E5E0D8] deferred-section">
         <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 text-center md:text-left">
             <div>
@@ -510,15 +513,15 @@
                     </div>
                 </div>
                 <div class="space-y-1 mt-2">
-                    <p class="text-sm font-light italic">Lamed vs é Atemporal.</p>
-                    <p class="text-sm font-light italic">Lamed vs é Profético.</p>
-                    <p class="text-sm font-light italic">Lamed vs é Alta frequência.</p>
+                    <p class="text-sm font-light italic">Laméd vs é atemporal.</p>
+                    <p class="text-sm font-light italic">Laméd vs é profético.</p>
+                    <p class="text-sm font-light italic">Laméd vs é alta frequência.</p>
                 </div>
             </div>
             <div>
                 <h4 class="font-serif text-lg mb-4">Contato</h4>
                 <div class="text-sm font-light space-y-1">
-                    <p>Servidão Otávio Pagoto, 1335 - Santa Lucia, Vitória - ES</p>
+                    <p>Servidão Otávio Pagoto, 1335 - Santa Lúcia, Vitória - ES</p>
                     <p>E-mail: veronicaateliercursos@gmail.com</p>
                     <p>WhatsApp: (27) 99928-7657</p>
                 </div>

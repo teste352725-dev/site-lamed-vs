@@ -1,4 +1,4 @@
-﻿// ConfiguraÃ§Ãµes e Init do Firebase
+﻿// Configura??es e Init do Firebase
 const appFirebaseConfig = {
     apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
     authDomain: "site-lamed.firebaseapp.com",
@@ -20,7 +20,7 @@ try {
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// VariÃ¡veis Globais
+// Vari?veis Globais
 let products = [];
 let activeCollections = []; 
 let cart = [];
@@ -73,7 +73,7 @@ const elements = {
     checkoutTotal: document.getElementById('checkout-total'),
     checkoutCepInput: document.getElementById('checkout-cep'),
 
-    // PÃ¡ginas
+    // P?ginas
     collectionsContainer: document.getElementById('collections-container'),
     favoriteBtn: document.getElementById('btn-favorite'),
     userIconLink: document.getElementById('header-user-icon-link'),
@@ -254,7 +254,7 @@ function setupEventListeners() {
     document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeCheckoutModal));
     if (elements.checkoutForm) elements.checkoutForm.addEventListener('submit', (e) => { e.preventDefault(); finalizarPedido(new FormData(elements.checkoutForm)); });
     
-    // DelegaÃ§Ã£o de eventos para opÃ§Ãµes dinÃ¢micas
+    // Delega??o de eventos para op??es din?micas
     document.body.addEventListener('click', (e) => {
         if(e.target.classList.contains('size-option')) selectSize(e.target);
     });
@@ -315,7 +315,7 @@ function setupEventListeners() {
     setupPaymentOptions();
 }
 
-// --- UTILITÃRIOS ---
+// --- UTILIT?RIOS ---
 function formatarReal(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
 function sanitizePlainText(value, maxLength = 160) {
@@ -543,12 +543,12 @@ async function buildCanonicalCartSnapshot(sourceCart) {
     for (const rawItem of sourceCart) {
         const sourceItem = sanitizeCartItem(rawItem);
         if (!sourceItem?.id) {
-            throw new Error('Seu carrinho contem itens invalidos. Atualize a pagina e tente novamente.');
+            throw new Error('Seu carrinho contém itens inválidos. Atualize a página e tente novamente.');
         }
 
         const product = await ensureProductLoaded(productMap, sourceItem.id);
         if (!product || product.status !== 'active') {
-            throw new Error(`O produto "${sourceItem.nome}" nao esta mais disponivel.`);
+            throw new Error(`O produto "${sourceItem.nome}" não está mais disponível.`);
         }
 
         const quantity = Math.max(1, Math.min(99, parseInt(sourceItem.quantity, 10) || 0));
@@ -563,7 +563,7 @@ async function buildCanonicalCartSnapshot(sourceCart) {
 
         if (product.tipo === 'combo') {
             if (!Array.isArray(product.componentes) || product.componentes.length === 0) {
-                throw new Error(`O combo "${canonicalItem.nome}" esta incompleto no cadastro.`);
+                throw new Error(`O combo "${canonicalItem.nome}" está incompleto no cadastro.`);
             }
 
             const canonicalSelections = {};
@@ -589,13 +589,13 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                 };
 
                 const availableColors = Array.isArray(componentProduct.cores) ? componentProduct.cores : [];
-                let canonicalColor = { nome: 'PadrÃƒÂ£o', hex: '#000000' };
+                let canonicalColor = { nome: 'Padrão', hex: '#000000' };
 
                 if (availableColors.length > 0) {
                     const requestedColorName = sanitizePlainText(requestedSelection.cor?.nome, 40);
                     const matchedColor = availableColors.find((color) => sanitizePlainText(color.nome, 40) === requestedColorName);
                     if (!matchedColor) {
-                        throw new Error(`Uma cor do combo "${canonicalItem.nome}" nao esta mais disponivel.`);
+                        throw new Error(`Uma cor do combo "${canonicalItem.nome}" não está mais disponível.`);
                     }
 
                     canonicalColor = {
@@ -604,7 +604,7 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                     };
                 }
 
-                let canonicalSize = 'Ãšnico';
+                let canonicalSize = 'Único';
                 if (isRoupaCategory(canonicalComponent.categoria)) {
                     canonicalSize = normalizeSizeLabel(requestedSelection.tamanho);
                     if (!['PP', 'P', 'M', 'G', 'GG'].includes(canonicalSize)) {
@@ -626,7 +626,7 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                 const requestedColorName = sanitizePlainText(sourceItem.cor?.nome, 40);
                 const matchedColor = availableColors.find((color) => sanitizePlainText(color.nome, 40) === requestedColorName);
                 if (!matchedColor) {
-                    throw new Error(`A cor selecionada para "${canonicalItem.nome}" nao esta mais disponivel.`);
+                    throw new Error(`A cor selecionada para "${canonicalItem.nome}" não está mais disponível.`);
                 }
 
                 canonicalItem.cor = {
@@ -638,7 +638,7 @@ async function buildCanonicalCartSnapshot(sourceCart) {
             }
 
             const canonicalSize = checkIsMesaPosta(product.categoria)
-                ? 'Ãšnico'
+                ? 'Único'
                 : normalizeSizeLabel(sourceItem.tamanho);
 
             if (!canonicalSize || canonicalSize === 'Combo') {
@@ -702,7 +702,7 @@ function toggleSidebar() {
         elements.sidebarMenu.classList.remove('translate-x-0'); 
         unlockBodyScroll('sidebar');
         
-        // Remove classe visual para fade out e espera transiÃ§Ã£o para esconder
+        // Remove classe visual para fade out e espera transi??o para esconder
         if(overlay) {
             overlay.classList.remove('visivel');
             setTimeout(() => overlay.classList.add('hidden'), 300);
@@ -727,7 +727,7 @@ function toggleSidebarCollections() {
     elements.sidebarArrow.classList.toggle('rotate-180');
 }
 
-// --- ATUALIZAÃ‡ÃƒO DO USUÃRIO ---
+// --- ATUALIZAÃ‡ÃƒO DO USU?RIO ---
 async function atualizarInterfaceUsuario(user) {
     const sidebarUserArea = elements.sidebarUserArea;
     if (!sidebarUserArea) return;

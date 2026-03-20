@@ -3,7 +3,7 @@
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
     const isCombo = currentProduct.tipo === 'combo';
     const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
-    const tamanhoFinal = (isMesaPosta || isCombo) ? (isCombo ? 'Combo' : 'Ãšnico') : selectedSize;
+    const tamanhoFinal = (isMesaPosta || isCombo) ? (isCombo ? 'Combo' : 'Único') : selectedSize;
     const personalizacao = currentProduct.personalizavel ? getCurrentPersonalization() : null;
     
     const cartId = isCombo
@@ -48,13 +48,13 @@ function updateCartUI() {
             item.componentes.forEach((comp, idx) => {
                 const sel = item.comboSelections[idx];
                 const cor = sel?.cor?.nome || '-';
-                const tam = sel?.tamanho !== 'Ãšnico' ? `(${sel.tamanho})` : '';
+                const tam = sel?.tamanho !== 'Único' ? `(${sel.tamanho})` : '';
                 detailsHtml += `<div>${comp.quantidade}x ${comp.nome} <strong>${cor}</strong> ${tam}</div>`;
             });
             detailsHtml += `</div>`;
         } else {
             detailsHtml = `<p class="text-xs text-gray-500 mb-1">${item.tamanho} ${item.cor ? `| ${item.cor.nome}` : ''}</p>`;
-            if (item.personalizacao?.texto) detailsHtml += `<p class="text-[11px] text-amber-800 mb-1">Personalizacao: ${item.personalizacao.texto}</p>`;
+    if (item.personalizacao?.texto) detailsHtml += `<p class="text-[11px] text-amber-800 mb-1">Personalização: ${item.personalizacao.texto}</p>`;
             if (item.personalizacao?.observacoes) detailsHtml += `<p class="text-[11px] text-gray-500 mb-1">Obs: ${item.personalizacao.observacoes}</p>`;
         }
 
@@ -109,8 +109,8 @@ function toggleAccordion(e) { e.currentTarget.nextElementSibling.classList.toggl
 function setupPaymentOptions() {
     document.querySelectorAll('input[name="pagamento"]').forEach(r => {
         r.addEventListener('change', () => {
-            document.getElementById('parcelamento-container').classList.toggle('hidden', r.value !== 'CartÃ£o de CrÃ©dito');
-            if(r.value === 'CartÃ£o de CrÃ©dito') preencherParcelas();
+            document.getElementById('parcelamento-container').classList.toggle('hidden', r.value !== 'Cartão de Crédito');
+            if(r.value === 'Cartão de Crédito') preencherParcelas();
             updateCheckoutSummary();
         });
     });
@@ -150,7 +150,7 @@ function validarELimparCarrinho() {
 }
 
 async function toggleFavorite() {
-    if(!currentUser) return alert("FaÃ§a login para favoritar.");
+    if(!currentUser) return alert("Faça login para favoritar.");
     if(!currentProduct) return;
     const icon = elements.favoriteBtn.querySelector('i');
     const isFav = icon.classList.contains('fa-solid');
@@ -287,19 +287,19 @@ function updateCheckoutSummary() {
     if (totals.pixDiscount > 0) {
         appendSummaryRow('Desconto PIX', `-${formatarReal(totals.pixDiscount)}`, 'text-green-600 font-medium mt-1');
     } else if (totals.cardFee > 0) {
-        appendSummaryRow('Taxa Cartao (>2x)', `+${formatarReal(totals.cardFee)}`, 'text-gray-500 font-medium mt-1');
+        appendSummaryRow('Taxa Cartão (>2x)', `+${formatarReal(totals.cardFee)}`, 'text-gray-500 font-medium mt-1');
     }
 
     if (totals.freeShipping) {
-        appendSummaryRow('Frete (Hanukah Sudeste)', 'GRATIS', 'text-green-700 font-bold mt-2 pt-2 border-t border-gray-200');
+        appendSummaryRow('Frete (Hanukah Sudeste)', 'GRÁTIS', 'text-green-700 font-bold mt-2 pt-2 border-t border-gray-200');
         setShippingMessage(
             'fa-solid fa-gift text-green-600',
-            'Parabens! Frete gratis disponivel para sua regiao.',
+            'Parabéns! Frete grátis disponível para sua região.',
             'text-green-700 font-bold'
         );
     } else {
         appendSummaryRow('Frete', 'A calcular (WhatsApp)', 'text-gray-500 mt-2 pt-2 border-t border-gray-200');
-        setShippingMessage('fa-solid fa-truck-fast', 'O frete e calculado e pago diretamente no WhatsApp.');
+        setShippingMessage('fa-solid fa-truck-fast', 'O frete é calculado e pago diretamente no WhatsApp.');
     }
 
     elements.checkoutTotal.textContent = formatarReal(totals.final);
@@ -323,7 +323,7 @@ async function finalizarPedido(formData) {
         ? (parseInt(document.getElementById('parcelas-select')?.value, 10) || 1)
         : 1;
     const pagamentoSeguro = paymentKey.includes('cartao')
-        ? 'Cartao de Credito'
+        ? 'Cartão de Crédito'
         : paymentKey === 'pix'
             ? 'PIX'
             : pagamento;
@@ -342,7 +342,7 @@ async function finalizarPedido(formData) {
         const canonicalCart = await buildCanonicalCartSnapshot(cart);
 
         if (!canonicalCart.length) {
-            throw new Error('Os itens do carrinho nao estao mais disponiveis.');
+        throw new Error('Os itens do carrinho não estão mais disponíveis.');
         }
 
         const totals = calculateCheckoutTotals(canonicalCart, pagamentoSeguro, parcelasSeguras, cliente.endereco.cep);
@@ -399,7 +399,7 @@ async function finalizarPedido(formData) {
                 msg += '  _Combo Personalizado:_\n';
                 item.componentes.forEach((comp, idx) => {
                     const selection = item.comboSelections[idx];
-                    const color = sanitizePlainText(selection?.cor?.nome, 40) || 'Padrao';
+                    const color = sanitizePlainText(selection?.cor?.nome, 40) || 'Padr?o';
                     const size = normalizeSizeLabel(selection?.tamanho);
                     const detailParts = [color];
                     if (size && size !== 'Unico') detailParts.push(`(${size})`);
@@ -410,7 +410,7 @@ async function finalizarPedido(formData) {
                 const size = normalizeSizeLabel(item.tamanho);
                 if (size && size !== 'Unico') detailParts.push(`Tam: ${size}`);
                 if (item.cor?.nome) detailParts.push(`Cor: ${sanitizePlainText(item.cor.nome, 40)}`);
-                if (item.personalizacao?.texto) detailParts.push(`Personalizacao: ${sanitizePlainText(item.personalizacao.texto, 120)}`);
+    if (item.personalizacao?.texto) detailParts.push(`Personalização: ${sanitizePlainText(item.personalizacao.texto, 120)}`);
                 if (detailParts.length) msg += `  (${detailParts.join(' | ')})\n`;
                 if (item.personalizacao?.observacoes) msg += `  Obs: ${sanitizePlainText(item.personalizacao.observacoes, 240)}\n`;
             }
@@ -422,7 +422,7 @@ async function finalizarPedido(formData) {
         msg += `*Total Final:* ${formatarReal(pedido.total)}\n`;
 
         if (totals.freeShipping) {
-            msg += '\n*Frete Gratis Aplicado (Promocao Hanukah)*';
+    msg += '\n*Frete Grátis Aplicado (Promoção Hanukah)*';
         }
 
         window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(msg)}`, '_blank');

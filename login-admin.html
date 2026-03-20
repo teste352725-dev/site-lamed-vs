@@ -203,7 +203,7 @@
                     if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
                         errorMessage.textContent = 'Email ou senha inválidos.';
                     } else if (error.message === 'AUTH_NOT_ADMIN') {
-                        errorMessage.textContent = 'Sua conta nÃ£o tem acesso administrativo.';
+                        errorMessage.textContent = 'Sua conta não tem acesso administrativo.';
                     } else if (error.code === 'auth/invalid-email') {
                          errorMessage.textContent = 'O formato do email é inválido.';
                     // CORRIGIDO: Convertido error.code para String() para evitar o TypeError
@@ -215,7 +215,7 @@
                     }
 
                     if (error.message === 'AUTH_NOT_ADMIN') {
-                        errorMessage.textContent = 'Sua conta nao tem acesso administrativo.';
+                        errorMessage.textContent = 'Sua conta não tem acesso administrativo.';
                     }
                 } finally {
                     submitButton.disabled = false;

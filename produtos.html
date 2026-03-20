@@ -6,13 +6,16 @@
     <title>Produtos | Painel Administrativo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
 
     <style>
@@ -385,6 +388,9 @@
             position: relative;
             overflow: hidden;
             background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(251, 246, 239, 0.94));
+            content-visibility: auto;
+            contain-intrinsic-size: 420px;
+            contain: layout paint style;
         }
 
         .product-card:hover,
@@ -414,6 +420,13 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+
+        .component-search-item,
+        .gallery-picker-item,
+        .imagem-preview {
+            content-visibility: auto;
+            contain-intrinsic-size: 120px;
         }
 
         .product-card-gradient {
@@ -682,12 +695,12 @@
                 <div class="hero-copy">
                     <div class="hero-kicker">
                         <i class="fa-solid fa-layer-group"></i>
-                        Studio de catalogo
+                        Studio de catálogo
                     </div>
-                    <h1 class="hero-title font-display">Produtos com cara de atelie, nao de planilha.</h1>
+                    <h1 class="hero-title font-display">Produtos com cara de ateliê, não de planilha.</h1>
                     <p class="hero-subtitle">
-                        Organize o catalogo, ajuste variacoes por cor, monte combos, defina a capa certa e deixe
-                        as pecas personalizaveis prontas para venda sob demanda sem sair desta tela.
+                        Organize o catálogo, ajuste variações por cor, monte combos, defina a capa certa e deixe
+                        as peças personalizáveis prontas para venda sob demanda sem sair desta tela.
                     </p>
                 </div>
 
@@ -705,9 +718,9 @@
 
             <div class="summary-strip">
                 <div class="metric-card">
-                    <div class="metric-label">Catalogo</div>
+                    <div class="metric-label">Catálogo</div>
                     <div id="products-total-count" class="metric-value">0</div>
-                    <div class="metric-caption">Pecas e combos cadastrados</div>
+                    <div class="metric-caption">Pe?as e combos cadastrados</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Ativos</div>
@@ -715,9 +728,9 @@
                     <div class="metric-caption">Itens exibidos no site</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-label">Personalizaveis</div>
+                    <div class="metric-label">Personalizáveis</div>
                     <div id="products-custom-count" class="metric-value">0</div>
-                    <div class="metric-caption">Com campo de personalizacao</div>
+                    <div class="metric-caption">Com campo de personalização</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Combos</div>
@@ -727,7 +740,7 @@
                 <div class="metric-card">
                     <div class="metric-label">Sob demanda</div>
                     <div id="products-made-to-order-count" class="metric-value">0</div>
-                    <div class="metric-caption">Pecas feitas apos o pedido</div>
+                    <div class="metric-caption">Peças feitas após o pedido</div>
                 </div>
             </div>
         </header>
@@ -740,7 +753,7 @@
                 </span>
                 <h2 class="section-title font-display">Encontre, filtre e ajuste a vitrine rapidamente.</h2>
                 <p class="section-subtitle">
-                    Use a busca para localizar pecas publicadas, filtre por categoria e acompanhe o tamanho real do acervo sem
+                    Use a busca para localizar peças publicadas, filtre por categoria e acompanhe o tamanho real do acervo sem
                     abrir outra tela.
                 </p>
 
@@ -827,8 +840,8 @@
                 <div id="loading-state" class="loading-shell">
                     <div>
                         <div class="loading-orbit"></div>
-                        <div class="text-lg font-semibold text-[var(--mocha-deep)]">Carregando o catalogo</div>
-                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Buscando pecas, combos e colecoes para montar a vitrine.</p>
+                        <div class="text-lg font-semibold text-[var(--mocha-deep)]">Carregando o catálogo</div>
+                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Buscando peças, combos e coleções para montar a vitrine.</p>
                     </div>
                 </div>
 
@@ -838,7 +851,7 @@
                     <div>
                         <i class="fa-solid fa-box-open text-5xl text-[rgba(95,61,47,0.22)]"></i>
                         <h3 class="mt-5 text-xl font-bold text-[var(--mocha-deep)]">Nada encontrado por aqui.</h3>
-                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Ajuste os filtros ou crie um novo produto para alimentar o catalogo.</p>
+                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Ajuste os filtros ou crie um novo produto para alimentar o catálogo.</p>
                     </div>
                 </div>
             </section>
@@ -856,7 +869,7 @@
                         </div>
                         <h2 id="modal-title" class="modal-title font-display">Crie um produto com tudo no lugar.</h2>
                         <p id="modal-subtitle" class="modal-subtitle">
-                    Defina o posicionamento na vitrine, variacoes por cor, composicao de combo e galeria final antes de publicar.
+                    Defina o posicionamento na vitrine, variações por cor, composição de combo e galeria final antes de publicar.
                         </p>
                     </div>
                     <button type="button" onclick="fecharModalProduto()" class="modal-close" aria-label="Fechar">
@@ -865,8 +878,8 @@
                 </div>
 
                 <div class="modal-tabs">
-                    <button type="button" class="tab-button is-active" data-tab="basic"><i class="fa-solid fa-swatchbook"></i>Informacoes</button>
-                        <button type="button" id="tab-btn-colors" class="tab-button" data-tab="colors"><i class="fa-solid fa-droplet"></i>Cores da peca</button>
+                    <button type="button" class="tab-button is-active" data-tab="basic"><i class="fa-solid fa-swatchbook"></i>Informações</button>
+                        <button type="button" id="tab-btn-colors" class="tab-button" data-tab="colors"><i class="fa-solid fa-droplet"></i>Cores da peça</button>
                     <button type="button" id="tab-btn-combo" class="tab-button hidden" data-tab="combo"><i class="fa-solid fa-layer-group"></i>Montar combo</button>
                     <button type="button" class="tab-button" data-tab="images"><i class="fa-solid fa-images"></i>Imagens</button>
                 </div>
@@ -883,13 +896,13 @@
                                 <label class="stack-field">
                                     <span class="field-label">Tipo de produto</span>
                                     <select id="product-type" onchange="toggleProductType()">
-                                        <option value="standard">Produto padrao (peca unica)</option>
+                                        <option value="standard">Produto padrão (peça única)</option>
                                         <option value="combo">Combo / kit</option>
                                     </select>
                                 </label>
                                 <div class="stack-field">
                                     <span class="field-label">Como ele funciona</span>
-                            <div id="type-description" class="price-preview">Produto fisico com variacoes por cor e producao sob demanda.</div>
+                            <div id="type-description" class="price-preview">Produto físico com variações por cor e produção sob demanda.</div>
                                 </div>
                             </div>
                         </div>
@@ -897,15 +910,15 @@
                         <div class="modal-grid two-up">
                             <div class="modal-panel">
                                 <h3 class="panel-title">Identidade comercial</h3>
-                                <p class="panel-copy">Nome, categoria, colecao e texto da peca do jeito que a cliente ve no site.</p>
+                                <p class="panel-copy">Nome, categoria, coleção e texto da peça do jeito que a cliente vê no site.</p>
                                 <div class="modal-grid">
                                     <label class="stack-field">
                                         <span class="field-label">Nome do produto</span>
                                         <input type="text" id="product-name" required placeholder="Ex: Vestido de linho Areia">
                                     </label>
                                     <label class="stack-field">
-                                        <span class="field-label">Descricao</span>
-                                        <textarea id="product-description" placeholder="Conte materiais, caimento, proposta da peca e destaque o que vende."></textarea>
+                                        <span class="field-label">Descri??o</span>
+                                        <textarea id="product-description" placeholder="Conte materiais, caimento, proposta da peça e destaque o que vende."></textarea>
                                     </label>
                                     <div class="modal-grid two-up">
                                         <label class="stack-field">
@@ -932,20 +945,20 @@
                                             </select>
                                         </label>
                                         <label class="stack-field">
-                                            <span class="field-label">Colecao</span>
-                                            <select id="product-collection"><option value="">Sem colecao</option></select>
+                                            <span class="field-label">Coleção</span>
+                                            <select id="product-collection"><option value="">Sem coleção</option></select>
                                         </label>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="modal-panel">
-                                <h3 class="panel-title">Comercial e posicao</h3>
-                                <p class="panel-copy">Defina preco, desconto, status de exibicao e prioridade dentro da vitrine.</p>
+                                <h3 class="panel-title">Comercial e posição</h3>
+                                <p class="panel-copy">Defina preço, desconto, status de exibição e prioridade dentro da vitrine.</p>
                                 <div class="modal-grid">
                                     <div class="modal-grid two-up">
                                         <label class="stack-field">
-                                            <span class="field-label">Preco (R$)</span>
+                                            <span class="field-label">Preço (R$)</span>
                                             <input type="number" step="0.01" id="product-price" required placeholder="0.00">
                                         </label>
                                         <label class="stack-field">
@@ -976,13 +989,13 @@
                         </div>
 
                         <div id="personalization-settings-card" class="personalization-card">
-                            <h3 class="panel-title">Peca personalizavel</h3>
+                            <h3 class="panel-title">Peça personalizável</h3>
                             <p id="personalization-settings-note" class="panel-copy">
-                                Ative para liberar o campo de personalizacao no site e levar essa informacao ate o pedido no admin.
+                                Ative para liberar o campo de personalização no site e levar essa informação até o pedido no admin.
                             </p>
                             <label class="inline-flex items-center gap-3 text-sm font-semibold text-[var(--mocha-deep)]">
                                 <input type="checkbox" id="product-personalizable" class="h-5 w-5 rounded border-gray-300 text-[var(--gold)]">
-                                Liberar personalizacao para esta peca
+                                Liberar personalização para esta peça
                             </label>
                         </div>
                     </div>
@@ -991,7 +1004,7 @@
                         <div class="modal-grid two-up">
                             <div class="modal-panel">
                                 <h3 class="panel-title">Adicionar nova cor</h3>
-                                <p class="panel-copy">Crie variacoes com nome e tom para a cliente escolher no site.</p>
+                                <p class="panel-copy">Crie variações com nome e tom para a cliente escolher no site.</p>
                                 <div class="modal-grid">
                                     <div class="modal-grid two-up">
                                         <label class="stack-field">
@@ -1004,16 +1017,16 @@
                                         </label>
                                     </div>
                                     <div class="stack-field">
-                                        <span class="field-label">Acao</span>
+                                        <span class="field-label">Ação</span>
                                         <button type="button" onclick="adicionarCor()" class="primary-button"><i class="fa-solid fa-plus"></i>Adicionar cor</button>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="modal-panel">
-                                <h3 class="panel-title">Variacoes ativas</h3>
+                                <h3 class="panel-title">Varia??es ativas</h3>
                                 <p class="panel-copy">Edite nome e tom direto nas linhas abaixo, sem apagar e criar de novo.</p>
-                                <div class="empty-inline">Use o bloco ao lado para iniciar as variacoes deste produto.</div>
+                                <div class="empty-inline">Use o bloco ao lado para iniciar as variações deste produto.</div>
                             </div>
                         </div>
                         <div id="colors-list" class="color-list"></div>
@@ -1022,13 +1035,13 @@
                     <div id="tab-combo" class="tab-panel hidden modal-grid">
                         <div class="combo-help">
                             <span class="section-kicker"><i class="fa-solid fa-link"></i>Montagem inteligente</span>
-                            <h3 class="mt-4 text-xl font-extrabold text-[var(--mocha-deep)]">Monte o combo a partir de pecas ja cadastradas.</h3>
-                            <p class="mt-2 text-sm leading-7 text-[rgba(32,24,20,0.66)]">O cliente escolhe a variante de cada peca na compra. Aqui voce define so a estrutura do conjunto.</p>
+                            <h3 class="mt-4 text-xl font-extrabold text-[var(--mocha-deep)]">Monte o combo a partir de peças já cadastradas.</h3>
+                            <p class="mt-2 text-sm leading-7 text-[rgba(32,24,20,0.66)]">O cliente escolhe a variante de cada peça na compra. Aqui você define só a estrutura do conjunto.</p>
                         </div>
 
                         <div class="modal-panel">
                             <h3 class="panel-title">Buscar componente</h3>
-                            <p class="panel-copy">Digite pelo menos duas letras para localizar a peca que entra no combo.</p>
+                            <p class="panel-copy">Digite pelo menos duas letras para localizar a peça que entra no combo.</p>
                             <div class="component-search-shell">
                                 <label class="field-shell">
                                     <i class="fa-solid fa-magnifying-glass"></i>
@@ -1042,7 +1055,7 @@
                             <div class="flex flex-wrap items-center justify-between gap-4">
                                 <div>
                                     <h3 class="panel-title">Itens do combo</h3>
-                                    <p class="panel-copy mb-0">Controle quantidade de cada item e remova o que nao fizer mais sentido.</p>
+                                    <p class="panel-copy mb-0">Controle quantidade de cada item e remova o que não fizer mais sentido.</p>
                                 </div>
                                 <div class="pill pill-light"><i class="fa-solid fa-boxes-stacked"></i><span id="combo-items-count">0</span> item(ns)</div>
                             </div>
@@ -1055,19 +1068,19 @@
                             <button type="button" onclick="document.getElementById('file-upload').click()" class="upload-tile">
                                 <i class="fa-solid fa-cloud-arrow-up text-2xl text-[var(--gold)]"></i>
                                 <div class="text-sm font-extrabold text-[var(--mocha-deep)]">Fazer upload</div>
-                                <p class="m-0 text-xs text-[rgba(32,24,20,0.58)]">Suba varias imagens de uma vez.</p>
+                                <p class="m-0 text-xs text-[rgba(32,24,20,0.58)]">Suba várias imagens de uma vez.</p>
                                 <input type="file" id="file-upload" accept="image/*" multiple class="hidden" onchange="handleFileUpload(this)">
                             </button>
                             <button type="button" onclick="abrirSeletorGaleria()" class="upload-tile">
                                 <i class="fa-solid fa-images text-2xl text-[var(--gold)]"></i>
                                 <div class="text-sm font-extrabold text-[var(--mocha-deep)]">Escolher da galeria</div>
-                                <p class="m-0 text-xs text-[rgba(32,24,20,0.58)]">Reaproveite fotos ja enviadas.</p>
+                                <p class="m-0 text-xs text-[rgba(32,24,20,0.58)]">Reaproveite fotos já enviadas.</p>
                             </button>
                         </div>
 
                         <div class="modal-panel">
                             <h3 class="panel-title">Ou cole um link direto</h3>
-                            <p class="panel-copy">Use uma URL publica se a imagem ja estiver hospedada.</p>
+                            <p class="panel-copy">Use uma URL pública se a imagem já estiver hospedada.</p>
                             <div class="modal-grid two-up">
                                 <label class="stack-field">
                                     <span class="field-label">URL da imagem</span>
@@ -1084,7 +1097,7 @@
                             <div class="flex flex-wrap items-center justify-between gap-4">
                                 <div>
                                     <h3 class="panel-title">Galeria do produto</h3>
-                                    <p class="panel-copy mb-0">Defina a capa, reordene a narrativa visual e descarte o que nao serve.</p>
+                                    <p class="panel-copy mb-0">Defina a capa, reordene a narrativa visual e descarte o que não serve.</p>
                                 </div>
                                 <div class="pill pill-light"><i class="fa-solid fa-image"></i>A primeira imagem segue como capa</div>
                             </div>
@@ -1163,6 +1176,8 @@
         let comboComponents = [];
         let collectionsMap = {};
         let categoryDefinitions = [];
+        let productsGridRenderToken = 0;
+        let filterProductsTimer = null;
 
         const elementos = {
             productModal: document.getElementById("product-modal"),
@@ -1268,7 +1283,7 @@
 
         function formatCollectionLabel(product) {
             if (!product?.colecaoId) return "Atelier";
-            return collectionsMap[product.colecaoId] || "Colecao";
+            return collectionsMap[product.colecaoId] || "Coleção";
         }
 
         function updateProductSummary(visibleList) {
@@ -1391,7 +1406,10 @@
 
             document.getElementById("product-price").addEventListener("input", atualizarPreviewPreco);
             document.getElementById("product-discount").addEventListener("input", atualizarPreviewPreco);
-            document.getElementById("search-input").addEventListener("input", filtrarProdutos);
+            document.getElementById("search-input").addEventListener("input", () => {
+                clearTimeout(filterProductsTimer);
+                filterProductsTimer = window.setTimeout(filtrarProdutos, 120);
+            });
             document.getElementById("filter-category").addEventListener("change", filtrarProdutos);
             document.getElementById("new-category-name").addEventListener("input", (event) => {
                 const slugInput = document.getElementById("new-category-slug");
@@ -1423,7 +1441,7 @@
         async function carregarColecoes() {
             const snap = await db.collection("colecoes").get();
             const select = document.getElementById("product-collection");
-            select.innerHTML = '<option value="">Sem colecao</option>';
+            select.innerHTML = '<option value="">Sem coleção</option>';
 
             snap.forEach((doc) => {
                 const collection = doc.data();
@@ -1477,7 +1495,7 @@
             nameInput.value = "";
             slugInput.value = "";
             delete slugInput.dataset.touched;
-            mostrarToast("Categoria adicionada ao catalogo.");
+            mostrarToast("Categoria adicionada ao catálogo.");
         };
 
         window.alternarCategoriaCatalogo = async function alternarCategoriaCatalogo(index) {
@@ -1496,7 +1514,7 @@
 
             const productsUsingCategory = produtos.filter((product) => product.categoria === category.slug).length;
             const warning = productsUsingCategory > 0
-                ? ` Essa categoria ainda aparece em ${productsUsingCategory} produto(s) e sera apenas ocultada para nao quebrar o catalogo.`
+                ? ` Essa categoria ainda aparece em ${productsUsingCategory} produto(s) e será apenas ocultada para não quebrar o catálogo.`
                 : "";
 
             if (!window.confirm(`Remover a categoria "${category.nome}"?${warning}`)) return;
@@ -1514,11 +1532,61 @@
             mostrarToast(productsUsingCategory > 0 ? "Categoria ocultada porque ainda esta em uso." : "Categoria removida do painel.");
         };
 
+        function buildProductCardMarkup(product) {
+            const image = Array.isArray(product.imagens) && product.imagens[0]
+                ? product.imagens[0]
+                : "https://placehold.co/900x1080/e8ddcd/6b4a37?text=Sem+imagem";
+
+            const collectionLabel = formatCollectionLabel(product);
+            const categoryLabel = formatCategoryLabel(product.categoria);
+            const description = String(product.descricao || "Sem descrição cadastrada ainda.").trim();
+            const shortDescription = description.length > 92 ? `${description.slice(0, 89)}...` : description;
+            const statusClass = product.status === "active" ? "pill-emerald" : "pill-slate";
+            const statusLabel = product.status === "active" ? "Ativo" : "Inativo";
+            const stockLabel = product.tipo === "combo" ? "Combo" : "Sob demanda";
+            const colorCount = getProductColorCount(product);
+            const extraBadge = product.personalizavel ? '<span class="pill pill-gold"><i class="fa-solid fa-wand-magic-sparkles"></i>Personalizável</span>' : "";
+
+            return `
+                <article class="product-card" onclick="abrirModalProduto('${escapeHtmlAttr(product.id)}')">
+                    <div class="product-card-media">
+                        <img src="${escapeHtmlAttr(image)}" alt="${escapeHtmlAttr(product.nome || "Produto")}" loading="lazy" decoding="async" fetchpriority="low">
+                        <div class="product-card-gradient"></div>
+                        <div class="product-card-top">
+                            <div class="badge-stack">
+                                <span class="pill ${statusClass}">${statusLabel}</span>
+                                ${extraBadge}
+                            </div>
+                            <span class="pill pill-dark">${escapeHtml(stockLabel)}</span>
+                        </div>
+                    </div>
+                    <div class="product-card-body">
+                        <div class="product-card-meta">
+                            <span class="product-tag"><i class="fa-solid fa-tag"></i>${escapeHtml(categoryLabel)}</span>
+                            <span class="product-tag"><i class="fa-solid fa-bookmark"></i>${escapeHtml(collectionLabel)}</span>
+                            ${product.tipo !== "combo" ? `<span class="product-tag"><i class="fa-solid fa-droplet"></i>${colorCount} cor(es)</span>` : ""}
+                        </div>
+                        <h3 class="product-card-title">${escapeHtml(product.nome || "Produto sem nome")}</h3>
+                        <p class="product-card-copy">${escapeHtml(shortDescription)}</p>
+                        <div class="product-card-footer">
+                            <div class="product-price">
+                                <span>${product.tipo === "combo" ? "Preço do combo" : "Preço da peça"}</span>
+                                <strong>R$ ${Number(product.preco || 0).toFixed(2)}</strong>
+                            </div>
+                            <div class="action-button"><i class="fa-solid fa-pen-to-square"></i>Editar</div>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }
+
         function renderizarGrid(lista) {
             const grid = document.getElementById("products-grid");
             const empty = document.getElementById("empty-state");
 
             updateProductSummary(lista);
+            productsGridRenderToken += 1;
+            const renderToken = productsGridRenderToken;
 
             if (!lista.length) {
                 grid.innerHTML = "";
@@ -1527,54 +1595,30 @@
             }
 
             empty.classList.add("hidden");
+            grid.innerHTML = "";
 
-            grid.innerHTML = lista.map((product) => {
-                const image = Array.isArray(product.imagens) && product.imagens[0]
-                    ? product.imagens[0]
-                    : "https://placehold.co/900x1080/e8ddcd/6b4a37?text=Sem+imagem";
+            const chunkSize = lista.length > 24 ? 12 : lista.length;
+            const renderChunk = (startIndex = 0) => {
+                if (renderToken !== productsGridRenderToken) return;
 
-                const collectionLabel = formatCollectionLabel(product);
-                const categoryLabel = formatCategoryLabel(product.categoria);
-                const description = String(product.descricao || "Sem descricao cadastrada ainda.").trim();
-                const shortDescription = description.length > 92 ? `${description.slice(0, 89)}...` : description;
-                const statusClass = product.status === "active" ? "pill-emerald" : "pill-slate";
-                const statusLabel = product.status === "active" ? "Ativo" : "Inativo";
-                const stockLabel = product.tipo === "combo" ? "Combo" : "Sob demanda";
-                const colorCount = getProductColorCount(product);
-                const extraBadge = product.personalizavel ? '<span class="pill pill-gold"><i class="fa-solid fa-wand-magic-sparkles"></i>Personalizavel</span>' : "";
+                const nextChunk = lista
+                    .slice(startIndex, startIndex + chunkSize)
+                    .map((product) => buildProductCardMarkup(product))
+                    .join("");
 
-                return `
-                    <article class="product-card" onclick="abrirModalProduto('${escapeHtmlAttr(product.id)}')">
-                        <div class="product-card-media">
-                            <img src="${escapeHtmlAttr(image)}" alt="${escapeHtmlAttr(product.nome || "Produto")}">
-                            <div class="product-card-gradient"></div>
-                            <div class="product-card-top">
-                                <div class="badge-stack">
-                                    <span class="pill ${statusClass}">${statusLabel}</span>
-                                    ${extraBadge}
-                                </div>
-                                <span class="pill pill-dark">${escapeHtml(stockLabel)}</span>
-                            </div>
-                        </div>
-                            <div class="product-card-body">
-                                <div class="product-card-meta">
-                                    <span class="product-tag"><i class="fa-solid fa-tag"></i>${escapeHtml(categoryLabel)}</span>
-                                    <span class="product-tag"><i class="fa-solid fa-bookmark"></i>${escapeHtml(collectionLabel)}</span>
-                                    ${product.tipo !== "combo" ? `<span class="product-tag"><i class="fa-solid fa-droplet"></i>${colorCount} cor(es)</span>` : ""}
-                                </div>
-                            <h3 class="product-card-title">${escapeHtml(product.nome || "Produto sem nome")}</h3>
-                            <p class="product-card-copy">${escapeHtml(shortDescription)}</p>
-                            <div class="product-card-footer">
-                                <div class="product-price">
-                                    <span>${product.tipo === "combo" ? "Preco do combo" : "Preco da peca"}</span>
-                                    <strong>R$ ${Number(product.preco || 0).toFixed(2)}</strong>
-                                </div>
-                                <div class="action-button"><i class="fa-solid fa-pen-to-square"></i>Editar</div>
-                            </div>
-                        </div>
-                    </article>
-                `;
-            }).join("");
+                grid.insertAdjacentHTML("beforeend", nextChunk);
+
+                const nextIndex = startIndex + chunkSize;
+                if (nextIndex < lista.length) {
+                    if ("requestIdleCallback" in window) {
+                        requestIdleCallback(() => renderChunk(nextIndex), { timeout: 180 });
+                    } else {
+                        requestAnimationFrame(() => renderChunk(nextIndex));
+                    }
+                }
+            };
+
+            renderChunk(0);
         }
 
         function filtrarProdutos() {
@@ -1601,8 +1645,8 @@
             card.classList.toggle("opacity-60", isCombo);
             checkbox.disabled = isCombo;
             note.textContent = isCombo
-                ? "Combos aproveitam a personalizacao de cada peca vinculada. Para liberar um campo proprio, mantenha como produto padrao."
-                : "Ative para liberar o campo de personalizacao no site e levar essa informacao ate o pedido no admin.";
+                ? "Combos aproveitam a personalização de cada peça vinculada. Para liberar um campo próprio, mantenha como produto padrão."
+                : "Ative para liberar o campo de personalização no site e levar essa informação até o pedido no admin.";
         }
 
         window.toggleProductType = function() {
@@ -1620,7 +1664,7 @@
             } else {
                 comboTab.classList.add("hidden");
                 colorsTab.classList.remove("hidden");
-                description.textContent = "Produto fisico com variacoes por cor e producao sob demanda.";
+                description.textContent = "Produto físico com variações por cor e produção sob demanda.";
                 if (activeTab === "combo") switchTab("colors");
             }
 
@@ -1653,7 +1697,7 @@
 
                 return `
                     <div class="component-search-item" onclick="adicionarComponentePorId('${escapeHtmlAttr(product.id)}')">
-                        <img src="${escapeHtmlAttr(thumb)}" alt="${escapeHtmlAttr(product.nome || "Produto")}" class="h-11 w-11 rounded-2xl object-cover">
+                        <img src="${escapeHtmlAttr(thumb)}" alt="${escapeHtmlAttr(product.nome || "Produto")}" class="h-11 w-11 rounded-2xl object-cover" loading="lazy" decoding="async" fetchpriority="low">
                         <div>
                             <div class="font-semibold text-[var(--mocha-deep)]">${escapeHtml(product.nome || "Sem nome")}</div>
                             <div class="text-xs text-[rgba(32,24,20,0.56)]">${escapeHtml(formatCategoryLabel(product.categoria))}</div>
@@ -1719,7 +1763,7 @@
 
             list.innerHTML = comboComponents.map((component, index) => {
                 const image = component.imagem
-                    ? `<img src="${escapeHtmlAttr(component.imagem)}" alt="${escapeHtmlAttr(component.nome || "Componente")}" class="h-12 w-12 rounded-2xl object-cover border border-[rgba(95,61,47,0.08)]">`
+                            ? `<img src="${escapeHtmlAttr(component.imagem)}" alt="${escapeHtmlAttr(component.nome || "Componente")}" class="h-12 w-12 rounded-2xl object-cover border border-[rgba(95,61,47,0.08)]" loading="lazy" decoding="async" fetchpriority="low">`
                     : '<div class="h-12 w-12 rounded-2xl bg-[rgba(95,61,47,0.06)] flex items-center justify-center"><i class="fa-solid fa-shirt text-[rgba(95,61,47,0.38)]"></i></div>';
 
                 return `
@@ -1768,13 +1812,13 @@
                 const product = produtos.find((item) => item.id === productId);
                 if (!product) return;
                 preencherFormularioProduto(product);
-                document.getElementById("modal-title").textContent = "Edite a peca com controle total.";
-                document.getElementById("modal-subtitle").textContent = "Atualize preco, cores, galeria e posicionamento sem sair deste workspace.";
+                document.getElementById("modal-title").textContent = "Edite a peça com controle total.";
+                document.getElementById("modal-subtitle").textContent = "Atualize preço, cores, galeria e posicionamento sem sair deste workspace.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Editando produto';
                 document.getElementById("delete-product-btn").classList.remove("hidden");
             } else {
                 document.getElementById("modal-title").textContent = "Crie um produto com tudo no lugar.";
-                document.getElementById("modal-subtitle").textContent = "Defina o posicionamento na vitrine, cores da peca, composicao de combo e galeria final antes de publicar.";
+                document.getElementById("modal-subtitle").textContent = "Defina o posicionamento na vitrine, cores da peça, composição de combo e galeria final antes de publicar.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pencil-ruler"></i> Novo produto';
                 document.getElementById("delete-product-btn").classList.add("hidden");
             }
@@ -1847,7 +1891,7 @@
             const tipo = document.getElementById("product-type").value;
 
             if (!nome || Number.isNaN(preco)) {
-                alert("Preencha nome e preco.");
+                alert("Preencha nome e preço.");
                 return;
             }
 
@@ -2019,7 +2063,7 @@
                     const item = document.createElement("button");
                     item.type = "button";
                     item.className = "gallery-picker-item";
-                    item.innerHTML = `<img src="${escapeHtmlAttr(image.url)}" alt="Imagem da galeria" loading="lazy">`;
+                    item.innerHTML = `<img src="${escapeHtmlAttr(image.url)}" alt="Imagem da galeria" loading="lazy" decoding="async" fetchpriority="low">`;
                     item.onclick = () => {
                         addImageToSelection(image.url);
                         atualizarPreviewImagensSelecionadas();
@@ -2029,7 +2073,7 @@
                 });
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = '<div class="empty-inline"><div><i class="fa-solid fa-triangle-exclamation text-3xl text-[rgba(95,61,47,0.28)]"></i><p class="mt-4 mb-0 text-sm">Nao foi possivel carregar a galeria.</p></div></div>';
+                grid.innerHTML = '<div class="empty-inline"><div><i class="fa-solid fa-triangle-exclamation text-3xl text-[rgba(95,61,47,0.28)]"></i><p class="mt-4 mb-0 text-sm">Não foi possível carregar a galeria.</p></div></div>';
             }
         };
 
@@ -2053,7 +2097,7 @@
             container.innerHTML = selectedProductImages.map((url, index) => `
                 <div class="imagem-preview">
                     ${index === 0 ? '<div class="image-cover-badge"><i class="fa-solid fa-star"></i>Capa</div>' : ''}
-                    <img src="${escapeHtmlAttr(url)}" alt="Imagem do produto ${index + 1}">
+                    <img src="${escapeHtmlAttr(url)}" alt="Imagem do produto ${index + 1}" loading="lazy" decoding="async" fetchpriority="low">
                     <div class="image-preview-actions">
                         ${index !== 0 ? `<button type="button" class="image-action-btn cover" onclick="definirImagemComoCapa(${index})">Definir capa</button>` : ''}
                         <button type="button" class="image-action-btn" onclick="moverImagemEsquerda(${index})" ${index === 0 ? "disabled" : ""}>&larr;</button>
@@ -2071,9 +2115,9 @@
             const desconto = parseInt(document.getElementById("product-discount").value, 10) || 0;
             const preview = document.getElementById("price-preview");
             if (desconto > 0) {
-                preview.textContent = `Preco final com desconto: R$ ${(preco * (1 - desconto / 100)).toFixed(2)}`;
+                preview.textContent = `Pre?o final com desconto: R$ ${(preco * (1 - desconto / 100)).toFixed(2)}`;
             } else if (preco > 0) {
-                preview.textContent = `Preco base atual: R$ ${preco.toFixed(2)}`;
+                preview.textContent = `Pre?o base atual: R$ ${preco.toFixed(2)}`;
             } else {
                 preview.textContent = "Sem desconto aplicado.";
             }

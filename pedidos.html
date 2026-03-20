@@ -393,7 +393,7 @@
                 const itemCount = Array.isArray(pedido.produtos) ? pedido.produtos.length : 0;
                 const personalized = pedidoTemPersonalizacao(pedido);
                 const combo = pedidoTemCombo(pedido);
-                const payment = escapeHtml(String(pedido.pagamento || 'Pagamento nao informado'));
+                const payment = escapeHtml(String(pedido.pagamento || 'Pagamento não informado'));
 
                 list.innerHTML += `
                     <button onclick="abrirDetalhes('${pedido.id}')" class="order-card w-full p-4 text-left">
@@ -445,7 +445,7 @@
                 const detailParts = [];
                 if (item.tamanho) detailParts.push(`Tam: ${escapeHtml(item.tamanho)}`);
                 if (item.cor?.nome) detailParts.push(`Cor: ${escapeHtml(item.cor.nome)}`);
-                if (item.personalizacao?.texto) detailParts.push(`Personalizacao: ${escapeHtml(item.personalizacao.texto)}`);
+                if (item.personalizacao?.texto) detailParts.push(`Personalização: ${escapeHtml(item.personalizacao.texto)}`);
 
                 const comboHtml = item.isCombo && Array.isArray(item.componentes)
                     ? `
@@ -499,12 +499,12 @@
             const endereco = pedido.cliente?.endereco;
             document.getElementById('modal-endereco').textContent = endereco
                 ? `${endereco.rua || ''}, ${endereco.numero || ''} - ${endereco.cidade || ''} (${endereco.cep || ''})`
-                : 'Nao informado';
+                : 'Não informado';
 
             document.getElementById('modal-payment-summary').textContent = pedido.pagamento
                 ? `${pedido.pagamento}${pedido.parcelas && pedido.parcelas > 1 ? ` • ${pedido.parcelas}x` : ''}`
-                : 'Nao informado';
-            document.getElementById('modal-order-summary').textContent = `${Array.isArray(pedido.produtos) ? pedido.produtos.length : 0} item(ns)${pedidoTemPersonalizacao(pedido) ? ' • com personalizacao' : ''}${pedidoTemCombo(pedido) ? ' • com combo' : ''}`;
+                : 'Não informado';
+            document.getElementById('modal-order-summary').textContent = `${Array.isArray(pedido.produtos) ? pedido.produtos.length : 0} item(ns)${pedidoTemPersonalizacao(pedido) ? ' • com personalização' : ''}${pedidoTemCombo(pedido) ? ' • com combo' : ''}`;
             document.getElementById('modal-total').textContent = formatCurrency(pedido.total);
             document.getElementById('modal-itens').innerHTML = renderizarItensPedido(pedido.produtos);
 
@@ -549,7 +549,7 @@
                     const parts = [`${item.quantity || 1}x ${item.nome || 'Item'}`];
                     if (item.tamanho) parts.push(`Tam: ${item.tamanho}`);
                     if (item.cor?.nome) parts.push(`Cor: ${item.cor.nome}`);
-                    if (item.personalizacao?.texto) parts.push(`Personalizacao: ${item.personalizacao.texto}`);
+                    if (item.personalizacao?.texto) parts.push(`Personalização: ${item.personalizacao.texto}`);
                     return `- ${parts.join(' | ')}`;
                 }).join('\n')
                 : '- Sem itens';

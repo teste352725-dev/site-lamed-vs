@@ -60,6 +60,7 @@ let homeShopFiltersBound = false;
 let shopPageFiltersBound = false;
 let collectionCarouselObserver = null;
 const mountedCollectionCarousels = new Set();
+const pendingCollectionSlides = new Map();
 let siteCategories = [];
 let currentShopFilter = 'all';
 let currentShopSearch = '';
@@ -147,7 +148,7 @@ function renderSidebarCategoryLinks() {
     ).join('');
 
     submenu.innerHTML =         `<a href="#loja" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Loja Completa</a>
-        <a href="#colecoes" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Todas as Colecoes</a>
+        <a href="#colecoes" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Todas as Coleções</a>
         <a href="#/categoria/combo" class="sidebar-link block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50 flex items-center gap-2"><i class="fa-solid fa-star text-[10px] text-purple-400"></i> Combos / Kits</a>
         ${categoryLinks}`;
 
@@ -275,13 +276,12 @@ function renderShopPage(initialFilter = null) {
     const filteredProducts = getShopFilteredProducts();
     if (copy) copy.textContent = `${filteredProducts.length} item(ns) encontrados`;
 
-    if (!filteredProducts.length) {
-        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 text-sm py-10">Nenhuma peca encontrada com esse filtro.</div>';
-        return;
-    }
-
-    grid.innerHTML = '';
-    filteredProducts.forEach((product) => grid.appendChild(criarCardProduto(product)));
+    renderProductsIntoGrid(
+        grid,
+        filteredProducts,
+        '<div class="col-span-full text-center text-gray-400 text-sm py-10">Nenhuma peça encontrada com esse filtro.</div>',
+        16
+    );
 }
 
 function scheduleNonCriticalStorefrontTask(task, delay = 80) {
@@ -295,17 +295,80 @@ function scheduleNonCriticalStorefrontTask(task, delay = 80) {
     window.setTimeout(task, delay);
 }
 
+function scheduleChunkedDomTask(task) {
+    if (typeof task !== 'function') return;
+
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => task(), { timeout: 180 });
+        return;
+    }
+
+    requestAnimationFrame(() => task());
+}
+
+function renderProductsIntoGrid(grid, items, emptyHtml, batchSize = 12) {
+    if (!grid) return;
+
+    const safeItems = Array.isArray(items) ? items : [];
+    const renderToken = String((Number(grid.dataset.renderToken || 0) + 1));
+    grid.dataset.renderToken = renderToken;
+
+    if (!safeItems.length) {
+        grid.innerHTML = emptyHtml;
+        return;
+    }
+
+    grid.innerHTML = '';
+
+    const renderChunk = (startIndex = 0) => {
+        if (grid.dataset.renderToken !== renderToken) return;
+
+        const fragment = document.createDocumentFragment();
+        safeItems.slice(startIndex, startIndex + batchSize).forEach((item) => {
+            fragment.appendChild(criarCardProduto(item));
+        });
+        grid.appendChild(fragment);
+
+        const nextIndex = startIndex + batchSize;
+        if (nextIndex < safeItems.length) {
+            scheduleChunkedDomTask(() => renderChunk(nextIndex));
+        }
+    };
+
+    renderChunk(0);
+}
+
 function resetCollectionCarouselObserver() {
     if (collectionCarouselObserver) {
         collectionCarouselObserver.disconnect();
     }
     collectionCarouselObserver = null;
     mountedCollectionCarousels.clear();
+    pendingCollectionSlides.clear();
+}
+
+function populateCollectionCarousel(splideId) {
+    const payload = pendingCollectionSlides.get(splideId);
+    if (!payload) return;
+
+    const list = payload.section?.querySelector('.splide__list');
+    if (!list || list.childElementCount > 0) return;
+
+    const fragment = document.createDocumentFragment();
+    payload.products.forEach((product) => {
+        const slide = document.createElement('li');
+        slide.className = 'splide__slide';
+        slide.appendChild(criarCardProduto(product));
+        fragment.appendChild(slide);
+    });
+    list.appendChild(fragment);
+    pendingCollectionSlides.delete(splideId);
 }
 
 function mountCollectionCarousel(splideId) {
     if (!splideId || mountedCollectionCarousels.has(splideId) || typeof Splide === 'undefined') return;
 
+    populateCollectionCarousel(splideId);
     mountedCollectionCarousels.add(splideId);
     new Splide(`#${splideId}`, {
         type: 'slide',
@@ -365,9 +428,8 @@ async function carregarDadosLoja() {
         renderHomeShopFilters();
         setupHomeShopFilters();
         renderHomeShopGrid();
-        renderShopPage();
 
-        // Garante que a rota correta seja carregada apÃ³s ter os dados
+        // Garante que a rota correta seja carregada ap?s ter os dados
         handleRouting();
 
         scheduleNonCriticalStorefrontTask(() => {
@@ -403,12 +465,9 @@ function renderizarSecoesColecoes() {
         `;
         container.appendChild(section);
         
-        const list = section.querySelector('.splide__list');
-        prods.slice(0, 8).forEach(peca => {
-            const slide = document.createElement('li');
-            slide.className = 'splide__slide';
-            slide.appendChild(criarCardProduto(peca));
-            list.appendChild(slide);
+        pendingCollectionSlides.set(splideId, {
+            section,
+            products: prods.slice(0, 8)
         });
         
         if (prods.length > 0) {
@@ -432,13 +491,16 @@ function popularPreviewColecao() {
     grid.innerHTML = '';
 
     if (destaques.length === 0) {
-        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peÃ§a em destaque no momento.</div>';
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peça em destaque no momento.</div>';
         return;
     }
 
-    destaques.forEach(peca => {
-        grid.appendChild(criarCardProduto(peca));
-    });
+    renderProductsIntoGrid(
+        grid,
+        destaques,
+        '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peça em destaque no momento.</div>',
+        8
+    );
 }
 
 function setupHomeShopFilters() {
@@ -516,7 +578,7 @@ function renderHomeShopGrid() {
 
     grid.innerHTML = '';
     if (pageItems.length === 0) {
-        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peca encontrada para este filtro.</div>';
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">Nenhuma peça encontrada para este filtro.</div>';
     } else {
         pageItems.forEach((peca) => grid.appendChild(criarCardProduto(peca)));
     }
@@ -531,7 +593,7 @@ function renderizarListaDeColecoes() {
     if (!grid) return;
     grid.innerHTML = '';
     if (activeCollections.length === 0) {
-        grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-20">Nenhuma coleÃ§Ã£o ativa no momento.</p>';
+        grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-20">Nenhuma coleção ativa no momento.</p>';
         return;
     }
     activeCollections.forEach(col => {
@@ -541,11 +603,11 @@ function renderizarListaDeColecoes() {
         card.className = "group cursor-pointer";
         card.innerHTML = `
             <div class="relative overflow-hidden aspect-[4/3] mb-4 bg-gray-100">
-                <img src="${img}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async">
+                <img src="${img}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async" fetchpriority="low">
                 <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
                 <div class="absolute bottom-6 left-6 text-white">
                     <h3 class="serif text-3xl mb-1">${col.nome}</h3>
-                    <p class="text-xs uppercase tracking-widest opacity-90">${count} PeÃ§as</p>
+                    <p class="text-xs uppercase tracking-widest opacity-90">${count} Peças</p>
                 </div>
             </div>
         `;
@@ -562,8 +624,7 @@ function renderizarGridColecao(collectionId) {
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
     const prods = products.filter(p => p.colecaoId === collectionId);
-    if (prods.length === 0) { grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peÃ§a.</p>'; return; }
-    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
+    renderProductsIntoGrid(grid, prods, '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>');
 }
 
 function renderizarGridCategoria(catSlug) {
@@ -580,25 +641,24 @@ function renderizarGridCategoria(catSlug) {
         'anel_guardanapo': 'Anel de Guardanapo',
         'trilho_velas': 'Trilho para Velas',
         'caminho_mesa': 'Caminho de Mesa',
-        'capa_de_matza': 'Capa de MatzÃ¡ Bordada'
+        'capa_de_matza': 'Capa de Matzá Bordada'
     };
 
     if (title) title.textContent = nomesCategorias[catSlug] || catSlug.toUpperCase();
 
     const prods = products.filter(p => {
         if (catSlug === 'combo') {
-            // Filtro especÃ­fico: Produto Ã© tipo Combo E Ã© da categoria Mesa Posta (ou subcategorias)
+            // Filtro espec?fico: Produto ? tipo Combo E ? da categoria Mesa Posta (ou subcategorias)
             return p.tipo === 'combo' && checkIsMesaPosta(p.categoria);
         }
         return p.categoria === catSlug;
     });
 
-    if (prods.length === 0) { 
-        grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peÃ§a encontrada nesta categoria.</p>'; 
-        return; 
-    }
-    
-    prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
+    renderProductsIntoGrid(
+        grid,
+        prods,
+        '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça encontrada nesta categoria.</p>'
+    );
 }
 
 function criarCardProduto(peca) {
@@ -626,7 +686,7 @@ function criarCardProduto(peca) {
         ? '<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">COMBO</div>' 
         : (peca.desconto > 0 ? `<div class="absolute top-2 left-2 bg-[--cor-marrom-cta] text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow">-${peca.desconto}%</div>` : '');
     const customBadge = peca.personalizavel
-        ? '<div class="absolute top-2 right-2 bg-white/95 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow text-[--cor-marrom-cta]">Personalizavel</div>'
+        ? '<div class="absolute top-2 right-2 bg-white/95 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shadow text-[--cor-marrom-cta]">Personalizável</div>'
         : '';
 
     const isMesa = checkIsMesaPosta(peca.categoria);
@@ -634,8 +694,8 @@ function criarCardProduto(peca) {
 
     card.innerHTML = `
         <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">
-             <img src="${imgPrincipal}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async">
-             ${shouldRenderHoverImage ? `<img src="${imgHover}" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async">` : ''}
+             <img src="${imgPrincipal}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">
+             ${shouldRenderHoverImage ? `<img src="${imgHover}" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">` : ''}
              ${badge}
              ${customBadge}
              <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
@@ -696,12 +756,12 @@ function showProductDetail(id) {
             sizeSection.querySelector('.size-selector')?.classList.add('hidden');
             sizeSection.querySelector('.flex.justify-between')?.classList.add('hidden');
         }
-        selectedSize = 'Ãšnico';
+        selectedSize = 'Único';
         renderColors();
         const warningDiv = document.createElement('div');
         warningDiv.id = 'mesa-posta-warning';
         warningDiv.className = 'bg-orange-50 border border-orange-100 text-[#643f21] text-xs p-3 rounded mb-4 mt-2 flex gap-2 items-start';
-        warningDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation mt-0.5 text-[#A58A5C]"></i><span><strong>AtenÃ§Ã£o:</strong> Valor referente a <strong>1 unidade</strong> (peÃ§a avulsa).</span>`;
+        warningDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation mt-0.5 text-[#A58A5C]"></i><span><strong>Atenção:</strong> Valor referente a <strong>1 unidade</strong> (peça avulsa).</span>`;
         document.getElementById('add-to-cart-button').parentElement.insertBefore(warningDiv, document.getElementById('add-to-cart-button'));
     } else {
         if(sizeSection) {
@@ -735,21 +795,21 @@ if (sizeGuideContainer) {
             <div class="space-y-4 text-sm text-[--cor-texto]">
                 <div class="border-b pb-2">
                     <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
-                        <i class="fa-solid fa-leaf"></i> Guia de Medidas â€“ Guardanapo
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas - Guardanapo
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">ProduÃ§Ã£o artesanal. Pequenas variaÃ§Ãµes de 1â€“2 cm podem ocorrer.</p>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1-2 cm podem ocorrer.</p>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸ§µ Guardanapos</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Guardanapos</h5>
                     <ul class="text-xs space-y-1">
                         <li><strong>Tamanho:</strong> 42,5 x 42,5 cm</li>
-                        <li><strong>Material:</strong> 100% algodÃ£o</li>
+                        <li><strong>Material:</strong> 100% algodão</li>
                     </ul>
                 </div>
 
                 <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
-                    <p><strong>Nota:</strong> Por se tratar de produÃ§Ã£o artesanal, as peÃ§as podem apresentar pequenas variaÃ§Ãµes nas medidas.</p>
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
                 </div>
             </div>
         `,
@@ -758,29 +818,29 @@ if (sizeGuideContainer) {
             <div class="space-y-4 text-sm text-[--cor-texto]">
                 <div class="border-b pb-2">
                     <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
-                        <i class="fa-solid fa-leaf"></i> Guia de Medidas â€“ Lugar Americano
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas - Lugar Americano
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">ProduÃ§Ã£o artesanal. Pequenas variaÃ§Ãµes de 1â€“2 cm podem ocorrer.</p>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1-2 cm podem ocorrer.</p>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸŸ¦ Lugares Americanos</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Lugares americanos</h5>
                     <div class="space-y-3 text-xs">
                         <div>
-                            <p class="font-bold">Brancos, Pretos e PÃ©rolas</p>
+                            <p class="font-bold">Brancos, Pretos e Pérolas</p>
                             <p><strong>Medidas:</strong> 47 x 34 cm</p>
-                            <p class="text-gray-500"><strong>ComposiÃ§Ã£o:</strong> 98% algodÃ£o, 2% elastano</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 98% algodão, 2% elastano</p>
                         </div>
                         <div>
                             <p class="font-bold">Rosa</p>
                             <p><strong>Medidas:</strong> 44 x 33 cm</p>
-                            <p class="text-gray-500"><strong>ComposiÃ§Ã£o:</strong> 100% algodÃ£o</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 100% algodão</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
-                    <p><strong>Nota:</strong> Por se tratar de produÃ§Ã£o artesanal, as peÃ§as podem apresentar pequenas variaÃ§Ãµes nas medidas.</p>
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
                 </div>
             </div>
         `,
@@ -789,21 +849,21 @@ if (sizeGuideContainer) {
             <div class="space-y-4 text-sm text-[--cor-texto]">
                 <div class="border-b pb-2">
                     <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
-                        <i class="fa-solid fa-leaf"></i> Guia de Medidas â€“ Trilho de Velas
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas - Trilho de Velas
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">ProduÃ§Ã£o artesanal. Pequenas variaÃ§Ãµes de 1â€“2 cm podem ocorrer.</p>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1-2 cm podem ocorrer.</p>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸ•¯ Trilhos de Velas</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Trilhos de velas</h5>
                     <ul class="text-xs space-y-1">
                         <li><strong>Medidas:</strong> 47 x 23 cm</li>
-                        <li><strong>ComposiÃ§Ã£o:</strong> 98% algodÃ£o, 2% elastano</li>
+                        <li><strong>Composição:</strong> 98% algodão, 2% elastano</li>
                     </ul>
                 </div>
 
                 <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
-                    <p><strong>Nota:</strong> Por se tratar de produÃ§Ã£o artesanal, as peÃ§as podem apresentar pequenas variaÃ§Ãµes nas medidas.</p>
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
                 </div>
             </div>
         `,
@@ -812,13 +872,13 @@ if (sizeGuideContainer) {
             <div class="space-y-4 text-sm text-[--cor-texto]">
                 <div class="border-b pb-2">
                     <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
-                        <i class="fa-solid fa-leaf"></i> Guia de Medidas â€“ Caminho de Mesa
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas - Caminho de Mesa
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">ProduÃ§Ã£o artesanal. Pequenas variaÃ§Ãµes de 1â€“2 cm podem ocorrer.</p>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1-2 cm podem ocorrer.</p>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸ•¯ Caminhos de Mesa</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Caminhos de mesa</h5>
                     <div class="space-y-3 text-xs">
                         <div>
                             <p class="font-bold">Tamanho P</p>
@@ -832,7 +892,7 @@ if (sizeGuideContainer) {
                 </div>
 
                 <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
-                    <p><strong>Nota:</strong> Por se tratar de produÃ§Ã£o artesanal, as peÃ§as podem apresentar pequenas variaÃ§Ãµes nas medidas.</p>
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
                 </div>
             </div>
         `,
@@ -841,20 +901,20 @@ if (sizeGuideContainer) {
             <div class="space-y-4 text-sm text-[--cor-texto]">
                 <div class="border-b pb-2">
                     <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
-                        <i class="fa-solid fa-leaf"></i> Guia de Medidas â€“ Capa de MatzÃ¡
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas - Capa de Matzá
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">ProduÃ§Ã£o artesanal. Pequenas variaÃ§Ãµes de 1â€“2 cm podem ocorrer.</p>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1-2 cm podem ocorrer.</p>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸž Capa de MatzÃ¡</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Capa de Matzá</h5>
                     <ul class="text-xs space-y-1">
                         <li><strong>Medidas:</strong> 21 x 21 cm</li>
                     </ul>
                 </div>
 
                 <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
-                    <p><strong>Nota:</strong> Por se tratar de produÃ§Ã£o artesanal, as peÃ§as podem apresentar pequenas variaÃ§Ãµes nas medidas.</p>
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
                 </div>
             </div>
         `,
@@ -863,45 +923,45 @@ if (sizeGuideContainer) {
             <div class="space-y-4 text-sm text-[--cor-texto]">
                 <div class="border-b pb-2">
                     <h4 class="font-bold text-[--cor-marrom-cta] flex items-center gap-2">
-                        <i class="fa-solid fa-leaf"></i> Guia de Medidas â€“ Mesa Posta
+                        <i class="fa-solid fa-leaf"></i> Guia de Medidas - Mesa Posta
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">ProduÃ§Ã£o artesanal. Pequenas variaÃ§Ãµes de 1â€“2 cm podem ocorrer.</p>
+                    <p class="text-xs text-gray-500 mt-1">Produção artesanal. Pequenas variações de 1-2 cm podem ocorrer.</p>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸ§µ Guardanapos</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Guardanapos</h5>
                     <ul class="text-xs space-y-1">
                         <li><strong>Tamanho:</strong> 42,5 x 42,5 cm</li>
-                        <li><strong>Material:</strong> 100% algodÃ£o</li>
+                        <li><strong>Material:</strong> 100% algodão</li>
                     </ul>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸŸ¦ Lugares Americanos</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Lugares americanos</h5>
                     <div class="space-y-3 text-xs">
                         <div>
-                            <p class="font-bold">Brancos, Pretos e PÃ©rolas</p>
+                            <p class="font-bold">Brancos, Pretos e Pérolas</p>
                             <p><strong>Medidas:</strong> 47 x 34 cm</p>
-                            <p class="text-gray-500"><strong>ComposiÃ§Ã£o:</strong> 98% algodÃ£o, 2% elastano</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 98% algodão, 2% elastano</p>
                         </div>
                         <div>
                             <p class="font-bold">Rosa</p>
                             <p><strong>Medidas:</strong> 44 x 33 cm</p>
-                            <p class="text-gray-500"><strong>ComposiÃ§Ã£o:</strong> 100% algodÃ£o</p>
+                            <p class="text-gray-500"><strong>Composição:</strong> 100% algodão</p>
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸ•¯ Trilhos de Velas</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Trilhos de velas</h5>
                     <ul class="text-xs space-y-1">
                         <li><strong>Medidas:</strong> 47 x 23 cm</li>
-                        <li><strong>ComposiÃ§Ã£o:</strong> 98% algodÃ£o, 2% elastano</li>
+                        <li><strong>Composição:</strong> 98% algodão, 2% elastano</li>
                     </ul>
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸ•¯ Caminhos de Mesa</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Caminhos de mesa</h5>
                     <div class="space-y-3 text-xs">
                         <div>
                             <p class="font-bold">Tamanho P</p>
@@ -915,14 +975,14 @@ if (sizeGuideContainer) {
                 </div>
 
                 <div>
-                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">ðŸž Capa de MatzÃ¡</h5>
+                    <h5 class="font-bold text-xs uppercase tracking-wider mb-1">Capa de Matzá</h5>
                     <ul class="text-xs space-y-1">
                         <li><strong>Medidas:</strong> 21 x 21 cm</li>
                     </ul>
                 </div>
 
                 <div class="bg-gray-50 p-2 rounded text-[10px] text-gray-500">
-                    <p><strong>Nota:</strong> Por se tratar de produÃ§Ã£o artesanal, as peÃ§as podem apresentar pequenas variaÃ§Ãµes nas medidas.</p>
+                    <p><strong>Nota:</strong> Por se tratar de produção artesanal, as peças podem apresentar pequenas variações nas medidas.</p>
                 </div>
             </div>
         `
@@ -1003,9 +1063,9 @@ function renderComboSelectors() {
             });
             colorSection.appendChild(colorsGrid);
         } else {
-            colorSection.innerHTML = `<p class="text-xs text-gray-400 italic">Cor Ãºnica / PadrÃ£o</p>`;
+            colorSection.innerHTML = `<p class="text-xs text-gray-400 italic">Cor única / Padrão</p>`;
             if (!comboSelections[idx]) comboSelections[idx] = {};
-            comboSelections[idx].cor = { nome: 'PadrÃ£o', hex: '#000' };
+            comboSelections[idx].cor = { nome: 'Padrão', hex: '#000' };
         }
         compDiv.appendChild(colorSection);
 
@@ -1029,7 +1089,7 @@ function renderComboSelectors() {
             compDiv.appendChild(sizeSection);
         } else {
              if (!comboSelections[idx]) comboSelections[idx] = {};
-             comboSelections[idx].tamanho = 'Ãšnico';
+             comboSelections[idx].tamanho = 'Único';
         }
 
         container.appendChild(compDiv);
@@ -1119,7 +1179,7 @@ function renderPersonalizationSection() {
     section.className = 'rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-3';
     section.innerHTML = `
         <div>
-            <p class="text-xs font-bold uppercase tracking-[0.22em] text-amber-900">Personalizacao da peca</p>
+                <p class="text-xs font-bold uppercase tracking-[0.22em] text-amber-900">Personalização da peça</p>
             <p class="mt-1 text-xs leading-5 text-amber-800">Digite nome, iniciais ou instrucoes que precisam acompanhar o pedido.</p>
         </div>
         <div class="space-y-3">
@@ -1153,7 +1213,7 @@ function renderRecommendations(current) {
     if (suggestions.length > 0) {
         const title = document.createElement('h3');
         title.className = "serif text-2xl text-center mt-12 mb-6 text-[--cor-texto]";
-        title.textContent = "VocÃª tambÃ©m pode gostar";
+        title.textContent = "Você também pode gostar";
         container.appendChild(title);
         const grid = document.createElement('div');
         grid.className = "grid grid-cols-2 md:grid-cols-4 gap-4";
@@ -1168,15 +1228,19 @@ function setupSplideCarousel() {
 
     const mainList = document.getElementById('main-carousel-list');
     const thumbList = document.getElementById('thumbnail-carousel-list');
-    mainList.innerHTML = ''; thumbList.innerHTML = '';
+    const mainSlides = [];
+    const thumbSlides = [];
     
     const images = getProductImages(currentProduct);
     images.forEach((img, index) => {
         const loadingMode = index === 0 ? 'eager' : 'lazy';
         const fetchPriority = index === 0 ? 'high' : 'low';
-        mainList.innerHTML += `<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" class="h-full w-auto object-contain" loading="${loadingMode}" decoding="async" fetchpriority="${fetchPriority}"></li>`;
-        thumbList.innerHTML += `<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer" loading="lazy" decoding="async"></li>`;
+        mainSlides.push(`<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" class="h-full w-auto object-contain" loading="${loadingMode}" decoding="async" fetchpriority="${fetchPriority}"></li>`);
+        thumbSlides.push(`<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer" loading="lazy" decoding="async" fetchpriority="low"></li>`);
     });
+
+    mainList.innerHTML = mainSlides.join('');
+    thumbList.innerHTML = thumbSlides.join('');
 
     mainSplideInstance = new Splide('#main-carousel', { type: 'fade', rewind: true, pagination: false, arrows: true });
     thumbSplideInstance = new Splide('#thumbnail-carousel', { fixedWidth: 60, fixedHeight: 60, gap: 10, rewind: true, pagination: false, isNavigation: true, arrows: false });
@@ -1224,10 +1288,10 @@ function updateAddToCartButton() {
     if (canAdd) {
         btn.disabled = false;
         btn.classList.remove('bg-gray-400');
-        btn.textContent = currentProduct.personalizavel ? "ADICIONAR PECA PERSONALIZADA" : "ADICIONAR A SACOLA";
+    btn.textContent = currentProduct.personalizavel ? "ADICIONAR PEÇA PERSONALIZADA" : "ADICIONAR À SACOLA";
     } else {
         btn.disabled = true; 
-        btn.textContent = isCombo ? "Selecione opÃ§Ãµes de TODOS os itens" : "Selecione OpÃ§Ãµes";
+        btn.textContent = isCombo ? "Selecione opções de TODOS os itens" : "Selecione Opções";
         btn.classList.add('bg-gray-400');
         btn.classList.remove('hover:bg-[#4a2e18]');
     }
