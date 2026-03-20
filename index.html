@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="lamed-api-base-url" content="">
     <title>Laméd vs | Alfaiataria e Casa</title>
     <meta name="description" content="Laméd vs | Criações em fibras naturais. Peças atemporais que unem elegância, bem-estar e propósito.">
 
@@ -422,7 +423,7 @@
                     </p>
                     <p class="mb-2">Nossas peças são feitas sob demanda com muito carinho. Por isso, podem levar alguns dias para serem produzidas.</p>
                     <p id="shipping-cost-msg" class="font-medium text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
-                        <i class="fa-solid fa-truck-fast"></i> O frete é calculado e pago diretamente no WhatsApp.
+                        <i class="fa-solid fa-truck-fast"></i> Digite seu CEP para calcular o frete automaticamente.
                     </p>
                 </div>
 
@@ -441,6 +442,19 @@
                 </div>
                 <input type="text" name="rua" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Endereço (Rua)" required>
                 <input type="text" name="numero" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Número e Complemento" required>
+
+                <div class="rounded-2xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Frete automático</p>
+                            <p id="shipping-quote-status" class="mt-1 text-sm text-gray-500">Informe o CEP para ver as opções do Melhor Envio.</p>
+                        </div>
+                        <button type="button" id="quote-shipping-btn" class="rounded-full border border-[#D8C9B8] px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-[--cor-marrom-cta] transition hover:bg-[#F3EEE7]">
+                            Calcular
+                        </button>
+                    </div>
+                    <div id="shipping-options" class="mt-4 space-y-2"></div>
+                </div>
 
                 <!-- Campos de Pagamento -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Pagamento</h3>
@@ -465,7 +479,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-green-600 text-white py-4 rounded text-sm font-bold uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
+                <button type="submit" id="checkout-submit-btn" class="w-full bg-green-600 text-white py-4 rounded text-sm font-bold uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
                     <i class="fa-brands fa-whatsapp"></i> Enviar Pedido
                 </button>
             </form>

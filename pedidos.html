@@ -201,7 +201,7 @@
                     </div>
                 </div>
 
-                <div class="grid md:grid-cols-3 gap-4">
+                <div class="grid md:grid-cols-4 gap-4">
                     <div class="surface-card p-4">
                         <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Pagamento</p>
                         <p id="modal-payment-summary" class="mt-3 text-sm font-medium text-gray-800">-</p>
@@ -209,6 +209,10 @@
                     <div class="surface-card p-4">
                         <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Resumo rapido</p>
                         <p id="modal-order-summary" class="mt-3 text-sm font-medium text-gray-800">-</p>
+                    </div>
+                    <div class="surface-card p-4">
+                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Frete</p>
+                        <p id="modal-shipping-summary" class="mt-3 text-sm font-medium text-gray-800">-</p>
                     </div>
                     <div class="surface-card p-4">
                         <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Total</p>
@@ -361,6 +365,8 @@
                     pedido.cliente?.telefone,
                     pedido.cliente?.email,
                     pedido.pagamento,
+                    pedido.frete?.name,
+                    pedido.frete?.company,
                     ...(Array.isArray(pedido.produtos)
                         ? pedido.produtos.flatMap((item) => [item.nome, item.personalizacao?.texto, item.personalizacao?.observacoes])
                         : [])
@@ -505,6 +511,9 @@
                 ? `${pedido.pagamento}${pedido.parcelas && pedido.parcelas > 1 ? ` • ${pedido.parcelas}x` : ''}`
                 : 'Não informado';
             document.getElementById('modal-order-summary').textContent = `${Array.isArray(pedido.produtos) ? pedido.produtos.length : 0} item(ns)${pedidoTemPersonalizacao(pedido) ? ' • com personalização' : ''}${pedidoTemCombo(pedido) ? ' • com combo' : ''}`;
+            document.getElementById('modal-shipping-summary').textContent = pedido.frete?.name
+                ? `${pedido.frete.company || 'Entrega'} • ${pedido.frete.name}${pedido.frete.deliveryTime ? ` • ${pedido.frete.deliveryTime} dia(s)` : ''}${Number.isFinite(Number(pedido.frete.price)) ? ` • ${formatCurrency(Number(pedido.frete.price))}` : ''}`
+                : 'Não informado';
             document.getElementById('modal-total').textContent = formatCurrency(pedido.total);
             document.getElementById('modal-itens').innerHTML = renderizarItensPedido(pedido.produtos);
 
@@ -559,6 +568,7 @@
                 `Cliente: ${pedido.cliente?.nome || '-'}`,
                 `Telefone: ${pedido.cliente?.telefone || '-'}`,
                 `Pagamento: ${pedido.pagamento || '-'}`,
+                `Frete: ${pedido.frete?.name ? `${pedido.frete.company || 'Entrega'} • ${pedido.frete.name} • ${formatCurrency(Number(pedido.frete.price || 0))}` : '-'}`,
                 `Total: ${formatCurrency(pedido.total)}`,
                 '',
                 'Itens:',

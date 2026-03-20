@@ -56,6 +56,53 @@ service cloud.firestore {
         ajustes.freeShipping is bool;
     }
 
+    function validFrete(frete) {
+      return frete is map &&
+        frete.keys().hasAll([
+          'serviceId',
+          'serviceCode',
+          'name',
+          'company',
+          'price',
+          'originalPrice',
+          'deliveryTime',
+          'quotedAt',
+          'fromPostalCode',
+          'toPostalCode',
+          'freeShippingApplied'
+        ]) &&
+        frete.keys().hasOnly([
+          'serviceId',
+          'serviceCode',
+          'name',
+          'company',
+          'price',
+          'originalPrice',
+          'deliveryTime',
+          'quotedAt',
+          'fromPostalCode',
+          'toPostalCode',
+          'freeShippingApplied'
+        ]) &&
+        validString(frete.serviceId, 1, 120) &&
+        validString(frete.serviceCode, 1, 120) &&
+        validString(frete.name, 1, 120) &&
+        validString(frete.company, 1, 80) &&
+        frete.price is number &&
+        frete.price >= 0 &&
+        frete.price <= 100000 &&
+        frete.originalPrice is number &&
+        frete.originalPrice >= frete.price &&
+        frete.originalPrice <= 100000 &&
+        frete.deliveryTime is int &&
+        frete.deliveryTime >= 1 &&
+        frete.deliveryTime <= 90 &&
+        validString(frete.quotedAt, 10, 40) &&
+        validString(frete.fromPostalCode, 8, 12) &&
+        validString(frete.toPostalCode, 8, 12) &&
+        frete.freeShippingApplied is bool;
+    }
+
     function validPagamento(pagamento, parcelas) {
       return (
         pagamento == 'PIX' &&
@@ -75,6 +122,7 @@ service cloud.firestore {
           'produtos',
           'subtotal',
           'total',
+          'frete',
           'ajustes',
           'data',
           'status',
@@ -88,6 +136,7 @@ service cloud.firestore {
           'produtos',
           'subtotal',
           'total',
+          'frete',
           'ajustes',
           'data',
           'status',
@@ -106,6 +155,7 @@ service cloud.firestore {
         request.resource.data.total is number &&
         request.resource.data.total >= 0 &&
         request.resource.data.total <= 100000 &&
+        validFrete(request.resource.data.frete) &&
         validAjustes(request.resource.data.ajustes) &&
         request.resource.data.status == 'pendente' &&
         request.resource.data.estoque_baixado == false &&

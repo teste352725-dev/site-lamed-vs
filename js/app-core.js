@@ -33,6 +33,7 @@ const TAXA_JUROS = 0.0549;
 let currentHomeFilter = 'all';
 let currentHomePage = 1;
 const HOME_PAGE_SIZE = 10;
+const API_BASE_URL = resolveApiBaseUrl();
 
 // Controle Carrossel
 let mainSplideInstance = null;
@@ -72,6 +73,12 @@ const elements = {
     checkoutSummary: document.getElementById('checkout-summary'),
     checkoutTotal: document.getElementById('checkout-total'),
     checkoutCepInput: document.getElementById('checkout-cep'),
+    checkoutSubmitButton: document.getElementById('checkout-submit-btn'),
+    shippingMessageBox: document.getElementById('shipping-message-box'),
+    shippingCostMsg: document.getElementById('shipping-cost-msg'),
+    shippingQuoteStatus: document.getElementById('shipping-quote-status'),
+    shippingOptions: document.getElementById('shipping-options'),
+    shippingCalculateBtn: document.getElementById('quote-shipping-btn'),
 
     // P?ginas
     collectionsContainer: document.getElementById('collections-container'),
@@ -153,6 +160,7 @@ function init() {
     updateCartUI(); 
     carregarDadosLoja(); 
     setupEventListeners();
+    if (typeof setupShippingQuoteInteractions === 'function') setupShippingQuoteInteractions();
 
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
@@ -360,11 +368,89 @@ function parseCurrencyText(value) {
     return roundCurrency(parseFloat(String(value ?? '').replace(/[^\d,.-]/g, '').replace(',', '.')) || 0);
 }
 
+function normalizePostalCode(value) {
+    return String(value ?? '').replace(/\D/g, '').slice(0, 8);
+}
+
+function formatPostalCode(value) {
+    const digits = normalizePostalCode(value);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+function resolveApiBaseUrl() {
+    const configured = document.querySelector('meta[name="lamed-api-base-url"]')?.getAttribute('content')?.trim();
+    if (configured) return configured.replace(/\/+$/, '');
+
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3001';
+    }
+
+    return '';
+}
+
+function buildBackendUrl(pathname) {
+    const safePath = String(pathname || '').startsWith('/') ? pathname : `/${pathname || ''}`;
+    return API_BASE_URL ? `${API_BASE_URL}${safePath}` : safePath;
+}
+
 function sanitizeHexColor(value) {
     const raw = String(value ?? '').trim();
     if (!raw) return '#000000';
     const normalized = raw.startsWith('#') ? raw : `#${raw}`;
     return /^#[0-9a-fA-F]{3,8}$/.test(normalized) ? normalized : '#000000';
+}
+
+function normalizeShippingProfile(profile) {
+    if (!profile || typeof profile !== 'object') return null;
+
+    const peso = roundCurrency(Number(profile.peso));
+    const largura = Math.max(1, parseInt(profile.largura, 10) || 0);
+    const altura = Math.max(1, parseInt(profile.altura, 10) || 0);
+    const comprimento = Math.max(1, parseInt(profile.comprimento, 10) || 0);
+
+    if (!Number.isFinite(peso) || peso <= 0 || !largura || !altura || !comprimento) {
+        return null;
+    }
+
+    return {
+        peso: Math.round((peso + Number.EPSILON) * 1000) / 1000,
+        largura,
+        altura,
+        comprimento
+    };
+}
+
+function normalizeShippingSelection(selection) {
+    if (!selection || typeof selection !== 'object') return null;
+
+    const id = sanitizePlainText(selection.id || selection.serviceCode || selection.serviceId, 120);
+    const serviceId = sanitizePlainText(selection.serviceId || selection.id, 120);
+    const serviceCode = sanitizePlainText(selection.serviceCode || selection.id, 120);
+    const name = sanitizePlainText(selection.name, 120);
+    const company = sanitizePlainText(selection.company, 80);
+    const price = roundCurrency(Number(selection.price));
+    const originalPrice = roundCurrency(Number(selection.originalPrice ?? selection.price));
+    const deliveryTime = Math.max(1, parseInt(selection.deliveryTime, 10) || 0);
+    const fromPostalCode = normalizePostalCode(selection.fromPostalCode);
+    const toPostalCode = normalizePostalCode(selection.toPostalCode);
+
+    if (!id || !serviceId || !serviceCode || !name || !company || !Number.isFinite(price) || price < 0 || !Number.isFinite(originalPrice) || originalPrice < 0 || deliveryTime < 1) {
+        return null;
+    }
+
+    return {
+        id,
+        serviceId,
+        serviceCode,
+        name,
+        company,
+        price,
+        originalPrice,
+        deliveryTime,
+        fromPostalCode,
+        toPostalCode
+    };
 }
 
 function normalizeColorSelection(color) {
@@ -435,9 +521,11 @@ function sanitizeCartItem(item) {
     return {
         cartId,
         id: sanitizePlainText(item.id, 120),
+        categoria: sanitizePlainText(item.categoria, 40),
         nome,
         preco,
         imagem: normalizeUrl(item.imagem),
+        frete: normalizeShippingProfile(item.frete),
         tamanho: sanitizePlainText(item.tamanho, 20),
         cor: normalizeColorSelection(item.cor),
         quantity,
@@ -479,7 +567,7 @@ function getDiscountedProductPrice(product) {
     return roundCurrency(price * (1 - discount / 100));
 }
 
-function calculateCheckoutTotals(cartItems, pagamento, parcelas, cep) {
+function calculateCheckoutTotals(cartItems, pagamento, parcelas, cep, shippingSelection = null) {
     const subtotal = roundCurrency(cartItems.reduce((acc, item) => acc + (item.preco * item.quantity), 0));
     const hanukahSubtotal = roundCurrency(cartItems.reduce((acc, item) => acc + (isHanukahProduct(item) ? item.preco * item.quantity : 0), 0));
     let final = subtotal;
@@ -496,13 +584,24 @@ function calculateCheckoutTotals(cartItems, pagamento, parcelas, cep) {
         final = roundCurrency(final + cardFee);
     }
 
+    const safeShipping = normalizeShippingSelection(shippingSelection);
+    const freeShippingEligible = isSudeste(cep) && hanukahSubtotal >= 500;
+    const shippingOriginal = safeShipping ? safeShipping.originalPrice : 0;
+    const shippingCost = safeShipping ? roundCurrency(freeShippingEligible ? 0 : safeShipping.price) : 0;
+    const shippingDiscount = safeShipping && freeShippingEligible ? roundCurrency(shippingOriginal) : 0;
+    final = roundCurrency(final + shippingCost);
+
     return {
         subtotal,
         hanukahSubtotal,
         pixDiscount,
         cardFee,
+        shippingCost,
+        shippingOriginal,
+        shippingDiscount,
         final,
-        freeShipping: isSudeste(cep) && hanukahSubtotal >= 500
+        freeShipping: freeShippingEligible && !!safeShipping,
+        freeShippingEligible
     };
 }
 
@@ -555,9 +654,11 @@ async function buildCanonicalCartSnapshot(sourceCart) {
         const canonicalItem = {
             cartId: sourceItem.cartId,
             id: product.id,
+            categoria: sanitizePlainText(product.categoria, 40),
             nome: sanitizePlainText(product.nome, 120) || sourceItem.nome,
             preco: getDiscountedProductPrice(product),
             imagem: normalizeUrl(Array.isArray(product.imagens) ? product.imagens[0] : '') || 'https://placehold.co/600x800/eee/ccc?text=Sem+imagem',
+            frete: normalizeShippingProfile(product.frete),
             quantity
         };
 
