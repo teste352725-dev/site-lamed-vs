@@ -1,0 +1,242 @@
+:root {
+    --pricing-brown: #643f21;
+    --pricing-gold: #a58a5c;
+    --pricing-cream: #f8f4ee;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #f8fafc;
+    color: #1f2937;
+}
+
+.pricing-shell {
+    min-height: 100vh;
+}
+
+.pricing-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.05);
+}
+
+.pricing-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-radius: 0.8rem;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    transition: 0.2s ease;
+}
+
+.pricing-btn-primary {
+    background: var(--pricing-brown);
+    color: #fff;
+}
+
+.pricing-btn-primary:hover {
+    background: #4c3019;
+}
+
+.pricing-btn-secondary {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.pricing-btn-secondary:hover {
+    background: #d1d5db;
+}
+
+.pricing-btn-success {
+    background: #059669;
+    color: #fff;
+}
+
+.pricing-btn-success:hover {
+    background: #047857;
+}
+
+.pricing-input,
+.pricing-select,
+.pricing-textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.8rem;
+    padding: 0.72rem 0.85rem;
+    outline: none;
+    font-size: 0.94rem;
+    background: #fff;
+}
+
+.pricing-input:focus,
+.pricing-select:focus,
+.pricing-textarea:focus {
+    border-color: var(--pricing-gold);
+    box-shadow: 0 0 0 3px rgba(165, 138, 92, 0.16);
+}
+
+.mode-toggle {
+    display: inline-flex;
+    gap: 0.3rem;
+    border-radius: 999px;
+    background: #f3f4f6;
+    padding: 0.25rem;
+}
+
+.mode-toggle button {
+    border-radius: 999px;
+    padding: 0.55rem 0.95rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    transition: 0.2s ease;
+}
+
+.mode-toggle button.active {
+    background: #fff;
+    color: var(--pricing-brown);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.preset-group + .preset-group {
+    margin-top: 1rem;
+}
+
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+    gap: 0.7rem;
+}
+
+.preset-chip {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.95rem;
+    background: #fff;
+    padding: 0.85rem 0.9rem;
+    text-align: left;
+    transition: 0.2s ease;
+}
+
+.preset-chip:hover {
+    border-color: rgba(165, 138, 92, 0.45);
+    transform: translateY(-1px);
+}
+
+.preset-chip.active {
+    background: linear-gradient(135deg, #6b4523, #8b6a44);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 18px 30px rgba(100, 63, 33, 0.22);
+}
+
+.preset-chip small {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.73rem;
+    opacity: 0.72;
+}
+
+.section-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #9ca3af;
+}
+
+.result-panel {
+    position: sticky;
+    top: 1.2rem;
+}
+
+.result-value {
+    font-size: clamp(2rem, 3vw, 3rem);
+    font-weight: 800;
+    color: var(--pricing-brown);
+}
+
+.mini-stat {
+    border-radius: 0.9rem;
+    background: var(--pricing-cream);
+    border: 1px solid #ede6da;
+    padding: 0.9rem 1rem;
+}
+
+.simulation-item + .simulation-item {
+    margin-top: 0.75rem;
+}
+
+.simulation-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    border-radius: 0.95rem;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    padding: 0.95rem 1rem;
+}
+
+.tag-soft {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #f5f3ef;
+    color: #6b7280;
+}
+
+.helper-box {
+    border-radius: 0.95rem;
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    padding: 0.95rem 1rem;
+    color: #1d4ed8;
+}
+
+.history-item + .history-item {
+    margin-top: 0.7rem;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 0.75rem;
+}
+
+.pricing-toast {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 70;
+    border-radius: 0.95rem;
+    padding: 0.9rem 1rem;
+    color: #fff;
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.18);
+}
+
+.pricing-toast.success {
+    background: #059669;
+}
+
+.pricing-toast.error {
+    background: #dc2626;
+}
+
+@media (max-width: 1023px) {
+    .result-panel {
+        position: static;
+    }
+}

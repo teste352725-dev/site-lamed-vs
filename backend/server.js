@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import fs from "fs";
+import { getFirebaseAdminStatus } from "../api/_firebase-admin.mjs";
+import { createOrderFromBody, isOrderRequestError } from "../api/_orders.mjs";
+import { getShippingHealth, requestShippingQuote } from "../api/_shipping.mjs";
 
 dotenv.config();
 
@@ -399,16 +402,18 @@ app.use(cors({
 app.use(express.json({ limit: "250kb" }));
 
 app.get("/api/status", requireDiagnosticAccess, (req, res) => {
-  const melhorEnvioOrigin = normalizePostalCode(process.env.MELHOR_ENVIO_ORIGIN_POSTAL_CODE);
-  const melhorEnvioAccessToken = String(process.env.MELHOR_ENVIO_ACCESS_TOKEN || "").trim();
-  const melhorEnvioRefreshToken = String(process.env.MELHOR_ENVIO_REFRESH_TOKEN || "").trim();
+  const firebaseAdmin = getFirebaseAdminStatus();
+  const shipping = getShippingHealth();
 
   res.json({
     ok: true,
     message: "Backend online",
     port: process.env.PORT || 3001,
     envLoaded: !!process.env.EFI_CLIENT_ID,
-    shippingConfigured: Boolean(melhorEnvioAccessToken || melhorEnvioRefreshToken) && melhorEnvioOrigin.length === 8
+    shippingConfigured: shipping.ok,
+    shippingProvider: shipping.provider,
+    ordersConfigured: firebaseAdmin.configured,
+    firebaseAdmin
   });
 });
 
@@ -452,24 +457,15 @@ app.get("/api/efi/cert-check", requireDiagnosticAccess, (req, res) => {
 });
 
 app.get("/api/shipping/health", requireDiagnosticAccess, (req, res) => {
-  const originPostalCode = normalizePostalCode(process.env.MELHOR_ENVIO_ORIGIN_POSTAL_CODE);
-  const accessToken = String(process.env.MELHOR_ENVIO_ACCESS_TOKEN || "").trim();
-  const refreshToken = String(process.env.MELHOR_ENVIO_REFRESH_TOKEN || "").trim();
-
-  res.json({
-    ok: Boolean(accessToken || refreshToken) && originPostalCode.length === 8,
-    provider: "melhor_envio",
-    baseUrl: MELHOR_ENVIO_BASE_URL,
-    originPostalCodeConfigured: originPostalCode.length === 8,
-    accessTokenConfigured: Boolean(accessToken),
-    refreshTokenConfigured: Boolean(refreshToken),
-    servicesConfigured: MELHOR_ENVIO_SERVICES
-  });
+  res.json(getShippingHealth());
 });
 
 app.post("/api/shipping/quote", async (req, res) => {
   const destinationPostalCode = normalizePostalCode(req.body?.postalCode);
   const items = Array.isArray(req.body?.cart) ? req.body.cart : [];
+  const packageOverride = req.body?.packageOverride && typeof req.body.packageOverride === "object"
+    ? req.body.packageOverride
+    : null;
 
   if (destinationPostalCode.length !== 8) {
     return res.status(400).json({
@@ -486,16 +482,12 @@ app.post("/api/shipping/quote", async (req, res) => {
   }
 
   try {
-    const quote = await requestMelhorEnvioQuote({
+    const quote = await requestShippingQuote({
       destinationPostalCode,
-      items
+      items,
+      packageOverride
     });
-
-    const options = normalizeQuoteOptions(
-      quote.options,
-      quote.originPostalCode,
-      destinationPostalCode
-    );
+    const options = Array.isArray(quote.options) ? quote.options : [];
 
     if (options.length === 0) {
       return res.status(404).json({
@@ -507,7 +499,7 @@ app.post("/api/shipping/quote", async (req, res) => {
 
     return res.json({
       ok: true,
-      provider: "melhor_envio",
+      provider: quote.provider,
       options
     });
   } catch (error) {
@@ -515,6 +507,42 @@ app.post("/api/shipping/quote", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: String(error?.message || "Erro ao consultar o Melhor Envio.")
+    });
+  }
+});
+
+app.post("/api/orders/create", async (req, res) => {
+  try {
+    const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
+    const result = await createOrderFromBody(req.body, authorizationHeader);
+    return res.status(201).json(result);
+  } catch (error) {
+    if (isOrderRequestError(error)) {
+      const status = Number(error.status) || 400;
+      const payload = {
+        ok: false,
+        error: String(error.message || "Nao foi possivel criar o pedido.")
+      };
+
+      if (typeof error.code === "string" && error.code) {
+        payload.code = error.code;
+      }
+
+      if (Array.isArray(error.canonicalCart)) {
+        payload.canonicalCart = error.canonicalCart;
+      }
+
+      if (error.totalsPreview && typeof error.totalsPreview === "object") {
+        payload.totalsPreview = error.totalsPreview;
+      }
+
+      return res.status(status).json(payload);
+    }
+
+    console.error("[orders.create]", error);
+    return res.status(500).json({
+      ok: false,
+      error: String(error?.message || "Erro ao criar o pedido.")
     });
   }
 });

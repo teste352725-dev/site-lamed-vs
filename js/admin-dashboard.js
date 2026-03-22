@@ -22,7 +22,7 @@ const WORKSPACE_VIEWS = {
     orders: "pedidos.html?embedded=1",
     collections: "colecoes.html?embedded=1",
     gallery: "galeria.html?embedded=1",
-    pricing: "calcularvalordapeça.html?embedded=1",
+    pricing: "calculadora.html?embedded=1",
     chat: "chat-admin.html?embedded=1",
     scripts: "executor_scripts.html?embedded=1"
 };

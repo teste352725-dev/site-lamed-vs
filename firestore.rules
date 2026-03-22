@@ -179,7 +179,7 @@ service cloud.firestore {
     }
 
     match /pedidos/{pedidoId} {
-      allow create: if validPedidoCreate();
+      allow create: if false;
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
       allow update, delete: if isAdmin();
     }

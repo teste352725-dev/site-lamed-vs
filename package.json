@@ -1,0 +1,9 @@
+{
+  "name": "lamed-site",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "protobufjs": "^8.0.0"
+  }
+}

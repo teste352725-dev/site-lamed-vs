@@ -423,7 +423,7 @@
                     </p>
                     <p class="mb-2">Nossas peças são feitas sob demanda com muito carinho. Por isso, podem levar alguns dias para serem produzidas.</p>
                     <p id="shipping-cost-msg" class="font-medium text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
-                        <i class="fa-solid fa-truck-fast"></i> Digite seu CEP para calcular o frete automaticamente.
+                        <i class="fa-solid fa-box"></i> Frete temporariamente definido após o pedido.
                     </p>
                 </div>
 
@@ -444,16 +444,17 @@
                 <input type="text" name="numero" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Número e Complemento" required>
 
                 <div class="rounded-2xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="flex flex-col gap-3">
                         <div>
-                            <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Frete automático</p>
-                            <p id="shipping-quote-status" class="mt-1 text-sm text-gray-500">Informe o CEP para ver as opções do Melhor Envio.</p>
+                            <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Frete temporariamente manual</p>
+                            <p id="shipping-quote-status" class="mt-1 text-sm text-gray-500">Estamos confirmando o frete separadamente enquanto a nova integracao nao entra no ar.</p>
                         </div>
-                        <button type="button" id="quote-shipping-btn" class="rounded-full border border-[#D8C9B8] px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-[--cor-marrom-cta] transition hover:bg-[#F3EEE7]">
-                            Calcular
-                        </button>
                     </div>
-                    <div id="shipping-options" class="mt-4 space-y-2"></div>
+                    <div id="shipping-options" class="mt-4 space-y-2">
+                        <div class="rounded-2xl border border-[#EADBC9] bg-[#F9F5EF] p-4 text-sm leading-relaxed text-gray-600">
+                            Depois do pedido, nossa equipe confirma o valor e o prazo do envio pelo WhatsApp usando o CEP informado.
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Campos de Pagamento -->

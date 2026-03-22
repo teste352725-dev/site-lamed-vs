@@ -4,640 +4,461 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pedidos | Painel Administrativo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="js/admin-embedded-mode.js" defer></script>
-
-    <style>
-        :root {
-            --admin-brown: #643f21;
-            --admin-gold: #a58a5c;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-        }
-
-        .stat-card,
-        .surface-card,
-        .order-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
-        }
-
-        .order-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        }
-
-        .order-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-            border-color: rgba(165, 138, 92, 0.35);
-        }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.35rem 0.7rem;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        .status-pendente { background: #fff7dd; color: #a16207; }
-        .status-processando { background: #dbeafe; color: #1d4ed8; }
-        .status-enviado { background: #dcfce7; color: #047857; }
-        .status-entregue { background: #dcfce7; color: #166534; }
-        .status-cancelado { background: #fee2e2; color: #b91c1c; }
-
-        .filter-chip.active {
-            box-shadow: inset 0 0 0 2px rgba(100, 63, 33, 0.18);
-        }
-
-        .btn {
-            border-radius: 0.8rem;
-            padding: 0.7rem 1rem;
-            font-weight: 600;
-            transition: 0.2s ease;
-        }
-
-        .btn-primary { background: var(--admin-brown); color: white; }
-        .btn-primary:hover { opacity: 0.92; }
-        .btn-secondary { background: #e5e7eb; color: #374151; }
-        .btn-secondary:hover { background: #d1d5db; }
-        .btn-danger { background: #fee2e2; color: #991b1b; }
-        .btn-danger:hover { background: #fecaca; }
-
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 60;
-            background: rgba(15, 23, 42, 0.55);
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
-
-        .modal.visible { display: flex; }
-
-        .modal-content {
-            width: 100%;
-            max-width: 820px;
-            max-height: 92vh;
-            overflow: hidden;
-            border-radius: 1.25rem;
-            background: white;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .item-block + .item-block {
-            border-top: 1px solid #f1f5f9;
-            padding-top: 0.9rem;
-            margin-top: 0.9rem;
-        }
-    </style>
+    <link rel="stylesheet" href="css/admin-orders.css">
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script defer src="js/admin-embedded-mode.js"></script>
+    <script defer src="js/admin-orders.js"></script>
 </head>
-<body class="pb-20">
-    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3">
-        <div class="flex items-center gap-3">
-            <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
-            <div>
-                <h1 class="text-xl font-bold text-gray-900">Pedidos</h1>
-                <p class="text-xs text-gray-500">Operacao, status e contexto do cliente no mesmo lugar.</p>
-            </div>
+<body>
+    <header class="orders-topbar">
+        <div class="orders-topbar-inner">
+            <a href="dashboard.html" class="orders-back-link">
+                <i class="fa-solid fa-arrow-left"></i>
+                Voltar ao dashboard
+            </a>
+            <button type="button" id="orders-refresh-btn" class="orders-btn orders-btn-secondary">
+                <i class="fa-solid fa-rotate-right"></i>
+                Atualizar
+            </button>
         </div>
     </header>
 
-    <main class="max-w-5xl mx-auto p-4 space-y-4">
-        <section class="grid grid-cols-2 xl:grid-cols-4 gap-3">
-            <div class="stat-card p-4">
-                <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Total</p>
-                <p id="stat-total-orders" class="mt-2 text-3xl font-bold text-gray-900">0</p>
-            </div>
-            <div class="stat-card p-4">
-                <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Pendentes</p>
-                <p id="stat-pending-orders" class="mt-2 text-3xl font-bold text-yellow-700">0</p>
-            </div>
-            <div class="stat-card p-4">
-                <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Personalizados</p>
-                <p id="stat-custom-orders" class="mt-2 text-3xl font-bold text-amber-700">0</p>
-            </div>
-            <div class="stat-card p-4">
-                <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Faturamento</p>
-                <p id="stat-total-sales" class="mt-2 text-3xl font-bold text-emerald-700">R$ 0,00</p>
-            </div>
-        </section>
-
-        <section class="surface-card p-4">
-            <div class="flex flex-col md:flex-row gap-3">
-                <div class="relative flex-grow">
-                    <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
-                    <input type="text" id="order-search-input" placeholder="Buscar por cliente, telefone, ID ou item..." class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[--admin-brown]">
+    <main class="orders-page-shell">
+        <section class="orders-hero orders-card">
+            <div class="orders-hero-top">
+                <div class="orders-hero-copy">
+                    <span class="orders-kicker">
+                        <i class="fa-solid fa-truck-fast"></i>
+                        pedidos + expedicao
+                    </span>
+                    <h1 class="orders-display orders-hero-title">Pedidos com fila, remessa e preparo em um lugar so.</h1>
+                    <p class="orders-hero-text">
+                        Acompanhe pedidos sob demanda, organize remessas por destinatario, ajuste pacote manualmente
+                        e deixe a expedicao pronta para quando chegar a hora de enviar.
+                    </p>
                 </div>
-                <button onclick="limparBuscaPedidos()" class="btn btn-secondary text-sm whitespace-nowrap">Limpar busca</button>
+                <div class="orders-hero-actions">
+                    <button type="button" id="orders-open-pending-btn" class="orders-btn orders-btn-primary">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                        Ver pendentes
+                    </button>
+                    <button type="button" id="orders-open-remessas-btn" class="orders-btn orders-btn-secondary">
+                        <i class="fa-solid fa-boxes-packing"></i>
+                        Ver remessas
+                    </button>
+                </div>
+            </div>
+
+            <div class="orders-stat-grid">
+                <article class="orders-stat">
+                    <span class="orders-stat-label">fila total</span>
+                    <strong id="orders-count-total" class="orders-stat-value">0</strong>
+                    <span class="orders-stat-copy">Pedidos salvos no painel</span>
+                </article>
+                <article class="orders-stat">
+                    <span class="orders-stat-label">pendentes</span>
+                    <strong id="orders-count-pending" class="orders-stat-value">0</strong>
+                    <span class="orders-stat-copy">Aguardando acao do atelie</span>
+                </article>
+                <article class="orders-stat">
+                    <span class="orders-stat-label">processando</span>
+                    <strong id="orders-count-processing" class="orders-stat-value">0</strong>
+                    <span class="orders-stat-copy">Ja em producao ou separacao</span>
+                </article>
+                <article class="orders-stat">
+                    <span class="orders-stat-label">remessas</span>
+                    <strong id="orders-count-remessas" class="orders-stat-value">0</strong>
+                    <span class="orders-stat-copy">Grupos ativos por destinatario</span>
+                </article>
+                <article class="orders-stat">
+                    <span class="orders-stat-label">prontos para expedir</span>
+                    <strong id="orders-count-ready" class="orders-stat-value">0</strong>
+                    <span class="orders-stat-copy">Endereco e pacote preenchidos</span>
+                </article>
+                <article class="orders-stat">
+                    <span class="orders-stat-label">sob medida</span>
+                    <strong id="orders-count-custom" class="orders-stat-value">0</strong>
+                    <span class="orders-stat-copy">Pedidos com personalizacao</span>
+                </article>
             </div>
         </section>
 
-        <section class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            <button id="filter-todos" onclick="filtrarStatus('todos')" class="filter-chip active px-3 py-1.5 rounded-full bg-gray-200 text-sm font-medium whitespace-nowrap">Todos</button>
-            <button id="filter-pendente" onclick="filtrarStatus('pendente')" class="filter-chip px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-800 text-sm font-medium whitespace-nowrap">Pendentes</button>
-            <button id="filter-processando" onclick="filtrarStatus('processando')" class="filter-chip px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 text-sm font-medium whitespace-nowrap">Processando</button>
-            <button id="filter-enviado" onclick="filtrarStatus('enviado')" class="filter-chip px-3 py-1.5 rounded-full bg-green-100 text-green-800 text-sm font-medium whitespace-nowrap">Enviados</button>
-            <button id="filter-entregue" onclick="filtrarStatus('entregue')" class="filter-chip px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-sm font-medium whitespace-nowrap">Entregues</button>
-            <button id="filter-cancelado" onclick="filtrarStatus('cancelado')" class="filter-chip px-3 py-1.5 rounded-full bg-red-100 text-red-800 text-sm font-medium whitespace-nowrap">Cancelados</button>
+        <section class="orders-card orders-toolbar">
+            <div class="orders-toolbar-grid">
+                <label class="orders-field">
+                    <span class="orders-field-label">Buscar</span>
+                    <span class="orders-search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="orders-search-input" class="orders-input" type="search" placeholder="Cliente, cidade, produto, remessa ou numero do pedido">
+                    </span>
+                </label>
+
+                <label class="orders-field">
+                    <span class="orders-field-label">Status</span>
+                    <select id="orders-status-select" class="orders-select">
+                        <option value="todos">Todos os status</option>
+                        <option value="pendente">Pendentes</option>
+                        <option value="processando">Processando</option>
+                        <option value="enviado">Enviados</option>
+                        <option value="entregue">Entregues</option>
+                        <option value="cancelado">Cancelados</option>
+                    </select>
+                </label>
+
+                <label class="orders-field">
+                    <span class="orders-field-label">Atalhos</span>
+                    <button type="button" id="orders-toggle-custom-btn" class="orders-btn orders-btn-secondary orders-filter-toggle">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        Somente personalizados
+                    </button>
+                </label>
+            </div>
+
+            <div id="orders-feedback" class="orders-feedback orders-hidden"></div>
+
+            <div id="orders-filter-chips" class="orders-filter-row">
+                <button type="button" class="chip-soft orders-filter active" data-status="todos">Todos</button>
+                <button type="button" class="chip-soft orders-filter" data-status="pendente">Pendentes</button>
+                <button type="button" class="chip-soft orders-filter" data-status="processando">Processando</button>
+                <button type="button" class="chip-soft orders-filter" data-status="enviado">Enviados</button>
+                <button type="button" class="chip-soft orders-filter" data-status="entregue">Entregues</button>
+                <button type="button" class="chip-soft orders-filter" data-status="cancelado">Cancelados</button>
+            </div>
         </section>
 
-        <div id="orders-feedback" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"></div>
+        <section class="orders-card">
+            <div class="orders-list-head">
+                <div>
+                    <span class="orders-kicker">
+                        <i class="fa-solid fa-list-check"></i>
+                        fila operacional
+                    </span>
+                    <h2 class="orders-display orders-section-title">Pedidos em tempo real</h2>
+                </div>
+                <p class="orders-section-copy">
+                    Clique em um pedido para editar status, revisar a montagem, agrupar remessas e preparar arquivos de envio.
+                </p>
+            </div>
 
-        <div id="loading" class="text-center py-10">
-            <i class="fa-solid fa-spinner fa-spin text-gray-400 text-2xl"></i>
-            <p class="mt-2 text-sm text-gray-500">Carregando pedidos...</p>
-        </div>
+            <div id="orders-loading" class="orders-loading-shell">
+                <div class="orders-loading-spinner"></div>
+                <p>Carregando pedidos...</p>
+            </div>
 
-        <section id="orders-list" class="space-y-3"></section>
+            <div id="orders-empty" class="orders-empty-shell orders-hidden">
+                <i class="fa-solid fa-box-open"></i>
+                <h3>Nenhum pedido bateu com esse filtro.</h3>
+                <p>Tente limpar a busca ou trocar o status para ver a fila completa.</p>
+            </div>
+
+            <div id="orders-list" class="orders-list"></div>
+        </section>
     </main>
 
-    <div id="order-modal" class="modal">
-        <div class="modal-content">
-            <div class="flex items-center justify-between gap-3 px-5 py-4 border-b bg-gray-50">
+    <div id="orders-modal" class="orders-modal" aria-hidden="true">
+        <div class="orders-modal-content">
+            <header class="orders-modal-header">
                 <div>
-                    <p class="text-xs uppercase tracking-[0.2em] text-gray-500 font-semibold">Pedido</p>
-                    <h2 class="text-xl font-bold text-gray-900" id="modal-order-id">-</h2>
+                    <span class="orders-kicker">
+                        <i class="fa-solid fa-receipt"></i>
+                        detalhe do pedido
+                    </span>
+                    <h2 id="orders-modal-title" class="orders-display orders-modal-title">Pedido</h2>
+                    <p id="orders-modal-subtitle" class="orders-modal-subtitle"></p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <span id="modal-status-badge" class="status-pill status-pendente">pendente</span>
-                    <button onclick="fecharModal()" class="h-10 w-10 rounded-full text-gray-500 hover:bg-gray-100">
-                        <i class="fa-solid fa-xmark text-xl"></i>
+                <div class="orders-modal-header-actions">
+                    <span id="orders-modal-status" class="status-pill status-pendente">pendente</span>
+                    <button type="button" id="orders-modal-close" class="modal-close" aria-label="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <div class="flex-1 overflow-y-auto p-5 space-y-5">
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div class="surface-card p-4">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Cliente</p>
-                        <div class="mt-3 space-y-2 text-sm text-gray-700">
-                            <p><i class="fa-solid fa-user mr-2 w-4"></i><span id="modal-cliente">-</span></p>
-                            <p><i class="fa-solid fa-phone mr-2 w-4"></i><span id="modal-telefone">-</span></p>
-                            <p><i class="fa-solid fa-envelope mr-2 w-4"></i><span id="modal-email">-</span></p>
+            <div class="orders-modal-body">
+                <div id="orders-modal-feedback" class="orders-feedback orders-hidden"></div>
+
+                <section class="orders-summary-grid">
+                    <article class="orders-modal-panel">
+                        <span class="orders-field-label">Total do pedido</span>
+                        <strong id="orders-modal-total" class="orders-summary-value">R$ 0,00</strong>
+                        <span id="orders-modal-payment" class="orders-summary-copy">-</span>
+                    </article>
+                    <article class="orders-modal-panel">
+                        <span class="orders-field-label">Frete escolhido na loja</span>
+                        <strong id="orders-modal-store-shipping" class="orders-summary-value">-</strong>
+                        <span id="orders-modal-store-delivery" class="orders-summary-copy">-</span>
+                    </article>
+                    <article class="orders-modal-panel">
+                        <span class="orders-field-label">Itens / remessa</span>
+                        <strong id="orders-modal-item-count" class="orders-summary-value">0</strong>
+                        <span id="orders-modal-remessa" class="orders-summary-copy">Sem remessa</span>
+                    </article>
+                    <article class="orders-modal-panel">
+                        <span class="orders-field-label">Atualizacao</span>
+                        <strong id="orders-modal-updated" class="orders-summary-value">-</strong>
+                        <span id="orders-modal-tracking" class="orders-summary-copy">Sem rastreio</span>
+                    </article>
+                </section>
+
+                <div class="orders-modal-layout">
+                    <section class="orders-modal-panel">
+                        <div class="orders-panel-head">
+                            <div>
+                                <span class="section-kicker">pedido</span>
+                                <h3 class="orders-section-title">Cliente, itens e andamento</h3>
+                            </div>
                         </div>
-                    </div>
-                    <div class="surface-card p-4">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Entrega</p>
-                        <p id="modal-endereco" class="mt-3 text-sm text-gray-700 leading-6">-</p>
-                    </div>
-                </div>
 
-                <div class="grid md:grid-cols-4 gap-4">
-                    <div class="surface-card p-4">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Pagamento</p>
-                        <p id="modal-payment-summary" class="mt-3 text-sm font-medium text-gray-800">-</p>
-                    </div>
-                    <div class="surface-card p-4">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Resumo rapido</p>
-                        <p id="modal-order-summary" class="mt-3 text-sm font-medium text-gray-800">-</p>
-                    </div>
-                    <div class="surface-card p-4">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Frete</p>
-                        <p id="modal-shipping-summary" class="mt-3 text-sm font-medium text-gray-800">-</p>
-                    </div>
-                    <div class="surface-card p-4">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Total</p>
-                        <p id="modal-total" class="mt-3 text-2xl font-bold text-emerald-700">R$ 0,00</p>
-                    </div>
-                </div>
-
-                <div class="surface-card p-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Itens</p>
-                            <h3 class="mt-1 text-lg font-semibold text-gray-900">Detalhes do pedido</h3>
+                        <div class="orders-detail-grid">
+                            <article class="orders-subpanel">
+                                <h4>Cliente</h4>
+                                <div id="orders-modal-client" class="orders-info-stack"></div>
+                            </article>
+                            <article class="orders-subpanel">
+                                <h4>Entrega informada</h4>
+                                <div id="orders-modal-address" class="orders-info-stack"></div>
+                            </article>
                         </div>
-                        <button onclick="copiarResumoPedido()" class="btn btn-secondary text-sm">
-                            <i class="fa-solid fa-copy mr-2"></i>Copiar resumo
-                        </button>
-                    </div>
-                    <div id="modal-itens" class="mt-4"></div>
-                </div>
 
-                <div class="surface-card p-4">
-                    <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Alterar status</p>
-                    <div class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-2">
-                        <button onclick="atualizarStatus('pendente')" class="btn bg-yellow-100 text-yellow-800 text-sm">Pendente</button>
-                        <button onclick="atualizarStatus('processando')" class="btn bg-blue-100 text-blue-800 text-sm">Processando</button>
-                        <button onclick="atualizarStatus('enviado')" class="btn bg-green-100 text-green-800 text-sm">Enviado</button>
-                        <button onclick="atualizarStatus('entregue')" class="btn bg-emerald-100 text-emerald-800 text-sm">Entregue</button>
-                        <button onclick="atualizarStatus('cancelado')" class="btn bg-red-100 text-red-800 text-sm">Cancelado</button>
-                    </div>
+                        <article class="orders-subpanel">
+                            <h4>Status do pedido</h4>
+                            <div id="orders-status-actions" class="orders-inline-actions"></div>
+                        </article>
+
+                        <article class="orders-subpanel">
+                            <div class="orders-subpanel-head">
+                                <h4>Itens e personalizacao</h4>
+                                <span id="orders-modal-custom-chip" class="chip-soft">Sem personalizacao</span>
+                            </div>
+                            <div id="orders-modal-items" class="orders-items-list"></div>
+                        </article>
+
+                        <article class="orders-subpanel">
+                            <div class="orders-subpanel-head">
+                                <h4>Resumo financeiro</h4>
+                                <a id="orders-modal-whatsapp" href="#" target="_blank" rel="noopener noreferrer" class="orders-link-action">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                    Conversar no WhatsApp
+                                </a>
+                            </div>
+                            <div id="orders-modal-financial" class="orders-info-stack"></div>
+                        </article>
+                    </section>
+
+                    <section class="orders-modal-panel orders-panel-sticky">
+                        <div class="orders-panel-head">
+                            <div>
+                                <span class="section-kicker">expedicao</span>
+                                <h3 class="orders-section-title">Remessa, pacote e arquivos</h3>
+                            </div>
+                            <button type="button" id="orders-apply-suggestion-btn" class="orders-btn orders-btn-secondary">
+                                <i class="fa-solid fa-wand-sparkles"></i>
+                                Atualizar sugestao
+                            </button>
+                        </div>
+
+                        <div class="helper-note">
+                            Use a expedicao para completar endereco, agrupar pedidos do mesmo destinatario e preparar uma remessa com peso e medidas personalizadas.
+                        </div>
+
+                        <article class="orders-subpanel">
+                            <div class="orders-subpanel-head">
+                                <h4>Modo de cotacao</h4>
+                                <span class="orders-page-note">Voce pode cotar pelo cadastro das pecas ou pelo pacote manual.</span>
+                            </div>
+                            <div id="orders-quote-mode-group" class="orders-inline-actions">
+                                <button type="button" class="chip-soft orders-chip-toggle active" data-quote-mode="catalogo">Usar cadastro das pecas</button>
+                                <button type="button" class="chip-soft orders-chip-toggle" data-quote-mode="manual">Usar pacote manual</button>
+                            </div>
+                        </article>
+
+                        <article class="orders-subpanel">
+                            <h4>Destinatario</h4>
+                            <div class="orders-form-grid">
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Nome</span>
+                                    <input id="exp-nome" class="orders-input" type="text" maxlength="120">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Telefone</span>
+                                    <input id="exp-telefone" class="orders-input" type="text" maxlength="30">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">E-mail</span>
+                                    <input id="exp-email" class="orders-input" type="email" maxlength="120">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">CPF / CNPJ</span>
+                                    <input id="exp-documento" class="orders-input" type="text" maxlength="30">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">CEP</span>
+                                    <input id="exp-cep" class="orders-input" type="text" maxlength="9" placeholder="00000-000">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Estado</span>
+                                    <select id="exp-estado" class="orders-select">
+                                        <option value="">Selecione</option>
+                                    </select>
+                                </label>
+                                <label class="orders-field orders-field-full">
+                                    <span class="orders-field-label">Rua</span>
+                                    <input id="exp-rua" class="orders-input" type="text" maxlength="140">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Numero</span>
+                                    <input id="exp-numero" class="orders-input" type="text" maxlength="40">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Complemento</span>
+                                    <input id="exp-complemento" class="orders-input" type="text" maxlength="80">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Bairro</span>
+                                    <input id="exp-bairro" class="orders-input" type="text" maxlength="80">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Cidade</span>
+                                    <input id="exp-cidade" class="orders-input" type="text" maxlength="120">
+                                </label>
+                            </div>
+                        </article>
+
+                        <article class="orders-subpanel">
+                            <div class="orders-subpanel-head">
+                                <h4>Pacote / volume</h4>
+                                <span id="orders-package-hint" class="orders-page-note">Defina ou ajuste a caixa da remessa.</span>
+                            </div>
+                            <div id="orders-package-presets" class="package-preset-grid">
+                                <button type="button" class="package-preset" data-package-preset="envelope">
+                                    Envelope
+                                    <small>Leve, baixo volume</small>
+                                </button>
+                                <button type="button" class="package-preset" data-package-preset="caixa_p">
+                                    Caixa P
+                                    <small>Pedidos pequenos</small>
+                                </button>
+                                <button type="button" class="package-preset" data-package-preset="caixa_m">
+                                    Caixa M
+                                    <small>Uso geral</small>
+                                </button>
+                                <button type="button" class="package-preset" data-package-preset="caixa_g">
+                                    Caixa G
+                                    <small>Remessas maiores</small>
+                                </button>
+                                <button type="button" class="package-preset" data-package-preset="personalizado">
+                                    Personalizado
+                                    <small>Medidas livres</small>
+                                </button>
+                            </div>
+
+                            <div class="orders-form-grid orders-package-fields">
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Peso (kg)</span>
+                                    <input id="exp-peso" class="orders-input" type="number" step="0.01" min="0.01">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Largura (cm)</span>
+                                    <input id="exp-largura" class="orders-input" type="number" step="1" min="1">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Altura (cm)</span>
+                                    <input id="exp-altura" class="orders-input" type="number" step="1" min="1">
+                                </label>
+                                <label class="orders-field">
+                                    <span class="orders-field-label">Comprimento (cm)</span>
+                                    <input id="exp-comprimento" class="orders-input" type="number" step="1" min="1">
+                                </label>
+                                <label class="orders-field orders-field-full">
+                                    <span class="orders-field-label">Valor segurado</span>
+                                    <input id="exp-insurance" class="orders-input" type="number" step="0.01" min="0">
+                                </label>
+                            </div>
+                        </article>
+
+                        <article class="orders-subpanel">
+                            <div class="orders-subpanel-head">
+                                <h4>Pedidos compativeis para mesma remessa</h4>
+                                <span id="orders-compatible-count" class="chip-soft">0 selecionados</span>
+                            </div>
+                            <div id="orders-compatible-note" class="warning-note orders-hidden"></div>
+                            <div id="orders-compatible-list" class="orders-compatible-list"></div>
+                        </article>
+
+                        <article class="orders-subpanel">
+                            <div class="orders-subpanel-head">
+                                <h4>Cotacao operacional</h4>
+                                <span class="orders-page-note">A cotacao do admin nao altera o total cobrado da cliente.</span>
+                            </div>
+                            <div class="orders-inline-actions">
+                                <button type="button" id="orders-quote-btn" class="orders-btn orders-btn-primary">
+                                    <i class="fa-solid fa-truck-ramp-box"></i>
+                                    Recotar frete
+                                </button>
+                                <button type="button" id="orders-clear-quote-btn" class="orders-btn orders-btn-secondary">
+                                    <i class="fa-solid fa-eraser"></i>
+                                    Limpar cotacao
+                                </button>
+                            </div>
+                            <div id="orders-quote-feedback" class="orders-feedback orders-hidden"></div>
+                            <div id="orders-quote-options" class="orders-quote-options"></div>
+                        </article>
+
+                        <article class="orders-subpanel">
+                            <h4>Observacoes e rastreio</h4>
+                            <div class="orders-form-grid">
+                                <label class="orders-field orders-field-full">
+                                    <span class="orders-field-label">Observacoes de expedicao</span>
+                                    <textarea id="exp-observacoes" class="orders-textarea" rows="4" maxlength="600" placeholder="Ex.: juntar dois pedidos, usar papel de seda dourado, confirmar bordado antes de postar."></textarea>
+                                </label>
+                                <label class="orders-field orders-field-full">
+                                    <span class="orders-field-label">Codigo de rastreio</span>
+                                    <input id="exp-tracking" class="orders-input" type="text" maxlength="80" placeholder="Preencha depois que a etiqueta for emitida">
+                                </label>
+                            </div>
+                        </article>
+                    </section>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 p-4 border-t bg-gray-50">
-                <a id="modal-whatsapp" href="#" target="_blank" class="btn bg-green-500 text-white text-center flex items-center justify-center gap-2">
-                    <i class="fa-brands fa-whatsapp"></i> Conversar
-                </a>
-                <button onclick="arquivarPedido()" class="btn btn-danger flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-trash"></i> Arquivar
-                </button>
-            </div>
+            <footer class="orders-modal-footer">
+                <div class="orders-export-actions">
+                    <button type="button" id="orders-copy-manifest-btn" class="orders-btn orders-btn-secondary">
+                        <i class="fa-solid fa-copy"></i>
+                        Copiar ficha
+                    </button>
+                    <button type="button" id="orders-download-manifest-btn" class="orders-btn orders-btn-secondary">
+                        <i class="fa-solid fa-file-lines"></i>
+                        Baixar TXT
+                    </button>
+                    <button type="button" id="orders-download-json-btn" class="orders-btn orders-btn-secondary">
+                        <i class="fa-solid fa-file-code"></i>
+                        Baixar JSON
+                    </button>
+                </div>
+
+                <div class="orders-footer-actions">
+                    <button type="button" id="orders-clear-remessa-btn" class="orders-btn orders-btn-danger">
+                        <i class="fa-solid fa-unlink"></i>
+                        Desagrupar remessa
+                    </button>
+                    <button type="button" id="orders-delete-btn" class="orders-btn orders-btn-danger">
+                        <i class="fa-solid fa-trash"></i>
+                        Arquivar pedido
+                    </button>
+                    <button type="button" id="orders-save-expedition-btn" class="orders-btn orders-btn-success">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Salvar expedicao
+                    </button>
+                </div>
+            </footer>
         </div>
     </div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
-            authDomain: "site-lamed.firebaseapp.com",
-            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
-            projectId: "site-lamed",
-            storageBucket: "site-lamed.firebasestorage.app",
-            messagingSenderId: "862756160215",
-            appId: "1:862756160215:web:d0fded233682bf93eaa692",
-            measurementId: "G-BL1G961PGT"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
-
-        let currentPedidoId = null;
-        let todosPedidos = [];
-        let currentStatusFilter = 'todos';
-        let currentSearchTerm = '';
-
-        async function isAuthorizedAdmin(user) {
-            if (!user) return false;
-            if (ADMIN_UIDS.includes(user.uid)) return true;
-
-            try {
-                const tokenResult = await user.getIdTokenResult();
-                return tokenResult?.claims?.admin === true;
-            } catch (error) {
-                return false;
-            }
-        }
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function normalizeOrderStatus(status) {
-            const normalized = String(status ?? '').trim().toLowerCase();
-            const aliases = {
-                pago: 'processando',
-                concluido: 'entregue'
-            };
-            const canonical = aliases[normalized] || normalized;
-            return ['pendente', 'processando', 'enviado', 'entregue', 'cancelado'].includes(canonical)
-                ? canonical
-                : 'pendente';
-        }
-
-        function formatCurrency(value) {
-            return `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
-        }
-
-        function formatDate(value, withTime = false) {
-            if (!value) return '-';
-            let dateObject = null;
-
-            if (value?.seconds) {
-                dateObject = new Date(value.seconds * 1000);
-            } else if (value instanceof Date) {
-                dateObject = value;
-            } else {
-                const parsed = new Date(value);
-                if (!Number.isNaN(parsed.getTime())) dateObject = parsed;
-            }
-
-            if (!dateObject) return '-';
-
-            return dateObject.toLocaleString('pt-BR', withTime
-                ? { dateStyle: 'short', timeStyle: 'short' }
-                : { dateStyle: 'short' });
-        }
-
-        function pedidoTemPersonalizacao(pedido) {
-            return Array.isArray(pedido?.produtos) && pedido.produtos.some((item) => item.personalizacao?.texto || item.personalizacao?.observacoes);
-        }
-
-        function pedidoTemCombo(pedido) {
-            return Array.isArray(pedido?.produtos) && pedido.produtos.some((item) => item.isCombo);
-        }
-
-        function atualizarEstatisticasPedidos() {
-            document.getElementById('stat-total-orders').textContent = String(todosPedidos.length);
-            document.getElementById('stat-pending-orders').textContent = String(todosPedidos.filter((pedido) => normalizeOrderStatus(pedido.status) === 'pendente').length);
-            document.getElementById('stat-custom-orders').textContent = String(todosPedidos.filter(pedidoTemPersonalizacao).length);
-
-            const totalSales = todosPedidos.reduce((sum, pedido) => sum + Number(pedido.total || 0), 0);
-            document.getElementById('stat-total-sales').textContent = formatCurrency(totalSales);
-        }
-
-        function obterPedidosFiltrados() {
-            return todosPedidos.filter((pedido) => {
-                const matchesStatus = currentStatusFilter === 'todos' || normalizeOrderStatus(pedido.status) === currentStatusFilter;
-                if (!matchesStatus) return false;
-
-                if (!currentSearchTerm) return true;
-
-                const searchableValues = [
-                    pedido.id,
-                    pedido.cliente?.nome,
-                    pedido.cliente?.telefone,
-                    pedido.cliente?.email,
-                    pedido.pagamento,
-                    pedido.frete?.name,
-                    pedido.frete?.company,
-                    ...(Array.isArray(pedido.produtos)
-                        ? pedido.produtos.flatMap((item) => [item.nome, item.personalizacao?.texto, item.personalizacao?.observacoes])
-                        : [])
-                ];
-
-                return searchableValues.some((value) => String(value || '').toLowerCase().includes(currentSearchTerm));
-            });
-        }
-
-        function atualizarBotoesFiltro() {
-            document.querySelectorAll('.filter-chip').forEach((button) => button.classList.remove('active'));
-            document.getElementById(`filter-${currentStatusFilter}`)?.classList.add('active');
-        }
-
-        function renderizarLista(pedidos) {
-            const list = document.getElementById('orders-list');
-            list.innerHTML = '';
-
-            if (!pedidos.length) {
-                list.innerHTML = `
-                    <div class="surface-card p-8 text-center text-sm text-gray-500">
-                        Nenhum pedido encontrado com os filtros atuais.
-                    </div>
-                `;
-                return;
-            }
-
-            pedidos.forEach((pedido) => {
-                const status = normalizeOrderStatus(pedido.status);
-                const itemCount = Array.isArray(pedido.produtos) ? pedido.produtos.length : 0;
-                const personalized = pedidoTemPersonalizacao(pedido);
-                const combo = pedidoTemCombo(pedido);
-                const payment = escapeHtml(String(pedido.pagamento || 'Pagamento não informado'));
-
-                list.innerHTML += `
-                    <button onclick="abrirDetalhes('${pedido.id}')" class="order-card w-full p-4 text-left">
-                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div class="min-w-0">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <strong class="text-base text-gray-900">#${escapeHtml(pedido.id.slice(0, 6).toUpperCase())}</strong>
-                                    <span class="status-pill status-${status}">${escapeHtml(status)}</span>
-                                    ${personalized ? '<span class="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800">Personalizado</span>' : ''}
-                                    ${combo ? '<span class="rounded-full bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-800">Combo</span>' : ''}
-                                </div>
-                                <p class="mt-2 text-sm font-medium text-gray-800">${escapeHtml(pedido.cliente?.nome || 'Cliente')}</p>
-                                <p class="mt-1 text-xs text-gray-500">${formatDate(pedido.data, true)} • ${payment}</p>
-                                <p class="mt-1 text-xs text-gray-500">${itemCount} item(ns)</p>
-                            </div>
-                            <div class="text-right shrink-0">
-                                <p class="text-lg font-bold text-[--admin-brown]">${formatCurrency(pedido.total)}</p>
-                                <p class="mt-2 text-xs text-gray-500">${escapeHtml(pedido.cliente?.telefone || 'Sem telefone')}</p>
-                            </div>
-                        </div>
-                    </button>
-                `;
-            });
-        }
-
-        function aplicarFiltros() {
-            atualizarBotoesFiltro();
-            const filtered = obterPedidosFiltrados();
-            renderizarLista(filtered);
-
-            const feedback = document.getElementById('orders-feedback');
-            if (currentSearchTerm && filtered.length === 0) {
-                feedback.textContent = 'Nenhum pedido encontrado com essa busca. Tente nome do cliente, telefone, ID ou nome de item.';
-                feedback.classList.remove('hidden');
-            } else if (currentSearchTerm) {
-                feedback.textContent = `${filtered.length} pedido(s) encontrados para a busca atual.`;
-                feedback.classList.remove('hidden');
-            } else {
-                feedback.classList.add('hidden');
-            }
-        }
-
-        function renderizarItensPedido(produtos) {
-            if (!Array.isArray(produtos) || !produtos.length) {
-                return '<p class="text-sm text-gray-500">Nenhum item registrado.</p>';
-            }
-
-            return produtos.map((item) => {
-                const detailParts = [];
-                if (item.tamanho) detailParts.push(`Tam: ${escapeHtml(item.tamanho)}`);
-                if (item.cor?.nome) detailParts.push(`Cor: ${escapeHtml(item.cor.nome)}`);
-                if (item.personalizacao?.texto) detailParts.push(`Personalização: ${escapeHtml(item.personalizacao.texto)}`);
-
-                const comboHtml = item.isCombo && Array.isArray(item.componentes)
-                    ? `
-                        <div class="mt-2 rounded-xl bg-purple-50 px-3 py-3 text-[11px] text-purple-900">
-                            ${item.componentes.map((comp, index) => {
-                                const selection = item.comboSelections?.[index] || item.comboSelections?.[String(index)] || {};
-                                const selectionParts = [];
-                                if (selection.cor?.nome) selectionParts.push(`Cor: ${escapeHtml(selection.cor.nome)}`);
-                                if (selection.tamanho) selectionParts.push(`Tam: ${escapeHtml(selection.tamanho)}`);
-                                return `<div>${escapeHtml(String(comp.quantidade || 1))}x ${escapeHtml(comp.nome || 'Item do combo')}${selectionParts.length ? ` (${selectionParts.join(' | ')})` : ''}</div>`;
-                            }).join('')}
-                        </div>
-                    `
-                    : '';
-
-                const observationHtml = item.personalizacao?.observacoes
-                    ? `<p class="mt-2 text-xs text-gray-500">Obs: ${escapeHtml(item.personalizacao.observacoes)}</p>`
-                    : '';
-
-                return `
-                    <div class="item-block">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-gray-900">${escapeHtml(String(item.quantity || 1))}x ${escapeHtml(item.nome || 'Item')}</p>
-                                ${detailParts.length ? `<p class="mt-1 text-xs text-gray-500">${detailParts.join(' | ')}</p>` : ''}
-                                ${comboHtml}
-                                ${observationHtml}
-                            </div>
-                            <span class="text-sm font-semibold text-gray-800">${formatCurrency((Number(item.preco || 0) * Number(item.quantity || 1)))}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function abrirDetalhes(id) {
-            currentPedidoId = id;
-            const pedido = todosPedidos.find((item) => item.id === id);
-            if (!pedido) return;
-
-            const status = normalizeOrderStatus(pedido.status);
-            document.getElementById('modal-order-id').textContent = `#${pedido.id.slice(0, 6).toUpperCase()}`;
-            const badge = document.getElementById('modal-status-badge');
-            badge.textContent = status;
-            badge.className = `status-pill status-${status}`;
-
-            document.getElementById('modal-cliente').textContent = pedido.cliente?.nome || '-';
-            document.getElementById('modal-telefone').textContent = pedido.cliente?.telefone || '-';
-            document.getElementById('modal-email').textContent = pedido.cliente?.email || '-';
-
-            const endereco = pedido.cliente?.endereco;
-            document.getElementById('modal-endereco').textContent = endereco
-                ? `${endereco.rua || ''}, ${endereco.numero || ''} - ${endereco.cidade || ''} (${endereco.cep || ''})`
-                : 'Não informado';
-
-            document.getElementById('modal-payment-summary').textContent = pedido.pagamento
-                ? `${pedido.pagamento}${pedido.parcelas && pedido.parcelas > 1 ? ` • ${pedido.parcelas}x` : ''}`
-                : 'Não informado';
-            document.getElementById('modal-order-summary').textContent = `${Array.isArray(pedido.produtos) ? pedido.produtos.length : 0} item(ns)${pedidoTemPersonalizacao(pedido) ? ' • com personalização' : ''}${pedidoTemCombo(pedido) ? ' • com combo' : ''}`;
-            document.getElementById('modal-shipping-summary').textContent = pedido.frete?.name
-                ? `${pedido.frete.company || 'Entrega'} • ${pedido.frete.name}${pedido.frete.deliveryTime ? ` • ${pedido.frete.deliveryTime} dia(s)` : ''}${Number.isFinite(Number(pedido.frete.price)) ? ` • ${formatCurrency(Number(pedido.frete.price))}` : ''}`
-                : 'Não informado';
-            document.getElementById('modal-total').textContent = formatCurrency(pedido.total);
-            document.getElementById('modal-itens').innerHTML = renderizarItensPedido(pedido.produtos);
-
-            const fone = String(pedido.cliente?.telefone || '').replace(/\D/g, '');
-            const whatsapp = document.getElementById('modal-whatsapp');
-            if (fone) {
-                whatsapp.href = `https://wa.me/55${fone}`;
-                whatsapp.classList.remove('hidden');
-            } else {
-                whatsapp.classList.add('hidden');
-            }
-
-            document.getElementById('order-modal').classList.add('visible');
-        }
-
-        async function atualizarStatus(novoStatus) {
-            if (!currentPedidoId) return;
-
-            try {
-                await db.collection('pedidos').doc(currentPedidoId).update({ status: novoStatus });
-                const pedido = todosPedidos.find((item) => item.id === currentPedidoId);
-                if (pedido) pedido.status = novoStatus;
-
-                const badge = document.getElementById('modal-status-badge');
-                badge.textContent = novoStatus;
-                badge.className = `status-pill status-${novoStatus}`;
-
-                atualizarEstatisticasPedidos();
-                aplicarFiltros();
-            } catch (error) {
-                alert(`Erro ao atualizar status: ${error.message}`);
-            }
-        }
-
-        async function copiarResumoPedido() {
-            if (!currentPedidoId) return;
-            const pedido = todosPedidos.find((item) => item.id === currentPedidoId);
-            if (!pedido) return;
-
-            const itens = Array.isArray(pedido.produtos)
-                ? pedido.produtos.map((item) => {
-                    const parts = [`${item.quantity || 1}x ${item.nome || 'Item'}`];
-                    if (item.tamanho) parts.push(`Tam: ${item.tamanho}`);
-                    if (item.cor?.nome) parts.push(`Cor: ${item.cor.nome}`);
-                    if (item.personalizacao?.texto) parts.push(`Personalização: ${item.personalizacao.texto}`);
-                    return `- ${parts.join(' | ')}`;
-                }).join('\n')
-                : '- Sem itens';
-
-            const text = [
-                `Pedido #${pedido.id.slice(0, 6).toUpperCase()}`,
-                `Cliente: ${pedido.cliente?.nome || '-'}`,
-                `Telefone: ${pedido.cliente?.telefone || '-'}`,
-                `Pagamento: ${pedido.pagamento || '-'}`,
-                `Frete: ${pedido.frete?.name ? `${pedido.frete.company || 'Entrega'} • ${pedido.frete.name} • ${formatCurrency(Number(pedido.frete.price || 0))}` : '-'}`,
-                `Total: ${formatCurrency(pedido.total)}`,
-                '',
-                'Itens:',
-                itens
-            ].join('\n');
-
-            try {
-                await navigator.clipboard.writeText(text);
-            } catch (error) {
-                alert('Nao foi possivel copiar o resumo automaticamente.');
-            }
-        }
-
-        async function arquivarPedido() {
-            if (!currentPedidoId || !confirm('Tem certeza que deseja arquivar este pedido?')) return;
-
-            try {
-                await db.collection('pedidos').doc(currentPedidoId).delete();
-                fecharModal();
-            } catch (error) {
-                alert('Erro ao arquivar pedido.');
-            }
-        }
-
-        function fecharModal() {
-            document.getElementById('order-modal').classList.remove('visible');
-            currentPedidoId = null;
-        }
-
-        function filtrarStatus(status) {
-            currentStatusFilter = status;
-            aplicarFiltros();
-        }
-
-        function limparBuscaPedidos() {
-            currentSearchTerm = '';
-            document.getElementById('order-search-input').value = '';
-            aplicarFiltros();
-        }
-
-        function carregarPedidos() {
-            db.collection('pedidos').orderBy('data', 'desc').onSnapshot((snap) => {
-                todosPedidos = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-                atualizarEstatisticasPedidos();
-                aplicarFiltros();
-                document.getElementById('loading').style.display = 'none';
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            auth.onAuthStateChanged(async (user) => {
-                if (!(await isAuthorizedAdmin(user))) {
-                    auth.signOut().catch(() => {});
-                    window.location.href = 'login-admin.html';
-                    return;
-                }
-
-                carregarPedidos();
-            });
-
-            document.getElementById('order-search-input').addEventListener('input', (event) => {
-                currentSearchTerm = String(event.target.value || '').trim().toLowerCase();
-                aplicarFiltros();
-            });
-
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape') fecharModal();
-            });
-        });
-    </script>
 </body>
 </html>

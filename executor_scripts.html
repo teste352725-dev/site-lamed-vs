@@ -170,6 +170,17 @@
 
                 <div class="script-item">
                     <div class="flex items-center gap-3">
+                        <div class="script-icon bg-amber-100 text-amber-700"><i class="fa-solid fa-percent"></i></div>
+                        <div>
+                            <h3 class="font-medium text-gray-800">Remover Todos os Descontos</h3>
+                            <p class="text-xs text-gray-500">Zera o campo <code>desconto</code> de todos os produtos com promoÃ§Ã£o ativa.</p>
+                        </div>
+                    </div>
+                    <button onclick="runScript('removerDescontosProdutos')" class="btn btn-secondary text-xs">Executar</button>
+                </div>
+
+                <div class="script-item">
+                    <div class="flex items-center gap-3">
                         <div class="script-icon bg-teal-100 text-teal-600"><i class="fa-solid fa-download"></i></div>
                         <div>
                             <h3 class="font-medium text-gray-800">Backup de Segurança</h3>
@@ -392,6 +403,44 @@ placeholder="// Escreva seu código JavaScript aqui.
                             log(`${corrigidos} preços corrigidos.`, "success");
                         } else {
                             log("Nenhum preço inválido encontrado.", "success");
+                        }
+                        break;
+
+                    case 'removerDescontosProdutos':
+                        log("Buscando produtos com desconto ativo...", "info");
+                        const snapDescontos = await getDocs(collection(db, "pecas"));
+                        let descontosRemovidos = 0;
+                        let operacoesDesconto = 0;
+                        let batchDescontos = writeBatch(db);
+
+                        for (const produtoDoc of snapDescontos.docs) {
+                            const produto = produtoDoc.data();
+                            const descontoAtual = Number(produto?.desconto || 0);
+
+                            if (descontoAtual <= 0) {
+                                continue;
+                            }
+
+                            batchDescontos.update(produtoDoc.ref, { desconto: 0 });
+                            descontosRemovidos++;
+                            operacoesDesconto++;
+                            log(`Removendo desconto de ${produto?.nome || produtoDoc.id} (${descontoAtual}%).`, "warning");
+
+                            if (operacoesDesconto >= 400) {
+                                await batchDescontos.commit();
+                                batchDescontos = writeBatch(db);
+                                operacoesDesconto = 0;
+                            }
+                        }
+
+                        if (operacoesDesconto > 0) {
+                            await batchDescontos.commit();
+                        }
+
+                        if (descontosRemovidos > 0) {
+                            log(`${descontosRemovidos} produto(s) tiveram o desconto zerado.`, "success");
+                        } else {
+                            log("Nenhum produto com desconto ativo foi encontrado.", "success");
                         }
                         break;
 

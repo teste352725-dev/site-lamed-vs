@@ -1,8 +1,7 @@
 import {
   getRequestBody,
   normalizePostalCode,
-  normalizeQuoteOptions,
-  requestMelhorEnvioQuote,
+  requestShippingQuote,
   setNoStore
 } from "../_shipping.mjs";
 
@@ -17,6 +16,9 @@ export default async function handler(req, res) {
   const body = getRequestBody(req);
   const destinationPostalCode = normalizePostalCode(body?.postalCode);
   const items = Array.isArray(body?.cart) ? body.cart : [];
+  const packageOverride = body?.packageOverride && typeof body.packageOverride === "object"
+    ? body.packageOverride
+    : null;
 
   if (destinationPostalCode.length !== 8) {
     return res.status(400).json({
@@ -33,16 +35,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const quote = await requestMelhorEnvioQuote({
+    const quote = await requestShippingQuote({
       destinationPostalCode,
-      items
+      items,
+      packageOverride
     });
-
-    const options = normalizeQuoteOptions(
-      quote.options,
-      quote.originPostalCode,
-      destinationPostalCode
-    );
+    const options = Array.isArray(quote.options) ? quote.options : [];
 
     if (options.length === 0) {
       return res.status(404).json({
@@ -54,7 +52,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      provider: "melhor_envio",
+      provider: quote.provider,
       options
     });
   } catch (error) {

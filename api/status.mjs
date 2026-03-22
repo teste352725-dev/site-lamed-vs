@@ -1,4 +1,5 @@
-import { normalizePostalCode, setNoStore } from "./_shipping.mjs";
+import { getFirebaseAdminStatus } from "./_firebase-admin.mjs";
+import { getShippingHealth, setNoStore } from "./_shipping.mjs";
 
 export default function handler(req, res) {
   setNoStore(res);
@@ -8,13 +9,15 @@ export default function handler(req, res) {
     return res.status(405).json({ ok: false, error: "Metodo nao permitido." });
   }
 
-  const melhorEnvioOrigin = normalizePostalCode(process.env.MELHOR_ENVIO_ORIGIN_POSTAL_CODE);
-  const melhorEnvioAccessToken = String(process.env.MELHOR_ENVIO_ACCESS_TOKEN || "").trim();
-  const melhorEnvioRefreshToken = String(process.env.MELHOR_ENVIO_REFRESH_TOKEN || "").trim();
+  const firebaseAdmin = getFirebaseAdminStatus();
+  const shipping = getShippingHealth();
 
   return res.status(200).json({
     ok: true,
     message: "Vercel API online",
-    shippingConfigured: Boolean(melhorEnvioAccessToken || melhorEnvioRefreshToken) && melhorEnvioOrigin.length === 8
+    shippingConfigured: shipping.ok,
+    shippingProvider: shipping.provider,
+    ordersConfigured: firebaseAdmin.configured,
+    firebaseAdmin
   });
 }

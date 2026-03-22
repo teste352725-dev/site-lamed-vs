@@ -93,11 +93,30 @@ function getSelectedShippingOption() {
     return normalizeShippingSelection(match);
 }
 
+function buildManualShippingSelection(destinationCep = '') {
+    const normalizedDestinationCep = normalizePostalCode(destinationCep) || MANUAL_SHIPPING_ORIGIN_POSTAL_CODE;
+
+    return {
+        id: 'manual-pendente',
+        serviceId: 'manual-pendente',
+        serviceCode: 'manual-pendente',
+        name: 'Frete definido apos o pedido',
+        company: 'A combinar',
+        price: 0,
+        originalPrice: 0,
+        deliveryTime: 1,
+        quotedAt: new Date().toISOString(),
+        fromPostalCode: MANUAL_SHIPPING_ORIGIN_POSTAL_CODE,
+        toPostalCode: normalizedDestinationCep,
+        freeShippingApplied: false
+    };
+}
+
 function getCheckoutContext() {
     const pagamento = document.querySelector('input[name="pagamento"]:checked')?.value || '';
     const parcelas = parseInt(document.getElementById('parcelas-select')?.value, 10) || 1;
     const cep = normalizePostalCode(elements.checkoutCepInput?.value);
-    const shipping = getSelectedShippingOption();
+    const shipping = SHIPPING_QUOTE_ENABLED ? getSelectedShippingOption() : null;
     const totals = calculateCheckoutTotals(cart, pagamento, parcelas, cep, shipping);
 
     return { pagamento, parcelas, cep, shipping, totals };
@@ -119,9 +138,26 @@ function setShippingStatus(message, extraClass = 'text-gray-500') {
 
 function renderShippingOptions() {
     const container = elements.shippingOptions;
-    if (!container) return;
+    const disabledMessage = 'Frete automatico pausado temporariamente. Nossa equipe confirma o valor e o prazo apos o pedido.';
 
-    container.replaceChildren();
+    if (container) {
+        container.replaceChildren();
+    }
+
+    if (!SHIPPING_QUOTE_ENABLED) {
+        setShippingStatus('Frete manual temporario ativo.', 'text-amber-700');
+
+        if (container) {
+            const note = document.createElement('div');
+            note.className = 'rounded-2xl border border-[#EADBC9] bg-[#F9F5EF] p-4 text-sm leading-relaxed text-gray-600';
+            note.textContent = disabledMessage;
+            container.appendChild(note);
+        }
+
+        return;
+    }
+
+    if (!container) return;
 
     const { cep, totals } = getCheckoutContext();
     const freeShippingEligible = totals.freeShippingEligible;
@@ -204,6 +240,13 @@ function renderShippingOptions() {
 }
 
 async function quoteShippingOptions({ force = false, cartItems = cart, destinationCep = null } = {}) {
+    if (!SHIPPING_QUOTE_ENABLED) {
+        shippingQuoteState = createEmptyShippingQuoteState();
+        renderShippingOptions();
+        updateCheckoutSummary();
+        return [];
+    }
+
     const cep = normalizePostalCode(destinationCep ?? elements.checkoutCepInput?.value);
     const cartSignature = buildCartSignature(cartItems);
 
@@ -293,6 +336,7 @@ async function quoteShippingOptions({ force = false, cartItems = cart, destinati
 }
 
 function scheduleShippingQuote(force = false) {
+    if (!SHIPPING_QUOTE_ENABLED) return;
     clearTimeout(shippingQuoteDebounceTimer);
     shippingQuoteDebounceTimer = window.setTimeout(() => {
         quoteShippingOptions({ force }).catch(() => {});
@@ -305,7 +349,7 @@ function setupShippingQuoteInteractions() {
             const formatted = formatPostalCode(event.target.value);
             event.target.value = formatted;
 
-            if (normalizePostalCode(formatted).length === 8) {
+            if (SHIPPING_QUOTE_ENABLED && normalizePostalCode(formatted).length === 8) {
                 scheduleShippingQuote();
             } else {
                 shippingQuoteState = createEmptyShippingQuoteState();
@@ -589,7 +633,7 @@ async function openCheckoutModal() {
     renderShippingOptions();
     updateCheckoutSummary();
 
-    if (normalizePostalCode(elements.checkoutCepInput?.value).length === 8) {
+    if (SHIPPING_QUOTE_ENABLED && normalizePostalCode(elements.checkoutCepInput?.value).length === 8) {
         await quoteShippingOptions({ force: true });
     }
 }
@@ -656,7 +700,13 @@ function updateCheckoutSummary() {
         appendRow('Taxa Cartao (>2x)', `+${formatarReal(totals.cardFee)}`, 'mt-1 flex justify-between text-sm font-medium text-gray-500');
     }
 
-    if (shipping) {
+    if (!SHIPPING_QUOTE_ENABLED) {
+        appendRow('Frete', 'A combinar', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-amber-700');
+        setShippingMessage(
+            'fa-solid fa-box text-[--cor-marrom-cta]',
+            'Frete temporariamente definido apos o pedido. Nossa equipe confirma o valor e o prazo pelo WhatsApp.'
+        );
+    } else if (shipping) {
         const shippingLabel = `${shipping.company} - ${shipping.name}`;
         appendRow(
             `Frete (${shippingLabel})`,
@@ -712,11 +762,6 @@ async function finalizarPedido(formData) {
     const parcelasSeguras = paymentKey.includes('cartao')
         ? (parseInt(document.getElementById('parcelas-select')?.value, 10) || 1)
         : 1;
-    const pagamentoSeguro = paymentKey.includes('cartao')
-        ? 'CartÃ£o de CrÃ©dito'
-        : paymentKey === 'pix'
-            ? 'PIX'
-            : pagamento;
 
     try {
         if (!cart.length) {
@@ -727,126 +772,54 @@ async function finalizarPedido(formData) {
             throw new Error('Preencha todos os dados obrigatorios antes de finalizar.');
         }
 
-        const displayedTotal = parseCurrencyText(elements.checkoutTotal.textContent);
-        const originalCartSnapshot = JSON.stringify(cart);
-        const canonicalCart = await buildCanonicalCartSnapshot(cart);
-
-        if (!canonicalCart.length) {
-            throw new Error('Os itens do carrinho nao estao mais disponiveis.');
-        }
-
-        const cartWasAdjusted = JSON.stringify(canonicalCart) !== originalCartSnapshot;
-        cart = canonicalCart;
-        localStorage.setItem('lamedCart', JSON.stringify(canonicalCart));
-        updateCartUI();
-
-        if (cartWasAdjusted) {
-            await quoteShippingOptions({ force: true, cartItems: canonicalCart, destinationCep: cliente.endereco.cep });
-            updateCheckoutSummary();
-            throw new Error('Seu carrinho foi atualizado com os dados mais recentes. Revise o pedido e confirme novamente.');
-        }
-
-        await quoteShippingOptions({ force: true, cartItems: canonicalCart, destinationCep: cliente.endereco.cep });
-        const shipping = getSelectedShippingOption();
-        if (!shipping) {
-            throw new Error('Selecione uma opcao de frete para concluir o pedido.');
-        }
-
-        const totals = calculateCheckoutTotals(canonicalCart, pagamentoSeguro, parcelasSeguras, cliente.endereco.cep, shipping);
-        updateCheckoutSummary();
-
-        if (Math.abs(displayedTotal - totals.final) > 0.01) {
-            throw new Error('O total do pedido foi atualizado. Revise o frete e confirme novamente.');
-        }
+        const expectedTotal = parseCurrencyText(elements.checkoutTotal.textContent);
+        let authToken = '';
 
         if (currentUser) {
-            await db.collection('usuarios').doc(currentUser.uid).set({
-                nome: cliente.nome,
-                telefone: cliente.telefone,
-                endereco: cliente.endereco
-            }, { merge: true });
+            try {
+                authToken = await currentUser.getIdToken();
+            } catch (error) {
+                throw new Error('Nao foi possivel validar sua sessao. Entre novamente e tente de novo.');
+            }
         }
 
-        const frete = {
-            serviceId: shipping.serviceId,
-            serviceCode: shipping.serviceCode,
-            name: shipping.name,
-            company: shipping.company,
-            price: totals.shippingCost,
-            originalPrice: shipping.originalPrice,
-            deliveryTime: shipping.deliveryTime,
-            quotedAt: new Date().toISOString(),
-            fromPostalCode: shipping.fromPostalCode,
-            toPostalCode: shipping.toPostalCode,
-            freeShippingApplied: totals.freeShipping
-        };
-
-        const pedido = {
-            cliente,
-            pagamento: pagamentoSeguro,
-            parcelas: parcelasSeguras,
-            produtos: canonicalCart,
-            subtotal: totals.subtotal,
-            total: totals.final,
-            frete,
-            ajustes: {
-                pixDiscount: totals.pixDiscount,
-                cardFee: totals.cardFee,
-                freeShipping: totals.freeShipping
+        const response = await fetch(buildBackendUrl('/api/orders/create'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
             },
-            data: firebase.firestore.FieldValue.serverTimestamp(),
-            status: 'pendente',
-            userId: currentUser ? currentUser.uid : null,
-            estoque_baixado: false
-        };
-
-        const ref = await db.collection('pedidos').add(pedido);
-
-        let message = `*Novo Pedido #${ref.id.slice(0, 6).toUpperCase()}*\\n`;
-        message += `*Cliente:* ${cliente.nome}\\n`;
-        message += `*Pagamento:* ${pedido.pagamento}`;
-        if (paymentKey.includes('cartao')) message += ` (${pedido.parcelas}x)`;
-        message += '\\n';
-        message += `*Frete:* ${frete.company} - ${frete.name}\\n`;
-        message += `*Entrega estimada:* ${frete.deliveryTime} dia(s) uteis\\n`;
-        message += `*Valor do frete:* ${formatarReal(frete.price)}\\n\\n`;
-        message += '*Itens do Pedido:*\\n';
-
-        canonicalCart.forEach((item) => {
-            message += '------------------------------\\n';
-            message += `- *${item.quantity}x ${item.nome}*\\n`;
-
-            if (item.isCombo && item.comboSelections) {
-                message += '  _Combo personalizado:_\\n';
-                item.componentes.forEach((comp, idx) => {
-                    const selection = item.comboSelections[idx];
-                    const color = sanitizePlainText(selection?.cor?.nome, 40) || 'Padrao';
-                    const size = normalizeSizeLabel(selection?.tamanho);
-                    const detailParts = [color];
-                    if (size && size !== 'Unico') detailParts.push(`(${size})`);
-                    message += `  - ${comp.quantidade}x ${comp.nome} [${detailParts.join(' ')}]\\n`;
-                });
-            } else {
-                const detailParts = [];
-                const size = normalizeSizeLabel(item.tamanho);
-                if (size && size !== 'Unico') detailParts.push(`Tam: ${size}`);
-                if (item.cor?.nome) detailParts.push(`Cor: ${sanitizePlainText(item.cor.nome, 40)}`);
-                if (item.personalizacao?.texto) detailParts.push(`Personalizacao: ${sanitizePlainText(item.personalizacao.texto, 120)}`);
-                if (detailParts.length) message += `  (${detailParts.join(' | ')})\\n`;
-                if (item.personalizacao?.observacoes) message += `  Obs: ${sanitizePlainText(item.personalizacao.observacoes, 240)}\\n`;
-            }
-
-            message += `  Valor: ${formatarReal(item.preco * item.quantity)}\\n`;
+            body: JSON.stringify({
+                cliente,
+                pagamento,
+                parcelas: parcelasSeguras,
+                cart,
+                expectedTotal
+            })
         });
 
-        message += '------------------------------\\n';
-        message += `*Subtotal:* ${formatarReal(pedido.subtotal)}\\n`;
-        if (pedido.ajustes.pixDiscount > 0) message += `*Desconto PIX:* -${formatarReal(pedido.ajustes.pixDiscount)}\\n`;
-        if (pedido.ajustes.cardFee > 0) message += `*Taxa Cartao:* +${formatarReal(pedido.ajustes.cardFee)}\\n`;
-        if (pedido.ajustes.freeShipping) message += `*Desconto no frete:* -${formatarReal(frete.originalPrice)}\\n`;
-        message += `*Total Final:* ${formatarReal(pedido.total)}\\n`;
+        const payload = await response.json().catch(() => null);
 
-        window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(message)}`, '_blank');
+        if (response.status === 409 && Array.isArray(payload?.canonicalCart)) {
+            cart = payload.canonicalCart;
+            localStorage.setItem('lamedCart', JSON.stringify(payload.canonicalCart));
+            updateCartUI();
+            renderShippingOptions();
+            updateCheckoutSummary();
+            throw new Error(sanitizePlainText(payload?.error || 'Seu carrinho foi atualizado com os dados mais recentes. Revise o pedido e confirme novamente.', 220));
+        }
+
+        if (!response.ok || !payload?.ok || !payload?.orderId) {
+            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel criar o pedido no servidor.', 220));
+        }
+
+        const whatsappUrl = String(payload?.whatsappUrl || '').trim();
+        if (whatsappUrl) {
+            window.open(whatsappUrl, '_blank');
+        } else if (payload?.whatsappMessage) {
+            window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(String(payload.whatsappMessage))}`, '_blank');
+        }
 
         cart = [];
         localStorage.setItem('lamedCart', '[]');
@@ -862,3 +835,5 @@ async function finalizarPedido(formData) {
 
 document.addEventListener('DOMContentLoaded', init);
 
+const SHIPPING_QUOTE_ENABLED = false;
+const MANUAL_SHIPPING_ORIGIN_POSTAL_CODE = '29056015';
