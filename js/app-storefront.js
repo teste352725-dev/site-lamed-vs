@@ -423,12 +423,19 @@ function observeCollectionCarousel(section, splideId) {
 // --- CARREGAMENTO DE DADOS ---
 async function carregarDadosLoja() {
     try {
-        const [colecoesSnap, produtosSnap, catalogSettingsSnap, storefrontCopySnap] = await Promise.all([
+        const [colecoesSnap, produtosSnap, catalogSettingsSnap] = await Promise.all([
             db.collection("colecoes").where("ativa", "==", true).get(),
             db.collection("pecas").where("status", "==", "active").get(),
-            db.collection("colecoes").doc("__catalog_settings").get(),
-            db.collection("site_config").doc("homepage").get()
+            db.collection("colecoes").doc("__catalog_settings").get()
         ]);
+        let storefrontCopyData = null;
+
+        try {
+            const storefrontCopySnap = await db.collection("site_config").doc("homepage").get();
+            storefrontCopyData = storefrontCopySnap.exists ? storefrontCopySnap.data() : null;
+        } catch (copyError) {
+            console.warn("Aviso ao carregar textos editaveis da home:", copyError);
+        }
 
         activeCollections = colecoesSnap.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -443,7 +450,7 @@ async function carregarDadosLoja() {
         const productCategories = [...new Set(products.map((product) => product.categoria).filter(Boolean))];
         siteCategories = mergeSiteCategories(configCategories, productCategories);
         if (typeof applyStorefrontCopy === 'function') {
-            applyStorefrontCopy(storefrontCopySnap.exists ? storefrontCopySnap.data() : null);
+            applyStorefrontCopy(storefrontCopyData);
         }
 
         renderSidebarCategoryLinks();
