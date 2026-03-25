@@ -18,25 +18,42 @@ service firebase.storage {
         fileName.matches('^' + request.auth.uid + '_.*$');
     }
 
+    function isSafeImageUpload(maxBytes) {
+      return request.resource != null &&
+        request.resource.size <= maxBytes &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    function isSafeLegacyUpload() {
+      return request.resource != null &&
+        request.resource.size <= 20 * 1024 * 1024 &&
+        (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType.matches('video/.*') ||
+          request.resource.contentType.matches('application/pdf')
+        );
+    }
+
     match /produtos/{allPaths=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() && isSafeImageUpload(10 * 1024 * 1024);
     }
 
     match /galeria/{allPaths=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() && isSafeImageUpload(10 * 1024 * 1024);
     }
 
     match /profile_images/{fileName} {
       allow read: if true;
-      allow write: if isAdmin() || isOwnProfileImage(fileName);
+      allow write: if (isAdmin() || isOwnProfileImage(fileName)) && isSafeImageUpload(5 * 1024 * 1024);
     }
 
     // Ajuste este prefixo para a pasta real usada pelo outro site que
     // precisa continuar publica dentro deste mesmo bucket compartilhado.
     match /legacy-open/{allPaths=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSafeLegacyUpload();
     }
 
     match /{allPaths=**} {

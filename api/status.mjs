@@ -1,4 +1,5 @@
 import { getFirebaseAdminStatus } from "./_firebase-admin.mjs";
+import { requireDiagnosticAccess } from "./_diagnostics.mjs";
 import { getShippingHealth, setNoStore } from "./_shipping.mjs";
 
 export default function handler(req, res) {
@@ -7,6 +8,10 @@ export default function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ ok: false, error: "Metodo nao permitido." });
+  }
+
+  if (!requireDiagnosticAccess(req, res)) {
+    return;
   }
 
   const firebaseAdmin = getFirebaseAdminStatus();

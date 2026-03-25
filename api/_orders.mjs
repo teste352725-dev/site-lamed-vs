@@ -1,4 +1,5 @@
-import { FieldValue, getAdminAuth, getAdminDb } from "./_firebase-admin.mjs";
+import { createHash } from "node:crypto";
+import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 
 const TAXA_JUROS = 0.0549;
 const DEFAULT_ORDER_PHONE = "5527999287657";
@@ -12,6 +13,9 @@ class RequestError extends Error {
     Object.assign(this, details);
   }
 }
+
+const MAX_CART_ITEMS = 50;
+const DUPLICATE_ORDER_WINDOW_MS = 15 * 60 * 1000;
 
 function sanitizePlainText(value, maxLength = 160) {
   return String(value ?? "")
@@ -651,7 +655,80 @@ function buildReviewResponse(canonicalCart, totals) {
   };
 }
 
-export async function createOrderFromBody(body, authorizationHeader) {
+function normalizeEmail(value) {
+  return sanitizePlainText(value, 120).toLowerCase();
+}
+
+function buildOrderFingerprint(cliente, pagamento, parcelas, canonicalCart, totals) {
+  const fingerprintSource = {
+    cliente: {
+      email: normalizeEmail(cliente?.email),
+      telefone: String(cliente?.telefone || "").replace(/\D/g, "").slice(-11),
+      cep: normalizePostalCode(cliente?.endereco?.cep)
+    },
+    pagamento: getPaymentKey(pagamento),
+    parcelas: Math.max(1, parseInt(parcelas, 10) || 1),
+    total: roundCurrency(totals?.final || 0),
+    subtotal: roundCurrency(totals?.subtotal || 0),
+    produtos: (Array.isArray(canonicalCart) ? canonicalCart : []).map((item) => ({
+      id: sanitizePlainText(item?.id, 120),
+      quantity: Math.max(1, parseInt(item?.quantity, 10) || 1),
+      tamanho: normalizeSizeLabel(item?.tamanho),
+      cor: sanitizePlainText(item?.cor?.nome, 40),
+      personalizacao: normalizePersonalization(item?.personalizacao),
+      comboSelections: normalizeComboSelections(item?.comboSelections)
+    }))
+  };
+
+  return createHash("sha256").update(JSON.stringify(fingerprintSource)).digest("hex");
+}
+
+function getTimestampMillis(value) {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") {
+    const date = value.toDate();
+    return Number.isFinite(date?.getTime?.()) ? date.getTime() : null;
+  }
+
+  if (typeof value?.seconds === "number") {
+    return value.seconds * 1000;
+  }
+
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function findRecentDuplicateOrder(db, fingerprint) {
+  const snapshot = await db
+    .collection("pedidos")
+    .where("fingerprint", "==", fingerprint)
+    .limit(5)
+    .get();
+
+  if (snapshot.empty) return null;
+
+  const cutoff = Date.now() - DUPLICATE_ORDER_WINDOW_MS;
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data() || {};
+    const timestamp = getTimestampMillis(data.data);
+    const status = sanitizePlainText(data.status, 20).toLowerCase();
+    const isOpenOrder = ["pendente", "processando"].includes(status);
+
+    if (timestamp && timestamp >= cutoff && isOpenOrder) {
+      return { id: doc.id, ...data };
+    }
+  }
+
+  return null;
+}
+
+export async function createOrderFromBody(body, authorizationHeader, requestMeta = {}) {
+  const adminStatus = getFirebaseAdminStatus();
+  if (!adminStatus.configured) {
+    throw new RequestError(503, "Pedidos temporariamente indisponiveis. Tente novamente em instantes.");
+  }
+
   const db = getAdminDb();
   const userId = await resolveAuthenticatedUserId(authorizationHeader);
 
@@ -663,6 +740,10 @@ export async function createOrderFromBody(body, authorizationHeader) {
 
   if (submittedCart.length === 0) {
     throw new RequestError(400, "Sua sacola esta vazia.");
+  }
+
+  if (submittedCart.length > MAX_CART_ITEMS) {
+    throw new RequestError(400, "Seu pedido excede o limite de itens permitido. Revise a sacola e tente novamente.");
   }
 
   const canonicalCart = await buildCanonicalCartSnapshot(db, submittedCart);
@@ -677,6 +758,15 @@ export async function createOrderFromBody(body, authorizationHeader) {
 
   if (sourceSignature !== canonicalSignature || (expectedTotal != null && Math.abs(expectedTotal - totals.final) > 0.01)) {
     throw new RequestError(409, "Pedido precisa de revisao.", buildReviewResponse(canonicalCart, totals));
+  }
+
+  const fingerprint = buildOrderFingerprint(cliente, pagamento, parcelas, canonicalCart, totals);
+  const duplicatedOrder = await findRecentDuplicateOrder(db, fingerprint);
+  if (duplicatedOrder) {
+    throw new RequestError(409, "Ja recebemos um pedido igual ha pouco tempo. Se precisar, fale com a loja antes de tentar novamente.", {
+      code: "DUPLICATE_ORDER",
+      duplicatedOrderId: duplicatedOrder.id
+    });
   }
 
   const pedido = {
@@ -695,7 +785,12 @@ export async function createOrderFromBody(body, authorizationHeader) {
     data: FieldValue.serverTimestamp(),
     status: "pendente",
     userId,
-    estoque_baixado: false
+    estoque_baixado: false,
+    fingerprint,
+    metadata: {
+      clientAddress: sanitizePlainText(requestMeta?.clientAddress, 80),
+      userAgent: sanitizePlainText(requestMeta?.userAgent, 240)
+    }
   };
 
   await saveUserProfileIfNeeded(db, userId, cliente);

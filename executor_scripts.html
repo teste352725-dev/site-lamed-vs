@@ -492,7 +492,14 @@ placeholder="// Escreva seu código JavaScript aqui.
 
         // --- EXECUTOR DE SCRIPT PERSONALIZADO ---
 
+        const CUSTOM_SCRIPT_EXECUTOR_ENABLED = false;
+
         window.executarScriptPersonalizado = async () => {
+            if (!CUSTOM_SCRIPT_EXECUTOR_ENABLED) {
+                log("Editor de script personalizado pausado por seguranca neste ambiente.", "warning");
+                return;
+            }
+
             const code = document.getElementById('custom-script-input').value;
             
             if (!code.trim()) {
@@ -529,6 +536,22 @@ placeholder="// Escreva seu código JavaScript aqui.
         };
 
         // --- Persistência do Editor ---
+
+        if (!CUSTOM_SCRIPT_EXECUTOR_ENABLED) {
+            const editor = document.getElementById('custom-script-input');
+            const button = document.querySelector('button[onclick="executarScriptPersonalizado()"]');
+
+            if (editor) {
+                editor.value = '// Editor personalizado pausado por seguranca.\n// Use os scripts prontos ou mova manutencoes sensiveis para o backend.';
+                editor.readOnly = true;
+            }
+
+            if (button) {
+                button.disabled = true;
+                button.classList.add('opacity-60', 'cursor-not-allowed');
+                button.innerHTML = '<i class="fa-solid fa-shield-halved mr-2"></i>Execucao pausada';
+            }
+        }
 
         window.salvarRascunho = () => {
             const code = document.getElementById('custom-script-input').value;

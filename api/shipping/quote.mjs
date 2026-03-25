@@ -1,5 +1,6 @@
 import {
   getRequestBody,
+  isShippingApiEnabled,
   normalizePostalCode,
   requestShippingQuote,
   setNoStore
@@ -11,6 +12,13 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ ok: false, error: "Metodo nao permitido." });
+  }
+
+  if (!isShippingApiEnabled()) {
+    return res.status(503).json({
+      ok: false,
+      error: "Frete automatico pausado temporariamente. O valor e o prazo sao definidos manualmente apos o pedido."
+    });
   }
 
   const body = getRequestBody(req);

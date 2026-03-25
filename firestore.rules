@@ -25,6 +25,49 @@ service cloud.firestore {
       return value == null || (value is string && value.size() <= max);
     }
 
+    function validOptionalTimestamp(value) {
+      return value == null || value is timestamp;
+    }
+
+    function validProfileAddress(endereco) {
+      return endereco is map &&
+        endereco.keys().hasOnly(['rua', 'numero', 'cep', 'cidade']) &&
+        validOptionalString(endereco.rua, 140) &&
+        validOptionalString(endereco.numero, 40) &&
+        validOptionalString(endereco.cep, 12) &&
+        validOptionalString(endereco.cidade, 120);
+    }
+
+    function validUsuarioData() {
+      return request.resource.data.keys().hasOnly([
+          'nome',
+          'email',
+          'telefone',
+          'endereco',
+          'fotoUrl',
+          'createdAt',
+          'favoritos'
+        ]) &&
+        validString(request.resource.data.nome, 1, 120) &&
+        validOptionalString(request.resource.data.email, 120) &&
+        validOptionalString(request.resource.data.telefone, 30) &&
+        (request.resource.data.endereco == null || validProfileAddress(request.resource.data.endereco)) &&
+        validOptionalString(request.resource.data.fotoUrl, 500) &&
+        validOptionalTimestamp(request.resource.data.createdAt) &&
+        (
+          resource == null
+            ? (request.resource.data.createdAt == null || request.resource.data.createdAt == request.time)
+            : request.resource.data.createdAt == resource.data.createdAt
+        ) &&
+        (
+          request.resource.data.favoritos == null ||
+          (
+            request.resource.data.favoritos is list &&
+            request.resource.data.favoritos.size() <= 200
+          )
+        );
+    }
+
     function validEndereco(endereco) {
       return endereco is map &&
         endereco.keys().hasAll(['rua', 'numero', 'cep', 'cidade']) &&
@@ -166,16 +209,62 @@ service cloud.firestore {
         );
     }
 
+    function validChatMessage(chatId) {
+      return request.resource.data.keys().hasOnly(['text', 'sender', 'timestamp', 'userName']) &&
+        validString(request.resource.data.text, 1, 1000) &&
+        request.resource.data.timestamp == request.time &&
+        (
+          (
+            isOwner(chatId) &&
+            request.resource.data.sender == 'user' &&
+            validString(request.resource.data.userName, 1, 80)
+          ) ||
+          (
+            isAdmin() &&
+            request.resource.data.sender == 'admin' &&
+            validOptionalString(request.resource.data.userName, 80)
+          )
+        );
+    }
+
+    function validChatMeta(chatId) {
+      return request.resource.data.keys().hasOnly(['lastMessage', 'lastUpdate', 'userName', 'userId', 'unread']) &&
+        validOptionalString(request.resource.data.lastMessage, 140) &&
+        request.resource.data.lastUpdate is timestamp &&
+        validOptionalString(request.resource.data.userName, 80) &&
+        validString(request.resource.data.userId, 1, 80) &&
+        request.resource.data.userId == chatId &&
+        request.resource.data.unread is bool;
+    }
+
+    function validUserChatMetaWrite(chatId) {
+      return isOwner(chatId) &&
+        validChatMeta(chatId) &&
+        request.resource.data.unread == true &&
+        request.resource.data.lastUpdate == request.time &&
+        validString(request.resource.data.userName, 1, 80);
+    }
+
+    function validAdminChatMetaWrite(chatId) {
+      return isAdmin() && validChatMeta(chatId);
+    }
+
     match /usuarios/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if (isOwner(userId) || isAdmin()) && validUsuarioData();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /chats/{chatId}/messages/{msgId} {
-      allow read, write: if isOwner(chatId) || isAdmin();
+      allow read: if isOwner(chatId) || isAdmin();
+      allow create: if validChatMessage(chatId);
+      allow update, delete: if false;
     }
 
     match /chats_ativos/{chatId} {
-      allow read, write: if isOwner(chatId) || isAdmin();
+      allow read: if isOwner(chatId) || isAdmin();
+      allow create, update: if validUserChatMetaWrite(chatId) || validAdminChatMetaWrite(chatId);
+      allow delete: if isAdmin();
     }
 
     match /pedidos/{pedidoId} {
@@ -200,7 +289,7 @@ service cloud.firestore {
     }
 
     match /visitas/{document=**} {
-      allow create: if true;
+      allow create: if false;
       allow read: if isAdmin();
     }
 

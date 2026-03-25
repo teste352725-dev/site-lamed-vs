@@ -16,6 +16,8 @@ const STATUS_META = {
     cancelado: { label: "Cancelado", className: "status-cancelado", icon: "fa-solid fa-ban" }
 };
 const STATUS_ORDER = ["pendente", "processando", "enviado", "entregue", "cancelado"];
+const ADMIN_OPERATIONAL_SHIPPING_ENABLED = false;
+const ADMIN_OPERATIONAL_SHIPPING_PAUSE_MESSAGE = "Cotacao automatica pausada temporariamente. Use esta area apenas para organizar a expedicao manual.";
 const DEFAULT_SHIPPING_PROFILES = {
     vestido: { peso: 0.7, largura: 28, altura: 6, comprimento: 35 },
     conjunto: { peso: 0.95, largura: 30, altura: 8, comprimento: 36 },
@@ -264,6 +266,11 @@ function bindEvents() {
         state.quote = createEmptyQuoteState();
         renderQuoteOptions();
     });
+
+    if (elements.ordersQuoteBtn && !ADMIN_OPERATIONAL_SHIPPING_ENABLED) {
+        elements.ordersQuoteBtn.disabled = true;
+        elements.ordersQuoteBtn.title = ADMIN_OPERATIONAL_SHIPPING_PAUSE_MESSAGE;
+    }
     elements.ordersSaveExpeditionBtn?.addEventListener("click", saveExpedition);
     elements.ordersClearRemessaBtn?.addEventListener("click", clearRemessa);
     elements.ordersDeleteBtn?.addEventListener("click", archiveOrder);
@@ -1067,6 +1074,26 @@ function renderQuoteOptions() {
     feedback.classList.add("orders-hidden");
     list.innerHTML = "";
 
+    if (!ADMIN_OPERATIONAL_SHIPPING_ENABLED) {
+        feedback.className = "orders-feedback";
+        feedback.textContent = ADMIN_OPERATIONAL_SHIPPING_PAUSE_MESSAGE;
+
+        const activeOrder = getActiveOrder();
+        const savedQuote = normalizeQuoteOption(activeOrder?.expedicao?.quote);
+        if (!savedQuote) {
+            list.innerHTML = '<p class="orders-page-note">Sem cotacao automatica no momento. Salve observacoes, pacote e rastreio manualmente.</p>';
+            return;
+        }
+
+        state.quote = {
+            loading: false,
+            requested: true,
+            error: "",
+            options: [savedQuote],
+            selectedId: savedQuote.id
+        };
+    }
+
     if (state.quote.loading) {
         list.innerHTML = `
             <div class="orders-loading-shell compact">
@@ -1393,6 +1420,17 @@ function buildQuoteCart(ordersForShipment) {
 async function quoteOperationalShipping() {
     const activeOrder = getActiveOrder();
     if (!activeOrder) return;
+
+    if (!ADMIN_OPERATIONAL_SHIPPING_ENABLED) {
+        state.quote = {
+            ...createEmptyQuoteState(),
+            requested: true,
+            error: ADMIN_OPERATIONAL_SHIPPING_PAUSE_MESSAGE
+        };
+        renderQuoteOptions();
+        setModalFeedback(ADMIN_OPERATIONAL_SHIPPING_PAUSE_MESSAGE, "info");
+        return;
+    }
 
     const destinationCep = normalizePostalCode(elements.expCep?.value);
     const relatedOrders = getSelectedRelatedOrders(activeOrder);

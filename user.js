@@ -15,6 +15,13 @@ try { app = firebase.app(); } catch (e) { app = firebase.initializeApp(firebaseC
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
+const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_REMOTE_IMAGE_HOSTS = new Set([
+    'firebasestorage.googleapis.com',
+    'storage.googleapis.com',
+    'ui-avatars.com',
+    'lh3.googleusercontent.com'
+]);
 
 // Variáveis de Estado
 let currentUser = null;
@@ -41,6 +48,7 @@ function normalizeImageUrl(value) {
     try {
         const parsed = new URL(raw, window.location.origin);
         if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+        if (parsed.origin !== window.location.origin && !ALLOWED_REMOTE_IMAGE_HOSTS.has(parsed.hostname)) return '';
         return parsed.toString();
     } catch (error) {
         return '';
@@ -92,7 +100,8 @@ if(loginForm) {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-pass').value;
-        auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Erro: " + err.message));
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch(() => alert("Nao foi possivel entrar com esse email e senha."));
     });
 }
 
@@ -135,7 +144,14 @@ if(regForm) {
             });
             
         } catch(err) {
-            alert("Erro no cadastro: " + err.message);
+            const errorCode = String(err?.code || '');
+            if (errorCode === 'auth/weak-password') {
+                alert("A senha precisa ter pelo menos 6 caracteres.");
+            } else if (errorCode === 'auth/invalid-email') {
+                alert("Digite um email valido.");
+            } else {
+                alert("Nao foi possivel concluir o cadastro agora.");
+            }
             const btn = regForm.querySelector('button');
             btn.textContent = 'Finalizar Cadastro';
             btn.disabled = false;
@@ -203,6 +219,18 @@ window.uploadFotoPerfil = async (input) => {
     const file = input.files[0];
     if (!file || !currentUser) return;
 
+    if (!String(file.type || '').startsWith('image/')) {
+        alert("Selecione um arquivo de imagem valido.");
+        input.value = '';
+        return;
+    }
+
+    if (Number(file.size || 0) > MAX_PROFILE_IMAGE_BYTES) {
+        alert("A imagem precisa ter no maximo 5 MB.");
+        input.value = '';
+        return;
+    }
+
     const imgPreview = document.getElementById('profile-edit-avatar');
     imgPreview.style.opacity = '0.5';
     
@@ -223,7 +251,7 @@ window.uploadFotoPerfil = async (input) => {
 
     } catch (error) {
         console.error("Erro no upload:", error);
-        alert("Erro ao enviar imagem: " + error.message);
+        alert("Nao foi possivel enviar a imagem agora.");
     } finally {
         imgPreview.style.opacity = '1';
         input.value = '';
@@ -264,7 +292,7 @@ if(profileForm) {
             alert("Dados atualizados!");
             location.reload(); 
         } catch(e) {
-            alert("Erro ao salvar: " + e.message);
+            alert("Nao foi possivel salvar suas alteracoes agora.");
             btn.textContent = 'Salvar Alterações';
             btn.disabled = false;
         }

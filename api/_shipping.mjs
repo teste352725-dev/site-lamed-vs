@@ -45,6 +45,12 @@ export function getShippingProvider() {
   return normalized === "correios" ? "correios" : "melhor_envio";
 }
 
+export function isShippingApiEnabled() {
+  return String(process.env.SHIPPING_API_ENABLED || "false")
+    .trim()
+    .toLowerCase() === "true";
+}
+
 export function getMelhorEnvioBaseUrl() {
   return String(process.env.MELHOR_ENVIO_BASE_URL || "https://www.melhorenvio.com.br").replace(/\/+$/, "");
 }
@@ -65,6 +71,22 @@ export function getCorreiosServiceCodes() {
     .split(",")
     .map((service) => service.trim())
     .filter(Boolean);
+}
+
+export function getCorreiosContract() {
+  return String(process.env.CORREIOS_CONTRACT || "").trim();
+}
+
+export function getCorreiosPostageCard() {
+  return String(process.env.CORREIOS_POSTAGE_CARD || "").trim();
+}
+
+export function getCorreiosRegionalCode() {
+  const rawValue = String(process.env.CORREIOS_DR || "").trim();
+  if (!rawValue) return null;
+
+  const numeric = parseInt(rawValue, 10);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
 }
 
 export function normalizePostalCode(value) {
@@ -411,10 +433,12 @@ async function fetchCorreiosJson(pathname, { method = "GET", body = null } = {})
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const message =
+        (Array.isArray(payload?.msgs) && payload.msgs.length > 0 ? payload.msgs.join(" | ") : null) ||
         payload?.message ||
         payload?.mensagem ||
         payload?.msg ||
         payload?.error ||
+        payload?.causa ||
         `Correios respondeu com status ${response.status}.`;
       throw new Error(String(message).slice(0, 220));
     }
@@ -491,6 +515,15 @@ export async function requestCorreiosQuote({ destinationPostalCode, items, packa
     .split(",")
     .map((service) => service.trim())
     .filter(Boolean);
+  const contract = getCorreiosContract();
+  const regionalCode = getCorreiosRegionalCode();
+  const contractFields =
+    contract && regionalCode !== null
+      ? {
+          nuContrato: contract,
+          nuDR: regionalCode
+        }
+      : {};
 
   const manualVolume = getPackageOverride(packageOverride);
   const packageProfile = manualVolume || buildAggregatePackage(items);
@@ -508,6 +541,7 @@ export async function requestCorreiosQuote({ destinationPostalCode, items, packa
     altura: String(Math.max(1, Math.round(Number(packageProfile.height || 0)))),
     vlDeclarado: String(declaredValue),
     dtEvento: formatCorreiosDate(),
+    ...contractFields,
     ...(additionalServices.length > 0
       ? { servicosAdicionais: additionalServices.map((code) => ({ coServAdicional: code })) }
       : {})
@@ -612,22 +646,30 @@ export async function requestShippingQuote({ destinationPostalCode, items, packa
 
 export function getShippingHealth() {
   const provider = getShippingProvider();
+  const enabled = isShippingApiEnabled();
 
   if (provider === "correios") {
     const originPostalCode = normalizePostalCode(process.env.CORREIOS_ORIGIN_POSTAL_CODE || process.env.MELHOR_ENVIO_ORIGIN_POSTAL_CODE);
     const accessToken = String(process.env.CORREIOS_ACCESS_TOKEN || "").trim();
     const serviceCodes = getCorreiosServiceCodes();
+    const regionalCode = getCorreiosRegionalCode();
+    const contract = getCorreiosContract();
+    const postageCard = getCorreiosPostageCard();
 
     return {
-      ok: Boolean(accessToken) && originPostalCode.length === 8 && serviceCodes.length > 0,
+      ok: enabled && Boolean(accessToken) && originPostalCode.length === 8 && serviceCodes.length > 0,
+      enabled,
+      paused: !enabled,
       provider,
       baseUrl: getCorreiosBaseUrl(),
       originPostalCodeConfigured: originPostalCode.length === 8,
       accessTokenConfigured: Boolean(accessToken),
       refreshTokenConfigured: false,
       servicesConfigured: serviceCodes,
-      contractConfigured: Boolean(String(process.env.CORREIOS_CONTRACT || "").trim()),
-      postageCardConfigured: Boolean(String(process.env.CORREIOS_POSTAGE_CARD || "").trim())
+      contractConfigured: Boolean(contract),
+      postageCardConfigured: Boolean(postageCard),
+      regionalCodeConfigured: regionalCode !== null,
+      contractFieldsApplied: Boolean(contract) && regionalCode !== null
     };
   }
 
@@ -636,7 +678,9 @@ export function getShippingHealth() {
   const refreshToken = String(process.env.MELHOR_ENVIO_REFRESH_TOKEN || "").trim();
 
   return {
-    ok: Boolean(accessToken || refreshToken) && originPostalCode.length === 8,
+    ok: enabled && Boolean(accessToken || refreshToken) && originPostalCode.length === 8,
+    enabled,
+    paused: !enabled,
     provider,
     baseUrl: getMelhorEnvioBaseUrl(),
     originPostalCodeConfigured: originPostalCode.length === 8,

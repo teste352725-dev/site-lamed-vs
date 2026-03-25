@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 import fs from "fs";
 import { getFirebaseAdminStatus } from "../api/_firebase-admin.mjs";
 import { createOrderFromBody, isOrderRequestError } from "../api/_orders.mjs";
-import { getShippingHealth, requestShippingQuote } from "../api/_shipping.mjs";
+import { enforceInMemoryRateLimit, getClientAddress } from "../api/_security.mjs";
+import { getShippingHealth, isShippingApiEnabled, requestShippingQuote } from "../api/_shipping.mjs";
 
 dotenv.config();
 
@@ -461,6 +462,13 @@ app.get("/api/shipping/health", requireDiagnosticAccess, (req, res) => {
 });
 
 app.post("/api/shipping/quote", async (req, res) => {
+  if (!isShippingApiEnabled()) {
+    return res.status(503).json({
+      ok: false,
+      error: "Frete automatico pausado temporariamente. O valor e o prazo sao definidos manualmente apos o pedido."
+    });
+  }
+
   const destinationPostalCode = normalizePostalCode(req.body?.postalCode);
   const items = Array.isArray(req.body?.cart) ? req.body.cart : [];
   const packageOverride = req.body?.packageOverride && typeof req.body.packageOverride === "object"
@@ -512,9 +520,27 @@ app.post("/api/shipping/quote", async (req, res) => {
 });
 
 app.post("/api/orders/create", async (req, res) => {
+  const clientAddress = getClientAddress(req);
+  const rateLimit = enforceInMemoryRateLimit({
+    key: `orders:create:${clientAddress}`,
+    maxRequests: 6,
+    windowMs: 10 * 60 * 1000
+  });
+
+  if (!rateLimit.allowed) {
+    res.setHeader("Retry-After", String(rateLimit.retryAfterSeconds));
+    return res.status(429).json({
+      ok: false,
+      error: "Muitas tentativas em pouco tempo. Aguarde um instante antes de tentar novamente."
+    });
+  }
+
   try {
     const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
-    const result = await createOrderFromBody(req.body, authorizationHeader);
+    const result = await createOrderFromBody(req.body, authorizationHeader, {
+      clientAddress,
+      userAgent: String(req.headers?.["user-agent"] || "").slice(0, 240)
+    });
     return res.status(201).json(result);
   } catch (error) {
     if (isOrderRequestError(error)) {

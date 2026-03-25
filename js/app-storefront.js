@@ -1199,7 +1199,27 @@ function getCurrentPersonalization() {
 }
 
 function getProductImages(product) {
-    const safeImages = Array.isArray(product?.imagens) ? product.imagens.filter(Boolean) : [];
+    const allowedHosts = new Set([
+        'firebasestorage.googleapis.com',
+        'storage.googleapis.com',
+        'placehold.co'
+    ]);
+    const normalizeStorefrontImageUrl = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+
+        try {
+            const parsed = new URL(raw, window.location.origin);
+            if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+            if (parsed.origin === window.location.origin) return parsed.toString();
+            if (!allowedHosts.has(parsed.hostname)) return '';
+            return parsed.toString();
+        } catch (error) {
+            return '';
+        }
+    };
+
+    const safeImages = Array.isArray(product?.imagens) ? product.imagens.map(normalizeStorefrontImageUrl).filter(Boolean) : [];
     return safeImages.length > 0
         ? safeImages
         : ['https://placehold.co/600x800/eee/ccc?text=Sem+imagem'];

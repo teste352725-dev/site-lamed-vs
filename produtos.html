@@ -1201,6 +1201,12 @@
         let categoryDefinitions = [];
         let productsGridRenderToken = 0;
         let filterProductsTimer = null;
+        const MAX_PRODUCT_IMAGE_BYTES = 10 * 1024 * 1024;
+        const ALLOWED_PRODUCT_IMAGE_HOSTS = new Set([
+            'firebasestorage.googleapis.com',
+            'storage.googleapis.com',
+            'placehold.co'
+        ]);
 
         const elementos = {
             productModal: document.getElementById("product-modal"),
@@ -1284,7 +1290,18 @@
         }
 
         function normalizeImageUrl(url) {
-            return String(url ?? "").trim();
+            const raw = String(url ?? "").trim();
+            if (!raw) return "";
+
+            try {
+                const parsed = new URL(raw, window.location.origin);
+                if (!["http:", "https:"].includes(parsed.protocol)) return "";
+                if (parsed.origin === window.location.origin) return parsed.toString();
+                if (!ALLOWED_PRODUCT_IMAGE_HOSTS.has(parsed.hostname)) return "";
+                return parsed.toString();
+            } catch (error) {
+                return "";
+            }
         }
 
         function addImageToSelection(url) {
@@ -2080,6 +2097,12 @@
 
             try {
                 for (const file of files) {
+                    if (!String(file.type || "").startsWith("image/")) {
+                        throw new Error("Selecione apenas arquivos de imagem.");
+                    }
+                    if (Number(file.size || 0) > MAX_PRODUCT_IMAGE_BYTES) {
+                        throw new Error("Cada imagem precisa ter no maximo 10 MB.");
+                    }
                     const safeName = file.name.replace(/\s+/g, "_");
                     const ref = storage.ref(`produtos/${Date.now()}_${safeName}`);
                     await ref.put(file);

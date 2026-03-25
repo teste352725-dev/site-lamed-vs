@@ -1,6 +1,7 @@
 ﻿let shippingQuoteState = createEmptyShippingQuoteState();
 let shippingQuoteDebounceTimer = null;
 let shippingQuoteRequestToken = 0;
+let orderSubmissionInFlight = false;
 
 function extractShippingErrorMessage(payload, response = null) {
     const rawError = payload?.error;
@@ -744,7 +745,24 @@ function updateCheckoutSummary() {
     elements.checkoutTotal.textContent = formatarReal(totals.final);
 }
 
+function setCheckoutSubmitState(isSubmitting) {
+    orderSubmissionInFlight = isSubmitting;
+
+    if (!elements.checkoutSubmitButton) return;
+
+    elements.checkoutSubmitButton.disabled = isSubmitting;
+    elements.checkoutSubmitButton.classList.toggle('opacity-60', isSubmitting);
+    elements.checkoutSubmitButton.classList.toggle('cursor-not-allowed', isSubmitting);
+    elements.checkoutSubmitButton.textContent = isSubmitting
+        ? 'Enviando pedido...'
+        : 'Finalizar pedido';
+}
+
 async function finalizarPedido(formData) {
+    if (orderSubmissionInFlight) {
+        return;
+    }
+
     const cliente = {
         nome: sanitizePlainText(formData.get('nome'), 120),
         telefone: sanitizePlainText(formData.get('telefone'), 30),
@@ -764,6 +782,8 @@ async function finalizarPedido(formData) {
         : 1;
 
     try {
+        setCheckoutSubmitState(true);
+
         if (!cart.length) {
             throw new Error('Sua sacola esta vazia.');
         }
@@ -830,6 +850,8 @@ async function finalizarPedido(formData) {
     } catch (error) {
         console.error(error);
         alert(`Erro ao enviar pedido: ${sanitizePlainText(error?.message || 'Erro inesperado', 220)}`);
+    } finally {
+        setCheckoutSubmitState(false);
     }
 }
 
