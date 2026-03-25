@@ -2190,11 +2190,11 @@
             const desconto = parseInt(document.getElementById("product-discount").value, 10) || 0;
             const preview = document.getElementById("price-preview");
             if (desconto > 0) {
-                preview.textContent = `Pre?o final com desconto: R$ ${(preco * (1 - desconto / 100)).toFixed(2)}`;
+                preview.textContent = `Preço final com desconto: R$ ${(preco * (1 - desconto / 100)).toFixed(2)}`;
             } else if (preco > 0) {
-                preview.textContent = `Pre?o base atual: R$ ${preco.toFixed(2)}`;
+                preview.textContent = `Preço base atual: R$ ${preco.toFixed(2)}`;
             } else {
-                preview.textContent = "Sem desconto aplicado.";
+                preview.textContent = "Sem desconto aplicado!";
             }
         }
 
@@ -2218,5 +2218,3 @@
     </script>
 </body>
 </html>
-
-
