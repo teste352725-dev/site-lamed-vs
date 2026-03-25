@@ -195,24 +195,11 @@ async function ensureEntryAssistUserProfileDoc(user) {
     const profileRef = db.collection('usuarios').doc(user.uid);
     const snapshot = await profileRef.get();
     const existingData = snapshot.data() || {};
+    const normalizedProfile = normalizeUserProfileRecordForFirestore(existingData, user, {
+        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp()
+    });
 
-    const fallbackName = sanitizePlainText(
-        existingData.nome ||
-        user.displayName ||
-        user.email?.split('@')[0] ||
-        'Cliente',
-        80
-    ) || 'Cliente';
-
-    await profileRef.set({
-        nome: fallbackName,
-        email: sanitizePlainText(existingData.email || user.email, 120),
-        telefone: sanitizePlainText(existingData.telefone, 30),
-        endereco: existingData.endereco || null,
-        fotoUrl: normalizeUrl(existingData.fotoUrl || user.photoURL),
-        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
-        favoritos: Array.isArray(existingData.favoritos) ? existingData.favoritos : []
-    }, { merge: true });
+    await profileRef.set(normalizedProfile);
 }
 
 function getDefaultStorefrontCopy() {
@@ -813,6 +800,54 @@ function normalizeUrl(value) {
     } catch (error) {
         return '';
     }
+}
+
+function sanitizeProfilePhone(value) {
+    return String(value ?? '')
+        .replace(/[^\d+\-() ]/g, '')
+        .trim()
+        .slice(0, 30);
+}
+
+function normalizeProfileAddress(address) {
+    if (!address || typeof address !== 'object') return null;
+
+    const normalized = {
+        rua: sanitizePlainText(address.rua, 140),
+        numero: sanitizePlainText(address.numero, 40),
+        cep: sanitizePlainText(address.cep, 12),
+        cidade: sanitizePlainText(address.cidade, 120)
+    };
+
+    return Object.values(normalized).some(Boolean) ? normalized : null;
+}
+
+function normalizeFavoritesList(list) {
+    if (!Array.isArray(list)) return [];
+
+    return Array.from(new Set(
+        list
+            .map((item) => sanitizePlainText(item, 120))
+            .filter(Boolean)
+    )).slice(0, 200);
+}
+
+function normalizeUserProfileRecordForFirestore(source = {}, user = null, overrides = {}) {
+    const base = source && typeof source === 'object' ? source : {};
+    const extra = overrides && typeof overrides === 'object' ? overrides : {};
+    const createdAt = Object.prototype.hasOwnProperty.call(extra, 'createdAt')
+        ? extra.createdAt
+        : (Object.prototype.hasOwnProperty.call(base, 'createdAt') ? base.createdAt : null);
+
+    return {
+        nome: sanitizePlainText(extra.nome ?? base.nome ?? user?.displayName ?? user?.email?.split('@')[0] ?? 'Cliente', 120) || 'Cliente',
+        email: sanitizePlainText(extra.email ?? base.email ?? user?.email, 120),
+        telefone: sanitizeProfilePhone(extra.telefone ?? base.telefone),
+        endereco: normalizeProfileAddress(extra.endereco ?? base.endereco),
+        fotoUrl: normalizeUrl(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL),
+        createdAt: createdAt ?? null,
+        favoritos: normalizeFavoritesList(extra.favoritos ?? base.favoritos)
+    };
 }
 function buildAvatarUrl(name) {
     const safeName = sanitizePlainText(name || 'Cliente', 80) || 'Cliente';

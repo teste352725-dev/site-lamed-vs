@@ -12,6 +12,51 @@ function sanitizeCheckoutPhone(value) {
         .slice(0, 30);
 }
 
+function normalizeCheckoutProfileAddress(address) {
+    if (!address || typeof address !== 'object') return null;
+
+    const normalized = {
+        rua: sanitizePlainText(address.rua, 140),
+        numero: sanitizePlainText(address.numero, 40),
+        cep: sanitizePlainText(address.cep, 12),
+        cidade: sanitizePlainText(address.cidade, 120)
+    };
+
+    return Object.values(normalized).some(Boolean) ? normalized : null;
+}
+
+function normalizeCheckoutFavorites(list) {
+    if (!Array.isArray(list)) return [];
+
+    return Array.from(new Set(
+        list
+            .map((item) => sanitizePlainText(item, 120))
+            .filter(Boolean)
+    )).slice(0, 200);
+}
+
+function buildCheckoutUserProfileRecord(source = {}, user = null, overrides = {}) {
+    if (typeof normalizeUserProfileRecordForFirestore === 'function') {
+        return normalizeUserProfileRecordForFirestore(source, user, overrides);
+    }
+
+    const base = source && typeof source === 'object' ? source : {};
+    const extra = overrides && typeof overrides === 'object' ? overrides : {};
+    const createdAt = Object.prototype.hasOwnProperty.call(extra, 'createdAt')
+        ? extra.createdAt
+        : (Object.prototype.hasOwnProperty.call(base, 'createdAt') ? base.createdAt : null);
+
+    return {
+        nome: sanitizePlainText(extra.nome ?? base.nome ?? user?.displayName ?? user?.email?.split('@')[0] ?? 'Cliente', 120) || 'Cliente',
+        email: sanitizePlainText(extra.email ?? base.email ?? user?.email, 120),
+        telefone: sanitizeCheckoutPhone(extra.telefone ?? base.telefone),
+        endereco: normalizeCheckoutProfileAddress(extra.endereco ?? base.endereco),
+        fotoUrl: sanitizePlainText(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL, 500),
+        createdAt: createdAt ?? null,
+        favoritos: normalizeCheckoutFavorites(extra.favoritos ?? base.favoritos)
+    };
+}
+
 function getCheckoutAccountMode() {
     return document.querySelector('input[name="checkout-account-mode"]:checked')?.value || 'create';
 }
@@ -55,16 +100,14 @@ async function ensureCheckoutUserProfileDoc(user, cliente) {
     const ref = db.collection('usuarios').doc(user.uid);
     const snapshot = await ref.get();
     const existingData = snapshot.data() || {};
-
-    await ref.set({
-        nome: sanitizePlainText(existingData.nome || cliente?.nome || user.displayName || 'Cliente', 80),
-        email: sanitizePlainText(existingData.email || user.email, 120),
-        telefone: sanitizeCheckoutPhone(existingData.telefone || cliente?.telefone),
+    const normalizedProfile = buildCheckoutUserProfileRecord(existingData, user, {
+        nome: existingData.nome || cliente?.nome || user.displayName || 'Cliente',
+        telefone: existingData.telefone || cliente?.telefone,
         endereco: existingData.endereco || cliente?.endereco || null,
-        fotoUrl: sanitizePlainText(existingData.fotoUrl || user.photoURL, 500),
-        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
-        favoritos: Array.isArray(existingData.favoritos) ? existingData.favoritos : []
-    }, { merge: true });
+        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await ref.set(normalizedProfile);
 }
 
 async function populateCheckoutFormFromUser(user) {
@@ -909,62 +952,48 @@ function validarELimparCarrinho() {
 }
 
 async function toggleFavorite() {
-    if (!currentUser) return alert('Faca login para favoritar.');
+    const authenticatedUser = currentUser || auth.currentUser;
+    if (!authenticatedUser) return alert('Faca login para favoritar.');
     if (!currentProduct) return;
 
-    const icon = elements.favoriteBtn.querySelector('i');
+    const icon = elements.favoriteBtn?.querySelector('i');
+    if (!icon) return;
     const isFavorite = icon.classList.contains('fa-solid');
-    icon.className = isFavorite ? 'fa-regular fa-heart' : 'fa-solid fa-heart text-red-500';
+    const nextFavoriteState = !isFavorite;
+    icon.className = nextFavoriteState ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
 
     try {
-        const ref = db.collection('usuarios').doc(currentUser.uid);
+        const ref = db.collection('usuarios').doc(authenticatedUser.uid);
         const existingDoc = await ref.get();
         const existingData = existingDoc.data() || {};
+        const favorites = normalizeCheckoutFavorites(existingData.favoritos);
+        const nextFavorites = nextFavoriteState
+            ? normalizeCheckoutFavorites([...favorites, currentProduct.id])
+            : favorites.filter((productId) => productId !== currentProduct.id);
 
-        if (!existingDoc.exists || !sanitizePlainText(existingData.nome, 80)) {
-            const fallbackName = sanitizePlainText(
-                existingData.nome ||
-                currentUser.displayName ||
-                currentUser.email?.split('@')[0] ||
-                'Cliente',
-                80
-            ) || 'Cliente';
+        const normalizedProfile = buildCheckoutUserProfileRecord(existingData, authenticatedUser, {
+            createdAt: existingDoc.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
+            favoritos: nextFavorites
+        });
 
-            await ref.set({
-                nome: fallbackName,
-                email: sanitizePlainText(existingData.email || currentUser.email, 120),
-                telefone: sanitizePhone(existingData.telefone),
-                endereco: existingData.endereco || null,
-                fotoUrl: normalizeImageUrl(existingData.fotoUrl) || normalizeImageUrl(currentUser.photoURL) || '',
-                createdAt: existingDoc.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
-                favoritos: Array.isArray(existingData.favoritos) ? existingData.favoritos : []
-            }, { merge: true });
-        }
-
-        const doc = await ref.get();
-        let favorites = doc.exists && doc.data().favoritos ? doc.data().favoritos : [];
-
-        if (isFavorite) {
-            favorites = favorites.filter((productId) => productId !== currentProduct.id);
-        } else if (!favorites.includes(currentProduct.id)) {
-            favorites.push(currentProduct.id);
-        }
-
-        await ref.set({ favoritos: favorites }, { merge: true });
+        await ref.set(normalizedProfile);
     } catch (error) {
         console.error(error);
+        icon.className = isFavorite ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
+        alert('Nao foi possivel salvar este favorito agora.');
     }
 }
 
 async function checkFavoriteStatus(productId) {
-    if (!currentUser || !productId) return;
+    const authenticatedUser = currentUser || auth.currentUser;
+    if (!authenticatedUser || !productId) return;
 
     const icon = elements.favoriteBtn?.querySelector('i');
     if (!icon) return;
 
     icon.className = 'fa-regular fa-heart';
     try {
-        const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+        const doc = await db.collection('usuarios').doc(authenticatedUser.uid).get();
         if (doc.data()?.favoritos?.includes(productId)) {
             icon.className = 'fa-solid fa-heart text-red-500';
         }
