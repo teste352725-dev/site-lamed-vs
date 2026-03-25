@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -6,9 +6,19 @@
     <title>Redirecionando...</title>
 </head>
 <body>
+    <!--
+      MAPA DE MANUTENCAO:
+      - CSS desta pagina: nenhum (pagina de redirecionamento)
+      - JS local ligado a esta pagina: script inline desta pagina
+      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
+      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
+      - Sem ids mapeados automaticamente. Verifique classes e data-* antes de remover algo do layout.
+    -->
+
     <script>
         const target = `calculadora.html${window.location.search || ''}${window.location.hash || ''}`;
         window.location.replace(target);
     </script>
 </body>
 </html>
+

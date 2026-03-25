@@ -1,0 +1,5 @@
+﻿body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .editor-container { max-height: 60vh; background: #333; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        img { max-width: 100%; }
+        .btn-primary { background: #643f21; color: white; padding: 12px; width: 100%; border-radius: 8px; font-weight: 600; }
+

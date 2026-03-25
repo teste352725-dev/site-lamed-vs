@@ -1,69 +1,45 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Admin | Laméd vs</title>
+    <title>Login Admin | LamÃ©d vs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Fontes do Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Importa a Allura (para o logo), Inter (principal), e Playfair (para títulos) -->
+    <!-- Importa a Allura (para o logo), Inter (principal), e Playfair (para tÃ­tulos) -->
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     
-    <style>
-        :root {
-            --cor-fundo: #FDFBF6;
-            --cor-texto: #45301F;
-            --cor-marrom-cta: #643f21; /* Cor do fundo da página */
-            --cor-ouro-acento: #A58A5C;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            color: var(--cor-texto);
-            /* Fundo marrom, como pedido */
-            background-color: var(--cor-marrom-cta); 
-        }
-        
-        /* Fontes Especiais */
-        .font-playfair { font-family: 'Playfair Display', serif; }
-        .font-allura { font-family: 'Allura', cursive; }
-
-        /* Correção do ícone do olho */
-        .password-icon-container {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            right: 0;
-            /* Centraliza o ícone no padding-right (pr-10 -> 2.5rem) */
-            width: 2.5rem; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: #9ca3af; /* cinza-400 */
-        }
-    </style>
+        <link rel="stylesheet" href="css/login-admin.css">
 </head>
 
 <body>
+    <!--
+      MAPA DE MANUTENCAO:
+      - CSS desta pagina: css/login-admin.css
+      - JS local ligado a esta pagina: nenhum script local relevante
+      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
+      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
+      - Sem ids mapeados automaticamente. Verifique classes e data-* antes de remover algo do layout.
+    -->
 
-    <!-- Cabeçalho Fixo Branco -->
+
+    <!-- CabeÃ§alho Fixo Branco -->
     <header class="fixed top-0 left-0 right-0 z-10 bg-white shadow-md">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 relative">
                 <!-- Logo Centralizado -->
                 <div class="flex-1 flex justify-center items-center absolute inset-0">
                     <a href="index.html" class="font-allura text-4xl text-[--cor-texto]">
-                        Laméd vs
+                        LamÃ©d vs
                     </a>
                 </div>
                 
-                <!-- Botão 'X' à Direita (com z-index para ficar clicável) -->
+                <!-- BotÃ£o 'X' Ã  Direita (com z-index para ficar clicÃ¡vel) -->
                 <div class="absolute right-4 top-1/2 -translate-y-1/2 z-20">
                     <a href="index.html" class="text-gray-600 hover:text-gray-900 text-2xl p-2" aria-label="Fechar">
                         <i class="fa-solid fa-times"></i>
@@ -73,7 +49,7 @@
         </div>
     </header>
 
-    <!-- Conteúdo Principal -->
+    <!-- ConteÃºdo Principal -->
     <div class="min-h-screen flex items-center justify-center pt-16">
         <!-- Bloco de Login Menor -->
         <div class="bg-white shadow-2xl rounded-lg w-full max-w-xs overflow-hidden mx-4">
@@ -94,7 +70,7 @@
                         <input type="password" id="password" name="password" required
                                class="block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[--cor-ouro-acento] focus:border-[--cor-ouro-acento] sm:text-sm pr-10">
                         
-                        <!-- Ícone do Olho (Centralizado Horizontalmente) -->
+                        <!-- Ãcone do Olho (Centralizado Horizontalmente) -->
                         <div id="toggle-password" class="password-icon-container">
                             <i class="fa-solid fa-eye"></i>
                         </div>
@@ -116,7 +92,7 @@
         </div>
     </div>
 
-    <!-- Script do Firebase e Lógica -->
+    <!-- Script do Firebase e LÃ³gica -->
     <script type="module">
         // IMPORTANTE: Cole sua firebaseConfig aqui!
         const firebaseConfig = {
@@ -130,12 +106,12 @@
           measurementId: "G-BL1G961PGT"
         };
 
-        // Importações do Firebase
+        // ImportaÃ§Ãµes do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, setPersistence, browserSessionPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // Inicialização
+        // InicializaÃ§Ã£o
         try {
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
@@ -154,7 +130,7 @@
                 }
             }
 
-            // Lógica da Página
+            // LÃ³gica da PÃ¡gina
             const loginForm = document.getElementById('login-form');
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
@@ -163,7 +139,7 @@
             const passwordIcon = togglePassword.querySelector('i');
             const submitButton = loginForm.querySelector('button[type="submit"]');
 
-            // --- Lógica de Mostrar/Esconder Senha ---
+            // --- LÃ³gica de Mostrar/Esconder Senha ---
             togglePassword.addEventListener('click', () => {
                 const isPassword = passwordInput.type === 'password';
                 passwordInput.type = isPassword ? 'text' : 'password';
@@ -171,7 +147,7 @@
                 passwordIcon.classList.toggle('fa-eye-slash', isPassword);
             });
 
-            // --- Lógica de Login ---
+            // --- LÃ³gica de Login ---
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 errorMessage.textContent = '';
@@ -179,7 +155,7 @@
                 submitButton.textContent = 'Verificando...';
 
                 try {
-                    // Define a persistência da sessão
+                    // Define a persistÃªncia da sessÃ£o
                     await setPersistence(auth, browserSessionPersistence);
                     
                     const userCredential = await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
@@ -192,7 +168,7 @@
                     console.log("Login com sucesso! Redirecionando...");
                     
                     // SUCESSO! REDIRECIONA PARA O PAINEL DE ADMIN
-                    // CORRIGIDO: Adicionado "./" para formar um URL relativo válido
+                    // CORRIGIDO: Adicionado "./" para formar um URL relativo vÃ¡lido
                     window.location.href = './dashboard.html';
 
                 } catch (error) {
@@ -201,11 +177,11 @@
                     errorMessage.classList.remove('text-green-500');
                     
                     if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                        errorMessage.textContent = 'Email ou senha inválidos.';
+                        errorMessage.textContent = 'Email ou senha invÃ¡lidos.';
                     } else if (error.message === 'AUTH_NOT_ADMIN') {
-                        errorMessage.textContent = 'Sua conta não tem acesso administrativo.';
+                        errorMessage.textContent = 'Sua conta nÃ£o tem acesso administrativo.';
                     } else if (error.code === 'auth/invalid-email') {
-                         errorMessage.textContent = 'O formato do email é inválido.';
+                         errorMessage.textContent = 'O formato do email Ã© invÃ¡lido.';
                     // CORRIGIDO: Convertido error.code para String() para evitar o TypeError
                     } else if (String(error.code).includes('api-key')) {
                         errorMessage.textContent = 'Erro: Verifique sua firebaseConfig.';
@@ -215,7 +191,7 @@
                     }
 
                     if (error.message === 'AUTH_NOT_ADMIN') {
-                        errorMessage.textContent = 'Sua conta não tem acesso administrativo.';
+                        errorMessage.textContent = 'Sua conta nÃ£o tem acesso administrativo.';
                     }
                 } finally {
                     submitButton.disabled = false;
@@ -223,17 +199,17 @@
                 }
             });
 
-            // --- Verificação de Sessão ---
-            // Se o usuário já estiver logado, redireciona
+            // --- VerificaÃ§Ã£o de SessÃ£o ---
+            // Se o usuÃ¡rio jÃ¡ estiver logado, redireciona
             onAuthStateChanged(auth, async (user) => {
                 if (await isAuthorizedAdmin(user)) {
-                    console.log("Usuário já está logado. Redirecionando...");
-                    // CORRIGIDO: Adicionado "./" para formar um URL relativo válido
+                    console.log("UsuÃ¡rio jÃ¡ estÃ¡ logado. Redirecionando...");
+                    // CORRIGIDO: Adicionado "./" para formar um URL relativo vÃ¡lido
                     window.location.href = './dashboard.html';
                 } else if (user) {
                     await signOut(auth);
                 } else {
-                    console.log("Nenhum usuário logado.");
+                    console.log("Nenhum usuÃ¡rio logado.");
                 }
             });
 
@@ -242,11 +218,11 @@
             const errorDiv = document.getElementById('error-message');
             errorDiv.classList.add('text-red-500');
             if (e.message.includes("firebaseConfig")) {
-                 errorDiv.textContent = "Erro: 'firebaseConfig' não foi definida.";
+                 errorDiv.textContent = "Erro: 'firebaseConfig' nÃ£o foi definida.";
             } else if (e.message.includes("API key")) {
-                 errorDiv.textContent = "Erro: API Key inválida na 'firebaseConfig'.";
+                 errorDiv.textContent = "Erro: API Key invÃ¡lida na 'firebaseConfig'.";
             } else {
-                errorDiv.textContent = "Erro crítico na inicialização. Verifique o console.";
+                errorDiv.textContent = "Erro crÃ­tico na inicializaÃ§Ã£o. Verifique o console.";
             }
         }
 
@@ -255,3 +231,4 @@
 </body>
 
 </html>
+

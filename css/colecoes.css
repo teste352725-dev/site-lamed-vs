@@ -1,0 +1,81 @@
+﻿:root {
+            --cor-marrom-cta: #643f21;
+            --cor-ouro-acento: #A58A5C;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .font-allura { font-family: 'Allura', cursive; }
+
+        /* Cards Responsivos */
+        .card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .collection-card.active {
+            border: 2px solid var(--cor-ouro-acento);
+            background-color: #fffbeb;
+        }
+
+        /* BotÃµes */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .btn-primary { background-color: var(--cor-marrom-cta); color: white; }
+        .btn-primary:hover { background-color: #5a3d2b; }
+        
+        .btn-secondary { background-color: #e5e7eb; color: #1f2937; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+        
+        .btn-danger { background-color: #fee2e2; color: #991b1b; }
+        .btn-danger:hover { background-color: #fecaca; }
+
+        .btn-success { background-color: #dcfce7; color: #166534; }
+        .btn-success:hover { background-color: #bbf7d0; }
+
+        /* Loading */
+        .loading-spinner {
+            width: 24px; height: 24px;
+            border: 3px solid #f3f4f6;
+            border-top-color: var(--cor-ouro-acento);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-active { background-color: #d1fae5; color: #065f46; }
+        .status-inactive { background-color: #f3f4f6; color: #6b7280; }
+
+        /* Modal */
+        .modal {
+            visibility: hidden; opacity: 0;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 50; transition: all 0.3s;
+        }
+        .modal.visivel { visibility: visible; opacity: 1; }
+        .modal-content {
+            background-color: white;
+            max-height: 90vh;
+            display: flex; flex-direction: column;
+        }
+

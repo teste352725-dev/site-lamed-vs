@@ -1,0 +1,33 @@
+﻿:root {
+            --cor-fundo: #FDFBF6;
+            --cor-texto: #45301F;
+            --cor-marrom-cta: #643f21; /* Cor do fundo da pÃ¡gina */
+            --cor-ouro-acento: #A58A5C;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--cor-texto);
+            /* Fundo marrom, como pedido */
+            background-color: var(--cor-marrom-cta); 
+        }
+        
+        /* Fontes Especiais */
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .font-allura { font-family: 'Allura', cursive; }
+
+        /* CorreÃ§Ã£o do Ã­cone do olho */
+        .password-icon-container {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            /* Centraliza o Ã­cone no padding-right (pr-10 -> 2.5rem) */
+            width: 2.5rem; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #9ca3af; /* cinza-400 */
+        }
+

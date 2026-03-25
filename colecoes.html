@@ -1,111 +1,41 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Coleções | Painel Administrativo - Laméd vs</title>
+    <title>GestÃ£o de ColeÃ§Ãµes | Painel Administrativo - LamÃ©d vs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDK (Compatibilidade - Mais Estável) -->
+    <!-- Firebase SDK (Compatibilidade - Mais EstÃ¡vel) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
 
-    <style>
-        :root {
-            --cor-marrom-cta: #643f21;
-            --cor-ouro-acento: #A58A5C;
-        }
-
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .font-allura { font-family: 'Allura', cursive; }
-
-        /* Cards Responsivos */
-        .card {
-            background: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #e2e8f0;
-            transition: all 0.3s ease;
-        }
-
-        .collection-card.active {
-            border: 2px solid var(--cor-ouro-acento);
-            background-color: #fffbeb;
-        }
-
-        /* Botões */
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-        
-        .btn-primary { background-color: var(--cor-marrom-cta); color: white; }
-        .btn-primary:hover { background-color: #5a3d2b; }
-        
-        .btn-secondary { background-color: #e5e7eb; color: #1f2937; }
-        .btn-secondary:hover { background-color: #d1d5db; }
-        
-        .btn-danger { background-color: #fee2e2; color: #991b1b; }
-        .btn-danger:hover { background-color: #fecaca; }
-
-        .btn-success { background-color: #dcfce7; color: #166534; }
-        .btn-success:hover { background-color: #bbf7d0; }
-
-        /* Loading */
-        .loading-spinner {
-            width: 24px; height: 24px;
-            border: 3px solid #f3f4f6;
-            border-top-color: var(--cor-ouro-acento);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .status-active { background-color: #d1fae5; color: #065f46; }
-        .status-inactive { background-color: #f3f4f6; color: #6b7280; }
-
-        /* Modal */
-        .modal {
-            visibility: hidden; opacity: 0;
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 50; transition: all 0.3s;
-        }
-        .modal.visivel { visibility: visible; opacity: 1; }
-        .modal-content {
-            background-color: white;
-            max-height: 90vh;
-            display: flex; flex-direction: column;
-        }
-    </style>
+        <link rel="stylesheet" href="css/colecoes.css">
 </head>
 <body class="min-h-screen pb-20">
+    <!--
+      MAPA DE MANUTENCAO:
+      - CSS desta pagina: css/colecoes.css
+      - JS local ligado a esta pagina: js/admin-embedded-mode.js, script inline desta pagina
+      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
+      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
+      - Ids usados pelo JS: #active-collections, #active-grid, #active-section, #add-collection-btn, #close-modal, #collection-date, #collection-description, #collection-form
+      - Ids usados pelo JS: #collection-image, #collection-modal, #collection-name, #collection-order, #collections-grid, #collection-slug, #delete-collection-btn, #empty-state
+      - Ids usados pelo JS: #loading-state, #modal-title, #preview-image, #save-collection-btn, #sort-select, #total-collections
+    -->
 
-    <!-- Cabeçalho -->
+
+    <!-- CabeÃ§alho -->
     <header class="bg-white shadow-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-3">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <a href="dashboard.html" class="text-gray-600 text-xl"><i class="fa-solid fa-arrow-left"></i></a>
-                    <h1 class="font-allura text-3xl text-gray-800">Coleções</h1>
+                    <h1 class="font-allura text-3xl text-gray-800">ColeÃ§Ãµes</h1>
                 </div>
                 <button id="add-collection-btn" class="btn btn-primary text-sm shadow-lg">
                     <i class="fa-solid fa-plus mr-2"></i><span class="hidden sm:inline">Nova</span>
@@ -127,7 +57,7 @@
             </div>
         </div>
 
-        <!-- Seção de Ativas -->
+        <!-- SeÃ§Ã£o de Ativas -->
         <div id="active-section" class="mb-8 hidden">
             <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                 <i class="fa-solid fa-star text-yellow-500 mr-2"></i> Ativas no Site
@@ -148,12 +78,12 @@
 
             <div id="loading-state" class="text-center py-12">
                 <div class="loading-spinner mx-auto mb-2"></div>
-                <p class="text-gray-500 text-sm">Carregando coleções...</p>
+                <p class="text-gray-500 text-sm">Carregando coleÃ§Ãµes...</p>
             </div>
 
             <div id="empty-state" class="hidden text-center py-12">
                 <i class="fa-solid fa-layer-group text-4xl text-gray-300 mb-3"></i>
-                <p class="text-gray-500">Nenhuma coleção criada.</p>
+                <p class="text-gray-500">Nenhuma coleÃ§Ã£o criada.</p>
             </div>
 
             <div id="collections-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -164,7 +94,7 @@
     <div id="collection-modal" class="modal">
         <div class="modal-content w-full h-full md:h-auto md:max-w-2xl md:rounded-xl">
             <div class="flex justify-between items-center p-4 border-b">
-                <h2 id="modal-title" class="text-xl font-semibold">Nova Coleção</h2>
+                <h2 id="modal-title" class="text-xl font-semibold">Nova ColeÃ§Ã£o</h2>
                 <button id="close-modal" class="text-gray-500 p-2 text-xl">&times;</button>
             </div>
 
@@ -182,7 +112,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">DescriÃ§Ã£o</label>
                     <textarea id="collection-description" rows="3" class="w-full border rounded-lg p-3 outline-none"></textarea>
                 </div>
 
@@ -192,7 +122,7 @@
                         <input type="number" id="collection-order" value="0" class="w-full border rounded-lg p-3">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Data Lançamento</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data LanÃ§amento</label>
                         <input type="date" id="collection-date" class="w-full border rounded-lg p-3">
                     </div>
                 </div>
@@ -208,7 +138,7 @@
                         <i class="fa-solid fa-trash mr-2"></i> Excluir
                     </button>
                     <button type="submit" id="save-collection-btn" class="btn btn-primary col-span-2">
-                        Salvar Coleção
+                        Salvar ColeÃ§Ã£o
                     </button>
                 </div>
             </form>
@@ -264,13 +194,13 @@
         let colecoes = [];
         let currentCollectionId = null;
 
-        // --- Inicialização ---
+        // --- InicializaÃ§Ã£o ---
         document.addEventListener('DOMContentLoaded', () => {
             console.log("Iniciando...");
             auth.onAuthStateChanged(async (user) => {
                 if (!(await isAuthorizedAdmin(user))) {
                     auth.signOut().catch(() => {});
-                    console.log("Não autenticado, redirecionando...");
+                    console.log("NÃ£o autenticado, redirecionando...");
                     window.location.href = './login-admin.html';
                 } else {
                     console.log("Autenticado:", user.email);
@@ -288,11 +218,11 @@
                 colecoes = snapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
                     .filter(colecao => colecao.id !== "__catalog_settings" && colecao.kind !== "catalog_settings");
-                console.log("Coleções carregadas:", colecoes.length);
+                console.log("ColeÃ§Ãµes carregadas:", colecoes.length);
                 renderizarTela();
                 loading.classList.add('hidden');
             }, (error) => {
-                console.error("Erro ao carregar coleções:", error);
+                console.error("Erro ao carregar coleÃ§Ãµes:", error);
                 loading.innerHTML = `<p class="text-red-500">Erro ao carregar dados.</p>`;
             });
         }
@@ -351,7 +281,7 @@
                         ${c.ativa ? 'Ativa' : 'Inativa'}
                     </span>
                 </div>
-                <p class="text-sm text-gray-600 line-clamp-2 flex-grow">${c.descricao || 'Sem descrição'}</p>
+                <p class="text-sm text-gray-600 line-clamp-2 flex-grow">${c.descricao || 'Sem descriÃ§Ã£o'}</p>
                 <div class="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-gray-100">
                     <button class="btn ${c.ativa ? 'btn-secondary' : 'btn-success'} text-xs toggle-status-btn">
                         ${c.ativa ? '<i class="fa-solid fa-pause mr-1"></i> Pausar' : '<i class="fa-solid fa-play mr-1"></i> Ativar'}
@@ -377,7 +307,7 @@
             if (novoStatus === true) {
                 const ativas = colecoes.filter(c => c.ativa).length;
                 if (ativas >= 2) {
-                    alert("Limite atingido! Máximo de 2 coleções ativas.");
+                    alert("Limite atingido! MÃ¡ximo de 2 coleÃ§Ãµes ativas.");
                     return;
                 }
             }
@@ -404,7 +334,7 @@
 
             if (colecao) {
                 currentCollectionId = colecao.id;
-                document.getElementById('modal-title').textContent = 'Editar Coleção';
+                document.getElementById('modal-title').textContent = 'Editar ColeÃ§Ã£o';
                 document.getElementById('collection-name').value = colecao.nome;
                 document.getElementById('collection-slug').value = colecao.slug;
                 document.getElementById('collection-description').value = colecao.descricao || '';
@@ -425,7 +355,7 @@
                 saveBtn.classList.remove('col-span-2');
                 saveBtn.classList.add('col-span-1');
             } else {
-                document.getElementById('modal-title').textContent = 'Nova Coleção';
+                document.getElementById('modal-title').textContent = 'Nova ColeÃ§Ã£o';
             }
             document.getElementById('collection-modal').classList.add('visivel');
         }
@@ -488,3 +418,4 @@
     </script>
 </body>
 </html>
+

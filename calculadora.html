@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -11,6 +11,15 @@
     <script src="js/admin-embedded-mode.js" defer></script>
 </head>
 <body class="pricing-shell pb-20">
+    <!--
+      MAPA DE MANUTENCAO:
+      - CSS desta pagina: css/admin-pricing.css
+      - JS local ligado a esta pagina: js/admin-embedded-mode.js, js/admin-pricing.js
+      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
+      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
+      - Sem ids mapeados automaticamente. Verifique classes e data-* antes de remover algo do layout.
+    -->
+
     <header class="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur px-4 py-3">
         <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
             <div class="flex items-center gap-3">
@@ -83,7 +92,7 @@
                             <div>
                                 <p class="text-xs uppercase tracking-[0.2em] font-semibold">Produto carregado</p>
                                 <p class="mt-2 text-sm text-blue-900">
-                                    Categoria: <strong id="produto-site-categoria">-</strong> • preset sugerido: <strong id="produto-site-preset">-</strong>
+                                    Categoria: <strong id="produto-site-categoria">-</strong> â€¢ preset sugerido: <strong id="produto-site-preset">-</strong>
                                 </p>
                             </div>
                             <div class="text-left md:text-right">
@@ -313,3 +322,4 @@
     <script type="module" src="js/admin-pricing.js"></script>
 </body>
 </html>
+

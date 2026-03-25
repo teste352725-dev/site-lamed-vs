@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scripts de Manutenção | Painel Admin</title>
+    <title>Scripts de ManutenÃ§Ã£o | Painel Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,103 +14,20 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
 
-    <style>
-        :root {
-            --cor-marrom-cta: #643f21;
-            --cor-ouro-acento: #A58A5C;
-        }
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .font-allura { font-family: 'Allura', cursive; }
-
-        /* Cards */
-        .card {
-            background: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #e2e8f0;
-            transition: all 0.2s;
-            overflow: hidden;
-        }
-
-        /* Botões */
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn-primary { background: var(--cor-marrom-cta); color: white; }
-        .btn-primary:hover { background: #4a2e18; }
-        
-        .btn-secondary { background: #e5e7eb; color: #374151; }
-        .btn-secondary:hover { background: #d1d5db; }
-        
-        .btn-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-        .btn-danger:hover { background: #fecaca; }
-
-        .btn-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-        .btn-warning:hover { background: #fde68a; }
-
-        /* Console */
-        .console-box {
-            background: #1e293b;
-            color: #e2e8f0;
-            font-family: 'Courier New', monospace;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            height: 300px;
-            overflow-y: auto;
-            font-size: 0.85rem;
-            border: 1px solid #334155;
-        }
-        
-        .code-editor {
-            background: #0f172a;
-            color: #a5b4fc;
-            font-family: 'Courier New', monospace;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            min-height: 200px;
-            width: 100%;
-            font-size: 0.9rem;
-            border: 1px solid #334155;
-            outline: none;
-            resize: vertical;
-        }
-
-        .log-entry { margin-bottom: 0.25rem; border-bottom: 1px solid #334155; padding-bottom: 0.25rem; }
-        .log-info { color: #60a5fa; }
-        .log-success { color: #4ade80; }
-        .log-warning { color: #fbbf24; }
-        .log-error { color: #f87171; }
-
-        /* Script Card */
-        .script-item {
-            padding: 1rem;
-            border-bottom: 1px solid #f1f5f9;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-        .script-item:last-child { border-bottom: none; }
-        .script-item:hover { background-color: #f8fafc; }
-
-        .script-icon {
-            width: 40px; height: 40px;
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.25rem;
-        }
-    </style>
+        <link rel="stylesheet" href="css/executor-scripts.css">
 </head>
 <body class="min-h-screen pb-20">
+    <!--
+      MAPA DE MANUTENCAO:
+      - CSS desta pagina: css/executor-scripts.css
+      - JS local ligado a esta pagina: js/admin-embedded-mode.js
+      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
+      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
+      - Sem ids mapeados automaticamente. Verifique classes e data-* antes de remover algo do layout.
+    -->
 
-    <!-- Cabeçalho -->
+
+    <!-- CabeÃ§alho -->
     <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-3">
             <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
@@ -118,7 +35,7 @@
         </div>
         <div class="flex gap-2">
             <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-bold border border-red-200">
-                <i class="fa-solid fa-lock mr-1"></i>Área Sensível
+                <i class="fa-solid fa-lock mr-1"></i>Ãrea SensÃ­vel
             </span>
         </div>
     </header>
@@ -128,10 +45,10 @@
         <!-- Coluna Esquerda: Scripts Prontos -->
         <div class="lg:col-span-2 space-y-6">
             
-            <!-- Manutenção de Rotina -->
+            <!-- ManutenÃ§Ã£o de Rotina -->
             <div class="card">
                 <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h2 class="font-bold text-gray-700">🛠️ Manutenção de Rotina</h2>
+                    <h2 class="font-bold text-gray-700">ðŸ› ï¸ ManutenÃ§Ã£o de Rotina</h2>
                     <span class="text-xs text-gray-500">Uso seguro</span>
                 </div>
                 
@@ -151,7 +68,7 @@
                         <div class="script-icon bg-purple-100 text-purple-600"><i class="fa-solid fa-sync"></i></div>
                         <div>
                             <h3 class="font-medium text-gray-800">Sincronizar Contadores</h3>
-                            <p class="text-xs text-gray-500">Recalcula total de produtos e coleções ativas.</p>
+                            <p class="text-xs text-gray-500">Recalcula total de produtos e coleÃ§Ãµes ativas.</p>
                         </div>
                     </div>
                     <button onclick="runScript('syncContadores')" class="btn btn-secondary text-xs">Executar</button>
@@ -161,8 +78,8 @@
                     <div class="flex items-center gap-3">
                         <div class="script-icon bg-green-100 text-green-600"><i class="fa-solid fa-tags"></i></div>
                         <div>
-                            <h3 class="font-medium text-gray-800">Corrigir Preços Inválidos</h3>
-                            <p class="text-xs text-gray-500">Define preço 0.00 para produtos com preço nulo/negativo.</p>
+                            <h3 class="font-medium text-gray-800">Corrigir PreÃ§os InvÃ¡lidos</h3>
+                            <p class="text-xs text-gray-500">Define preÃ§o 0.00 para produtos com preÃ§o nulo/negativo.</p>
                         </div>
                     </div>
                     <button onclick="runScript('corrigirPrecos')" class="btn btn-secondary text-xs">Executar</button>
@@ -173,7 +90,7 @@
                         <div class="script-icon bg-amber-100 text-amber-700"><i class="fa-solid fa-percent"></i></div>
                         <div>
                             <h3 class="font-medium text-gray-800">Remover Todos os Descontos</h3>
-                            <p class="text-xs text-gray-500">Zera o campo <code>desconto</code> de todos os produtos com promoÃ§Ã£o ativa.</p>
+                            <p class="text-xs text-gray-500">Zera o campo <code>desconto</code> de todos os produtos com promoÃƒÂ§ÃƒÂ£o ativa.</p>
                         </div>
                     </div>
                     <button onclick="runScript('removerDescontosProdutos')" class="btn btn-secondary text-xs">Executar</button>
@@ -183,7 +100,7 @@
                     <div class="flex items-center gap-3">
                         <div class="script-icon bg-teal-100 text-teal-600"><i class="fa-solid fa-download"></i></div>
                         <div>
-                            <h3 class="font-medium text-gray-800">Backup de Segurança</h3>
+                            <h3 class="font-medium text-gray-800">Backup de SeguranÃ§a</h3>
                             <p class="text-xs text-gray-500">Baixa um arquivo JSON com todos os produtos e pedidos.</p>
                         </div>
                     </div>
@@ -191,10 +108,10 @@
                 </div>
             </div>
 
-            <!-- Ações de Emergência -->
+            <!-- AÃ§Ãµes de EmergÃªncia -->
             <div class="card border-red-200">
                 <div class="p-4 border-b bg-red-50 flex justify-between items-center">
-                    <h2 class="font-bold text-red-800">🚨 Ações de Emergência</h2>
+                    <h2 class="font-bold text-red-800">ðŸš¨ AÃ§Ãµes de EmergÃªncia</h2>
                     <span class="text-xs text-red-600 font-bold">Cuidado!</span>
                 </div>
 
@@ -203,7 +120,7 @@
                         <div class="script-icon bg-red-100 text-red-600"><i class="fa-solid fa-box-open"></i></div>
                         <div>
                             <h3 class="font-medium text-gray-800">Zerar Estoque de Produto</h3>
-                            <p class="text-xs text-gray-500">Define estoque = 0 para um produto específico.</p>
+                            <p class="text-xs text-gray-500">Define estoque = 0 para um produto especÃ­fico.</p>
                         </div>
                     </div>
                     <button onclick="abrirModalPrompt('zerarEstoque')" class="btn btn-warning text-xs">Configurar</button>
@@ -213,7 +130,7 @@
                     <div class="flex items-center gap-3">
                         <div class="script-icon bg-red-600 text-white"><i class="fa-solid fa-bomb"></i></div>
                         <div>
-                            <h3 class="font-medium text-red-700">Reset de Fábrica (Limpar Tudo)</h3>
+                            <h3 class="font-medium text-red-700">Reset de FÃ¡brica (Limpar Tudo)</h3>
                             <p class="text-xs text-red-500">Apaga TODOS os produtos, pedidos e clientes.</p>
                         </div>
                     </div>
@@ -234,8 +151,8 @@
                 </div>
                 <div class="p-0">
                     <textarea id="custom-script-input" class="code-editor border-0 focus:ring-0" spellcheck="false" 
-placeholder="// Escreva seu código JavaScript aqui.
-// Variáveis disponíveis: db, auth, log(msg, type)
+placeholder="// Escreva seu cÃ³digo JavaScript aqui.
+// VariÃ¡veis disponÃ­veis: db, auth, log(msg, type)
 
 // Exemplo: Listar todos os produtos
 // (async () => {
@@ -247,7 +164,7 @@ placeholder="// Escreva seu código JavaScript aqui.
                 <div class="p-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
                     <button onclick="limparEditor()" class="btn btn-secondary text-xs">Limpar</button>
                     <button onclick="executarScriptPersonalizado()" class="btn btn-primary text-xs">
-                        <i class="fa-solid fa-play mr-2"></i>Executar Código
+                        <i class="fa-solid fa-play mr-2"></i>Executar CÃ³digo
                     </button>
                 </div>
             </div>
@@ -258,7 +175,7 @@ placeholder="// Escreva seu código JavaScript aqui.
         <div class="lg:col-span-1">
             <div class="card p-4 sticky top-20">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-gray-700"><i class="fa-solid fa-terminal mr-2"></i>Console de Saída</h3>
+                    <h3 class="font-bold text-gray-700"><i class="fa-solid fa-terminal mr-2"></i>Console de SaÃ­da</h3>
                     <button onclick="limparConsole()" class="text-xs text-gray-400 hover:text-gray-600">Limpar</button>
                 </div>
                 
@@ -268,7 +185,7 @@ placeholder="// Escreva seu código JavaScript aqui.
 
                 <div class="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100">
                     <i class="fa-solid fa-info-circle mr-1"></i>
-                    Os scripts rodam com suas permissões de admin. Use <code>await</code> para operações assíncronas.
+                    Os scripts rodam com suas permissÃµes de admin. Use <code>await</code> para operaÃ§Ãµes assÃ­ncronas.
                 </div>
             </div>
         </div>
@@ -277,7 +194,7 @@ placeholder="// Escreva seu código JavaScript aqui.
 
     <!-- Scripts Firebase -->
     <script type="module">
-        // Configuração Firebase
+        // ConfiguraÃ§Ã£o Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
             authDomain: "site-lamed.firebaseapp.com",
@@ -304,7 +221,7 @@ placeholder="// Escreva seu código JavaScript aqui.
             db = getFirestore(app);
         } catch (e) { console.error(e); }
 
-        // --- Autenticação ---
+        // --- AutenticaÃ§Ã£o ---
         // ATUALIZADO COM SEU NOVO ID
         const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 
@@ -330,7 +247,7 @@ placeholder="// Escreva seu código JavaScript aqui.
             }
         });
 
-        // --- Funções de Log ---
+        // --- FunÃ§Ãµes de Log ---
         function log(msg, type="info") {
             const consoleBox = document.getElementById('console-output');
             const div = document.createElement('div');
@@ -373,7 +290,7 @@ placeholder="// Escreva seu código JavaScript aqui.
                 switch(scriptName) {
                     
                     case 'limparCarrinhos':
-                        log("Carrinhos são locais. Limpando localStorage deste navegador...", "warning");
+                        log("Carrinhos sÃ£o locais. Limpando localStorage deste navegador...", "warning");
                         localStorage.removeItem('lamedCart');
                         log("Carrinho local limpo.", "success");
                         break;
@@ -381,7 +298,7 @@ placeholder="// Escreva seu código JavaScript aqui.
                     case 'syncContadores':
                         const produtos = await getDocs(collection(db, "pecas"));
                         const colecoes = await getDocs(collection(db, "colecoes"));
-                        log(`Sincronização: ${produtos.size} produtos, ${colecoes.size} coleções encontradas.`, "success");
+                        log(`SincronizaÃ§Ã£o: ${produtos.size} produtos, ${colecoes.size} coleÃ§Ãµes encontradas.`, "success");
                         break;
 
                     case 'corrigirPrecos':
@@ -394,15 +311,15 @@ placeholder="// Escreva seu código JavaScript aqui.
                             if (!p.preco || p.preco < 0 || isNaN(p.preco)) {
                                 batchPrecos.update(doc.ref, { preco: 0 });
                                 corrigidos++;
-                                log(`Corrigindo preço do produto ID: ${doc.id}`, "warning");
+                                log(`Corrigindo preÃ§o do produto ID: ${doc.id}`, "warning");
                             }
                         });
                         
                         if (corrigidos > 0) {
                             await batchPrecos.commit();
-                            log(`${corrigidos} preços corrigidos.`, "success");
+                            log(`${corrigidos} preÃ§os corrigidos.`, "success");
                         } else {
-                            log("Nenhum preço inválido encontrado.", "success");
+                            log("Nenhum preÃ§o invÃ¡lido encontrado.", "success");
                         }
                         break;
 
@@ -466,7 +383,7 @@ placeholder="// Escreva seu código JavaScript aqui.
                         break;
 
                     case 'zerarEstoque':
-                        if (!params) { log("ID do produto não fornecido.", "error"); return; }
+                        if (!params) { log("ID do produto nÃ£o fornecido.", "error"); return; }
                         
                         const prodRef = doc(db, "pecas", params);
                         await updateDoc(prodRef, { 
@@ -478,11 +395,11 @@ placeholder="// Escreva seu código JavaScript aqui.
 
                     case 'modoManutencao':
                         // Exemplo de flag global
-                        log("Modo manutenção ativado (Simulação).", "warning");
+                        log("Modo manutenÃ§Ã£o ativado (SimulaÃ§Ã£o).", "warning");
                         break;
                         
                     default:
-                        log("Script não reconhecido.", "error");
+                        log("Script nÃ£o reconhecido.", "error");
                 }
             } catch (e) {
                 log(`Erro: ${e.message}`, "error");
@@ -503,15 +420,15 @@ placeholder="// Escreva seu código JavaScript aqui.
             const code = document.getElementById('custom-script-input').value;
             
             if (!code.trim()) {
-                log("Digite algum código para executar.", "warning");
+                log("Digite algum cÃ³digo para executar.", "warning");
                 return;
             }
 
             log("Executando script personalizado...", "info");
 
             try {
-                // Criamos uma função assíncrona dinâmica
-                // Passamos as variáveis de contexto: db, auth, log, etc.
+                // Criamos uma funÃ§Ã£o assÃ­ncrona dinÃ¢mica
+                // Passamos as variÃ¡veis de contexto: db, auth, log, etc.
                 // Usamos collection, getDocs, etc para facilitar o uso
                 
                 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
@@ -530,12 +447,12 @@ placeholder="// Escreva seu código JavaScript aqui.
                 log("Script finalizado.", "success");
 
             } catch (e) {
-                log(`Erro de execução: ${e.message}`, "error");
+                log(`Erro de execuÃ§Ã£o: ${e.message}`, "error");
                 console.error(e);
             }
         };
 
-        // --- Persistência do Editor ---
+        // --- PersistÃªncia do Editor ---
 
         if (!CUSTOM_SCRIPT_EXECUTOR_ENABLED) {
             const editor = document.getElementById('custom-script-input');
@@ -573,11 +490,11 @@ placeholder="// Escreva seu código JavaScript aqui.
             }
         };
 
-        // --- Funções Auxiliares de Confirmação ---
+        // --- FunÃ§Ãµes Auxiliares de ConfirmaÃ§Ã£o ---
 
         window.confirmarPerigo = async (acao) => {
             const codigo = Math.floor(1000 + Math.random() * 9000);
-            const resposta = prompt(`PERIGO: Esta ação é destrutiva!\nDigite o código ${codigo} para confirmar:`);
+            const resposta = prompt(`PERIGO: Esta aÃ§Ã£o Ã© destrutiva!\nDigite o cÃ³digo ${codigo} para confirmar:`);
             
             if (resposta == codigo) {
                 if (acao === 'limparTudo') {
@@ -594,7 +511,7 @@ placeholder="// Escreva seu código JavaScript aqui.
                     log("Banco de dados limpo com sucesso.", "success");
                 }
             } else {
-                log("Ação cancelada. Código incorreto.", "info");
+                log("AÃ§Ã£o cancelada. CÃ³digo incorreto.", "info");
             }
         };
 
@@ -608,3 +525,4 @@ placeholder="// Escreva seu código JavaScript aqui.
     </script>
 </body>
 </html>
+

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -13,75 +13,20 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
 
-    <style>
-        :root {
-            --chat-bg: #efe5d9;
-            --chat-brown: #643f21;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f8fafc;
-        }
-
-        .surface-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-        }
-
-        .chat-list-item {
-            transition: 0.2s ease;
-        }
-
-        .chat-list-item:hover {
-            background: #f8fafc;
-        }
-
-        .chat-list-item.active {
-            background: rgba(100, 63, 33, 0.08);
-            border-color: rgba(165, 138, 92, 0.24);
-        }
-
-        .msg-bubble {
-            max-width: min(82%, 560px);
-            padding: 0.8rem 0.95rem;
-            border-radius: 1rem;
-            font-size: 0.92rem;
-            line-height: 1.5;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-        }
-
-        .msg-admin {
-            background: #dcf8c6;
-            margin-left: auto;
-            border-bottom-right-radius: 0.2rem;
-        }
-
-        .msg-user {
-            background: white;
-            margin-right: auto;
-            border: 1px solid #e5e7eb;
-            border-bottom-left-radius: 0.2rem;
-        }
-
-        .date-separator {
-            display: inline-flex;
-            align-self: center;
-            padding: 0.35rem 0.7rem;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.82);
-            color: #6b7280;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
-        }
-    </style>
+        <link rel="stylesheet" href="css/chat-admin.css">
 </head>
 <body class="h-screen flex flex-col">
+    <!--
+      MAPA DE MANUTENCAO:
+      - CSS desta pagina: css/chat-admin.css
+      - JS local ligado a esta pagina: js/admin-embedded-mode.js, script inline desta pagina
+      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
+      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
+      - Ids usados pelo JS: #admin-chat-form, #admin-message-input, #admin-thread-list, #chat-avatar, #chat-empty-state, #chat-list, #chat-list-feedback, #chat-messages
+      - Ids usados pelo JS: #chat-search-input, #chat-subtitle, #chat-user-email, #chat-username, #chat-user-orders, #chat-user-phone, #chat-whatsapp-link, #chat-workspace
+      - Ids usados pelo JS: #stat-total-chats, #stat-unread-chats
+    -->
+
     <header class="bg-white shadow-sm px-4 py-3 border-b z-10">
         <div class="flex items-center gap-3">
             <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
@@ -481,7 +426,7 @@
             document.getElementById('chat-user-phone').textContent = phone || 'Nao informado';
             document.getElementById('chat-user-email').textContent = email || 'Nao informado';
             document.getElementById('chat-user-orders').textContent = orderCount ? `${orderCount} pedido(s)` : 'Nenhum pedido com login';
-            document.getElementById('chat-subtitle').textContent = `Chat ID: ${sanitizePlainText(chatId, 40)} • ${orderCount} pedido(s) vinculados`;
+            document.getElementById('chat-subtitle').textContent = `Chat ID: ${sanitizePlainText(chatId, 40)} â€¢ ${orderCount} pedido(s) vinculados`;
 
             if (phone) {
                 whatsappLink.href = `https://wa.me/55${phone.replace(/\D/g, '')}`;
@@ -692,3 +637,4 @@
     </script>
 </body>
 </html>
+
