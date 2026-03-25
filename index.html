@@ -41,6 +41,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <!-- CSS Personalizado -->
     <link rel="stylesheet" href="styles.css">
@@ -434,6 +435,56 @@
                     <input type="email" name="email" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="E-mail" required>
                 </div>
 
+                <div id="checkout-account-assist" class="rounded-2xl border border-[#E5E0D8] bg-white p-4 shadow-sm space-y-4">
+                    <div id="checkout-logged-in-card" class="hidden">
+                        <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Conta conectada</p>
+                        <h3 class="serif text-2xl text-[--cor-texto] mt-2">Seu pedido vai direto para a sua area.</h3>
+                        <p class="mt-2 text-sm text-gray-500">Depois de finalizar, voce sera levada para o pedido na sua conta e podera continuar a finalizacao pelo WhatsApp.</p>
+                    </div>
+
+                    <div id="checkout-guest-card">
+                        <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Acompanhamento do pedido</p>
+                        <h3 class="serif text-2xl text-[--cor-texto] mt-2">Crie sua conta enquanto fecha o pedido.</h3>
+                        <p class="mt-2 text-sm text-gray-500">Assim voce acompanha status, favoritos, suporte e proximas etapas em um espaco proprio.</p>
+
+                        <button type="button" id="checkout-google-login-btn" class="mt-4 w-full border border-[#E5E0D8] py-3 flex items-center justify-center gap-3 hover:bg-[#F8F6F0] transition text-sm text-gray-600 rounded-xl">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5" alt="Google">
+                            Entrar com Google agora
+                        </button>
+
+                        <div class="mt-4 space-y-3 text-sm text-gray-600">
+                            <label class="flex items-start gap-3 rounded-xl border border-[#EFE5D8] p-3 cursor-pointer">
+                                <input type="radio" name="checkout-account-mode" value="create" checked class="mt-1">
+                                <span>
+                                    <strong class="block text-[--cor-texto]">Criar conta com este pedido</strong>
+                                    <span class="text-xs text-gray-500">Recomendado para acompanhar tudo em um so lugar.</span>
+                                </span>
+                            </label>
+                            <label class="flex items-start gap-3 rounded-xl border border-[#EFE5D8] p-3 cursor-pointer">
+                                <input type="radio" name="checkout-account-mode" value="login" class="mt-1">
+                                <span>
+                                    <strong class="block text-[--cor-texto]">Ja tenho conta</strong>
+                                    <span class="text-xs text-gray-500">Entre com sua senha e associe este pedido ao seu historico.</span>
+                                </span>
+                            </label>
+                            <label class="flex items-start gap-3 rounded-xl border border-[#EFE5D8] p-3 cursor-pointer">
+                                <input type="radio" name="checkout-account-mode" value="guest" class="mt-1">
+                                <span>
+                                    <strong class="block text-[--cor-texto]">Continuar sem conta</strong>
+                                    <span class="text-xs text-gray-500">Voce ainda conclui o pedido, mas sem painel pessoal.</span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div id="checkout-account-password-wrap" class="mt-4">
+                            <label class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Senha da conta</label>
+                            <input type="password" id="checkout-account-password" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Minimo de 6 caracteres">
+                        </div>
+
+                        <p id="checkout-account-copy" class="text-xs text-gray-400 leading-relaxed">Use o mesmo e-mail do pedido. Se criar a conta agora, o pedido ja entra no seu painel.</p>
+                    </div>
+                </div>
+
                 <!-- Campos de Entrega -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Entrega</h3>
                 <div class="grid grid-cols-3 gap-4">
@@ -497,6 +548,21 @@
             <div class="space-y-3">
                 <a href="minha-conta.html" class="block w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Entrar ou Cadastrar</a>
                 <button id="auth-prompt-dismiss" class="text-xs text-gray-400 underline hover:text-gray-600">Continuar como visitante</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="checkout-push-modal" class="modal fixed inset-0 z-[101] hidden items-center justify-center bg-black/45 backdrop-blur-sm p-4">
+        <div class="modal-content w-full max-w-md bg-[#FDFBF6] rounded-2xl shadow-2xl p-6 text-center relative overflow-hidden">
+            <button id="close-checkout-push-modal" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            <div class="w-16 h-16 mx-auto rounded-full bg-[#F8F1E5] flex items-center justify-center text-[--cor-marrom-cta] text-2xl mb-4">
+                <i class="fa-regular fa-bell"></i>
+            </div>
+            <h3 class="serif text-3xl text-[#45301F] mb-3">Receba avisos deste pedido</h3>
+            <p class="text-sm text-gray-600 leading-relaxed">Como voce ja esta logada, pode ativar notificacoes neste aparelho para receber atualizacoes do pedido e respostas do suporte sem precisar abrir o site toda hora.</p>
+            <div class="space-y-3 mt-6">
+                <button type="button" id="checkout-push-enable-btn" class="w-full bg-[--cor-marrom-cta] text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Ativar neste aparelho</button>
+                <button type="button" id="checkout-push-later-btn" class="w-full border border-[#E5E0D8] py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[--cor-marrom-cta] transition">Agora nao</button>
             </div>
         </div>
     </div>

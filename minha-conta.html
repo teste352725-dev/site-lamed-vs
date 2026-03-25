@@ -4,312 +4,434 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="lamed-api-base-url" content="">
-    <title>Minha Conta | Laméd vs</title>
+    <title>Minha Conta | Lamed vs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDK -->
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/account.css">
+
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-
-    <style>
-        :root { --cor-marrom: #643f21; --cor-ouro: #A58A5C; }
-        body { font-family: 'Inter', sans-serif; background: #fff; color: #374151; }
-        .serif { font-family: 'Cormorant Garamond', serif; }
-        .font-allura { font-family: 'Allura', cursive; }
-        
-        /* Transições de View */
-        .auth-view { display: none; opacity: 0; transition: opacity 0.3s ease; }
-        .auth-view.active { display: block; opacity: 1; }
-        
-        /* Input Chique */
-        .input-chic {
-            width: 100%; border-bottom: 1px solid #e5e7eb; padding: 12px 0;
-            outline: none; transition: border-color 0.3s; background: transparent;
-            font-size: 0.9rem; color: #1f2937;
-        }
-        .input-chic:focus { border-color: var(--cor-ouro); }
-        .input-chic::placeholder { color: #9ca3af; }
-        
-        /* Botão Chique */
-        .btn-chic {
-            width: 100%; background: var(--cor-marrom); color: white;
-            padding: 14px; font-weight: 500; letter-spacing: 0.05em;
-            text-transform: uppercase; font-size: 0.8rem;
-            transition: background 0.3s, transform 0.2s;
-        }
-        .btn-chic:hover { background: #4a2e18; transform: translateY(-1px); }
-
-        .tab-btn.active { border-bottom: 2px solid var(--cor-marrom); color: var(--cor-marrom); font-weight: 600; }
-        
-        /* Chat */
-        .msg-user { background: #f3f4f6; border-radius: 12px 12px 0 12px; margin-left: auto; padding: 10px 15px; max-width: 80%; }
-        .msg-admin { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px 12px 12px 0; padding: 10px 15px; max-width: 80%; }
-
-        /* Upload Overlay */
-        .avatar-container:hover .avatar-overlay { opacity: 1; }
-        .avatar-overlay { opacity: 0; transition: opacity 0.2s; background: rgba(0,0,0,0.5); }
-
-        .account-mobile-nav { display: none; }
-
-        @media (max-width: 767px) {
-            body {
-                padding-bottom: calc(5.6rem + env(safe-area-inset-bottom));
-                background: #fdfbf6;
-            }
-
-            .account-mobile-nav {
-                position: fixed;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 60;
-                display: grid;
-                grid-template-columns: repeat(5, minmax(0, 1fr));
-                padding: 0.55rem 0.4rem calc(0.55rem + env(safe-area-inset-bottom));
-                border-top: 1px solid #E5E0D8;
-                background: rgba(253, 251, 246, 0.96);
-                backdrop-filter: blur(10px);
-                box-shadow: 0 -8px 24px rgba(69, 48, 31, 0.08);
-            }
-
-            .account-mobile-link {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 0.3rem;
-                min-height: 3.4rem;
-                color: #45301F;
-                text-decoration: none;
-                font-size: 0.62rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-
-            .account-mobile-link i {
-                color: var(--cor-ouro);
-                font-size: 1rem;
-            }
-
-            .account-mobile-link.is-active,
-            .account-mobile-link.is-active i {
-                color: var(--cor-marrom);
-            }
-        }
-    </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="account-body">
 
-    <!-- ÁREA DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
-    <div id="auth-container" class="flex-1 flex flex-col items-center justify-center p-6 hidden">
-        <div class="w-full max-w-md">
-            <div class="text-center mb-10">
-                <a href="index.html" class="inline-block group">
-                    <h1 class="font-allura text-6xl text-[--cor-marrom] group-hover:opacity-90 transition">Laméd</h1>
-                    <span class="text-xs tracking-[0.3em] text-[--cor-ouro] uppercase mt-2 block font-serif">Alfaiataria & Casa</span>
-                </a>
-            </div>
+    <div id="auth-container" class="account-auth-shell hidden">
+        <div class="account-auth-grid">
+            <section class="account-brand-panel">
+                <div>
+                    <span class="account-brand-kicker">
+                        <i class="fa-solid fa-star-of-life"></i>
+                        Espaco da cliente
+                    </span>
+                    <a href="index.html" class="inline-block mt-6">
+                        <div class="flex items-end gap-2">
+                            <span class="account-script text-[4.5rem] leading-none text-[--account-brown]">Lamed</span>
+                            <span class="text-xl uppercase tracking-[0.45em] text-[--account-gold]">VS</span>
+                        </div>
+                    </a>
+                    <h1 class="account-brand-title">Sua conta virou o atelie digital da sua compra.</h1>
+                    <p class="account-brand-copy">
+                        Acompanhe pedidos, salve favoritos, ative avisos no aparelho e fale com a equipe sem se perder entre conversas e comprovantes.
+                    </p>
 
-            <!-- LOGIN VIEW -->
-            <div id="view-login" class="auth-view active">
-                <h2 class="serif text-3xl font-light mb-8 text-center text-gray-800">Bem-vindo de volta</h2>
-                
-                <form id="login-form" class="space-y-6">
+                    <div class="account-benefit-grid">
+                        <article class="account-benefit-card">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            <div>
+                                <strong>Pedidos sempre por perto</strong>
+                                <p>Veja o historico, o status e os proximos passos de cada encomenda em um so lugar.</p>
+                            </div>
+                        </article>
+                        <article class="account-benefit-card">
+                            <i class="fa-regular fa-heart"></i>
+                            <div>
+                                <strong>Favoritos com memoria de atelie</strong>
+                                <p>Guarde pecas desejadas, colecoes e referencias para voltar quando quiser.</p>
+                            </div>
+                        </article>
+                        <article class="account-benefit-card">
+                            <i class="fa-regular fa-bell"></i>
+                            <div>
+                                <strong>Avisos rapidos no celular</strong>
+                                <p>Receba notificacoes sobre pedidos, suporte e novidades quando ativar neste aparelho.</p>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+
+                <div class="account-benefit-card mt-6">
+                    <i class="fa-solid fa-gem"></i>
                     <div>
-                        <label class="text-[10px] uppercase text-gray-400 tracking-widest font-bold">E-mail</label>
-                        <input type="email" id="login-email" class="input-chic" required>
+                        <strong>Experiencia melhor para quem faz login</strong>
+                        <p>Endereco salvo, suporte com contexto do pedido e acesso mais rapido ao andamento da producao.</p>
                     </div>
-                    <div>
-                        <label class="text-[10px] uppercase text-gray-400 tracking-widest font-bold">Senha</label>
-                        <input type="password" id="login-pass" class="input-chic" required>
-                    </div>
-                    <button type="submit" class="btn-chic shadow-lg">Entrar</button>
-                </form>
+                </div>
+            </section>
 
-                <div class="mt-8 space-y-6">
-                    <div class="relative">
-                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-100"></div></div>
-                        <div class="relative flex justify-center text-xs"><span class="px-2 bg-white text-gray-400">OU</span></div>
-                    </div>
+            <section class="account-auth-card">
+                <div id="view-login" class="auth-view active">
+                    <h2 class="account-auth-title">Entre na sua conta</h2>
+                    <p class="account-auth-subtitle">Acesse seus pedidos, favoritos e conversas com o suporte em uma area feita para acompanhar cada etapa.</p>
 
-                    <button onclick="fazerLoginGoogle()" class="w-full border border-gray-200 py-3 flex items-center justify-center gap-3 hover:bg-gray-50 transition text-sm text-gray-600">
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5">
+                    <form id="login-form" class="account-form-grid mt-8">
+                        <div>
+                            <label class="account-field-label">E-mail</label>
+                            <input type="email" id="login-email" class="input-chic" placeholder="voce@exemplo.com" required>
+                        </div>
+                        <div>
+                            <label class="account-field-label">Senha</label>
+                            <input type="password" id="login-pass" class="input-chic" placeholder="Sua senha" required>
+                        </div>
+                        <button type="submit" class="btn-chic">Entrar</button>
+                    </form>
+
+                    <div class="account-divider"><span>ou</span></div>
+
+                    <button type="button" onclick="fazerLoginGoogle()" class="account-secondary-btn account-google-btn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
                         Continuar com Google
                     </button>
-                    <p class="text-center text-sm text-gray-500">
-                        Ainda não possui conta? <button onclick="switchAuthView('register')" class="text-[--cor-marrom] font-medium underline">Cadastrar-se</button>
+
+                    <div class="mt-8 rounded-[22px] border border-[#eadfce] bg-white/80 p-5">
+                        <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Primeira vez aqui?</p>
+                        <h3 class="account-serif text-3xl text-[#2d2017] mt-3">Crie uma conta para acompanhar cada pedido.</h3>
+                        <p class="mt-3 text-sm leading-7 text-[#7d7166]">Voce tambem pode entrar com Google em um clique e deixar seus dados prontos para os proximos pedidos.</p>
+                        <button type="button" onclick="switchAuthView('register')" class="btn-chic mt-5">Criar minha conta</button>
+                    </div>
+                </div>
+
+                <div id="view-register" class="auth-view">
+                    <h2 class="account-auth-title">Criar conta</h2>
+                    <p class="account-auth-subtitle">Preencha seus dados e transforme cada pedido em um acompanhamento mais claro, mais bonito e mais pratico.</p>
+
+                    <form id="register-form" class="account-form-grid mt-8">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="account-field-label">Nome</label>
+                                <input type="text" id="reg-nome" class="input-chic" placeholder="Nome" required>
+                            </div>
+                            <div>
+                                <label class="account-field-label">Sobrenome</label>
+                                <input type="text" id="reg-sobrenome" class="input-chic" placeholder="Sobrenome" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="account-field-label">E-mail</label>
+                            <input type="email" id="reg-email" class="input-chic" placeholder="voce@exemplo.com" required>
+                        </div>
+                        <div>
+                            <label class="account-field-label">WhatsApp</label>
+                            <input type="tel" id="reg-phone" class="input-chic" placeholder="DDD + numero" required>
+                        </div>
+                        <div>
+                            <label class="account-field-label">Senha</label>
+                            <input type="password" id="reg-pass" class="input-chic" placeholder="Minimo de 6 caracteres" required>
+                        </div>
+
+                        <div class="rounded-[22px] border border-[#eadfce] bg-white/80 p-5 mt-2">
+                            <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco inicial</p>
+                            <div class="grid grid-cols-3 gap-3 mt-4">
+                                <input type="text" id="reg-cep" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
+                                <input type="text" id="reg-cidade" placeholder="Cidade / UF" class="input-chic col-span-2">
+                            </div>
+                            <input type="text" id="reg-rua" placeholder="Rua" class="input-chic mt-2">
+                            <input type="text" id="reg-numero" placeholder="Numero / Complemento" class="input-chic mt-2">
+                        </div>
+
+                        <button type="submit" class="btn-chic mt-3">Finalizar cadastro</button>
+                    </form>
+
+                    <div class="account-divider"><span>ou</span></div>
+
+                    <button type="button" onclick="fazerLoginGoogle()" class="account-secondary-btn account-google-btn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                        Criar com Google
+                    </button>
+
+                    <p class="text-center text-sm text-[#7d7166] mt-7">
+                        Ja tem conta?
+                        <button type="button" onclick="switchAuthView('login')" class="text-[--account-brown] font-semibold underline">Entrar agora</button>
                     </p>
                 </div>
-            </div>
-
-            <!-- REGISTER VIEW -->
-            <div id="view-register" class="auth-view">
-                <h2 class="serif text-3xl font-light mb-2 text-center text-gray-800">Criar Conta</h2>
-                <p class="text-center text-gray-400 text-sm mb-8 font-light">Preencha seus dados para uma experiência personalizada.</p>
-                
-                <form id="register-form" class="space-y-5">
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="text" id="reg-nome" placeholder="Nome" class="input-chic" required>
-                        <input type="text" id="reg-sobrenome" placeholder="Sobrenome" class="input-chic" required>
-                    </div>
-                    <input type="email" id="reg-email" placeholder="E-mail" class="input-chic" required>
-                    <input type="tel" id="reg-phone" placeholder="WhatsApp (DDD + Número)" class="input-chic" required>
-                    <input type="password" id="reg-pass" placeholder="Senha" class="input-chic" required>
-                    
-                    <div class="pt-4">
-                        <p class="text-[10px] text-gray-400 uppercase mb-3 font-bold tracking-widest">Endereço de Entrega</p>
-                        <div class="grid grid-cols-3 gap-3 mb-2">
-                            <input type="text" id="reg-cep" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
-                            <input type="text" id="reg-cidade" placeholder="Cidade" class="input-chic col-span-2">
-                        </div>
-                        <input type="text" id="reg-rua" placeholder="Rua" class="input-chic mb-2">
-                        <input type="text" id="reg-numero" placeholder="Número / Compl." class="input-chic">
-                    </div>
-
-                    <button type="submit" class="btn-chic mt-6 shadow-lg">Finalizar Cadastro</button>
-                </form>
-                
-                <p class="text-center text-sm text-gray-500 mt-8">
-                    Já tem conta? <button onclick="switchAuthView('login')" class="text-[--cor-marrom] font-medium underline">Entrar</button>
-                </p>
-            </div>
+            </section>
         </div>
     </div>
 
-    <!-- PAINEL DO USUÁRIO -->
-    <div id="user-panel" class="hidden flex-1 flex flex-col">
-        <header class="bg-white border-b border-gray-100 sticky top-0 z-30">
-            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-                <a href="index.html" class="flex items-center gap-2 text-gray-400 hover:text-[--cor-marrom] transition">
-                    <i class="fa-solid fa-arrow-left"></i> <span class="text-xs uppercase tracking-widest font-medium">Voltar à Loja</span>
-                </a>
-                <div class="flex items-center gap-4">
-                    <div class="text-right hidden sm:block">
-                        <p id="user-name-display" class="font-medium text-sm text-gray-800">Usuario</p>
+    <div id="user-panel" class="hidden">
+        <div class="account-shell account-layout">
+            <header class="account-topbar">
+                <div class="account-topbar-row">
+                    <a href="index.html" class="account-back-link">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        Voltar para a loja
+                    </a>
+
+                    <div class="account-user-tools">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-[0.68rem] uppercase tracking-[0.22em] text-[#a49382] font-bold">Conta ativa</p>
+                            <p id="user-name-display" class="text-sm font-semibold text-[#2d2017]">Cliente</p>
+                        </div>
+                        <img id="user-avatar-display" src="" class="account-avatar" alt="Avatar da conta">
+                        <button type="button" onclick="fazerLogout()" class="account-power-btn" title="Sair">
+                            <i class="fa-solid fa-power-off"></i>
+                        </button>
                     </div>
-                    <img id="user-avatar-display" src="" class="w-10 h-10 rounded-full border border-gray-100 object-cover shadow-sm">
-                    <button onclick="fazerLogout()" class="text-gray-400 hover:text-red-500 ml-2" title="Sair"><i class="fa-solid fa-power-off"></i></button>
                 </div>
-            </div>
-            
-            <nav class="flex justify-center gap-4 sm:gap-8 mt-2 overflow-x-auto">
-                <button onclick="switchTab('pedidos')" class="tab-btn active py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Pedidos</button>
-                <button onclick="switchTab('favoritos')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Favoritos</button>
-                <button onclick="switchTab('dados')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Meus Dados</button>
-                <button onclick="switchTab('chat')" class="tab-btn py-4 text-xs uppercase tracking-widest text-gray-400 hover:text-[--cor-marrom] transition whitespace-nowrap">Suporte</button>
+
+                <section class="account-hero">
+                    <div class="account-hero-grid">
+                        <div>
+                            <span class="account-kicker">
+                                <i class="fa-solid fa-layer-group"></i>
+                                Area da cliente
+                            </span>
+                            <h1 id="account-hero-title">Seu atelie pessoal de pedidos.</h1>
+                            <p id="account-hero-copy">Acompanhe cada etapa da sua encomenda, fale com o suporte com mais contexto e guarde as pecas que marcaram sua curadoria.</p>
+
+                            <div class="account-quick-actions">
+                                <button type="button" onclick="switchTab('pedidos')" class="account-pill-btn">
+                                    <i class="fa-solid fa-bag-shopping"></i>
+                                    Pedidos
+                                </button>
+                                <button type="button" onclick="switchTab('favoritos')" class="account-pill-btn">
+                                    <i class="fa-regular fa-heart"></i>
+                                    Favoritos
+                                </button>
+                                <button type="button" onclick="switchTab('dados')" class="account-pill-btn">
+                                    <i class="fa-regular fa-user"></i>
+                                    Meus dados
+                                </button>
+                                <button type="button" onclick="switchTab('chat')" class="account-pill-btn">
+                                    <i class="fa-regular fa-comments"></i>
+                                    Suporte
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="account-hero-side">
+                            <div class="account-hero-note">
+                                <strong>Pedido e suporte no mesmo fluxo</strong>
+                                <p>Quando falarmos sobre um pedido, voce pode partir direto dele para o suporte sem se perder.</p>
+                            </div>
+                            <div class="account-hero-note">
+                                <strong>Notificacoes neste aparelho</strong>
+                                <p id="account-notification-copy">Ative para receber avisos sobre seu pedido, suporte e proximas etapas.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </header>
+
+            <section class="account-stat-grid">
+                <article class="account-stat-card">
+                    <span>Pedidos</span>
+                    <strong id="account-stat-orders">0</strong>
+                    <p>Historico da sua jornada com a Laméd.</p>
+                </article>
+                <article class="account-stat-card">
+                    <span>Favoritos</span>
+                    <strong id="account-stat-favorites">0</strong>
+                    <p>Pecas que voce quer revisitar.</p>
+                </article>
+                <article class="account-stat-card">
+                    <span>Notificacoes</span>
+                    <strong id="account-stat-notifications">Off</strong>
+                    <p>Status deste aparelho para avisos rapidos.</p>
+                </article>
+                <article class="account-stat-card">
+                    <span>Suporte</span>
+                    <strong id="account-stat-support">Ativo</strong>
+                    <p>Contexto salvo para tirar duvidas com a equipe.</p>
+                </article>
+            </section>
+
+            <nav class="account-tabbar">
+                <button type="button" onclick="switchTab('pedidos')" class="tab-btn active">Pedidos</button>
+                <button type="button" onclick="switchTab('favoritos')" class="tab-btn">Favoritos</button>
+                <button type="button" onclick="switchTab('dados')" class="tab-btn">Meus dados</button>
+                <button type="button" onclick="switchTab('chat')" class="tab-btn">Suporte</button>
             </nav>
-        </header>
 
-        <main class="container mx-auto p-4 md:p-8 max-w-4xl flex-1 bg-white">
-            
-            <!-- PEDIDOS -->
-            <div id="tab-pedidos" class="tab-content space-y-6">
-                <div id="orders-list" class="space-y-4">
-                    <p class="text-center text-gray-400 py-10">Carregando pedidos...</p>
-                </div>
-            </div>
-
-            <!-- FAVORITOS (NOVO) -->
-            <div id="tab-favoritos" class="tab-content hidden">
-                <h3 class="serif text-2xl mb-6 text-gray-800 border-b pb-2">Meus Favoritos</h3>
-                <div id="favorites-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <p class="col-span-full text-center text-gray-400 py-10">Você ainda não tem peças favoritas.</p>
-                </div>
-            </div>
-
-            <!-- MEUS DADOS (PERFIL) -->
-            <div id="tab-dados" class="tab-content hidden">
-                <div class="max-w-xl mx-auto mt-8">
-                    <h3 class="serif text-2xl mb-8 text-center text-gray-800">Editar Perfil</h3>
-                    <form id="profile-form" class="space-y-8">
-                        
-                        <!-- Upload de Imagem -->
-                        <div class="flex flex-col items-center gap-4 mb-8">
-                            <div class="relative w-24 h-24 avatar-container cursor-pointer">
-                                <img id="profile-edit-avatar" src="" class="w-full h-full rounded-full object-cover border-4 border-gray-50 shadow-md">
-                                <div class="absolute inset-0 rounded-full avatar-overlay flex items-center justify-center text-white" onclick="document.getElementById('file-upload-profile').click()">
-                                    <i class="fa-solid fa-camera text-xl"></i>
-                                </div>
-                                <input type="file" id="file-upload-profile" class="hidden" accept="image/*" onchange="uploadFotoPerfil(this)">
-                            </div>
-                            <div class="w-full text-center">
-                                <span class="text-xs text-gray-400">Clique na foto para alterar ou cole o link abaixo</span>
-                            </div>
-                            <div class="w-full">
-                                <label class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">URL da Foto</label>
-                                <input type="url" id="profile-photo-url" class="input-chic text-sm" placeholder="Cole o link da sua foto aqui">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div><label class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Nome Completo</label><input type="text" id="profile-nome" class="input-chic"></div>
-                            <div><label class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Telefone / WhatsApp</label><input type="text" id="profile-phone" class="input-chic"></div>
-                        </div>
-
-                        <div class="pt-6 border-t border-gray-100">
-                            <h4 class="serif text-lg mb-4 text-gray-600">Endereço de Entrega</h4>
-                            <div class="grid grid-cols-3 gap-4 mb-4">
-                                <input type="text" id="profile-cep" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
-                                <input type="text" id="profile-cidade" placeholder="Cidade" class="input-chic col-span-2">
-                            </div>
-                            <input type="text" id="profile-rua" placeholder="Rua" class="input-chic mb-4">
-                            <input type="text" id="profile-numero" placeholder="Número e Complemento" class="input-chic">
-                        </div>
-
-                        <button type="submit" class="btn-chic shadow-lg">Salvar Alterações</button>
-                        <div class="pt-6 border-t border-gray-100">
-                            <div class="rounded-2xl border border-[#E5E0D8] bg-[#FDFBF6] p-5 space-y-4">
+            <main>
+                <section id="tab-pedidos" class="tab-content">
+                    <div class="account-two-columns">
+                        <div class="account-panel-card">
+                            <div class="account-favorites-head">
                                 <div>
-                                    <p class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Notificações Web</p>
-                                    <h4 class="serif text-xl text-gray-700 mt-2">Receba avisos do seu pedido neste aparelho</h4>
-                                    <p id="push-status-text" class="text-sm text-gray-500 mt-2">Ative as notificações para receber atualizações de pedido e mensagens do suporte.</p>
+                                    <h3>Seus pedidos</h3>
+                                    <p class="account-panel-copy">Clique em um pedido para abrir o resumo detalhado, retomar o atendimento ou ir direto para o WhatsApp.</p>
                                 </div>
-                                <div class="flex flex-col sm:flex-row gap-3">
-                                    <button type="button" id="push-enable-btn" class="btn-chic shadow-lg sm:w-auto px-6">Ativar neste aparelho</button>
-                                    <button type="button" id="push-disable-btn" class="w-full sm:w-auto border border-gray-200 px-6 py-3 text-sm uppercase tracking-widest text-gray-500 hover:text-[--cor-marrom] transition">Desativar</button>
-                                </div>
+                                <a href="index.html#loja" class="account-soft-btn">
+                                    <i class="fa-solid fa-plus"></i>
+                                    Novo pedido
+                                </a>
+                            </div>
+                            <div id="orders-list" class="account-orders-list">
+                                <p class="text-center text-gray-400 py-10">Carregando pedidos...</p>
                             </div>
                         </div>
-                    </form>
-                </div>
-            </div>
 
-            <!-- CHAT -->
-            <div id="tab-chat" class="tab-content hidden h-full">
-                <div class="bg-white border border-gray-100 shadow-sm flex flex-col h-[600px] max-h-[70vh] rounded-lg overflow-hidden">
-                    <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span class="font-medium text-sm text-gray-700">Atendimento Online</span>
-                        </div>
-                        <span class="text-xs text-gray-400">Resposta em até 1h</span>
+                        <aside id="selected-order-panel" class="account-order-detail">
+                            <div class="account-order-detail-empty">
+                                <i class="fa-regular fa-note-sticky"></i>
+                                <h3>Selecione um pedido</h3>
+                                <p>O detalhe completo aparece aqui, junto com os atalhos para suporte e acompanhamento.</p>
+                            </div>
+                        </aside>
                     </div>
-                    <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30"></div>
-                    <form id="chat-form" class="p-4 border-t flex gap-3 bg-white">
-                        <input type="text" id="message-input" class="flex-1 border-b border-gray-200 px-4 py-2 text-sm focus:border-[--cor-ouro] outline-none bg-transparent" placeholder="Digite sua dúvida...">
-                        <button type="submit" class="text-[--cor-marrom] hover:text-[--cor-ouro] transition"><i class="fa-solid fa-paper-plane text-xl"></i></button>
-                    </form>
-                </div>
-            </div>
+                </section>
 
-        </main>
+                <section id="tab-favoritos" class="tab-content hidden">
+                    <div class="account-panel-card">
+                        <div class="account-favorites-head">
+                            <div>
+                                <h3>Favoritos</h3>
+                                <p class="account-panel-copy">Monte sua curadoria e volte nas pecas que chamaram sua atencao sem perder o fio da meada.</p>
+                            </div>
+                            <a href="index.html#loja" class="account-soft-btn">
+                                <i class="fa-solid fa-store"></i>
+                                Explorar loja
+                            </a>
+                        </div>
+                        <div id="favorites-grid" class="account-favorites-grid">
+                            <p class="col-span-full text-center text-gray-400 py-10">Voce ainda nao tem pecas favoritas.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="tab-dados" class="tab-content hidden">
+                    <div class="account-profile-layout">
+                        <aside class="account-profile-panel">
+                            <h3>Conta com mais contexto</h3>
+                            <p class="account-panel-copy">Quanto mais completa sua conta estiver, mais fluida fica a experiencia de pedir, acompanhar e conversar com a equipe.</p>
+
+                            <div class="account-profile-summary mt-6">
+                                <div class="account-summary-tile">
+                                    <strong>Endereco pronto no checkout</strong>
+                                    <p>Seus proximos pedidos ficam mais rapidos, com menos campos para repetir.</p>
+                                </div>
+                                <div class="account-summary-tile">
+                                    <strong>Suporte com memoria do pedido</strong>
+                                    <p>Voce entra no chat com o pedido certo em foco e poupa varias explicacoes repetidas.</p>
+                                </div>
+                                <div class="account-summary-tile">
+                                    <strong>Alertas neste aparelho</strong>
+                                    <p>Ative notificacoes para ser avisada quando o pedido mudar de etapa ou a equipe responder.</p>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <div class="account-profile-panel">
+                            <h3>Meus dados</h3>
+                            <p class="account-panel-copy">Edite sua foto, telefone e endereco para deixar cada atendimento mais pessoal.</p>
+
+                            <form id="profile-form" class="mt-6">
+                                <div class="account-avatar-editor">
+                                    <div class="relative w-28 h-28 avatar-container cursor-pointer">
+                                        <img id="profile-edit-avatar" src="" class="w-full h-full rounded-full object-cover border-4 border-white shadow-md" alt="Foto de perfil">
+                                        <div class="absolute inset-0 rounded-full avatar-overlay flex items-center justify-center text-white" onclick="document.getElementById('file-upload-profile').click()">
+                                            <i class="fa-solid fa-camera text-xl"></i>
+                                        </div>
+                                        <input type="file" id="file-upload-profile" class="hidden" accept="image/*" onchange="uploadFotoPerfil(this)">
+                                    </div>
+
+                                    <div class="w-full">
+                                        <label class="account-field-label">URL da foto</label>
+                                        <input type="url" id="profile-photo-url" class="input-chic" placeholder="Cole o link da sua foto aqui">
+                                    </div>
+                                </div>
+
+                                <div class="account-profile-grid">
+                                    <div class="account-profile-two">
+                                        <div>
+                                            <label class="account-field-label">Nome completo</label>
+                                            <input type="text" id="profile-nome" class="input-chic">
+                                        </div>
+                                        <div>
+                                            <label class="account-field-label">Telefone / WhatsApp</label>
+                                            <input type="text" id="profile-phone" class="input-chic">
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-[24px] border border-[#eadfce] bg-white/85 p-5">
+                                        <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco de entrega</p>
+                                        <div class="grid grid-cols-3 gap-4 mt-4">
+                                            <input type="text" id="profile-cep" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
+                                            <input type="text" id="profile-cidade" placeholder="Cidade / UF" class="input-chic col-span-2">
+                                        </div>
+                                        <input type="text" id="profile-rua" placeholder="Rua" class="input-chic mt-2">
+                                        <input type="text" id="profile-numero" placeholder="Numero e complemento" class="input-chic mt-2">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn-chic mt-6">Salvar alteracoes</button>
+
+                                <div class="account-notification-card">
+                                    <p class="text-[0.72rem] uppercase tracking-[0.24em] font-bold opacity-80">Notificacoes web</p>
+                                    <h4 class="account-serif text-3xl mt-3">Receba avisos neste aparelho</h4>
+                                    <p id="push-status-text" class="text-sm mt-3 opacity-90">Ative as notificacoes para receber atualizacoes de pedido e mensagens do suporte.</p>
+                                    <div class="flex flex-col sm:flex-row gap-3 mt-5">
+                                        <button type="button" id="push-enable-btn" class="btn-chic sm:w-auto px-6">Ativar neste aparelho</button>
+                                        <button type="button" id="push-disable-btn" class="account-secondary-btn sm:w-auto px-6">Desativar</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="tab-chat" class="tab-content hidden">
+                    <div class="account-chat-shell">
+                        <div class="account-chat-toolbar">
+                            <div class="account-chat-head">
+                                <div>
+                                    <h3 class="account-serif text-3xl text-[#2d2017]">Suporte com contexto</h3>
+                                    <p class="account-panel-copy">Converse com a equipe e, quando quiser, amarre a conversa ao pedido certo para ganhar tempo.</p>
+                                </div>
+                                <span class="account-soft-btn">
+                                    <i class="fa-solid fa-circle text-[10px] text-green-500"></i>
+                                    Atendimento online
+                                </span>
+                            </div>
+
+                            <div id="chat-order-context" class="account-chat-context hidden">
+                                <div>
+                                    <strong id="chat-selected-order">Sem pedido em foco</strong>
+                                    <span>O suporte vai receber a conversa com o pedido referenciado.</span>
+                                </div>
+                                <button type="button" id="clear-chat-order-context" class="account-chat-clear">Limpar contexto</button>
+                            </div>
+
+                            <div id="chat-thread-list" class="flex flex-wrap gap-2 mt-4"></div>
+                        </div>
+
+                        <div id="chat-messages"></div>
+
+                        <form id="chat-form" class="account-chat-form">
+                            <input type="text" id="message-input" class="account-chat-input" placeholder="Digite sua duvida sobre pedido, medidas, personalizacao ou entrega...">
+                            <button type="submit" class="account-chat-send" aria-label="Enviar mensagem">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </main>
+        </div>
     </div>
 
     <script src="user.js"></script>
-    <nav class="account-mobile-nav" aria-label="Navegação rápida">
+
+    <nav class="account-mobile-nav" aria-label="Navegacao rapida">
         <a href="index.html#home" class="account-mobile-link">
             <i class="fa-solid fa-house"></i>
-            <span>Início</span>
+            <span>Inicio</span>
         </a>
         <a href="index.html#colecoes" class="account-mobile-link">
             <i class="fa-solid fa-layer-group"></i>
-            <span>Coleções</span>
+            <span>Colecoes</span>
         </a>
         <a href="index.html#loja" class="account-mobile-link">
             <i class="fa-solid fa-store"></i>
@@ -324,22 +446,23 @@
             <span>Sacola</span>
         </a>
     </nav>
+
     <script>
         function buscarEndereco(cep) {
-            cep = cep.replace(/\D/g, '');
-            if(cep.length === 8) {
-                const prefix = document.getElementById('view-register').classList.contains('active') ? 'reg' : 'profile';
-                fetch(`https://viacep.com.br/ws/${cep}/json/`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if(!data.erro) {
-                            const ruaEl = document.getElementById(`${prefix}-rua`);
-                            const cidEl = document.getElementById(`${prefix}-cidade`);
-                            if(ruaEl) ruaEl.value = data.logradouro;
-                            if(cidEl) cidEl.value = `${data.localidade}/${data.uf}`;
-                        }
-                    });
-            }
+            cep = String(cep || '').replace(/\D/g, '');
+            if (cep.length !== 8) return;
+
+            const prefix = document.getElementById('view-register').classList.contains('active') ? 'reg' : 'profile';
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.erro) return;
+                    const ruaEl = document.getElementById(`${prefix}-rua`);
+                    const cidEl = document.getElementById(`${prefix}-cidade`);
+                    if (ruaEl) ruaEl.value = data.logradouro || '';
+                    if (cidEl) cidEl.value = `${data.localidade || ''}/${data.uf || ''}`.replace(/^\/|\/$/g, '');
+                })
+                .catch(() => {});
         }
     </script>
 </body>

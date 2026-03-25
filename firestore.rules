@@ -210,9 +210,12 @@ service cloud.firestore {
     }
 
     function validChatMessage(chatId) {
-      return request.resource.data.keys().hasOnly(['text', 'sender', 'timestamp', 'userName']) &&
+      return request.resource.data.keys().hasOnly(['text', 'sender', 'timestamp', 'userName', 'threadId', 'threadLabel', 'orderId']) &&
         validString(request.resource.data.text, 1, 1000) &&
         request.resource.data.timestamp == request.time &&
+        validOptionalString(request.resource.data.threadId, 120) &&
+        validOptionalString(request.resource.data.threadLabel, 120) &&
+        validOptionalString(request.resource.data.orderId, 120) &&
         (
           (
             isOwner(chatId) &&
@@ -228,12 +231,15 @@ service cloud.firestore {
     }
 
     function validChatMeta(chatId) {
-      return request.resource.data.keys().hasOnly(['lastMessage', 'lastUpdate', 'userName', 'userId', 'unread']) &&
+      return request.resource.data.keys().hasOnly(['lastMessage', 'lastUpdate', 'userName', 'userId', 'unread', 'activeThreadId', 'activeThreadLabel', 'orderId']) &&
         validOptionalString(request.resource.data.lastMessage, 140) &&
         request.resource.data.lastUpdate is timestamp &&
         validOptionalString(request.resource.data.userName, 80) &&
         validString(request.resource.data.userId, 1, 80) &&
         request.resource.data.userId == chatId &&
+        validOptionalString(request.resource.data.activeThreadId, 120) &&
+        validOptionalString(request.resource.data.activeThreadLabel, 120) &&
+        validOptionalString(request.resource.data.orderId, 120) &&
         request.resource.data.unread is bool;
     }
 

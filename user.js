@@ -26,6 +26,12 @@ const ALLOWED_REMOTE_IMAGE_HOSTS = new Set([
 // Variáveis de Estado
 let currentUser = null;
 let unsubscribeChat = null;
+let unsubscribeOrders = null;
+let ordersCache = [];
+let selectedOrderId = '';
+let activeChatOrderId = '';
+let activeChatThreadId = 'geral';
+let currentChatMessages = [];
 let pushMessagingInstance = null;
 let currentPushToken = "";
 let pushConfigCache = null;
@@ -88,6 +94,338 @@ function buildAvatarUrl(name) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}&background=A58A5C&color=fff`;
 }
 
+function splitFullName(name) {
+    const safe = sanitizePlainText(name, 80);
+    if (!safe) return { firstName: 'Cliente', fullName: 'Cliente' };
+    const parts = safe.split(' ').filter(Boolean);
+    return {
+        firstName: parts[0] || safe,
+        fullName: safe
+    };
+}
+
+function updateAccountStat(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value);
+}
+
+function updateNotificationSummaryState() {
+    const statusCopy = document.getElementById('account-notification-copy');
+    const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+    updateAccountStat('account-stat-notifications', granted ? 'On' : 'Off');
+
+    if (statusCopy) {
+        statusCopy.textContent = granted
+            ? 'Este aparelho pode receber avisos sobre seu pedido e sobre respostas do suporte.'
+            : 'Ative neste aparelho para receber avisos de pedido, suporte e proximas etapas.';
+    }
+}
+
+function getStatusLabel(status) {
+    const safeStatus = sanitizePlainText(status, 30).toLowerCase();
+    const labels = {
+        pendente: 'Pendente',
+        processando: 'Em producao',
+        enviado: 'Enviado',
+        entregue: 'Entregue',
+        cancelado: 'Cancelado'
+    };
+    return labels[safeStatus] || (safeStatus ? safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1) : 'Pendente');
+}
+
+function formatOrderDate(value) {
+    if (typeof value?.toDate === 'function') {
+        return value.toDate().toLocaleDateString('pt-BR');
+    }
+    if (typeof value?.seconds === 'number') {
+        return new Date(value.seconds * 1000).toLocaleDateString('pt-BR');
+    }
+    return 'Data desconhecida';
+}
+
+function getOrderCode(orderId) {
+    return `#${String(orderId || '').slice(0, 6).toUpperCase()}`;
+}
+
+function getRequestedOrderId() {
+    const params = new URLSearchParams(window.location.search);
+    const queryOrderId = sanitizePlainText(params.get('pedido'), 120);
+    if (queryOrderId) return queryOrderId;
+
+    try {
+        return sanitizePlainText(sessionStorage.getItem('lamed_last_order_id'), 120);
+    } catch (error) {
+        return '';
+    }
+}
+
+function persistFocusedOrder(orderId) {
+    if (!orderId) return;
+
+    try {
+        sessionStorage.setItem('lamed_last_order_id', orderId);
+    } catch (error) {}
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('pedido', orderId);
+    url.hash = '#pedidos';
+    window.history.replaceState({}, '', url.toString());
+}
+
+function buildSupportPrefixedMessage(text, orderId) {
+    const safeText = sanitizePlainText(text, 1000);
+    if (!safeText) return '';
+    if (!orderId) return safeText;
+    return `[Pedido ${getOrderCode(orderId)}] ${safeText}`.slice(0, 1000);
+}
+
+function updateChatOrderContextUI() {
+    const context = document.getElementById('chat-order-context');
+    const orderLabel = document.getElementById('chat-selected-order');
+    const input = document.getElementById('message-input');
+    if (!context || !orderLabel) return;
+
+    if (!activeChatOrderId) {
+        context.classList.add('hidden');
+        orderLabel.textContent = 'Sem pedido em foco';
+        if (input) input.placeholder = 'Digite sua duvida sobre pedido, medidas, personalizacao ou entrega...';
+        updateAccountStat('account-stat-support', 'Ativo');
+        return;
+    }
+
+    const order = ordersCache.find((item) => item.id === activeChatOrderId);
+    orderLabel.textContent = order
+        ? `${getOrderCode(order.id)} - ${getStatusLabel(order.data.status)}`
+        : getOrderCode(activeChatOrderId);
+    context.classList.remove('hidden');
+    if (input) input.placeholder = `Fale sobre ${orderLabel.textContent.toLowerCase()}...`;
+    updateAccountStat('account-stat-support', getOrderCode(activeChatOrderId));
+}
+
+function getChatThreadOptions() {
+    const options = [
+        { id: 'geral', label: 'Conversa geral', orderId: '' }
+    ];
+
+    ordersCache.forEach((entry) => {
+        options.push({
+            id: `pedido:${entry.id}`,
+            label: `Pedido ${getOrderCode(entry.id)}`,
+            orderId: entry.id
+        });
+    });
+
+    currentChatMessages.forEach((message) => {
+        const threadId = sanitizePlainText(message?.threadId, 120);
+        if (!threadId || options.some((item) => item.id === threadId)) return;
+
+        const orderId = sanitizePlainText(message?.orderId, 120);
+        options.push({
+            id: threadId,
+            label: sanitizePlainText(message?.threadLabel, 120) || (orderId ? `Pedido ${getOrderCode(orderId)}` : 'Conversa geral'),
+            orderId
+        });
+    });
+
+    if (activeChatThreadId && activeChatThreadId !== 'geral' && !options.some((item) => item.id === activeChatThreadId)) {
+        options.push({
+            id: activeChatThreadId,
+            label: activeChatOrderId ? `Pedido ${getOrderCode(activeChatOrderId)}` : 'Conversa geral',
+            orderId: activeChatOrderId || ''
+        });
+    }
+
+    return options;
+}
+
+function renderChatThreadList() {
+    const container = document.getElementById('chat-thread-list');
+    if (!container) return;
+
+    const threads = getChatThreadOptions();
+    if (!threads.some((item) => item.id === activeChatThreadId)) {
+        activeChatThreadId = activeChatOrderId ? `pedido:${activeChatOrderId}` : 'geral';
+    }
+    const activeThread = threads.find((item) => item.id === activeChatThreadId);
+    activeChatOrderId = sanitizePlainText(activeThread?.orderId, 120) || (activeChatThreadId === 'geral' ? '' : activeChatOrderId);
+
+    container.replaceChildren();
+
+    threads.forEach((thread) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `account-thread-chip ${thread.id === activeChatThreadId ? 'is-active' : ''}`;
+
+        const icon = document.createElement('i');
+        icon.className = 'fa-solid fa-hashtag text-[10px]';
+
+        const label = document.createElement('span');
+        label.textContent = sanitizePlainText(thread.label, 120);
+
+        button.appendChild(icon);
+        button.appendChild(label);
+        button.addEventListener('click', () => {
+            window.selecionarThreadChat(thread.id, thread.orderId || '');
+        });
+
+        container.appendChild(button);
+    });
+}
+
+function getFilteredChatMessages() {
+    if (!Array.isArray(currentChatMessages)) return [];
+    const safeThreadId = sanitizePlainText(activeChatThreadId, 120) || 'geral';
+    return currentChatMessages.filter((message) => {
+        const messageThreadId = sanitizePlainText(message?.threadId, 120) || 'geral';
+        return messageThreadId === safeThreadId;
+    });
+}
+
+function renderSelectedOrderDetail() {
+    const panel = document.getElementById('selected-order-panel');
+    if (!panel) return;
+
+    const selectedOrder = ordersCache.find((item) => item.id === selectedOrderId);
+    if (!selectedOrder) {
+        panel.innerHTML = `
+            <div class="account-order-detail-empty">
+                <i class="fa-regular fa-note-sticky"></i>
+                <h3>Selecione um pedido</h3>
+                <p>O detalhe completo aparece aqui, junto com os atalhos para suporte e acompanhamento.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const pedido = selectedOrder.data || {};
+    const totalFormatado = Number(pedido.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const subtotalFormatado = Number(pedido.subtotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const dataPedido = formatOrderDate(pedido.data);
+    const endereco = [
+        sanitizePlainText(pedido?.cliente?.endereco?.rua, 140),
+        sanitizePlainText(pedido?.cliente?.endereco?.numero, 40),
+        sanitizePlainText(pedido?.cliente?.endereco?.cidade, 120),
+        sanitizePlainText(pedido?.cliente?.endereco?.cep, 12)
+    ].filter(Boolean).join(' | ');
+
+    const itensHtml = (Array.isArray(pedido.produtos) ? pedido.produtos : []).map((item) => {
+        const detalhes = [];
+        const tamanho = sanitizePlainText(item?.tamanho, 20);
+        const cor = sanitizePlainText(item?.cor?.nome, 40);
+        if (tamanho) detalhes.push(`Tam: ${tamanho}`);
+        if (cor) detalhes.push(`Cor: ${cor}`);
+        if (item?.personalizacao?.texto) detalhes.push(`Personalizacao: ${sanitizePlainText(item.personalizacao.texto, 120)}`);
+
+        return `
+            <div class="account-detail-item">
+                <div class="account-detail-item-header">
+                    <span>${item.quantity}x ${sanitizePlainText(item.nome, 120)}</span>
+                    <span>${Number((item.preco || 0) * (item.quantity || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+                <div class="account-detail-item-meta">${detalhes.join(' | ') || 'Sob demanda'}</div>
+            </div>
+        `;
+    }).join('');
+
+    panel.innerHTML = `
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <p class="account-detail-label">Pedido em foco</p>
+                <h3>${getOrderCode(selectedOrder.id)}</h3>
+                <p class="account-panel-copy mt-2">Criado em ${dataPedido} e atualmente em ${getStatusLabel(pedido.status).toLowerCase()}.</p>
+            </div>
+            <span class="account-order-status ${getStatusClass(pedido.status)}">${getStatusLabel(pedido.status)}</span>
+        </div>
+
+        <div class="account-detail-section">
+            <span class="account-detail-label">Resumo financeiro</span>
+            <div class="account-detail-list">
+                <div class="account-detail-item">
+                    <div class="account-detail-item-header">
+                        <span>Subtotal</span>
+                        <span>${subtotalFormatado}</span>
+                    </div>
+                    <div class="account-detail-item-meta">Total final do pedido: ${totalFormatado}</div>
+                </div>
+                <div class="account-detail-item">
+                    <div class="account-detail-item-header">
+                        <span>Pagamento</span>
+                        <span>${sanitizePlainText(pedido.pagamento, 60) || 'A combinar'}</span>
+                    </div>
+                    <div class="account-detail-item-meta">${Number(pedido.parcelas || 1)}x ${Number(pedido.parcelas || 1) > 1 ? 'no cartao' : 'na finalizacao'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="account-detail-section">
+            <span class="account-detail-label">Entrega</span>
+            <div class="account-detail-value">${endereco || 'Endereco salvo no pedido.'}</div>
+        </div>
+
+        <div class="account-detail-section">
+            <span class="account-detail-label">Itens do pedido</span>
+            <div class="account-detail-list">${itensHtml || '<div class="account-detail-item">Nenhum item encontrado.</div>'}</div>
+        </div>
+
+        <div class="account-order-actions">
+            <button type="button" class="account-soft-btn account-highlight-btn" onclick="iniciarSuportePedido('${selectedOrder.id}')">
+                <i class="fa-regular fa-comments"></i>
+                Falar sobre este pedido
+            </button>
+            <a href="https://wa.me/5527999287657?text=${encodeURIComponent(`Oi! Quero falar sobre o pedido ${getOrderCode(selectedOrder.id)}.`)}" target="_blank" class="account-soft-btn">
+                <i class="fa-brands fa-whatsapp"></i>
+                Continuar no WhatsApp
+            </a>
+        </div>
+    `;
+}
+
+function selectAccountOrder(orderId, { updateLocation = true, switchToTab = false } = {}) {
+    selectedOrderId = sanitizePlainText(orderId, 120);
+    if (!selectedOrderId) return;
+
+    if (switchToTab) {
+        activateAccountTab('pedidos');
+    }
+
+    document.querySelectorAll('.account-order-card').forEach((card) => {
+        card.classList.toggle('is-selected', card.dataset.orderId === selectedOrderId);
+    });
+
+    if (updateLocation) {
+        persistFocusedOrder(selectedOrderId);
+    }
+
+    renderSelectedOrderDetail();
+}
+
+async function ensureUserProfileDoc(user) {
+    if (!user) return;
+
+    const ref = db.collection('usuarios').doc(user.uid);
+    const snapshot = await ref.get();
+    const existingData = snapshot.data() || {};
+    if (snapshot.exists && sanitizePlainText(existingData.nome, 80)) return;
+
+    const fallbackName = sanitizePlainText(
+        existingData.nome ||
+        user.displayName ||
+        user.email?.split('@')[0] ||
+        'Cliente',
+        80
+    ) || 'Cliente';
+
+    await ref.set({
+        nome: fallbackName,
+        email: sanitizePlainText(existingData.email || user.email, 120),
+        telefone: sanitizePhone(existingData.telefone),
+        endereco: existingData.endereco || null,
+        fotoUrl: normalizeImageUrl(existingData.fotoUrl) || normalizeImageUrl(user.photoURL) || '',
+        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
+        favoritos: Array.isArray(existingData.favoritos) ? existingData.favoritos : []
+    }, { merge: true });
+}
+
 function getPushStatusElement() {
     return document.getElementById('push-status-text');
 }
@@ -97,6 +435,7 @@ function setPushStatus(message) {
     if (statusEl) {
         statusEl.textContent = sanitizePlainText(message, 220);
     }
+    updateNotificationSummaryState();
 }
 
 function updatePushButtonsState({ enableDisabled = false, disableDisabled = false, enableLabel = 'Ativar neste aparelho' } = {}) {
@@ -334,6 +673,7 @@ auth.onAuthStateChanged(async (user) => {
         if(authContainer) authContainer.classList.add('hidden');
         if(userPanel) userPanel.classList.remove('hidden');
         
+        await ensureUserProfileDoc(user);
         await carregarPerfilUsuario();
         await iniciarNotificacoesWeb();
         carregarMeusPedidos();
@@ -343,6 +683,15 @@ auth.onAuthStateChanged(async (user) => {
         
     } else {
         currentUser = null;
+        ordersCache = [];
+        selectedOrderId = '';
+        activeChatOrderId = '';
+        activeChatThreadId = 'geral';
+        currentChatMessages = [];
+        if (unsubscribeOrders) {
+            unsubscribeOrders();
+            unsubscribeOrders = null;
+        }
         if (unsubscribeChat) {
             unsubscribeChat();
             unsubscribeChat = null;
@@ -353,6 +702,9 @@ auth.onAuthStateChanged(async (user) => {
         switchAuthView('login');
         setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
         updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
+        updateAccountStat('account-stat-orders', 0);
+        updateAccountStat('account-stat-favorites', 0);
+        updateAccountStat('account-stat-support', 'Ativo');
     }
 });
 
@@ -437,15 +789,18 @@ window.fazerLoginGoogle = () => {
         
         if (!docSnap.exists) {
             await docRef.set({
-                nome: user.displayName,
-                email: user.email,
-                fotoUrl: user.photoURL,
+                nome: sanitizePlainText(user.displayName, 80) || 'Cliente',
+                email: sanitizePlainText(user.email, 120),
+                fotoUrl: normalizeImageUrl(user.photoURL) || '',
                 telefone: '',
-                endereco: {},
+                endereco: null,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
-    }).catch(err => console.error(err));
+    }).catch((err) => {
+        console.error(err);
+        alert('Nao foi possivel entrar com Google agora.');
+    });
 };
 
 window.fazerLogout = () => auth.signOut();
@@ -456,7 +811,10 @@ async function carregarPerfilUsuario() {
     if(!currentUser) return;
     
     const safeDisplayName = sanitizePlainText(currentUser.displayName || 'Cliente', 80) || 'Cliente';
+    const { firstName } = splitFullName(safeDisplayName);
     document.getElementById('user-name-display').textContent = safeDisplayName;
+    const heroTitle = document.getElementById('account-hero-title');
+    const heroCopy = document.getElementById('account-hero-copy');
     const avatarEl = document.getElementById('user-avatar-display');
     
     try {
@@ -478,6 +836,16 @@ async function carregarPerfilUsuario() {
             document.getElementById('profile-cidade').value = data.endereco.cidade || '';
             document.getElementById('profile-rua').value = data.endereco.rua || '';
             document.getElementById('profile-numero').value = data.endereco.numero || '';
+        }
+
+        if (heroTitle) {
+            heroTitle.textContent = `${firstName}, seu atelie pessoal de pedidos.`;
+        }
+
+        if (heroCopy) {
+            heroCopy.textContent = data.telefone
+                ? 'Seu perfil ja esta pronto para deixar os proximos pedidos mais fluido, com suporte e acompanhamento em um so lugar.'
+                : 'Complete seus dados para transformar o proximo pedido em uma experiencia ainda mais rapida e acompanhada.';
         }
     } catch(e) { console.error("Erro perfil:", e); }
 }
@@ -561,7 +929,7 @@ if(profileForm) {
             location.reload(); 
         } catch(e) {
             alert("Nao foi possivel salvar suas alteracoes agora.");
-            btn.textContent = 'Salvar Alterações';
+            btn.textContent = 'Salvar alteracoes';
             btn.disabled = false;
         }
     });
@@ -587,7 +955,10 @@ function activateAccountTab(tab, trigger = null) {
         window.location.hash = safeTab;
     }
 
-    if(safeTab === 'chat') rolarChatParaBaixo();
+    if (safeTab === 'chat') {
+        updateChatOrderContextUI();
+        rolarChatParaBaixo();
+    }
 }
 
 function applyTabFromHash() {
@@ -602,10 +973,31 @@ window.switchTab = (tab) => {
     activateAccountTab(tab, trigger);
 }
 
+window.abrirPedidoNaConta = (orderId) => {
+    selectAccountOrder(orderId, { updateLocation: true, switchToTab: true });
+};
+
+window.iniciarSuportePedido = (orderId) => {
+    activeChatOrderId = sanitizePlainText(orderId, 120);
+    activeChatThreadId = activeChatOrderId ? `pedido:${activeChatOrderId}` : 'geral';
+    updateChatOrderContextUI();
+    renderChatThreadList();
+    activateAccountTab('chat');
+    rolarChatParaBaixo();
+};
+
+window.selecionarThreadChat = (threadId, orderId = '') => {
+    activeChatThreadId = sanitizePlainText(threadId, 120) || 'geral';
+    activeChatOrderId = sanitizePlainText(orderId, 120);
+    updateChatOrderContextUI();
+    renderChatThreadList();
+    renderizarMensagensAtuais();
+};
+
 window.addEventListener('hashchange', applyTabFromHash);
 
 // --- PEDIDOS (ATUALIZADO) ---
-function carregarMeusPedidos() {
+function carregarMeusPedidosLegacy() {
     const list = document.getElementById('orders-list');
     if(!list || !currentUser) return;
     
@@ -673,6 +1065,105 @@ function getStatusClass(status) {
     return 'text-yellow-600 bg-yellow-50';
 }
 
+function carregarMeusPedidos() {
+    const list = document.getElementById('orders-list');
+    if (!list || !currentUser) return;
+
+    if (unsubscribeOrders) {
+        unsubscribeOrders();
+        unsubscribeOrders = null;
+    }
+
+    unsubscribeOrders = db.collection('pedidos')
+        .where('userId', '==', currentUser.uid)
+        .onSnapshot((snap) => {
+            list.innerHTML = '';
+            ordersCache = [...snap.docs]
+                .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
+                .sort((leftItem, rightItem) => {
+                    const leftData = leftItem.data?.data;
+                    const rightData = rightItem.data?.data;
+                    const leftTime = typeof leftData?.toDate === 'function'
+                        ? leftData.toDate().getTime()
+                        : (typeof leftData?.seconds === 'number' ? leftData.seconds * 1000 : 0);
+                    const rightTime = typeof rightData?.toDate === 'function'
+                        ? rightData.toDate().getTime()
+                        : (typeof rightData?.seconds === 'number' ? rightData.seconds * 1000 : 0);
+                    return rightTime - leftTime;
+                });
+
+            updateAccountStat('account-stat-orders', ordersCache.length);
+
+            if (ordersCache.length === 0) {
+                selectedOrderId = '';
+                renderSelectedOrderDetail();
+                list.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fa-solid fa-bag-shopping text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-600 mb-4">Voce ainda nao realizou nenhum pedido.</p>
+                        <a href="index.html" class="inline-block text-[#643f21] font-medium border-b border-[#643f21] pb-0.5 hover:text-[#A58A5C] hover:border-[#A58A5C] transition-colors">
+                            Que tal dar uma olhada em nossos produtos?
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = ordersCache.map((entry) => {
+                const pedido = entry.data || {};
+                const valorTotal = Number(pedido.total || 0);
+                const totalFormatado = valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const dataPedido = formatOrderDate(pedido.data);
+                const previewItens = (pedido.produtos || []).slice(0, 3).map((item) => `
+                    <div class="account-order-line">
+                        <span>${Number(item.quantity || 0)}x ${sanitizePlainText(item.nome, 120)}</span>
+                        <span>${Number((item.preco || 0) * (item.quantity || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                `).join('');
+
+                return `
+                    <article class="account-order-card ${entry.id === selectedOrderId ? 'is-selected' : ''}" data-order-id="${entry.id}" onclick="abrirPedidoNaConta('${entry.id}')">
+                        <div class="account-order-card-header">
+                            <div>
+                                <div class="account-order-code">${getOrderCode(entry.id)}</div>
+                                <div class="account-order-date">${dataPedido}</div>
+                            </div>
+                            <span class="account-order-status ${getStatusClass(pedido.status)}">${getStatusLabel(pedido.status)}</span>
+                        </div>
+                        <div class="account-order-lines">${previewItens}</div>
+                        <div class="account-order-card-footer">
+                            <div>
+                                <span class="text-[0.68rem] uppercase tracking-[0.18em] text-[#a49382] font-bold">Total</span>
+                                <div class="account-order-total">${totalFormatado}</div>
+                            </div>
+                            <button type="button" class="account-soft-btn" onclick="event.stopPropagation(); iniciarSuportePedido('${entry.id}')">
+                                <i class="fa-regular fa-comments"></i>
+                                Suporte
+                            </button>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            const requestedOrderId = getRequestedOrderId();
+            const fallbackOrderId = ordersCache[0]?.id || '';
+            const preferredOrderId = ordersCache.some((item) => item.id === requestedOrderId)
+                ? requestedOrderId
+                : (ordersCache.some((item) => item.id === selectedOrderId) ? selectedOrderId : fallbackOrderId);
+
+            if (preferredOrderId) {
+                selectAccountOrder(preferredOrderId, { updateLocation: true });
+            }
+        }, (error) => {
+            console.error('Erro ao carregar pedidos:', error);
+            ordersCache = [];
+            selectedOrderId = '';
+            updateAccountStat('account-stat-orders', 0);
+            renderSelectedOrderDetail();
+            list.innerHTML = '<p class="text-center text-red-400 py-8">Nao foi possivel carregar seus pedidos agora.</p>';
+        });
+}
+
 // --- FAVORITOS ---
 async function carregarFavoritos() {
     const grid = document.getElementById('favorites-grid');
@@ -681,6 +1172,7 @@ async function carregarFavoritos() {
     try {
         const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
         const favoritosIds = userDoc.data()?.favoritos || [];
+        updateAccountStat('account-stat-favorites', favoritosIds.length);
 
         if (favoritosIds.length === 0) {
             grid.innerHTML = '<div class="col-span-full text-center py-10"><i class="fa-regular fa-heart text-4xl text-gray-200 mb-3"></i><p class="text-gray-400">Sua lista de desejos está vazia.</p></div>';
@@ -703,11 +1195,11 @@ async function carregarFavoritos() {
                 const preco = parseFloat(p.preco || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
                 
                 grid.innerHTML += `
-                    <div class="bg-white border border-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group" onclick="window.location.href='index.html#/produto/${doc.id}'">
+                    <div class="bg-white border border-[#eadfce] rounded-[22px] overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group" onclick="window.location.href='index.html#/produto/${doc.id}'">
                         <div class="aspect-[3/4] relative bg-gray-50">
                             <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                         </div>
-                        <div class="p-3 text-center">
+                        <div class="p-4 text-center">
                             <h4 class="text-sm font-medium text-gray-800 truncate">${p.nome}</h4>
                             <p class="text-xs text-[#643f21] font-bold mt-1">${preco}</p>
                         </div>
@@ -722,33 +1214,68 @@ async function carregarFavoritos() {
 
     } catch (e) {
         console.error("Erro ao carregar favoritos:", e);
+        updateAccountStat('account-stat-favorites', 0);
         grid.innerHTML = '<p class="col-span-full text-center text-red-400">Erro ao carregar.</p>';
     }
 }
 
 // --- CHAT ---
+function renderizarMensagensAtuais() {
+    const div = document.getElementById('chat-messages');
+    if (!div) return;
+
+    div.replaceChildren();
+    const mensagens = getFilteredChatMessages();
+
+    if (!mensagens.length) {
+        const empty = document.createElement('div');
+        empty.className = 'text-center text-sm text-gray-500 py-12';
+        empty.textContent = activeChatThreadId === 'geral'
+            ? 'Nenhuma mensagem ainda nesta conversa.'
+            : 'Nenhuma mensagem ainda neste pedido.';
+        div.appendChild(empty);
+        return;
+    }
+
+    mensagens.forEach((msg) => {
+        const cls = msg.sender === 'user' ? 'msg-user' : 'msg-admin';
+        const bubble = document.createElement('div');
+        bubble.className = `mb-2 text-sm ${cls} break-words shadow-sm`;
+        bubble.textContent = sanitizePlainText(msg.text, 1000);
+        div.appendChild(bubble);
+    });
+
+    rolarChatParaBaixo();
+}
+
 function iniciarChat() {
     if (!currentUser) return;
     const chatId = currentUser.uid;
     const div = document.getElementById('chat-messages');
     if(!div) return;
 
+    updateChatOrderContextUI();
+
     if (unsubscribeChat) unsubscribeChat();
     unsubscribeChat = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp')
         .onSnapshot(snap => {
-            div.replaceChildren();
-            snap.forEach(doc => {
-                const msg = doc.data();
-                const cls = msg.sender === 'user' ? 'msg-user' : 'msg-admin';
-                const bubble = document.createElement('div');
-                bubble.className = `mb-2 text-sm ${cls} break-words shadow-sm`;
-                bubble.textContent = sanitizePlainText(msg.text, 1000);
-                div.appendChild(bubble);
-            });
-            rolarChatParaBaixo();
+            currentChatMessages = snap.docs.map((doc) => doc.data() || {});
+            renderChatThreadList();
+            renderizarMensagensAtuais();
         });
 
     const form = document.getElementById('chat-form');
+    const clearContextBtn = document.getElementById('clear-chat-order-context');
+    if (clearContextBtn) {
+        clearContextBtn.onclick = () => {
+            activeChatOrderId = '';
+            activeChatThreadId = 'geral';
+            updateChatOrderContextUI();
+            renderChatThreadList();
+            renderizarMensagensAtuais();
+        };
+    }
+
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
     
@@ -759,20 +1286,28 @@ function iniciarChat() {
         if(!text) return;
         inp.value = '';
         const userName = sanitizePlainText(currentUser.displayName || 'Cliente', 80) || 'Cliente';
+        const messageText = buildSupportPrefixedMessage(text, activeChatOrderId);
+        const threadLabel = activeChatOrderId ? `Pedido ${getOrderCode(activeChatOrderId)}` : 'Conversa geral';
         
         const ts = firebase.firestore.FieldValue.serverTimestamp();
         await db.collection('chats').doc(chatId).collection('messages').add({
-            text,
+            text: messageText,
             sender: 'user',
             timestamp: ts,
-            userName
+            userName,
+            threadId: activeChatThreadId || 'geral',
+            threadLabel,
+            orderId: activeChatOrderId || ''
         });
         await db.collection('chats_ativos').doc(chatId).set({
-            lastMessage: text.slice(0, 140),
+            lastMessage: messageText.slice(0, 140),
             lastUpdate: ts,
             userName,
             userId: chatId,
-            unread: true
+            unread: true,
+            activeThreadId: activeChatThreadId || 'geral',
+            activeThreadLabel: threadLabel,
+            orderId: activeChatOrderId || ''
         }, {merge: true});
     }
 }

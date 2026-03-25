@@ -74,6 +74,13 @@ const elements = {
     checkoutTotal: document.getElementById('checkout-total'),
     checkoutCepInput: document.getElementById('checkout-cep'),
     checkoutSubmitButton: document.getElementById('checkout-submit-btn'),
+    checkoutAccountAssist: document.getElementById('checkout-account-assist'),
+    checkoutGuestCard: document.getElementById('checkout-guest-card'),
+    checkoutLoggedInCard: document.getElementById('checkout-logged-in-card'),
+    checkoutGoogleLoginBtn: document.getElementById('checkout-google-login-btn'),
+    checkoutAccountPasswordWrap: document.getElementById('checkout-account-password-wrap'),
+    checkoutAccountPasswordInput: document.getElementById('checkout-account-password'),
+    checkoutAccountCopy: document.getElementById('checkout-account-copy'),
     shippingMessageBox: document.getElementById('shipping-message-box'),
     shippingCostMsg: document.getElementById('shipping-cost-msg'),
     shippingQuoteStatus: document.getElementById('shipping-quote-status'),
@@ -89,6 +96,10 @@ const elements = {
     authPromptModal: document.getElementById('auth-prompt-modal'),
     closeAuthPromptBtn: document.getElementById('close-auth-prompt'),
     dismissAuthPromptBtn: document.getElementById('auth-prompt-dismiss'),
+    checkoutPushModal: document.getElementById('checkout-push-modal'),
+    closeCheckoutPushModalBtn: document.getElementById('close-checkout-push-modal'),
+    checkoutPushEnableBtn: document.getElementById('checkout-push-enable-btn'),
+    checkoutPushLaterBtn: document.getElementById('checkout-push-later-btn'),
 
     // Popup de prazo
     deliveryPopupOverlay: document.getElementById('delivery-popup-overlay'),
@@ -154,6 +165,7 @@ function init() {
         atualizarInterfaceUsuario(user);
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
         checkAuthPrompt(user);
+        if (typeof syncCheckoutAccountUI === 'function') syncCheckoutAccountUI();
     });
 
     validarELimparCarrinho();

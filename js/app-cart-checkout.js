@@ -2,6 +2,295 @@
 let shippingQuoteDebounceTimer = null;
 let shippingQuoteRequestToken = 0;
 let orderSubmissionInFlight = false;
+let checkoutPushConfigCache = null;
+let checkoutPushToken = '';
+
+function sanitizeCheckoutPhone(value) {
+    return String(value ?? '')
+        .replace(/[^\d+\-() ]/g, '')
+        .trim()
+        .slice(0, 30);
+}
+
+function getCheckoutAccountMode() {
+    return document.querySelector('input[name="checkout-account-mode"]:checked')?.value || 'create';
+}
+
+function syncCheckoutAccountUI() {
+    const authenticatedUser = currentUser || auth.currentUser;
+    const guestCard = elements.checkoutGuestCard;
+    const loggedInCard = elements.checkoutLoggedInCard;
+    const passwordWrap = elements.checkoutAccountPasswordWrap;
+    const copy = elements.checkoutAccountCopy;
+
+    if (guestCard) guestCard.classList.toggle('hidden', !!authenticatedUser);
+    if (loggedInCard) loggedInCard.classList.toggle('hidden', !authenticatedUser);
+
+    if (authenticatedUser) {
+        if (copy) {
+            copy.textContent = 'Sua conta ja esta ativa. O pedido sera associado automaticamente ao seu painel.';
+        }
+        return;
+    }
+
+    const mode = getCheckoutAccountMode();
+    if (passwordWrap) {
+        passwordWrap.classList.toggle('hidden', mode === 'guest');
+    }
+
+    if (copy) {
+        if (mode === 'login') {
+            copy.textContent = 'Entre com a senha da sua conta para este pedido cair direto no seu historico.';
+        } else if (mode === 'guest') {
+            copy.textContent = 'Voce pode finalizar sem conta, mas perde o painel pessoal de acompanhamento.';
+        } else {
+            copy.textContent = 'Crie uma senha agora e este pedido ja nasce dentro da sua conta.';
+        }
+    }
+}
+
+async function ensureCheckoutUserProfileDoc(user, cliente) {
+    if (!user) return;
+
+    const ref = db.collection('usuarios').doc(user.uid);
+    const snapshot = await ref.get();
+    const existingData = snapshot.data() || {};
+
+    await ref.set({
+        nome: sanitizePlainText(existingData.nome || cliente?.nome || user.displayName || 'Cliente', 80),
+        email: sanitizePlainText(existingData.email || user.email, 120),
+        telefone: sanitizeCheckoutPhone(existingData.telefone || cliente?.telefone),
+        endereco: existingData.endereco || cliente?.endereco || null,
+        fotoUrl: sanitizePlainText(existingData.fotoUrl || user.photoURL, 500),
+        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
+        favoritos: Array.isArray(existingData.favoritos) ? existingData.favoritos : []
+    }, { merge: true });
+}
+
+async function populateCheckoutFormFromUser(user) {
+    if (!user || !elements.checkoutForm) return;
+
+    try {
+        const doc = await db.collection('usuarios').doc(user.uid).get();
+        if (doc.exists) {
+            const data = doc.data() || {};
+            const form = elements.checkoutForm;
+            if (data.nome) form.nome.value = data.nome;
+            if (data.email) form.email.value = data.email;
+            if (data.telefone) form.telefone.value = data.telefone;
+            if (data.endereco) {
+                form.rua.value = data.endereco.rua || '';
+                form.numero.value = data.endereco.numero || '';
+                form.cep.value = formatPostalCode(data.endereco.cep || '');
+                form.cidade.value = data.endereco.cidade || '';
+            }
+        } else {
+            elements.checkoutForm.email.value = user.email || '';
+            if (user.displayName) elements.checkoutForm.nome.value = user.displayName;
+        }
+    } catch (error) {}
+}
+
+async function loginWithGoogleForCheckout() {
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+
+        await ensureCheckoutUserProfileDoc(user, {
+            nome: sanitizePlainText(user.displayName, 80),
+            telefone: '',
+            endereco: null
+        });
+
+        await populateCheckoutFormFromUser(user);
+        syncCheckoutAccountUI();
+        await maybePromptCheckoutPushModal();
+    } catch (error) {
+        console.error(error);
+        alert('Nao foi possivel entrar com Google agora.');
+    }
+}
+
+async function prepareCheckoutAccount(formData, cliente) {
+    const alreadyAuthenticatedUser = currentUser || auth.currentUser;
+    if (alreadyAuthenticatedUser) {
+        await ensureCheckoutUserProfileDoc(alreadyAuthenticatedUser, cliente);
+        return alreadyAuthenticatedUser;
+    }
+
+    const mode = getCheckoutAccountMode();
+    if (mode === 'guest') {
+        return null;
+    }
+
+    const email = sanitizePlainText(formData.get('email'), 120).toLowerCase();
+    const password = String(elements.checkoutAccountPasswordInput?.value || '').trim();
+
+    if (!email) {
+        throw new Error('Informe um e-mail valido para associar o pedido a sua conta.');
+    }
+
+    if (password.length < 6) {
+        throw new Error('Digite uma senha com pelo menos 6 caracteres para continuar com a conta.');
+    }
+
+    try {
+        const userCredential = mode === 'login'
+            ? await auth.signInWithEmailAndPassword(email, password)
+            : await auth.createUserWithEmailAndPassword(email, password);
+
+        const user = userCredential.user;
+        if (mode === 'create' && cliente?.nome) {
+            await user.updateProfile({ displayName: sanitizePlainText(cliente.nome, 80) });
+        }
+
+        await ensureCheckoutUserProfileDoc(user, cliente);
+        await populateCheckoutFormFromUser(user);
+        syncCheckoutAccountUI();
+        return user;
+    } catch (error) {
+        const errorCode = String(error?.code || '');
+        if (errorCode === 'auth/email-already-in-use') {
+            throw new Error('Esse e-mail ja possui conta. Escolha "Ja tenho conta" ou use Google.');
+        }
+        if (errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found') {
+            throw new Error('Nao foi possivel entrar com este e-mail e senha.');
+        }
+        if (errorCode === 'auth/weak-password') {
+            throw new Error('A senha da conta precisa ter pelo menos 6 caracteres.');
+        }
+        throw new Error('Nao foi possivel preparar sua conta agora.');
+    }
+}
+
+async function fetchCheckoutPushConfig() {
+    if (checkoutPushConfigCache) return checkoutPushConfigCache;
+
+    const response = await fetch(buildBackendUrl('/api/notifications/config'), {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
+    });
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload?.ok) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel carregar a configuracao de notificacoes.', 220));
+    }
+
+    checkoutPushConfigCache = payload;
+    return payload;
+}
+
+async function getCheckoutMessagingInstance() {
+    if (!firebase.messaging || typeof firebase.messaging !== 'function') {
+        throw new Error('Notificacoes web indisponiveis neste navegador.');
+    }
+
+    if (!checkoutPushConfigCache) {
+        await fetchCheckoutPushConfig();
+    }
+
+    return firebase.messaging();
+}
+
+async function ensureCheckoutPushServiceWorkerRegistration() {
+    if (!('serviceWorker' in navigator)) {
+        throw new Error('Este navegador nao suporta notificacoes web.');
+    }
+
+    return navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/firebase-cloud-messaging-push-scope'
+    });
+}
+
+async function sendCheckoutPushSubscription(token) {
+    const authenticatedUser = currentUser || auth.currentUser;
+    if (!authenticatedUser || !token) {
+        throw new Error('Entre na sua conta antes de ativar notificacoes.');
+    }
+
+    const idToken = await authenticatedUser.getIdToken();
+    const response = await fetch(buildBackendUrl('/api/notifications/register'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+            token,
+            permission: Notification.permission,
+            userAgent: navigator.userAgent
+        })
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel registrar as notificacoes.', 220));
+    }
+}
+
+function closeCheckoutPushModal(markSeen = true) {
+    if (!elements.checkoutPushModal) return;
+    elements.checkoutPushModal.classList.add('hidden');
+    elements.checkoutPushModal.classList.remove('flex');
+    if (markSeen) {
+        try {
+            sessionStorage.setItem('lamed_checkout_push_prompt_seen', 'true');
+        } catch (error) {}
+    }
+}
+
+function openCheckoutPushModal() {
+    if (!elements.checkoutPushModal) return;
+    elements.checkoutPushModal.classList.remove('hidden');
+    elements.checkoutPushModal.classList.add('flex');
+}
+
+async function maybePromptCheckoutPushModal() {
+    const authenticatedUser = currentUser || auth.currentUser;
+    if (!authenticatedUser || typeof Notification === 'undefined' || Notification.permission === 'granted') return;
+
+    try {
+        if (sessionStorage.getItem('lamed_checkout_push_prompt_seen') === 'true') {
+            return;
+        }
+    } catch (error) {}
+
+    try {
+        const config = await fetchCheckoutPushConfig();
+        if (!config?.enabled || !config?.vapidPublicKey) return;
+        openCheckoutPushModal();
+    } catch (error) {}
+}
+
+async function enablePushNotificationsFromCheckout() {
+    try {
+        const config = await fetchCheckoutPushConfig();
+        if (!config?.enabled || !config?.vapidPublicKey) {
+            throw new Error('As notificacoes ainda nao estao prontas neste momento.');
+        }
+
+        const messaging = await getCheckoutMessagingInstance();
+        const registration = await ensureCheckoutPushServiceWorkerRegistration();
+        const token = await messaging.getToken({
+            vapidKey: config.vapidPublicKey,
+            serviceWorkerRegistration: registration
+        });
+
+        if (!token) {
+            throw new Error('Nao foi possivel ativar as notificacoes neste navegador.');
+        }
+
+        checkoutPushToken = token;
+        await sendCheckoutPushSubscription(token);
+        closeCheckoutPushModal();
+        alert('Notificacoes ativadas neste aparelho.');
+    } catch (error) {
+        console.error(error);
+        alert(sanitizePlainText(error?.message || 'Nao foi possivel ativar as notificacoes agora.', 220));
+    }
+}
 
 function extractShippingErrorMessage(payload, response = null) {
     const rawError = payload?.error;
@@ -508,11 +797,51 @@ function toggleAccordion(event) {
 function setupPaymentOptions() {
     document.querySelectorAll('input[name="pagamento"]').forEach((radio) => {
         radio.addEventListener('change', () => {
-            document.getElementById('parcelamento-container').classList.toggle('hidden', radio.value !== 'Cartao de Credito' && radio.value !== 'CartÃ£o de CrÃ©dito');
-            if (radio.value === 'Cartao de Credito' || radio.value === 'CartÃ£o de CrÃ©dito') preencherParcelas();
+            syncParcelamentoVisibility();
             updateCheckoutSummary();
         });
     });
+
+    syncParcelamentoVisibility();
+}
+
+function setupCheckoutExperience() {
+    document.querySelectorAll('input[name="checkout-account-mode"]').forEach((radio) => {
+        radio.addEventListener('change', syncCheckoutAccountUI);
+    });
+
+    if (elements.checkoutGoogleLoginBtn) {
+        elements.checkoutGoogleLoginBtn.addEventListener('click', loginWithGoogleForCheckout);
+    }
+
+    if (elements.closeCheckoutPushModalBtn) {
+        elements.closeCheckoutPushModalBtn.addEventListener('click', closeCheckoutPushModal);
+    }
+
+    if (elements.checkoutPushLaterBtn) {
+        elements.checkoutPushLaterBtn.addEventListener('click', closeCheckoutPushModal);
+    }
+
+    if (elements.checkoutPushEnableBtn) {
+        elements.checkoutPushEnableBtn.addEventListener('click', enablePushNotificationsFromCheckout);
+    }
+
+    syncCheckoutAccountUI();
+}
+
+function syncParcelamentoVisibility() {
+    const container = document.getElementById('parcelamento-container');
+    if (!container) return;
+
+    const selectedPayment = document.querySelector('input[name="pagamento"]:checked')?.value || '';
+    const paymentKey = getPaymentKey(selectedPayment);
+    const isCardPayment = paymentKey.includes('cartao');
+
+    container.classList.toggle('hidden', !isCardPayment);
+
+    if (isCardPayment) {
+        preencherParcelas();
+    }
 }
 
 function preencherParcelas() {
@@ -563,6 +892,29 @@ async function toggleFavorite() {
 
     try {
         const ref = db.collection('usuarios').doc(currentUser.uid);
+        const existingDoc = await ref.get();
+        const existingData = existingDoc.data() || {};
+
+        if (!existingDoc.exists || !sanitizePlainText(existingData.nome, 80)) {
+            const fallbackName = sanitizePlainText(
+                existingData.nome ||
+                currentUser.displayName ||
+                currentUser.email?.split('@')[0] ||
+                'Cliente',
+                80
+            ) || 'Cliente';
+
+            await ref.set({
+                nome: fallbackName,
+                email: sanitizePlainText(existingData.email || currentUser.email, 120),
+                telefone: sanitizePhone(existingData.telefone),
+                endereco: existingData.endereco || null,
+                fotoUrl: normalizeImageUrl(existingData.fotoUrl) || normalizeImageUrl(currentUser.photoURL) || '',
+                createdAt: existingDoc.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
+                favoritos: Array.isArray(existingData.favoritos) ? existingData.favoritos : []
+            }, { merge: true });
+        }
+
         const doc = await ref.get();
         let favorites = doc.exists && doc.data().favoritos ? doc.data().favoritos : [];
 
@@ -596,6 +948,7 @@ async function checkFavoriteStatus(productId) {
 function closeCheckoutModal() {
     elements.checkoutModal.classList.add('hidden');
     elements.checkoutModal.classList.remove('flex');
+    closeCheckoutPushModal(false);
     if (typeof unlockBodyScroll === 'function') unlockBodyScroll('checkout');
 }
 
@@ -604,26 +957,10 @@ async function openCheckoutModal() {
 
     updateCheckoutSummary();
 
-    if (currentUser) {
-        try {
-            const doc = await db.collection('usuarios').doc(currentUser.uid).get();
-            if (doc.exists) {
-                const data = doc.data();
-                const form = elements.checkoutForm;
-                if (data.nome) form.nome.value = data.nome;
-                if (data.email) form.email.value = data.email;
-                if (data.telefone) form.telefone.value = data.telefone;
-                if (data.endereco) {
-                    form.rua.value = data.endereco.rua || '';
-                    form.numero.value = data.endereco.numero || '';
-                    form.cep.value = formatPostalCode(data.endereco.cep || '');
-                    form.cidade.value = data.endereco.cidade || '';
-                }
-            } else {
-                elements.checkoutForm.email.value = currentUser.email;
-                if (currentUser.displayName) elements.checkoutForm.nome.value = currentUser.displayName;
-            }
-        } catch (error) {}
+    const authenticatedUser = currentUser || auth.currentUser;
+
+    if (authenticatedUser) {
+        await populateCheckoutFormFromUser(authenticatedUser);
     }
 
     elements.checkoutModal.classList.remove('hidden');
@@ -631,12 +968,16 @@ async function openCheckoutModal() {
     if (typeof lockBodyScroll === 'function') lockBodyScroll('checkout');
     closeCart();
 
+    syncCheckoutAccountUI();
     renderShippingOptions();
+    syncParcelamentoVisibility();
     updateCheckoutSummary();
 
     if (SHIPPING_QUOTE_ENABLED && normalizePostalCode(elements.checkoutCepInput?.value).length === 8) {
         await quoteShippingOptions({ force: true });
     }
+
+    await maybePromptCheckoutPushModal();
 }
 
 function updateCheckoutSummary() {
@@ -793,11 +1134,13 @@ async function finalizarPedido(formData) {
         }
 
         const expectedTotal = parseCurrencyText(elements.checkoutTotal.textContent);
+        const preparedUser = await prepareCheckoutAccount(formData, cliente);
         let authToken = '';
+        const authenticatedUser = preparedUser || currentUser || auth.currentUser;
 
-        if (currentUser) {
+        if (authenticatedUser) {
             try {
-                authToken = await currentUser.getIdToken();
+                authToken = await authenticatedUser.getIdToken();
             } catch (error) {
                 throw new Error('Nao foi possivel validar sua sessao. Entre novamente e tente de novo.');
             }
@@ -847,6 +1190,21 @@ async function finalizarPedido(formData) {
         updateCartUI();
         renderShippingOptions();
         closeCheckoutModal();
+
+        if (authenticatedUser) {
+            try {
+                sessionStorage.setItem('lamed_last_order_id', String(payload.orderId));
+            } catch (error) {}
+
+            if (whatsappUrl) {
+                window.open(whatsappUrl, '_blank', 'noopener');
+            } else if (payload?.whatsappMessage) {
+                window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(String(payload.whatsappMessage))}`, '_blank', 'noopener');
+            }
+
+            window.location.href = `minha-conta.html?pedido=${encodeURIComponent(String(payload.orderId))}#pedidos`;
+            return;
+        }
     } catch (error) {
         console.error(error);
         alert(`Erro ao enviar pedido: ${sanitizePlainText(error?.message || 'Erro inesperado', 220)}`);
@@ -856,6 +1214,8 @@ async function finalizarPedido(formData) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', setupPaymentOptions);
+document.addEventListener('DOMContentLoaded', setupCheckoutExperience);
 
 const SHIPPING_QUOTE_ENABLED = false;
 const MANUAL_SHIPPING_ORIGIN_POSTAL_CODE = '29056015';

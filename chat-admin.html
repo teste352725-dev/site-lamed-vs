@@ -159,6 +159,8 @@
                             <p id="chat-user-orders" class="mt-2 text-sm font-medium text-gray-800">-</p>
                         </div>
                     </div>
+
+                    <div id="admin-thread-list" class="flex flex-wrap gap-2 mt-4"></div>
                 </div>
 
                 <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col"></div>
@@ -202,6 +204,9 @@
         let unsubscribeMessages = null;
         let chatsMeta = [];
         let currentSearchTerm = '';
+        let currentThreadId = 'geral';
+        let currentThreadOrderId = '';
+        let currentMessagesCache = [];
 
         async function isAuthorizedAdmin(user) {
             if (!user) return false;
@@ -255,6 +260,80 @@
         function dateKeyFromTimestamp(value) {
             if (!value?.seconds) return 'sem-data';
             return new Date(value.seconds * 1000).toLocaleDateString('pt-BR');
+        }
+
+        function getThreadLabel(threadId, threadLabel, orderId) {
+            const safeLabel = sanitizePlainText(threadLabel, 120);
+            if (safeLabel) return safeLabel;
+            if (orderId) return `Pedido #${sanitizePlainText(orderId, 12).slice(0, 6).toUpperCase()}`;
+            return threadId === 'geral' ? 'Conversa geral' : sanitizePlainText(threadId, 120);
+        }
+
+        function getThreadOptions() {
+            const options = [
+                { id: 'geral', label: 'Conversa geral', orderId: '' }
+            ];
+
+            currentMessagesCache.forEach((message) => {
+                const threadId = sanitizePlainText(message?.threadId, 120) || 'geral';
+                if (options.some((item) => item.id === threadId)) return;
+
+                options.push({
+                    id: threadId,
+                    label: getThreadLabel(threadId, message?.threadLabel, message?.orderId),
+                    orderId: sanitizePlainText(message?.orderId, 120)
+                });
+            });
+
+            if (currentThreadId && currentThreadId !== 'geral' && !options.some((item) => item.id === currentThreadId)) {
+                options.push({
+                    id: currentThreadId,
+                    label: getThreadLabel(currentThreadId, '', currentThreadOrderId),
+                    orderId: currentThreadOrderId
+                });
+            }
+
+            return options;
+        }
+
+        function renderizarThreadsAdmin() {
+            const container = document.getElementById('admin-thread-list');
+            if (!container) return;
+
+            const options = getThreadOptions();
+            if (!options.some((item) => item.id === currentThreadId)) {
+                currentThreadId = 'geral';
+                currentThreadOrderId = '';
+            }
+            const activeThread = options.find((item) => item.id === currentThreadId);
+            currentThreadOrderId = sanitizePlainText(activeThread?.orderId, 120) || (currentThreadId === 'geral' ? '' : currentThreadOrderId);
+
+            container.replaceChildren();
+
+            options.forEach((thread) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `px-3 py-2 rounded-full border text-xs font-semibold transition ${thread.id === currentThreadId ? 'bg-[--chat-brown] text-white border-[--chat-brown]' : 'bg-white text-gray-600 border-gray-200'}`;
+                button.textContent = sanitizePlainText(thread.label, 120);
+                button.addEventListener('click', () => selecionarThreadAdmin(thread.id, thread.orderId || ''));
+                container.appendChild(button);
+            });
+        }
+
+        function selecionarThreadAdmin(threadId, orderId = '') {
+            currentThreadId = sanitizePlainText(threadId, 120) || 'geral';
+            currentThreadOrderId = sanitizePlainText(orderId, 120);
+            renderizarThreadsAdmin();
+            renderizarMensagensAtuaisAdmin();
+        }
+
+        window.selecionarThreadAdmin = selecionarThreadAdmin;
+
+        function getMensagensFiltradasAdmin() {
+            return currentMessagesCache.filter((message) => {
+                const messageThreadId = sanitizePlainText(message?.threadId, 120) || 'geral';
+                return messageThreadId === currentThreadId;
+            });
         }
 
         function atualizarEstatisticasChat() {
@@ -370,21 +449,23 @@
             }
         }
 
-        function renderizarMensagens(snapshot) {
+        function renderizarMensagensAtuaisAdmin() {
             const messagesDiv = document.getElementById('chat-messages');
             messagesDiv.replaceChildren();
+            const mensagens = getMensagensFiltradasAdmin();
 
-            if (snapshot.empty) {
+            if (!mensagens.length) {
                 const empty = document.createElement('div');
                 empty.className = 'text-center text-sm text-gray-500 py-12';
-                empty.textContent = 'Nenhuma mensagem ainda nesta conversa.';
+                empty.textContent = currentThreadId === 'geral'
+                    ? 'Nenhuma mensagem ainda nesta conversa.'
+                    : 'Nenhuma mensagem ainda nesta thread de pedido.';
                 messagesDiv.appendChild(empty);
                 return;
             }
 
             let lastDateKey = null;
-            snapshot.forEach((doc) => {
-                const msg = doc.data() || {};
+            mensagens.forEach((msg) => {
                 const dateKey = dateKeyFromTimestamp(msg.timestamp);
 
                 if (dateKey !== lastDateKey) {
@@ -398,8 +479,19 @@
                 const bubble = document.createElement('div');
                 bubble.className = `msg-bubble ${msg.sender === 'admin' ? 'msg-admin' : 'msg-user'}`;
 
+                const normalizedThreadId = sanitizePlainText(msg.threadId, 120) || 'geral';
+                if (normalizedThreadId !== 'geral') {
+                    const badge = document.createElement('span');
+                    badge.className = 'inline-flex rounded-full bg-black/5 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500';
+                    badge.textContent = getThreadLabel(normalizedThreadId, msg.threadLabel, msg.orderId);
+                    bubble.appendChild(badge);
+                }
+
                 const textEl = document.createElement('p');
                 textEl.textContent = sanitizePlainText(msg.text, 1600);
+                if (normalizedThreadId !== 'geral') {
+                    textEl.classList.add('mt-2');
+                }
 
                 const timeEl = document.createElement('span');
                 timeEl.className = 'block text-[10px] opacity-60 mt-2 text-right';
@@ -417,17 +509,27 @@
             currentChatId = chatId;
             document.getElementById('chat-empty-state').classList.add('hidden');
             document.getElementById('chat-workspace').classList.remove('hidden');
+            const currentChatMeta = chatsMeta.find((item) => item.id === chatId) || {};
+            currentThreadId = sanitizePlainText(currentChatMeta.activeThreadId, 120) || 'geral';
+            currentThreadOrderId = sanitizePlainText(currentChatMeta.orderId, 120);
+            currentMessagesCache = [];
 
             db.collection('chats_ativos').doc(chatId).update({ unread: false }).catch(() => {});
 
             renderizarListaChats();
             carregarContextoCliente(chatId, userName);
+            renderizarThreadsAdmin();
+            renderizarMensagensAtuaisAdmin();
 
             if (unsubscribeMessages) unsubscribeMessages();
 
             unsubscribeMessages = db.collection('chats').doc(chatId).collection('messages')
                 .orderBy('timestamp', 'asc')
-                .onSnapshot((snap) => renderizarMensagens(snap));
+                .onSnapshot((snap) => {
+                    currentMessagesCache = snap.docs.map((doc) => doc.data() || {});
+                    renderizarThreadsAdmin();
+                    renderizarMensagensAtuaisAdmin();
+                });
         }
 
         function reabrirChatAtual() {
@@ -447,6 +549,9 @@
 
                     if (currentChatId && !chatsMeta.find((item) => item.id === currentChatId)) {
                         currentChatId = null;
+                        currentThreadId = 'geral';
+                        currentThreadOrderId = '';
+                        currentMessagesCache = [];
                         if (unsubscribeMessages) unsubscribeMessages();
                         document.getElementById('chat-workspace').classList.add('hidden');
                         document.getElementById('chat-empty-state').classList.remove('hidden');
@@ -460,16 +565,24 @@
             if (!cleanText) return;
 
             const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            const threadId = currentThreadId || 'geral';
+            const threadLabel = getThreadLabel(threadId, '', currentThreadOrderId);
             await db.collection('chats').doc(currentChatId).collection('messages').add({
                 text: cleanText,
                 sender: 'admin',
-                timestamp
+                timestamp,
+                threadId,
+                threadLabel,
+                orderId: currentThreadOrderId || ''
             });
 
             await db.collection('chats_ativos').doc(currentChatId).set({
                 lastMessage: `Voce: ${cleanText}`,
                 lastUpdate: timestamp,
-                unread: false
+                unread: false,
+                activeThreadId: threadId,
+                activeThreadLabel: threadLabel,
+                orderId: currentThreadOrderId || ''
             }, { merge: true });
         }
 
