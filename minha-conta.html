@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -229,7 +229,7 @@
                 <article class="account-stat-card">
                     <span>Pedidos</span>
                     <strong id="account-stat-orders">0</strong>
-                    <p>Historico da sua jornada com a Laméd.</p>
+                    <p>Historico da sua jornada com a Lamed.</p>
                 </article>
                 <article class="account-stat-card">
                     <span>Favoritos</span>
@@ -385,6 +385,22 @@
 
                 <section id="tab-chat" class="tab-content hidden">
                     <div class="account-chat-shell">
+                        <div id="account-admin-chat-card" class="account-panel-card hidden mb-6">
+                            <div class="account-favorites-head">
+                                <div>
+                                    <h3>Chats ativos do atelie</h3>
+                                    <p class="account-panel-copy">Como admin, voce ve daqui as conversas mais recentes e pula direto para o atendimento.</p>
+                                </div>
+                                <a href="chat-admin.html" class="account-soft-btn">
+                                    <i class="fa-regular fa-comments"></i>
+                                    Abrir painel
+                                </a>
+                            </div>
+                            <div id="account-admin-active-chats" class="account-orders-list">
+                                <p class="text-center text-gray-400 py-8">Carregando conversas...</p>
+                            </div>
+                        </div>
+
                         <div class="account-chat-toolbar">
                             <div class="account-chat-head">
                                 <div>
@@ -467,3 +483,4 @@
     </script>
 </body>
 </html>
+

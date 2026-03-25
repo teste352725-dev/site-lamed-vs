@@ -76,95 +76,33 @@
         </div>
 </header>
 
-    <section id="admin-mode-panel" class="hidden border-b border-[#E5E0D8] bg-[#FFF8EE]">
-        <div class="container mx-auto max-w-7xl px-4 py-6">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div class="max-w-3xl">
-                    <span class="inline-flex items-center gap-2 rounded-full border border-[#E7D6BD] bg-white px-4 py-2 text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#8B6A45]">
-                        <i class="fa-solid fa-shield-heart"></i>
-                        Modo admin ativo
-                    </span>
-                    <h2 class="mt-4 serif text-3xl md:text-4xl font-light text-[--cor-texto]">A loja se adapta para quem cuida do atelie.</h2>
-                    <p class="mt-3 max-w-2xl text-sm leading-7 text-[#6C625A]">
-                        Veja conversas ativas, altere o que esta visivel no site e acesse o painel completo sem sair da home.
-                    </p>
-                </div>
-
-                <div class="flex flex-wrap gap-3">
-                    <a href="dashboard.html" class="inline-flex items-center gap-2 rounded-full bg-[--cor-marrom-cta] px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-white shadow-sm hover:opacity-90">
-                        <i class="fa-solid fa-grid-2"></i>
-                        Dashboard completo
-                    </a>
-                    <a href="chat-admin.html" class="inline-flex items-center gap-2 rounded-full border border-[#D7C2A5] px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-[--cor-marrom-cta] hover:bg-white">
-                        <i class="fa-regular fa-comments"></i>
-                        Abrir atendimento
-                    </a>
-                    <a href="minha-conta.html#dados" class="inline-flex items-center gap-2 rounded-full border border-[#D7C2A5] px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-[--cor-marrom-cta] hover:bg-white">
-                        <i class="fa-regular fa-bell"></i>
-                        Notificacoes
-                    </a>
-                </div>
-            </div>
-
-            <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Pecas</p>
-                            <strong id="admin-stat-products" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
-                            <p class="mt-1 text-xs text-[#7B7167]">Controle rapido da vitrine.</p>
-                        </div>
-                        <i class="fa-solid fa-shirt text-2xl text-[#C09D6C]"></i>
-                    </div>
-                    <div id="admin-products-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
-                        <p class="text-sm text-[#8D8175]">Carregando pecas...</p>
-                    </div>
-                </article>
-
-                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Colecoes</p>
-                            <strong id="admin-stat-collections" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
-                            <p class="mt-1 text-xs text-[#7B7167]">Ative ou pause destaques.</p>
-                        </div>
-                        <i class="fa-solid fa-layer-group text-2xl text-[#C09D6C]"></i>
-                    </div>
-                    <div id="admin-collections-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
-                        <p class="text-sm text-[#8D8175]">Carregando colecoes...</p>
-                    </div>
-                </article>
-
-                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Categorias</p>
-                            <strong id="admin-stat-categories" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
-                            <p class="mt-1 text-xs text-[#7B7167]">Esconda ou exiba filtros da loja.</p>
-                        </div>
-                        <i class="fa-solid fa-tags text-2xl text-[#C09D6C]"></i>
-                    </div>
-                    <div id="admin-categories-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
-                        <p class="text-sm text-[#8D8175]">Carregando categorias...</p>
-                    </div>
-                </article>
-
-                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Chats</p>
-                            <strong id="admin-stat-chats" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
-                            <p class="mt-1 text-xs text-[#7B7167]">Conversas abertas no momento.</p>
-                        </div>
-                        <i class="fa-regular fa-comments text-2xl text-[#C09D6C]"></i>
-                    </div>
-                    <div id="admin-chats-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
-                        <p class="text-sm text-[#8D8175]">Carregando conversas...</p>
-                    </div>
-                </article>
-            </div>
+    <div id="admin-fab-shell" class="hidden">
+        <div class="admin-fab-panel hidden" id="admin-fab-panel">
+            <button type="button" class="admin-fab-link" id="admin-open-copy-editor">
+                <i class="fa-solid fa-pen-nib"></i>
+                Editar textos
+            </button>
+            <a href="produtos.html" class="admin-fab-link">
+                <i class="fa-solid fa-shirt"></i>
+                Pecas
+            </a>
+            <a href="colecoes.html" class="admin-fab-link">
+                <i class="fa-solid fa-layer-group"></i>
+                Colecoes
+            </a>
+            <a href="produtos.html" class="admin-fab-link">
+                <i class="fa-solid fa-tags"></i>
+                Categorias
+            </a>
+            <a href="chat-admin.html" class="admin-fab-link">
+                <i class="fa-regular fa-comments"></i>
+                Chats
+            </a>
         </div>
-    </section>
+        <button type="button" id="admin-fab-toggle" class="admin-fab-trigger" aria-label="Abrir atalhos de administracao">
+            <i class="fa-solid fa-pen"></i>
+        </button>
+    </div>
 
     <!-- SIDEBAR (MENU LATERAL ESQUERDO) -->
     <div id="sidebar-overlay" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-opacity hidden"></div>
@@ -267,15 +205,17 @@
                 <img src="https://i.supaimg.com/24744ff6-247c-4e17-9e94-6455c96da980/bf59713f-69b5-4c2e-8fc6-25c26ce229e8.jpg" alt="Coleção Laméd" class="absolute inset-0 w-full h-full object-cover" fetchpriority="high" loading="eager" decoding="async">
                 <div class="hero-overlay"></div>
                 <div class="hero-content p-8 md:p-12 rounded-sm shadow-xl max-w-lg mx-4" style="background-color: rgba(253, 251, 246, 0.95);">
-                    <h2 class="serif text-4xl md:text-5xl font-light mb-4 text-[--cor-texto]">Mesa Posta Laméd</h2>
-                    <p class="text-sm md:text-base mb-8 tracking-[0.2em] text-[--cor-texto] uppercase">Peças artesanais para transformar sua mesa</p>
-                    <a href="#loja" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition">Conheça a Loja</a>
+                    <div id="admin-hero-inline-tools" class="admin-inline-tools hidden"></div>
+                    <h2 id="home-hero-title" class="serif text-4xl md:text-5xl font-light mb-4 text-[--cor-texto]">Mesa Posta Laméd</h2>
+                    <p id="home-hero-subtitle" class="text-sm md:text-base mb-8 tracking-[0.2em] text-[--cor-texto] uppercase">Peças artesanais para transformar sua mesa</p>
+                    <a id="home-hero-cta" href="#loja" class="inline-block bg-[--cor-marrom-cta] text-white font-medium py-3 px-8 text-xs uppercase tracking-widest hover:bg-[#4a2e18] transition">Conheça a Loja</a>
                 </div>
             </section>
             
             <!-- Destaques da Home -->
             <section id="home-collection-preview" class="py-16 px-4 scroll-animate deferred-section">
                 <div class="container mx-auto max-w-7xl text-center">
+                    <div id="admin-collections-inline-tools" class="admin-inline-tools admin-inline-tools-center hidden"></div>
                     <div class="w-16 h-0.5 bg-[--cor-ouro-acento] mx-auto mb-10"></div>
 
                     <div id="home-featured-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-12">
@@ -288,7 +228,9 @@
             <!-- Conhe?a a Loja -->
             <section id="conheca-loja" class="py-16 px-4 border-y border-[#E5E0D8] deferred-section">
                 <div class="container mx-auto max-w-7xl text-center">
-                    <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Conheça nossa Loja</h3>
+                    <div id="admin-shop-inline-tools" class="admin-inline-tools admin-inline-tools-center hidden"></div>
+                    <h3 id="home-shop-title" class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">Conheça nossa Loja</h3>
+                    <p id="home-shop-subtitle" class="mx-auto mb-8 max-w-2xl text-sm leading-7 text-gray-500">Explore as peças, filtre por categoria e encontre o que faz sentido para o seu momento.</p>
 
                     <div id="home-shop-filters" class="flex flex-wrap justify-center gap-2 mb-8">
                         <span class="text-xs uppercase tracking-widest text-gray-400">Carregando categorias...</span>
@@ -309,8 +251,9 @@
             <!-- Se??o Nossa Filosofia -->
             <section id="sobre" class="py-20 px-4 scroll-animate border-t border-[#E5E0D8] deferred-section" style="background-color: #F8F6F0;">
                  <div class="container mx-auto max-w-4xl text-center">
-                    <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Nossa Filosofia</h3>
-                    <p class="text-[--cor-texto] text-lg leading-relaxed font-light">
+                    <div id="admin-philosophy-inline-tools" class="admin-inline-tools admin-inline-tools-center hidden"></div>
+                    <h3 id="home-philosophy-title" class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Nossa Filosofia</h3>
+                    <p id="home-philosophy-copy" class="text-[--cor-texto] text-lg leading-relaxed font-light">
                         A <strong class="allura text-3xl text-[--cor-marrom-cta]">Laméd</strong><span class="text-xs gold-accent ml-1 uppercase tracking-widest">VS</span> nasce da harmonia entre elegância, propósito e cuidado com você. Cada peça é confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequência. Mais que roupas, criamos experiências atemporais, conscientes e únicas - feitas para vestir seu corpo e inspirar sua mente.
                     </p>
                 </div>
@@ -319,10 +262,11 @@
             <!-- Se??o Uma Mensagem Para Voc? -->
             <section id="mensagem" class="py-20 px-4 scroll-animate deferred-section" style="background-color: var(--cor-fundo);">
                  <div class="container mx-auto max-w-4xl text-center">
-                    <h3 class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Uma Mensagem Para Você</h3>
+                    <div id="admin-message-inline-tools" class="admin-inline-tools admin-inline-tools-center hidden"></div>
+                    <h3 id="home-message-title" class="serif text-3xl md:text-4xl font-light mb-8 text-[--cor-texto]">Uma Mensagem Para Você</h3>
                     <div class="text-[--cor-texto] text-lg leading-relaxed space-y-6 font-light">
-                    <p>Ao escolher uma de nossas criações, você se conecta com a sua essência. Nossos produtos são um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem você é.</p>
-                    <p>Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensação de vitalidade e paz interior. Laméd vs é um lembrete do poder que reside em suas escolhas diárias, especialmente naquelas feitas com consciência e amor.</p>
+                    <p id="home-message-copy-1">Ao escolher uma de nossas criações, você se conecta com a sua essência. Nossos produtos são um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem você é.</p>
+                    <p id="home-message-copy-2">Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensação de vitalidade e paz interior. Laméd vs é um lembrete do poder que reside em suas escolhas diárias, especialmente naquelas feitas com consciência e amor.</p>
                         <div class="pt-8">
                             <p class="text-sm uppercase tracking-widest text-gray-400 mb-2">Com carinho,</p>
                             <div class="flex items-baseline justify-center gap-1">
@@ -628,16 +572,60 @@
         </div>
     </div>
 
-    <!-- MODAL DE LOGIN/CADASTRO -->
+    <!-- MODAL DE ENTRADA -->
     <div id="auth-prompt-modal" class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="modal-content w-full max-w-sm bg-[#FDFBF6] rounded-lg shadow-2xl p-6 text-center relative overflow-hidden">
             <button id="close-auth-prompt" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
-            <div class="mb-4 text-[#643f21]"><i class="fa-regular fa-user-circle text-5xl"></i></div>
-            <h3 class="serif text-2xl text-[#45301F] mb-2">Bem-vindo(a)!</h3>
-            <p class="text-sm text-gray-600 mb-6 font-light">Cadastre-se para acompanhar seus pedidos, salvar favoritos e ter uma experiência personalizada.</p>
+            <div class="mb-4 text-[#643f21]"><i id="entry-assist-icon" class="fa-regular fa-bell text-5xl"></i></div>
+            <h3 id="entry-assist-title" class="serif text-2xl text-[#45301F] mb-2">Fique por dentro do seu pedido</h3>
+            <p id="entry-assist-copy" class="text-sm text-gray-600 mb-6 font-light">Entre para acompanhar seus pedidos, salvar favoritos e ativar avisos neste aparelho.</p>
             <div class="space-y-3">
-                <a href="minha-conta.html" class="block w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Entrar ou Cadastrar</a>
+                <a id="entry-assist-link" href="minha-conta.html" class="block w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Entrar ou cadastrar</a>
+                <button id="entry-assist-action-btn" type="button" class="hidden w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Ativar notificacoes</button>
                 <button id="auth-prompt-dismiss" class="text-xs text-gray-400 underline hover:text-gray-600">Continuar como visitante</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="storefront-copy-modal" class="modal fixed inset-0 z-[102] hidden items-end justify-center bg-black/50 backdrop-blur-sm p-0 md:items-center md:p-4">
+        <div class="storefront-copy-sheet w-full max-w-3xl bg-[#FDFBF6] rounded-t-[28px] md:rounded-[28px] shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between border-b border-[#E5E0D8] px-5 py-4">
+                <div>
+                    <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Edicao rapida</p>
+                    <h3 class="serif text-2xl text-[#45301F]">Textos da home</h3>
+                </div>
+                <button type="button" id="close-storefront-copy-modal" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <form id="storefront-copy-form" class="max-h-[80vh] overflow-y-auto px-5 py-5 space-y-6">
+                <section class="space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Hero</h4>
+                    <input id="storefront-copy-hero-title" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Titulo principal">
+                    <textarea id="storefront-copy-hero-subtitle" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[96px]" placeholder="Subtitulo"></textarea>
+                    <input id="storefront-copy-hero-cta" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Texto do botao">
+                </section>
+
+                <section class="space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Loja</h4>
+                    <input id="storefront-copy-shop-title" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Titulo da secao">
+                    <textarea id="storefront-copy-shop-subtitle" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[96px]" placeholder="Subtitulo da secao"></textarea>
+                </section>
+
+                <section class="space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Filosofia</h4>
+                    <input id="storefront-copy-philosophy-title" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Titulo da filosofia">
+                    <textarea id="storefront-copy-philosophy-body" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[132px]" placeholder="Texto da filosofia"></textarea>
+                </section>
+
+                <section class="space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Mensagem final</h4>
+                    <input id="storefront-copy-message-title" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Titulo da mensagem">
+                    <textarea id="storefront-copy-message-body-1" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[110px]" placeholder="Primeiro paragrafo"></textarea>
+                    <textarea id="storefront-copy-message-body-2" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[110px]" placeholder="Segundo paragrafo"></textarea>
+                </section>
+            </form>
+            <div class="flex flex-col gap-3 border-t border-[#E5E0D8] px-5 py-4 sm:flex-row sm:justify-end">
+                <button type="button" id="cancel-storefront-copy" class="w-full sm:w-auto rounded-full border border-[#D8C9B6] px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#6B5139]">Cancelar</button>
+                <button type="button" id="save-storefront-copy" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar textos</button>
             </div>
         </div>
     </div>

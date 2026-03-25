@@ -6,8 +6,9 @@ import { createChatMessageFromBody, isChatRequestError } from "../api/_chat.mjs"
 import { getFirebaseAdminStatus } from "../api/_firebase-admin.mjs";
 import { createOrderFromBody, isOrderRequestError } from "../api/_orders.mjs";
 import { enforceInMemoryRateLimit, getClientAddress } from "../api/_security.mjs";
-import { isSessionRequestError, resolveAuthenticatedUser } from "../api/_session.mjs";
+import { isSessionRequestError, requireAdminUser, resolveAuthenticatedUser } from "../api/_session.mjs";
 import { getShippingHealth, isShippingApiEnabled, requestShippingQuote } from "../api/_shipping.mjs";
+import { applyStorefrontAdminAction, isStorefrontAdminError } from "../api/_storefront-admin.mjs";
 
 dotenv.config();
 
@@ -593,6 +594,36 @@ app.post("/api/chat/send", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: "Nao foi possivel enviar a mensagem agora."
+    });
+  }
+});
+
+app.post("/api/admin/storefront/update", async (req, res) => {
+  try {
+    const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
+    const adminUser = await requireAdminUser(authorizationHeader);
+    const result = await applyStorefrontAdminAction({
+      action: req.body?.action,
+      payload: req.body?.payload,
+      adminUid: adminUser?.uid
+    });
+
+    return res.status(200).json({
+      ok: true,
+      result
+    });
+  } catch (error) {
+    if (isSessionRequestError(error) || isStorefrontAdminError(error)) {
+      return res.status(Number(error.status) || 400).json({
+        ok: false,
+        error: String(error.message || "Nao foi possivel validar sua operacao.")
+      });
+    }
+
+    console.error("[local.admin.storefront.update]", error);
+    return res.status(500).json({
+      ok: false,
+      error: "Nao foi possivel salvar esta alteracao agora."
     });
   }
 });

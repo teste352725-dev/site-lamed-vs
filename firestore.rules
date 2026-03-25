@@ -294,6 +294,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /site_config/{documentId} {
+      allow read: if documentId == 'homepage';
+      allow write: if isAdmin();
+    }
+
     match /visitas/{document=**} {
       allow create: if false;
       allow read: if isAdmin();

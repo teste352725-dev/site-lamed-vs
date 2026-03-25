@@ -15,6 +15,7 @@ try { app = firebase.app(); } catch (e) { app = firebase.initializeApp(firebaseC
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
+const ADMIN_UIDS = new Set(["NoGsCqiKc0VJwWb6rppk7QVLV1B2"]);
 const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_REMOTE_IMAGE_HOSTS = new Set([
     'firebasestorage.googleapis.com',
@@ -25,8 +26,10 @@ const ALLOWED_REMOTE_IMAGE_HOSTS = new Set([
 
 // Variáveis de Estado
 let currentUser = null;
+let currentUserIsAdmin = false;
 let unsubscribeChat = null;
 let unsubscribeOrders = null;
+let unsubscribeAdminChats = null;
 let ordersCache = [];
 let selectedOrderId = '';
 let activeChatOrderId = '';
@@ -119,6 +122,98 @@ function updateNotificationSummaryState() {
             ? 'Este aparelho pode receber avisos sobre seu pedido e sobre respostas do suporte.'
             : 'Ative neste aparelho para receber avisos de pedido, suporte e proximas etapas.';
     }
+}
+
+async function isAuthorizedAdminUser(user) {
+    if (!user) return false;
+    if (ADMIN_UIDS.has(user.uid)) return true;
+
+    try {
+        const tokenResult = await user.getIdTokenResult();
+        return tokenResult?.claims?.admin === true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function formatAdminChatTimestamp(value) {
+    if (typeof value?.toDate === 'function') {
+        return value.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+    if (typeof value?.seconds === 'number') {
+        return new Date(value.seconds * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+    return 'Agora';
+}
+
+function stopAdminActiveChatsFeed() {
+    if (unsubscribeAdminChats) {
+        unsubscribeAdminChats();
+        unsubscribeAdminChats = null;
+    }
+}
+
+function renderAdminActiveChatsList(chats) {
+    const card = document.getElementById('account-admin-chat-card');
+    const container = document.getElementById('account-admin-active-chats');
+    if (!card || !container) return;
+
+    if (!currentUserIsAdmin) {
+        card.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+    }
+
+    card.classList.remove('hidden');
+
+    if (!Array.isArray(chats) || chats.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-400 py-8">Nenhum chat ativo no momento.</p>';
+        return;
+    }
+
+    container.innerHTML = chats.map((chat) => {
+        const chatId = sanitizePlainText(chat.id, 120);
+        const threadId = sanitizePlainText(chat.activeThreadId, 120) || 'geral';
+        const orderId = sanitizePlainText(chat.orderId, 120);
+        const userName = sanitizePlainText(chat.userName || 'Cliente', 80) || 'Cliente';
+        const lastMessage = sanitizePlainText(chat.lastMessage || 'Sem mensagens ainda.', 120);
+        const lastUpdate = formatAdminChatTimestamp(chat.lastUpdate);
+        const href = `chat-admin.html?chat=${encodeURIComponent(chatId)}&thread=${encodeURIComponent(threadId)}${orderId ? `&pedido=${encodeURIComponent(orderId)}` : ''}`;
+
+        return `
+            <a href="${href}" class="account-order-card">
+                <div class="account-order-top">
+                    <div>
+                        <strong>${userName}</strong>
+                        <span>${lastUpdate}</span>
+                    </div>
+                    <span class="account-order-status ${chat.unread ? 'is-highlight' : ''}">${chat.unread ? 'Nao lido' : 'Aberto'}</span>
+                </div>
+                <p class="account-panel-copy mt-3">${lastMessage}</p>
+            </a>
+        `;
+    }).join('');
+}
+
+function startAdminActiveChatsFeed() {
+    stopAdminActiveChatsFeed();
+    if (!currentUserIsAdmin) {
+        renderAdminActiveChatsList([]);
+        return;
+    }
+
+    unsubscribeAdminChats = db.collection('chats_ativos').onSnapshot((snapshot) => {
+        const chats = snapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }))
+            .sort((left, right) => {
+                const leftTime = typeof left.lastUpdate?.seconds === 'number' ? left.lastUpdate.seconds : 0;
+                const rightTime = typeof right.lastUpdate?.seconds === 'number' ? right.lastUpdate.seconds : 0;
+                return rightTime - leftTime;
+            });
+        renderAdminActiveChatsList(chats);
+    }, () => {
+        renderAdminActiveChatsList([]);
+    });
 }
 
 function getStatusLabel(status) {
@@ -701,6 +796,7 @@ auth.onAuthStateChanged(async (user) => {
 
     if (user) {
         currentUser = user;
+        currentUserIsAdmin = await isAuthorizedAdminUser(user);
         if(authContainer) authContainer.classList.add('hidden');
         if(userPanel) userPanel.classList.remove('hidden');
         
@@ -710,10 +806,12 @@ auth.onAuthStateChanged(async (user) => {
         carregarMeusPedidos();
         carregarFavoritos();
         iniciarChat();
+        startAdminActiveChatsFeed();
         applyTabFromHash();
         
     } else {
         currentUser = null;
+        currentUserIsAdmin = false;
         ordersCache = [];
         selectedOrderId = '';
         activeChatOrderId = '';
@@ -727,6 +825,7 @@ auth.onAuthStateChanged(async (user) => {
             unsubscribeChat();
             unsubscribeChat = null;
         }
+        stopAdminActiveChatsFeed();
         currentPushToken = '';
         if(authContainer) authContainer.classList.remove('hidden');
         if(userPanel) userPanel.classList.add('hidden');
@@ -736,6 +835,7 @@ auth.onAuthStateChanged(async (user) => {
         updateAccountStat('account-stat-orders', 0);
         updateAccountStat('account-stat-favorites', 0);
         updateAccountStat('account-stat-support', 'Ativo');
+        renderAdminActiveChatsList([]);
     }
 });
 
@@ -1221,28 +1321,51 @@ async function carregarFavoritos() {
         const promises = favoritosIds.map(id => db.collection('pecas').doc(id).get());
         const snapshots = await Promise.all(promises);
         
-        grid.innerHTML = '';
+        grid.replaceChildren();
         let itemsFound = 0;
 
-        snapshots.forEach(doc => {
-            if (doc.exists) {
-                itemsFound++;
-                const p = doc.data();
-                const img = (p.imagens && p.imagens[0]) ? p.imagens[0] : '';
-                const preco = parseFloat(p.preco || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-                
-                grid.innerHTML += `
-                    <div class="bg-white border border-[#eadfce] rounded-[22px] overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group" onclick="window.location.href='index.html#/produto/${doc.id}'">
-                        <div class="aspect-[3/4] relative bg-gray-50">
-                            <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                        </div>
-                        <div class="p-4 text-center">
-                            <h4 class="text-sm font-medium text-gray-800 truncate">${p.nome}</h4>
-                            <p class="text-xs text-[#643f21] font-bold mt-1">${preco}</p>
-                        </div>
-                    </div>
-                `;
-            }
+        snapshots.forEach((doc) => {
+            if (!doc.exists) return;
+
+            itemsFound++;
+            const p = doc.data() || {};
+            const imageUrl = normalizeImageUrl((p.imagens && p.imagens[0]) ? p.imagens[0] : '');
+            const preco = parseFloat(p.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'bg-white border border-[#eadfce] rounded-[22px] overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group text-left';
+            card.addEventListener('click', () => {
+                window.location.href = `index.html#/produto/${encodeURIComponent(doc.id)}`;
+            });
+
+            const imageWrap = document.createElement('div');
+            imageWrap.className = 'aspect-[3/4] relative bg-gray-50';
+
+            const image = document.createElement('img');
+            image.src = imageUrl || 'https://placehold.co/600x800/eee/ccc?text=Sem+imagem';
+            image.className = 'w-full h-full object-cover group-hover:scale-105 transition duration-500';
+            image.alt = sanitizePlainText(p.nome, 120) || 'Peca favorita';
+            image.loading = 'lazy';
+            image.decoding = 'async';
+            imageWrap.appendChild(image);
+
+            const info = document.createElement('div');
+            info.className = 'p-4 text-center';
+
+            const title = document.createElement('h4');
+            title.className = 'text-sm font-medium text-gray-800 truncate';
+            title.textContent = sanitizePlainText(p.nome, 120) || 'Peca favorita';
+
+            const price = document.createElement('p');
+            price.className = 'text-xs text-[#643f21] font-bold mt-1';
+            price.textContent = preco;
+
+            info.appendChild(title);
+            info.appendChild(price);
+            card.appendChild(imageWrap);
+            card.appendChild(info);
+            grid.appendChild(card);
         });
 
         if (itemsFound === 0) {

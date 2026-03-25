@@ -234,6 +234,7 @@ function closeCheckoutPushModal(markSeen = true) {
     if (!elements.checkoutPushModal) return;
     elements.checkoutPushModal.classList.add('hidden');
     elements.checkoutPushModal.classList.remove('flex');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll('checkout-push');
     if (markSeen) {
         try {
             sessionStorage.setItem('lamed_checkout_push_prompt_seen', 'true');
@@ -243,13 +244,15 @@ function closeCheckoutPushModal(markSeen = true) {
 
 function openCheckoutPushModal() {
     if (!elements.checkoutPushModal) return;
+    if (typeof closeEntryAssistPrompt === 'function') closeEntryAssistPrompt(false);
     elements.checkoutPushModal.classList.remove('hidden');
     elements.checkoutPushModal.classList.add('flex');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll('checkout-push');
 }
 
 async function maybePromptCheckoutPushModal() {
     const authenticatedUser = currentUser || auth.currentUser;
-    if (!authenticatedUser || typeof Notification === 'undefined' || Notification.permission === 'granted') return;
+    if (!authenticatedUser || typeof Notification === 'undefined' || Notification.permission !== 'default' || !('serviceWorker' in navigator)) return;
 
     try {
         if (sessionStorage.getItem('lamed_checkout_push_prompt_seen') === 'true') {
@@ -269,6 +272,21 @@ async function enablePushNotificationsFromCheckout() {
         const config = await fetchCheckoutPushConfig();
         if (!config?.enabled || !config?.vapidPublicKey) {
             throw new Error('As notificacoes ainda nao estao prontas neste momento.');
+        }
+
+        if (!('Notification' in window)) {
+            throw new Error('Seu navegador nao suporta notificacoes.');
+        }
+
+        let permission = Notification.permission;
+        if (permission === 'default') {
+            permission = await Notification.requestPermission();
+        }
+
+        if (permission !== 'granted') {
+            throw new Error(permission === 'denied'
+                ? 'As notificacoes estao bloqueadas neste navegador. Libere nas configuracoes do aparelho para continuar.'
+                : 'Permissao de notificacao nao concedida.');
         }
 
         const messaging = await getCheckoutMessagingInstance();
@@ -826,6 +844,14 @@ function setupCheckoutExperience() {
         elements.checkoutPushEnableBtn.addEventListener('click', enablePushNotificationsFromCheckout);
     }
 
+    if (elements.checkoutPushModal) {
+        elements.checkoutPushModal.addEventListener('click', (event) => {
+            if (event.target === elements.checkoutPushModal) {
+                closeCheckoutPushModal(true);
+            }
+        });
+    }
+
     syncCheckoutAccountUI();
 }
 
@@ -966,6 +992,7 @@ async function openCheckoutModal() {
     elements.checkoutModal.classList.remove('hidden');
     elements.checkoutModal.classList.add('flex');
     if (typeof lockBodyScroll === 'function') lockBodyScroll('checkout');
+    if (typeof closeEntryAssistPrompt === 'function') closeEntryAssistPrompt(false);
     closeCart();
 
     syncCheckoutAccountUI();
@@ -1217,6 +1244,7 @@ async function finalizarPedido(formData) {
 document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', setupPaymentOptions);
 document.addEventListener('DOMContentLoaded', setupCheckoutExperience);
+window.enablePushNotificationsFromCheckout = enablePushNotificationsFromCheckout;
 
 const SHIPPING_QUOTE_ENABLED = false;
 const MANUAL_SHIPPING_ORIGIN_POSTAL_CODE = '29056015';

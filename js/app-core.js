@@ -21,6 +21,8 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const ADMIN_UIDS = new Set(["NoGsCqiKc0VJwWb6rppk7QVLV1B2"]);
 const CATALOG_SETTINGS_DOC_ID = "__catalog_settings";
+const STOREFRONT_COPY_COLLECTION = "site_config";
+const STOREFRONT_COPY_DOC_ID = "homepage";
 
 // Vari?veis Globais
 let products = [];
@@ -38,13 +40,9 @@ let currentHomeFilter = 'all';
 let currentHomePage = 1;
 const HOME_PAGE_SIZE = 10;
 const API_BASE_URL = resolveApiBaseUrl();
-const adminRealtimeUnsubscribers = [];
-const adminPanelState = {
-    products: [],
-    collections: [],
-    categories: [],
-    chats: []
-};
+let entryAssistTimer = null;
+let storefrontCopyState = null;
+let storefrontAdminToolsBound = false;
 
 // Controle Carrossel
 let mainSplideInstance = null;
@@ -102,16 +100,22 @@ const elements = {
     collectionsContainer: document.getElementById('collections-container'),
     favoriteBtn: document.getElementById('btn-favorite'),
     userIconLink: document.getElementById('header-user-icon-link'),
-    adminModePanel: document.getElementById('admin-mode-panel'),
-    adminProductsList: document.getElementById('admin-products-list'),
-    adminCollectionsList: document.getElementById('admin-collections-list'),
-    adminCategoriesList: document.getElementById('admin-categories-list'),
-    adminChatsList: document.getElementById('admin-chats-list'),
-    adminStatProducts: document.getElementById('admin-stat-products'),
-    adminStatCollections: document.getElementById('admin-stat-collections'),
-    adminStatCategories: document.getElementById('admin-stat-categories'),
-    adminStatChats: document.getElementById('admin-stat-chats'),
-    
+    floatingWhatsapp: document.querySelector('.floating-whatsapp'),
+    adminFabShell: document.getElementById('admin-fab-shell'),
+    adminFabToggle: document.getElementById('admin-fab-toggle'),
+    adminFabPanel: document.getElementById('admin-fab-panel'),
+    adminOpenCopyEditor: document.getElementById('admin-open-copy-editor'),
+    entryAssistTitle: document.getElementById('entry-assist-title'),
+    entryAssistCopy: document.getElementById('entry-assist-copy'),
+    entryAssistIcon: document.getElementById('entry-assist-icon'),
+    entryAssistLink: document.getElementById('entry-assist-link'),
+    entryAssistActionBtn: document.getElementById('entry-assist-action-btn'),
+    storefrontCopyModal: document.getElementById('storefront-copy-modal'),
+    storefrontCopyForm: document.getElementById('storefront-copy-form'),
+    closeStorefrontCopyModalBtn: document.getElementById('close-storefront-copy-modal'),
+    cancelStorefrontCopyBtn: document.getElementById('cancel-storefront-copy'),
+    saveStorefrontCopyBtn: document.getElementById('save-storefront-copy'),
+
     // Auth Modal
     authPromptModal: document.getElementById('auth-prompt-modal'),
     closeAuthPromptBtn: document.getElementById('close-auth-prompt'),
@@ -185,247 +189,355 @@ async function isAuthorizedAdminUser(user) {
     }
 }
 
-function clearAdminRealtimeListeners() {
-    while (adminRealtimeUnsubscribers.length) {
-        const unsubscribe = adminRealtimeUnsubscribers.pop();
-        if (typeof unsubscribe === 'function') {
-            unsubscribe();
-        }
-    }
-}
+async function ensureEntryAssistUserProfileDoc(user) {
+    if (!user) return;
 
-function formatAdminTimestamp(value) {
-    if (typeof value?.toDate === 'function') {
-        return value.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    }
-    if (typeof value?.seconds === 'number') {
-        return new Date(value.seconds * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    }
-    return 'Agora';
-}
+    const profileRef = db.collection('usuarios').doc(user.uid);
+    const snapshot = await profileRef.get();
+    const existingData = snapshot.data() || {};
 
-function createAdminInlineAction(label, variant = 'muted') {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = variant === 'danger'
-        ? 'rounded-full border border-[#D8BCA4] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#8E5D3A] hover:bg-[#FFF4E6]'
-        : 'rounded-full border border-[#E4D2BC] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B5139] hover:bg-[#FFFCF6]';
-    button.textContent = label;
-    return button;
-}
+    const fallbackName = sanitizePlainText(
+        existingData.nome ||
+        user.displayName ||
+        user.email?.split('@')[0] ||
+        'Cliente',
+        80
+    ) || 'Cliente';
 
-function createAdminMetaLine(primary, secondary = '') {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'rounded-[20px] border border-[#EFE2D0] bg-[#FFFCF7] px-4 py-3';
-
-    const title = document.createElement('div');
-    title.className = 'text-sm font-semibold text-[#2F2015]';
-    title.textContent = primary;
-
-    const subtitle = document.createElement('div');
-    subtitle.className = 'mt-1 text-xs text-[#7A6E62]';
-    subtitle.textContent = secondary;
-
-    wrapper.appendChild(title);
-    wrapper.appendChild(subtitle);
-    return wrapper;
-}
-
-function renderAdminModePanel() {
-    if (!elements.adminModePanel) return;
-
-    elements.adminStatProducts.textContent = String(adminPanelState.products.length);
-    elements.adminStatCollections.textContent = String(adminPanelState.collections.length);
-    elements.adminStatCategories.textContent = String(adminPanelState.categories.filter((item) => item.ativa !== false).length);
-    elements.adminStatChats.textContent = String(adminPanelState.chats.filter((chat) => chat.unread === true).length || adminPanelState.chats.length);
-
-    const renderList = (container, emptyMessage, builder) => {
-        if (!container) return;
-        container.replaceChildren();
-
-        const nodes = builder();
-        if (!nodes.length) {
-            const empty = document.createElement('p');
-            empty.className = 'text-sm text-[#8D8175]';
-            empty.textContent = emptyMessage;
-            container.appendChild(empty);
-            return;
-        }
-
-        nodes.forEach((node) => container.appendChild(node));
-    };
-
-    renderList(elements.adminProductsList, 'Nenhuma peca carregada.', () => adminPanelState.products.slice(0, 4).map((product) => {
-        const row = createAdminMetaLine(
-            sanitizePlainText(product.nome || 'Produto', 90),
-            `${sanitizePlainText(product.status === 'active' ? 'Ativo' : 'Inativo', 20)} • ${sanitizePlainText(product.categoria || 'Sem categoria', 40)}`
-        );
-        const action = createAdminInlineAction(product.status === 'active' ? 'Desativar' : 'Ativar', 'danger');
-        action.addEventListener('click', async () => {
-            action.disabled = true;
-            try {
-                await toggleAdminProductStatus(product.id, product.status === 'active' ? 'inactive' : 'active');
-            } finally {
-                action.disabled = false;
-            }
-        });
-        row.appendChild(action);
-        return row;
-    }));
-
-    renderList(elements.adminCollectionsList, 'Nenhuma colecao carregada.', () => adminPanelState.collections.slice(0, 4).map((collection) => {
-        const row = createAdminMetaLine(
-            sanitizePlainText(collection.nome || 'Colecao', 90),
-            collection.ativa ? 'Em destaque no site' : 'Oculta na vitrine'
-        );
-        const action = createAdminInlineAction(collection.ativa ? 'Pausar' : 'Ativar');
-        action.addEventListener('click', async () => {
-            action.disabled = true;
-            try {
-                await toggleAdminCollectionStatus(collection.id, !collection.ativa);
-            } finally {
-                action.disabled = false;
-            }
-        });
-        row.appendChild(action);
-        return row;
-    }));
-
-    renderList(elements.adminCategoriesList, 'Nenhuma categoria configurada.', () => adminPanelState.categories.slice(0, 5).map((category) => {
-        const row = createAdminMetaLine(
-            sanitizePlainText(category.nome || 'Categoria', 90),
-            category.ativa !== false ? 'Visivel nos filtros da loja' : 'Oculta para a cliente'
-        );
-        const action = createAdminInlineAction(category.ativa !== false ? 'Ocultar' : 'Exibir');
-        action.addEventListener('click', async () => {
-            action.disabled = true;
-            try {
-                await toggleAdminCategoryStatus(category.slug);
-            } finally {
-                action.disabled = false;
-            }
-        });
-        row.appendChild(action);
-        return row;
-    }));
-
-    renderList(elements.adminChatsList, 'Nenhum chat ativo agora.', () => adminPanelState.chats.slice(0, 4).map((chat) => {
-        const row = createAdminMetaLine(
-            sanitizePlainText(chat.userName || 'Cliente', 90),
-            `${sanitizePlainText(chat.lastMessage || 'Sem mensagens ainda.', 100)} • ${formatAdminTimestamp(chat.lastUpdate)}`
-        );
-        const link = document.createElement('a');
-        link.href = `chat-admin.html?chat=${encodeURIComponent(chat.id)}&thread=${encodeURIComponent(sanitizePlainText(chat.activeThreadId, 120) || 'geral')}&pedido=${encodeURIComponent(sanitizePlainText(chat.orderId, 120))}`;
-        link.className = 'inline-flex items-center justify-center rounded-full border border-[#E4D2BC] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B5139] hover:bg-[#FFFCF6]';
-        link.textContent = chat.unread ? 'Abrir agora' : 'Abrir chat';
-        row.appendChild(link);
-        return row;
-    }));
-}
-
-async function toggleAdminProductStatus(productId, nextStatus) {
-    if (!currentUserIsAdmin || !productId) return;
-    await db.collection('pecas').doc(productId).update({
-        status: nextStatus,
-        updatedAt: new Date()
-    });
-}
-
-async function toggleAdminCollectionStatus(collectionId, nextActive) {
-    if (!currentUserIsAdmin || !collectionId) return;
-    await db.collection('colecoes').doc(collectionId).update({
-        ativa: nextActive,
-        updatedAt: new Date()
-    });
-}
-
-async function toggleAdminCategoryStatus(categorySlug) {
-    if (!currentUserIsAdmin || !categorySlug) return;
-
-    const nextCategories = adminPanelState.categories.map((category) => (
-        category.slug === categorySlug
-            ? { ...category, ativa: category.ativa === false }
-            : category
-    ));
-
-    await db.collection('colecoes').doc(CATALOG_SETTINGS_DOC_ID).set({
-        kind: 'catalog_settings',
-        categorias: nextCategories.map((category, index) => ({
-            slug: sanitizePlainText(category.slug, 60),
-            nome: sanitizePlainText(category.nome, 80),
-            ordem: Number.isFinite(Number(category.ordem)) ? Number(category.ordem) : index * 10 + 10,
-            ativa: category.ativa !== false
-        })),
-        updatedAt: new Date()
+    await profileRef.set({
+        nome: fallbackName,
+        email: sanitizePlainText(existingData.email || user.email, 120),
+        telefone: sanitizePlainText(existingData.telefone, 30),
+        endereco: existingData.endereco || null,
+        fotoUrl: normalizeUrl(existingData.fotoUrl || user.photoURL),
+        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
+        favoritos: Array.isArray(existingData.favoritos) ? existingData.favoritos : []
     }, { merge: true });
 }
 
-function startAdminRealtimePanel() {
-    clearAdminRealtimeListeners();
-    if (!currentUserIsAdmin || !elements.adminModePanel) return;
+function getDefaultStorefrontCopy() {
+    return {
+        heroTitle: 'Mesa Posta Lamed',
+        heroSubtitle: 'Pecas artesanais para transformar sua mesa',
+        heroCta: 'Conheca a Loja',
+        shopTitle: 'Conheca nossa Loja',
+        shopSubtitle: 'Explore as pecas, filtre por categoria e encontre o que faz sentido para o seu momento.',
+        philosophyTitle: 'Nossa Filosofia',
+        philosophyBody: 'A Lamed VS nasce da harmonia entre elegancia, proposito e cuidado com voce. Cada peca e confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequencia. Mais que roupas, criamos experiencias atemporais, conscientes e unicas - feitas para vestir seu corpo e inspirar sua mente.',
+        messageTitle: 'Uma Mensagem Para Voce',
+        messageBody1: 'Ao escolher uma de nossas criacoes, voce se conecta com a sua essencia. Nossos produtos sao um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem voce e.',
+        messageBody2: 'Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensacao de vitalidade e paz interior. Lamed vs e um lembrete do poder que reside em suas escolhas diarias, especialmente naquelas feitas com consciencia e amor.'
+    };
+}
 
-    elements.adminModePanel.classList.remove('hidden');
+function normalizeStorefrontCopy(rawValue) {
+    const defaults = getDefaultStorefrontCopy();
+    const raw = rawValue && typeof rawValue === 'object' ? rawValue : {};
 
-    adminRealtimeUnsubscribers.push(
-        db.collection('pecas').onSnapshot((snapshot) => {
-            adminPanelState.products = snapshot.docs
-                .map((doc) => ({ id: doc.id, ...doc.data() }))
-                .sort((left, right) => String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR'));
-            renderAdminModePanel();
-        })
-    );
+    return {
+        heroTitle: sanitizePlainText(raw.heroTitle || defaults.heroTitle, 120) || defaults.heroTitle,
+        heroSubtitle: sanitizePlainText(raw.heroSubtitle || defaults.heroSubtitle, 220) || defaults.heroSubtitle,
+        heroCta: sanitizePlainText(raw.heroCta || defaults.heroCta, 60) || defaults.heroCta,
+        shopTitle: sanitizePlainText(raw.shopTitle || defaults.shopTitle, 120) || defaults.shopTitle,
+        shopSubtitle: sanitizePlainText(raw.shopSubtitle || defaults.shopSubtitle, 260) || defaults.shopSubtitle,
+        philosophyTitle: sanitizePlainText(raw.philosophyTitle || defaults.philosophyTitle, 120) || defaults.philosophyTitle,
+        philosophyBody: sanitizePlainText(raw.philosophyBody || defaults.philosophyBody, 1400) || defaults.philosophyBody,
+        messageTitle: sanitizePlainText(raw.messageTitle || defaults.messageTitle, 120) || defaults.messageTitle,
+        messageBody1: sanitizePlainText(raw.messageBody1 || defaults.messageBody1, 1400) || defaults.messageBody1,
+        messageBody2: sanitizePlainText(raw.messageBody2 || defaults.messageBody2, 1400) || defaults.messageBody2
+    };
+}
 
-    adminRealtimeUnsubscribers.push(
-        db.collection('colecoes').onSnapshot((snapshot) => {
-            const collections = [];
-            let categories = adminPanelState.categories;
+function setTextContentById(id, value) {
+    const target = document.getElementById(id);
+    if (target) {
+        target.textContent = sanitizePlainText(value, 1400);
+    }
+}
 
-            snapshot.forEach((doc) => {
-                const data = doc.data() || {};
-                if (doc.id === CATALOG_SETTINGS_DOC_ID || data.kind === 'catalog_settings') {
-                    categories = Array.isArray(data.categorias) ? data.categorias : [];
-                    return;
-                }
+function applyStorefrontCopy(copyValue) {
+    storefrontCopyState = normalizeStorefrontCopy(copyValue || storefrontCopyState || getDefaultStorefrontCopy());
 
-                collections.push({ id: doc.id, ...data });
-            });
+    setTextContentById('home-hero-title', storefrontCopyState.heroTitle);
+    setTextContentById('home-hero-subtitle', storefrontCopyState.heroSubtitle);
+    setTextContentById('home-shop-title', storefrontCopyState.shopTitle);
+    setTextContentById('home-shop-subtitle', storefrontCopyState.shopSubtitle);
+    setTextContentById('home-philosophy-title', storefrontCopyState.philosophyTitle);
+    setTextContentById('home-philosophy-copy', storefrontCopyState.philosophyBody);
+    setTextContentById('home-message-title', storefrontCopyState.messageTitle);
+    setTextContentById('home-message-copy-1', storefrontCopyState.messageBody1);
+    setTextContentById('home-message-copy-2', storefrontCopyState.messageBody2);
 
-            adminPanelState.collections = collections.sort((left, right) => Number(left.ordem || 0) - Number(right.ordem || 0));
-            adminPanelState.categories = categories
-                .map((category, index) => ({
-                    slug: sanitizePlainText(category?.slug, 60),
-                    nome: sanitizePlainText(category?.nome || category?.slug, 80),
-                    ordem: Number.isFinite(Number(category?.ordem)) ? Number(category.ordem) : index * 10 + 10,
-                    ativa: category?.ativa !== false
-                }))
-                .filter((category) => category.slug);
-            renderAdminModePanel();
-        })
-    );
+    const cta = document.getElementById('home-hero-cta');
+    if (cta) {
+        cta.textContent = storefrontCopyState.heroCta;
+    }
+}
 
-    adminRealtimeUnsubscribers.push(
-        db.collection('chats_ativos').onSnapshot((snapshot) => {
-            adminPanelState.chats = snapshot.docs
-                .map((doc) => ({ id: doc.id, ...doc.data() }))
-                .sort((left, right) => {
-                    const leftTime = typeof left.lastUpdate?.seconds === 'number' ? left.lastUpdate.seconds : 0;
-                    const rightTime = typeof right.lastUpdate?.seconds === 'number' ? right.lastUpdate.seconds : 0;
-                    return rightTime - leftTime;
-                });
-            renderAdminModePanel();
-        })
-    );
+function setEntryAssistActionStyle(variant = 'primary') {
+    if (!elements.entryAssistActionBtn) return;
+
+    elements.entryAssistActionBtn.className = variant === 'secondary'
+        ? 'w-full border border-[#D8C9B6] bg-white py-3 rounded text-xs font-bold uppercase tracking-widest text-[#643f21] hover:bg-[#F8F6F0] transition shadow-sm'
+        : 'w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md';
+}
+
+function createAdminInlineChip({ label, href = '', icon = 'fa-pen', onClick = null }) {
+    const element = href ? document.createElement('a') : document.createElement('button');
+    if (href) {
+        element.href = href;
+    } else {
+        element.type = 'button';
+    }
+
+    element.className = 'admin-inline-chip';
+    element.innerHTML = `<i class="fa-solid ${icon}"></i><span>${label}</span>`;
+
+    if (typeof onClick === 'function') {
+        element.addEventListener('click', onClick);
+    }
+
+    return element;
+}
+
+function toggleAdminFabPanel(forceOpen = null) {
+    if (!elements.adminFabPanel) return;
+
+    const shouldOpen = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : elements.adminFabPanel.classList.contains('hidden');
+
+    elements.adminFabPanel.classList.toggle('hidden', !shouldOpen);
+    if (elements.adminFabToggle) {
+        elements.adminFabToggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    }
+}
+
+function fillStorefrontCopyForm() {
+    const copy = storefrontCopyState || getDefaultStorefrontCopy();
+    const fieldMap = {
+        'storefront-copy-hero-title': copy.heroTitle,
+        'storefront-copy-hero-subtitle': copy.heroSubtitle,
+        'storefront-copy-hero-cta': copy.heroCta,
+        'storefront-copy-shop-title': copy.shopTitle,
+        'storefront-copy-shop-subtitle': copy.shopSubtitle,
+        'storefront-copy-philosophy-title': copy.philosophyTitle,
+        'storefront-copy-philosophy-body': copy.philosophyBody,
+        'storefront-copy-message-title': copy.messageTitle,
+        'storefront-copy-message-body-1': copy.messageBody1,
+        'storefront-copy-message-body-2': copy.messageBody2
+    };
+
+    Object.entries(fieldMap).forEach(([id, value]) => {
+        const field = document.getElementById(id);
+        if (field) field.value = value;
+    });
+}
+
+function readStorefrontCopyForm() {
+    return normalizeStorefrontCopy({
+        heroTitle: document.getElementById('storefront-copy-hero-title')?.value,
+        heroSubtitle: document.getElementById('storefront-copy-hero-subtitle')?.value,
+        heroCta: document.getElementById('storefront-copy-hero-cta')?.value,
+        shopTitle: document.getElementById('storefront-copy-shop-title')?.value,
+        shopSubtitle: document.getElementById('storefront-copy-shop-subtitle')?.value,
+        philosophyTitle: document.getElementById('storefront-copy-philosophy-title')?.value,
+        philosophyBody: document.getElementById('storefront-copy-philosophy-body')?.value,
+        messageTitle: document.getElementById('storefront-copy-message-title')?.value,
+        messageBody1: document.getElementById('storefront-copy-message-body-1')?.value,
+        messageBody2: document.getElementById('storefront-copy-message-body-2')?.value
+    });
+}
+
+function openStorefrontCopyModal() {
+    if (!currentUserIsAdmin || !elements.storefrontCopyModal) return;
+
+    fillStorefrontCopyForm();
+    elements.storefrontCopyModal.classList.remove('hidden');
+    elements.storefrontCopyModal.classList.add('flex');
+    lockBodyScroll('storefront-copy');
+    toggleAdminFabPanel(false);
+}
+
+function closeStorefrontCopyModal() {
+    if (!elements.storefrontCopyModal) return;
+
+    elements.storefrontCopyModal.classList.add('hidden');
+    elements.storefrontCopyModal.classList.remove('flex');
+    unlockBodyScroll('storefront-copy');
+}
+
+async function signInWithGoogleFromEntryAssist() {
+    try {
+        if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
+            throw new Error('O login com Google nao esta disponivel agora.');
+        }
+
+        if (elements.entryAssistActionBtn) {
+            elements.entryAssistActionBtn.disabled = true;
+            elements.entryAssistActionBtn.textContent = 'Conectando...';
+        }
+
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await auth.signInWithPopup(provider);
+        const authenticatedUser = result?.user || auth.currentUser;
+
+        if (!authenticatedUser) {
+            throw new Error('Nao foi possivel concluir sua entrada com Google.');
+        }
+
+        await ensureEntryAssistUserProfileDoc(authenticatedUser);
+        closeEntryAssistPrompt(true);
+
+        if (typeof syncCheckoutAccountUI === 'function') syncCheckoutAccountUI();
+        if (typeof populateCheckoutFormFromUser === 'function') {
+            await populateCheckoutFormFromUser(authenticatedUser).catch(() => {});
+        }
+    } catch (error) {
+        alert(sanitizePlainText(error?.message || 'Nao foi possivel entrar com Google agora.', 220));
+    } finally {
+        if (elements.entryAssistActionBtn) {
+            elements.entryAssistActionBtn.disabled = false;
+            const actionMode = sanitizePlainText(elements.entryAssistActionBtn.dataset.mode, 40);
+            elements.entryAssistActionBtn.textContent = actionMode === 'login_google'
+                ? 'Continuar com Google'
+                : 'Ativar notificacoes';
+        }
+    }
+}
+
+async function saveStorefrontCopy() {
+    if (!currentUserIsAdmin || !currentUser) return;
+
+    const saveButton = elements.saveStorefrontCopyBtn;
+    const nextCopy = readStorefrontCopyForm();
+
+    try {
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = 'Salvando...';
+        }
+
+        const idToken = await currentUser.getIdToken();
+        const response = await fetch(buildBackendUrl('/api/admin/storefront/update'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                Authorization: `Bearer ${idToken}`
+            },
+            body: JSON.stringify({
+                action: 'site_copy',
+                payload: nextCopy
+            })
+        });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || payload?.ok === false) {
+            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel salvar os textos da home.', 220));
+        }
+
+        applyStorefrontCopy(nextCopy);
+        closeStorefrontCopyModal();
+    } catch (error) {
+        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar os textos agora.', 220));
+    } finally {
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Salvar textos';
+        }
+    }
+}
+
+function bindStorefrontAdminTools() {
+    if (storefrontAdminToolsBound) return;
+    storefrontAdminToolsBound = true;
+
+    const mountTools = (id, actions = []) => {
+        const container = document.getElementById(id);
+        if (!container) return;
+        container.replaceChildren();
+        actions.forEach((action) => container.appendChild(createAdminInlineChip(action)));
+    };
+
+    mountTools('admin-hero-inline-tools', [
+        { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal },
+        { label: 'Pecas', href: 'produtos.html', icon: 'fa-shirt' }
+    ]);
+    mountTools('admin-collections-inline-tools', [
+        { label: 'Colecoes', href: 'colecoes.html', icon: 'fa-layer-group' },
+        { label: 'Pecas', href: 'produtos.html', icon: 'fa-shirt' }
+    ]);
+    mountTools('admin-shop-inline-tools', [
+        { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal },
+        { label: 'Categorias', href: 'produtos.html', icon: 'fa-tags' },
+        { label: 'Pecas', href: 'produtos.html', icon: 'fa-shirt' }
+    ]);
+    mountTools('admin-philosophy-inline-tools', [
+        { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal }
+    ]);
+    mountTools('admin-message-inline-tools', [
+        { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal }
+    ]);
+
+    if (elements.adminFabToggle) {
+        elements.adminFabToggle.setAttribute('aria-expanded', 'false');
+        elements.adminFabToggle.addEventListener('click', () => toggleAdminFabPanel());
+    }
+
+    if (elements.adminOpenCopyEditor) {
+        elements.adminOpenCopyEditor.addEventListener('click', openStorefrontCopyModal);
+    }
+
+    if (elements.closeStorefrontCopyModalBtn) {
+        elements.closeStorefrontCopyModalBtn.addEventListener('click', closeStorefrontCopyModal);
+    }
+
+    if (elements.cancelStorefrontCopyBtn) {
+        elements.cancelStorefrontCopyBtn.addEventListener('click', closeStorefrontCopyModal);
+    }
+
+    if (elements.saveStorefrontCopyBtn) {
+        elements.saveStorefrontCopyBtn.addEventListener('click', saveStorefrontCopy);
+    }
+
+    if (elements.storefrontCopyModal) {
+        elements.storefrontCopyModal.addEventListener('click', (event) => {
+            if (event.target === elements.storefrontCopyModal) {
+                closeStorefrontCopyModal();
+            }
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!elements.adminFabPanel || !elements.adminFabToggle || elements.adminFabPanel.classList.contains('hidden')) return;
+
+        const clickedInsidePanel = elements.adminFabPanel.contains(event.target);
+        const clickedToggle = elements.adminFabToggle.contains(event.target);
+        if (!clickedInsidePanel && !clickedToggle) {
+            toggleAdminFabPanel(false);
+        }
+    });
 }
 
 function updateAdminModeExperience(isAdmin) {
-    if (elements.adminModePanel) {
-        elements.adminModePanel.classList.toggle('hidden', !isAdmin);
+    bindStorefrontAdminTools();
+
+    document.querySelectorAll('.admin-inline-tools').forEach((container) => {
+        container.classList.toggle('hidden', !isAdmin);
+    });
+
+    if (elements.adminFabShell) {
+        elements.adminFabShell.classList.toggle('hidden', !isAdmin);
+    }
+
+    if (elements.floatingWhatsapp) {
+        elements.floatingWhatsapp.classList.toggle('hidden', isAdmin);
     }
 
     if (!isAdmin) {
-        clearAdminRealtimeListeners();
-    } else {
-        startAdminRealtimePanel();
+        toggleAdminFabPanel(false);
+        closeStorefrontCopyModal();
     }
 }
 
@@ -592,14 +704,31 @@ function setupEventListeners() {
     
     document.querySelectorAll('.accordion-toggle').forEach(btn => { btn.addEventListener('click', toggleAccordion); });
     
-    if (elements.closeAuthPromptBtn) elements.closeAuthPromptBtn.addEventListener('click', () => {
-        elements.authPromptModal.classList.add('hidden');
-        elements.authPromptModal.classList.remove('flex');
-    });
-    if (elements.dismissAuthPromptBtn) elements.dismissAuthPromptBtn.addEventListener('click', () => {
-        elements.authPromptModal.classList.add('hidden');
-        elements.authPromptModal.classList.remove('flex');
-    });
+    if (elements.closeAuthPromptBtn) elements.closeAuthPromptBtn.addEventListener('click', () => closeEntryAssistPrompt(true));
+    if (elements.dismissAuthPromptBtn) elements.dismissAuthPromptBtn.addEventListener('click', () => closeEntryAssistPrompt(true));
+    if (elements.entryAssistActionBtn) {
+        elements.entryAssistActionBtn.addEventListener('click', async () => {
+            const actionMode = sanitizePlainText(elements.entryAssistActionBtn.dataset.mode, 40);
+
+            if (actionMode === 'push' && typeof window.enablePushNotificationsFromCheckout === 'function') {
+                await window.enablePushNotificationsFromCheckout();
+                closeEntryAssistPrompt(true);
+                return;
+            }
+
+            if (actionMode === 'login_google') {
+                await signInWithGoogleFromEntryAssist();
+            }
+        });
+    }
+
+    if (elements.authPromptModal) {
+        elements.authPromptModal.addEventListener('click', (event) => {
+            if (event.target === elements.authPromptModal) {
+                closeEntryAssistPrompt(true);
+            }
+        });
+    }
 
         if (elements.closeDeliveryPopupBtn) {
         elements.closeDeliveryPopupBtn.addEventListener('click', () => closeDeliveryPopup(false));
@@ -631,6 +760,21 @@ function setupEventListeners() {
 
         if (elements.cartDrawer?.classList.contains('open')) {
             closeCart();
+            return;
+        }
+
+        if (elements.storefrontCopyModal?.classList.contains('flex')) {
+            closeStorefrontCopyModal();
+            return;
+        }
+
+        if (elements.authPromptModal?.classList.contains('flex')) {
+            closeEntryAssistPrompt(true);
+            return;
+        }
+
+        if (elements.checkoutPushModal?.classList.contains('flex') && typeof closeCheckoutPushModal === 'function') {
+            closeCheckoutPushModal(true);
             return;
         }
 
@@ -1099,22 +1243,101 @@ function checkIsMesaPosta(categoria) {
     return catsMesa.includes(categoria);
 }
 
+function closeEntryAssistPrompt(markSeen = true) {
+    if (!elements.authPromptModal) return;
+
+    elements.authPromptModal.classList.add('hidden');
+    elements.authPromptModal.classList.remove('flex');
+    unlockBodyScroll('entry-assist');
+
+    if (markSeen) {
+        const promptType = sanitizePlainText(elements.authPromptModal.dataset.promptType || 'generic', 30) || 'generic';
+        try {
+            sessionStorage.setItem(`lamed_entry_prompt_${promptType}`, 'true');
+        } catch (error) {}
+    }
+}
+
+function configureEntryAssistPrompt({ type, title, copy, iconClass, linkLabel = '', actionLabel = '' }) {
+    if (!elements.authPromptModal) return;
+
+    elements.authPromptModal.dataset.promptType = sanitizePlainText(type, 30) || 'generic';
+    if (elements.entryAssistTitle) elements.entryAssistTitle.textContent = title;
+    if (elements.entryAssistCopy) elements.entryAssistCopy.textContent = copy;
+
+    if (elements.entryAssistIcon) {
+        elements.entryAssistIcon.className = `${iconClass} text-5xl`;
+    }
+
+    if (elements.entryAssistLink) {
+        elements.entryAssistLink.classList.toggle('hidden', !linkLabel);
+        elements.entryAssistLink.textContent = linkLabel || 'Entrar ou cadastrar';
+    }
+
+    if (elements.entryAssistActionBtn) {
+        setEntryAssistActionStyle(type === 'login' ? 'secondary' : 'primary');
+        elements.entryAssistActionBtn.classList.toggle('hidden', !actionLabel);
+        elements.entryAssistActionBtn.textContent = actionLabel || 'Ativar notificacoes';
+        elements.entryAssistActionBtn.dataset.mode = type === 'login' ? 'login_google' : type;
+    }
+
+    if (elements.dismissAuthPromptBtn) {
+        elements.dismissAuthPromptBtn.textContent = type === 'push' ? 'Agora nao' : 'Continuar explorando';
+    }
+
+    elements.authPromptModal.classList.remove('hidden');
+    elements.authPromptModal.classList.add('flex');
+    lockBodyScroll('entry-assist');
+}
+
 function checkAuthPrompt(user) {
-    if (user) {
-        if (elements.authPromptModal) elements.authPromptModal.classList.add('hidden');
-        if (elements.authPromptModal) elements.authPromptModal.classList.remove('flex');
-        return;
+    if (!elements.authPromptModal) return;
+
+    if (entryAssistTimer) {
+        window.clearTimeout(entryAssistTimer);
+        entryAssistTimer = null;
     }
-    const promptShown = sessionStorage.getItem('authPromptShown');
-    if (!promptShown && elements.authPromptModal) {
-        setTimeout(() => {
-            if (!auth.currentUser) {
-                elements.authPromptModal.classList.remove('hidden');
-                elements.authPromptModal.classList.add('flex');
-                sessionStorage.setItem('authPromptShown', 'true');
-            }
-        }, 8000);
-    }
+
+    closeEntryAssistPrompt(false);
+
+    if (currentUserIsAdmin) return;
+
+    const notificationsSupported = typeof Notification !== 'undefined' && 'serviceWorker' in navigator;
+    const shouldPromptPush = Boolean(user) && notificationsSupported && Notification.permission === 'default';
+    const shouldPromptLogin = !user;
+
+    if (!shouldPromptPush && !shouldPromptLogin) return;
+
+    const promptType = shouldPromptPush ? 'push' : 'login';
+    try {
+        if (sessionStorage.getItem(`lamed_entry_prompt_${promptType}`) === 'true') {
+            return;
+        }
+    } catch (error) {}
+
+    entryAssistTimer = window.setTimeout(() => {
+        if (promptType === 'push' && auth.currentUser) {
+            configureEntryAssistPrompt({
+                type: 'push',
+                title: 'Ative avisos neste aparelho',
+                copy: 'Receba novidades e atualizacoes do seu pedido sem precisar ficar entrando no site o tempo todo.',
+                iconClass: 'fa-regular fa-bell',
+                actionLabel: 'Ativar notificacoes'
+            });
+            return;
+        }
+
+        if (!auth.currentUser) {
+            configureEntryAssistPrompt({
+                type: 'login',
+                title: 'Entre para acompanhar seus pedidos',
+                copy: 'Fazendo login, voce acompanha o historico do pedido, favoritos, suporte e depois ainda pode ativar notificacoes neste aparelho.',
+                iconClass: 'fa-regular fa-user-circle',
+                linkLabel: 'Entrar ou cadastrar',
+                actionLabel: 'Continuar com Google'
+            });
+        }
+    }, 2200);
 }
 
 // --- SIDEBAR NAVIGATION ---
