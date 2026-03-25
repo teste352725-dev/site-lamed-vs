@@ -97,6 +97,24 @@ function formatCategoryLabel(value) {
         .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeHtmlAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#96;');
+}
+
+function sanitizeHexColor(value, fallback = '#A58A5C') {
+    const normalized = String(value ?? '').trim();
+    return /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(normalized) ? normalized : fallback;
+}
+
 function normalizeCategoryEntry(entry, fallbackOrder = 999) {
     if (!entry) return null;
 
@@ -669,6 +687,9 @@ function criarCardProduto(peca) {
     const imgPrincipal = images[0];
     const imgHover = images[1] || images[0];
     const shouldRenderHoverImage = canUseHoverPreviews && imgHover && imgHover !== imgPrincipal;
+    const safeName = escapeHtml(sanitizePlainText(peca.nome, 120) || 'Peca');
+    const safeMainImage = escapeHtmlAttr(imgPrincipal);
+    const safeHoverImage = escapeHtmlAttr(imgHover);
     
     let priceHtml = '';
     if (peca.desconto > 0) {
@@ -690,18 +711,18 @@ function criarCardProduto(peca) {
         : '';
 
     const isMesa = checkIsMesaPosta(peca.categoria);
-    const catLabel = isMesa ? 'Mesa Posta' : (peca.tipo === 'combo' ? 'Monte seu Combo' : getSiteCategoryLabel(peca.categoria || 'colecao'));
+    const catLabel = escapeHtml(isMesa ? 'Mesa Posta' : (peca.tipo === 'combo' ? 'Monte seu Combo' : getSiteCategoryLabel(peca.categoria || 'colecao')));
 
     card.innerHTML = `
         <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">
-             <img src="${imgPrincipal}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">
-             ${shouldRenderHoverImage ? `<img src="${imgHover}" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">` : ''}
+             <img src="${safeMainImage}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">
+             ${shouldRenderHoverImage ? `<img src="${safeHoverImage}" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">` : ''}
              ${badge}
              ${customBadge}
              <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
         </div>
         <div class="text-center px-2">
-            <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${peca.nome}</h4>
+            <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${safeName}</h4>
             ${priceHtml}
             <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${catLabel}</p>
         </div>
@@ -720,7 +741,7 @@ function showProductDetail(id) {
     
     document.querySelectorAll('.size-option').forEach(el => el.classList.remove('selected'));
     document.getElementById('detail-title').textContent = currentProduct.nome;
-    document.getElementById('detail-description').innerHTML = currentProduct.descricao || '';
+    document.getElementById('detail-description').textContent = sanitizePlainText(currentProduct.descricao, 2000) || '';
     
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
     document.getElementById('detail-price').innerHTML = `
@@ -1025,7 +1046,10 @@ function renderComboSelectors() {
             const productOriginal = products.find(p => p.id === comp.id);
             const coresDisponiveis = productOriginal ? (productOriginal.cores || []) : [];
             const imagemPeca = productOriginal && productOriginal.imagens && productOriginal.imagens.length > 0 ? productOriginal.imagens[0] : 'https://placehold.co/100x100';
-            const categoriaLabel = comp.categoria ? comp.categoria.replace('_', ' ').toUpperCase() : 'ITEM';
+            const categoriaLabel = escapeHtml(comp.categoria ? comp.categoria.replace('_', ' ').toUpperCase() : 'ITEM');
+            const componentName = escapeHtml(sanitizePlainText(comp.nome, 120));
+            const componentDescription = escapeHtml(sanitizePlainText(productOriginal?.descricao || '', 180));
+            const componentImage = escapeHtmlAttr(imagemPeca);
 
         const compDiv = document.createElement('div');
         compDiv.className = 'combo-component-card border border-gray-200 rounded-lg p-4 bg-white shadow-sm';
@@ -1033,11 +1057,11 @@ function renderComboSelectors() {
         const header = document.createElement('div');
         header.className = "flex gap-4 mb-4 pb-4 border-b border-gray-100";
         header.innerHTML = `
-            <img src="${imagemPeca}" class="w-16 h-20 object-cover rounded-sm border border-gray-100">
+            <img src="${componentImage}" class="w-16 h-20 object-cover rounded-sm border border-gray-100">
             <div>
                 <span class="text-[10px] font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-500 uppercase tracking-wider">${categoriaLabel}</span>
-                <h5 class="font-medium text-gray-800 mt-1">${comp.quantidade}x ${comp.nome}</h5>
-                <p class="text-xs text-gray-400 mt-0.5 line-clamp-2">${productOriginal?.descricao || ''}</p>
+                <h5 class="font-medium text-gray-800 mt-1">${comp.quantidade}x ${componentName}</h5>
+                <p class="text-xs text-gray-400 mt-0.5 line-clamp-2">${componentDescription}</p>
             </div>
         `;
         compDiv.appendChild(header);
@@ -1051,14 +1075,16 @@ function renderComboSelectors() {
             coresDisponiveis.forEach(cor => {
                 const btn = document.createElement('div');
                 btn.className = "combo-color-btn border border-gray-200 p-1.5 rounded-md flex items-center gap-2 transition min-w-[100px] cursor-pointer hover:bg-gray-50";
+                const safeColorName = escapeHtml(sanitizePlainText(cor.nome, 60));
+                const safeHex = sanitizeHexColor(cor.hex, '#A58A5C');
                 btn.innerHTML = `
-                    <div class="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style="background-color:${cor.hex}"></div>
+                    <div class="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style="background-color:${safeHex}"></div>
                     <div class="flex flex-col">
-                        <span class="text-xs font-medium text-gray-700">${cor.nome}</span>
+                        <span class="text-xs font-medium text-gray-700">${safeColorName}</span>
                         <span class="text-[9px] text-gray-400">Sob demanda</span>
                     </div>
                 `;
-                btn.onclick = () => selectComboColor(idx, cor.nome, cor.hex, btn);
+                btn.onclick = () => selectComboColor(idx, sanitizePlainText(cor.nome, 60), safeHex, btn);
                 colorsGrid.appendChild(btn);
             });
             colorSection.appendChild(colorsGrid);
@@ -1139,7 +1165,7 @@ function renderColors() {
     div.className = 'color-selector-container mb-6';
     div.innerHTML = `<p class="text-xs font-bold uppercase tracking-widest text-[--cor-texto] mb-2">Cor</p><div class="flex gap-3 flex-wrap">${cores.map((c, i) => {
         const madeToOrderBadge = `<span class="text-[10px] text-gray-500 font-medium ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full border border-gray-200">sob demanda</span>`;
-        return `<div class="color-option group relative" data-idx="${i}"><div class="w-4 h-4 rounded-full border border-gray-300 shadow-sm" style="background-color:${c.hex}"></div><span class="text-xs font-medium text-gray-700">${c.nome}</span>${madeToOrderBadge}</div>`;
+        return `<div class="color-option group relative" data-idx="${i}"><div class="w-4 h-4 rounded-full border border-gray-300 shadow-sm" style="background-color:${sanitizeHexColor(c.hex, '#A58A5C')}"></div><span class="text-xs font-medium text-gray-700">${escapeHtml(sanitizePlainText(c.nome, 60))}</span>${madeToOrderBadge}</div>`;
     }).join('')}</div>`;
     
     const sizeSelector = document.querySelector('.size-selector');

@@ -222,6 +222,15 @@
                 .slice(0, maxLength);
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function buildInitial(name) {
             const safeName = sanitizePlainText(name, 80);
             return safeName ? safeName.charAt(0).toUpperCase() : 'C';
@@ -285,6 +294,8 @@
                 filtered.forEach((chat) => {
                     const userName = sanitizePlainText(chat.userName, 80) || 'Cliente';
                     const lastMessage = sanitizePlainText(chat.lastMessage, 160) || 'Sem mensagens ainda.';
+                    const safeUserName = escapeHtml(userName);
+                    const safeLastMessage = escapeHtml(lastMessage);
                     const item = document.createElement('button');
                     item.type = 'button';
                     item.className = 'chat-list-item surface-card w-full p-3 text-left';
@@ -296,10 +307,10 @@
                             <div class="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold shrink-0">${buildInitial(userName)}</div>
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-start justify-between gap-2">
-                                    <h4 class="font-semibold text-sm text-gray-900 truncate">${userName}</h4>
+                                    <h4 class="font-semibold text-sm text-gray-900 truncate">${safeUserName}</h4>
                                     <span class="text-[11px] text-gray-400 shrink-0">${formatTime(chat.lastUpdate)}</span>
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500 line-clamp-2">${lastMessage}</p>
+                                <p class="mt-1 text-xs text-gray-500 line-clamp-2">${safeLastMessage}</p>
                                 <div class="mt-2 flex items-center justify-between gap-2">
                                     <span class="text-[11px] text-gray-400">${sanitizePlainText(chat.id, 20)}</span>
                                     ${chat.unread ? '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>novo</span>' : ''}

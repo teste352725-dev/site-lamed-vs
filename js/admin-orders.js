@@ -1375,15 +1375,36 @@ async function updateOrderStatus(nextStatus) {
     if (!activeOrder || !STATUS_ORDER.includes(nextStatus)) return;
 
     try {
-        await ordersDb.collection("pedidos").doc(activeOrder.id).update({
-            status: nextStatus,
-            updatedAtAdmin: firebase.firestore.FieldValue.serverTimestamp()
+        const adminUser = ordersAuth.currentUser;
+        if (!adminUser) {
+            throw new Error("Sessao administrativa expirada.");
+        }
+
+        const authToken = await adminUser.getIdToken();
+        const response = await fetch(buildBackendUrl("/api/admin/orders/status"), {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                Authorization: `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                orderId: activeOrder.id,
+                status: nextStatus
+            })
         });
-        setModalFeedback(`Status atualizado para ${STATUS_META[nextStatus].label}.`, "info");
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) {
+            throw new Error(sanitizePlainText(payload?.error, 220) || "Nao foi possivel atualizar o status agora.");
+        }
+
+        const pushInfo = payload?.push?.sent > 0 ? ` Notificacao enviada para ${payload.push.sent} aparelho(s).` : "";
+        setModalFeedback(`Status atualizado para ${STATUS_META[nextStatus].label}.${pushInfo}`, "info");
         scheduleModalRefresh();
     } catch (error) {
         console.error("[admin-orders.updateOrderStatus]", error);
-        setModalFeedback("Nao foi possivel atualizar o status agora.", "error");
+        setModalFeedback(sanitizePlainText(error?.message, 220) || "Nao foi possivel atualizar o status agora.", "error");
     }
 }
 

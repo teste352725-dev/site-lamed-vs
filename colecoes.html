@@ -233,6 +233,22 @@
         const auth = firebase.auth();
         const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 
+        function sanitizePlainText(value, maxLength = 180) {
+            return String(value ?? '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, maxLength);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         async function isAuthorizedAdmin(user) {
             if (!user) return false;
             if (ADMIN_UIDS.includes(user.uid)) return true;
@@ -277,7 +293,7 @@
                 loading.classList.add('hidden');
             }, (error) => {
                 console.error("Erro ao carregar coleções:", error);
-                loading.innerHTML = `<p class="text-red-500">Erro ao carregar dados.<br>${error.message}</p>`;
+                loading.innerHTML = `<p class="text-red-500">Erro ao carregar dados.</p>`;
             });
         }
 
@@ -322,11 +338,13 @@
             div.className = `card p-4 flex flex-col gap-3 ${c.ativa ? 'collection-card active' : ''}`;
             
             const data = c.dataLancamento ? new Date(c.dataLancamento.seconds * 1000).toLocaleDateString('pt-BR') : '-';
+            const safeName = escapeHtml(sanitizePlainText(c.nome, 120) || 'Colecao');
+            const safeDescription = escapeHtml(sanitizePlainText(c.descricao || 'Sem descricao', 220));
             
             div.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <h4 class="font-bold text-gray-800 text-lg">${c.nome}</h4>
+                        <h4 class="font-bold text-gray-800 text-lg">${safeName}</h4>
                         <span class="text-xs text-gray-500">${data}</span>
                     </div>
                     <span class="status-badge ${c.ativa ? 'status-active' : 'status-inactive'}">
@@ -343,7 +361,12 @@
                     </button>
                 </div>
             `;
-            
+
+            const descriptionEl = div.querySelector('p.text-sm.text-gray-600.line-clamp-2.flex-grow');
+            if (descriptionEl) {
+                descriptionEl.textContent = sanitizePlainText(c.descricao || 'Sem descricao', 220);
+            }
+             
             div.querySelector('.toggle-status-btn').onclick = () => toggleStatus(c);
             div.querySelector('.edit-btn').onclick = () => abrirModal(c);
             return div;

@@ -26,6 +26,34 @@ const ALLOWED_REMOTE_IMAGE_HOSTS = new Set([
 // Variáveis de Estado
 let currentUser = null;
 let unsubscribeChat = null;
+let pushMessagingInstance = null;
+let currentPushToken = "";
+let pushConfigCache = null;
+let pushRequestInFlight = false;
+let pushForegroundListenerBound = false;
+
+function resolveApiBaseUrl() {
+    const configured = document.querySelector('meta[name="lamed-api-base-url"]')?.getAttribute('content')?.trim();
+    if (configured) return configured.replace(/\/+$/, '');
+
+    try {
+        const stored = window.localStorage.getItem('lamed_api_base_url')?.trim();
+        if (stored) return stored.replace(/\/+$/, '');
+    } catch (error) {}
+
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3001';
+    }
+
+    return '';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+function buildBackendUrl(pathname) {
+    const safePath = String(pathname || '').startsWith('/') ? pathname : `/${pathname || ''}`;
+    return API_BASE_URL ? `${API_BASE_URL}${safePath}` : safePath;
+}
 
 function sanitizePlainText(value, maxLength = 160) {
     return String(value ?? '')
@@ -60,6 +88,241 @@ function buildAvatarUrl(name) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}&background=A58A5C&color=fff`;
 }
 
+function getPushStatusElement() {
+    return document.getElementById('push-status-text');
+}
+
+function setPushStatus(message) {
+    const statusEl = getPushStatusElement();
+    if (statusEl) {
+        statusEl.textContent = sanitizePlainText(message, 220);
+    }
+}
+
+function updatePushButtonsState({ enableDisabled = false, disableDisabled = false, enableLabel = 'Ativar neste aparelho' } = {}) {
+    const enableBtn = document.getElementById('push-enable-btn');
+    const disableBtn = document.getElementById('push-disable-btn');
+
+    if (enableBtn) {
+        enableBtn.disabled = enableDisabled;
+        enableBtn.textContent = enableLabel;
+        enableBtn.classList.toggle('opacity-60', enableDisabled);
+        enableBtn.classList.toggle('cursor-not-allowed', enableDisabled);
+    }
+
+    if (disableBtn) {
+        disableBtn.disabled = disableDisabled;
+        disableBtn.classList.toggle('opacity-60', disableDisabled);
+        disableBtn.classList.toggle('cursor-not-allowed', disableDisabled);
+    }
+}
+
+async function fetchPushConfig() {
+    if (pushConfigCache) return pushConfigCache;
+
+    const response = await fetch(buildBackendUrl('/api/notifications/config'), {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel carregar a configuracao de notificacoes.', 220));
+    }
+
+    pushConfigCache = payload;
+    return pushConfigCache;
+}
+
+function getPushMessagingInstance() {
+    if (pushMessagingInstance) return pushMessagingInstance;
+    if (!firebase.messaging || typeof firebase.messaging !== 'function') return null;
+    pushMessagingInstance = firebase.messaging();
+    return pushMessagingInstance;
+}
+
+async function ensurePushServiceWorkerRegistration() {
+    if (!('serviceWorker' in navigator)) {
+        throw new Error('Seu navegador nao oferece suporte completo a notificacoes web.');
+    }
+
+    return navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/firebase-cloud-messaging-push-scope'
+    });
+}
+
+async function sendPushSubscriptionToBackend(pathname, token) {
+    const authToken = await currentUser.getIdToken();
+    const response = await fetch(buildBackendUrl(pathname), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+            token,
+            permission: Notification.permission
+        })
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel atualizar sua inscricao de notificacoes.', 220));
+    }
+
+    return payload;
+}
+
+async function ativarPushNotifications() {
+    if (pushRequestInFlight || !currentUser) return;
+    pushRequestInFlight = true;
+    updatePushButtonsState({ enableDisabled: true, disableDisabled: true, enableLabel: 'Ativando...' });
+
+    try {
+        const config = await fetchPushConfig();
+        if (!config?.enabled || !config?.vapidPublicKey) {
+            throw new Error('As notificacoes ainda nao foram configuradas pela loja.');
+        }
+
+        if (!('Notification' in window)) {
+            throw new Error('Seu navegador nao suporta notificacoes.');
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            throw new Error('Permissao de notificacao nao concedida.');
+        }
+
+        const messaging = getPushMessagingInstance();
+        if (!messaging) {
+            throw new Error('O navegador nao suportou o Firebase Messaging neste aparelho.');
+        }
+
+        const registration = await ensurePushServiceWorkerRegistration();
+        const token = await messaging.getToken({
+            vapidKey: config.vapidPublicKey,
+            serviceWorkerRegistration: registration
+        });
+
+        if (!token) {
+            throw new Error('Nao foi possivel gerar o token de notificacao deste aparelho.');
+        }
+
+        currentPushToken = token;
+        await sendPushSubscriptionToBackend('/api/notifications/register', token);
+        setPushStatus('Notificacoes ativas neste aparelho. Vamos avisar voce sobre pedidos e suporte.');
+    } catch (error) {
+        console.error('[push.enable]', error);
+        setPushStatus(error?.message || 'Nao foi possivel ativar as notificacoes agora.');
+    } finally {
+        pushRequestInFlight = false;
+        updatePushButtonsState();
+    }
+}
+
+async function desativarPushNotifications() {
+    if (pushRequestInFlight || !currentUser) return;
+    pushRequestInFlight = true;
+    updatePushButtonsState({ enableDisabled: true, disableDisabled: true, enableLabel: 'Ativar neste aparelho' });
+
+    try {
+        const messaging = getPushMessagingInstance();
+        let token = currentPushToken;
+
+        if (!token && messaging) {
+            const config = await fetchPushConfig().catch(() => null);
+            const registration = await ensurePushServiceWorkerRegistration().catch(() => null);
+            if (config?.vapidPublicKey && registration) {
+                token = await messaging.getToken({
+                    vapidKey: config.vapidPublicKey,
+                    serviceWorkerRegistration: registration
+                }).catch(() => '');
+            }
+        }
+
+        if (token) {
+            await sendPushSubscriptionToBackend('/api/notifications/unregister', token);
+            if (messaging && typeof messaging.deleteToken === 'function') {
+                await messaging.deleteToken(token).catch(() => {});
+            }
+        }
+
+        currentPushToken = '';
+        setPushStatus('Notificacoes desativadas neste aparelho.');
+    } catch (error) {
+        console.error('[push.disable]', error);
+        setPushStatus(error?.message || 'Nao foi possivel desativar as notificacoes agora.');
+    } finally {
+        pushRequestInFlight = false;
+        updatePushButtonsState();
+    }
+}
+
+async function iniciarNotificacoesWeb() {
+    const enableBtn = document.getElementById('push-enable-btn');
+    const disableBtn = document.getElementById('push-disable-btn');
+    if (!enableBtn || !disableBtn) return;
+
+    enableBtn.onclick = ativarPushNotifications;
+    disableBtn.onclick = desativarPushNotifications;
+
+    if (!currentUser) {
+        setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
+        updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
+        return;
+    }
+
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !firebase.messaging) {
+        setPushStatus('Este navegador nao oferece suporte completo a notificacoes web.');
+        updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
+        return;
+    }
+
+    try {
+        const config = await fetchPushConfig();
+        if (!config?.enabled || !config?.vapidPublicKey) {
+            setPushStatus('As notificacoes ainda estao em configuracao na loja.');
+            updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            const messaging = getPushMessagingInstance();
+            const registration = await ensurePushServiceWorkerRegistration();
+            currentPushToken = await messaging.getToken({
+                vapidKey: config.vapidPublicKey,
+                serviceWorkerRegistration: registration
+            }).catch(() => '');
+
+            setPushStatus(
+                currentPushToken
+                    ? 'Notificacoes prontas neste aparelho.'
+                    : 'Permissao concedida, mas o token ainda nao foi sincronizado. Toque para ativar novamente.'
+            );
+
+            if (!pushForegroundListenerBound && typeof messaging.onMessage === 'function') {
+                pushForegroundListenerBound = true;
+                messaging.onMessage((payload) => {
+                    const title = sanitizePlainText(payload?.notification?.title || payload?.data?.title || 'Laméd vs', 120);
+                    const body = sanitizePlainText(payload?.notification?.body || payload?.data?.body || 'Voce recebeu uma nova atualizacao.', 240);
+                    if (document.visibilityState === 'visible' && Notification.permission === 'granted') {
+                        new Notification(title, { body });
+                    }
+                });
+            }
+        } else if (Notification.permission === 'denied') {
+            setPushStatus('As notificacoes foram bloqueadas neste navegador. Libere nas configuracoes do aparelho para voltar a usar.');
+        } else {
+            setPushStatus('Ative as notificacoes para receber atualizacoes de pedido e suporte.');
+        }
+    } catch (error) {
+        console.error('[push.init]', error);
+        setPushStatus('Nao foi possivel carregar a configuracao de notificacoes agora.');
+    } finally {
+        updatePushButtonsState({ disableDisabled: !currentPushToken && Notification.permission !== 'granted' });
+    }
+}
+
 // --- GERENCIAMENTO DE ESTADO ---
 
 auth.onAuthStateChanged(async (user) => {
@@ -72,9 +335,11 @@ auth.onAuthStateChanged(async (user) => {
         if(userPanel) userPanel.classList.remove('hidden');
         
         await carregarPerfilUsuario();
+        await iniciarNotificacoesWeb();
         carregarMeusPedidos();
         carregarFavoritos();
         iniciarChat();
+        applyTabFromHash();
         
     } else {
         currentUser = null;
@@ -82,9 +347,12 @@ auth.onAuthStateChanged(async (user) => {
             unsubscribeChat();
             unsubscribeChat = null;
         }
+        currentPushToken = '';
         if(authContainer) authContainer.classList.remove('hidden');
         if(userPanel) userPanel.classList.add('hidden');
         switchAuthView('login');
+        setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
+        updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
     }
 });
 
@@ -300,13 +568,41 @@ if(profileForm) {
 }
 
 // --- NAVEGAÇÃO ---
-window.switchTab = (tab) => {
+function activateAccountTab(tab, trigger = null) {
+    const safeTab = ['pedidos', 'favoritos', 'dados', 'chat'].includes(tab) ? tab : 'pedidos';
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-    document.getElementById(`tab-${tab}`).classList.remove('hidden');
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    if(tab === 'chat') rolarChatParaBaixo();
+    document.getElementById(`tab-${safeTab}`)?.classList.remove('hidden');
+
+    document.querySelectorAll('.tab-btn').forEach((button) => {
+        const tabName = button.getAttribute('onclick')?.match(/switchTab\('([^']+)'\)/)?.[1];
+        button.classList.toggle('active', tabName === safeTab);
+    });
+
+    if (trigger?.currentTarget) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        trigger.currentTarget.classList.add('active');
+    }
+
+    if (window.location.hash !== `#${safeTab}`) {
+        window.location.hash = safeTab;
+    }
+
+    if(safeTab === 'chat') rolarChatParaBaixo();
 }
+
+function applyTabFromHash() {
+    const hashTab = String(window.location.hash || '').replace(/^#/, '');
+    if (['pedidos', 'favoritos', 'dados', 'chat'].includes(hashTab)) {
+        activateAccountTab(hashTab);
+    }
+}
+
+window.switchTab = (tab) => {
+    const trigger = typeof event !== 'undefined' ? event : null;
+    activateAccountTab(tab, trigger);
+}
+
+window.addEventListener('hashchange', applyTabFromHash);
 
 // --- PEDIDOS (ATUALIZADO) ---
 function carregarMeusPedidos() {

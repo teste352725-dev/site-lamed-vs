@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="lamed-api-base-url" content="">
     <title>Minha Conta | Laméd vs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -13,6 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <style>
         :root { --cor-marrom: #643f21; --cor-ouro: #A58A5C; }
@@ -261,6 +263,19 @@
                         </div>
 
                         <button type="submit" class="btn-chic shadow-lg">Salvar Alterações</button>
+                        <div class="pt-6 border-t border-gray-100">
+                            <div class="rounded-2xl border border-[#E5E0D8] bg-[#FDFBF6] p-5 space-y-4">
+                                <div>
+                                    <p class="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Notificações Web</p>
+                                    <h4 class="serif text-xl text-gray-700 mt-2">Receba avisos do seu pedido neste aparelho</h4>
+                                    <p id="push-status-text" class="text-sm text-gray-500 mt-2">Ative as notificações para receber atualizações de pedido e mensagens do suporte.</p>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                    <button type="button" id="push-enable-btn" class="btn-chic shadow-lg sm:w-auto px-6">Ativar neste aparelho</button>
+                                    <button type="button" id="push-disable-btn" class="w-full sm:w-auto border border-gray-200 px-6 py-3 text-sm uppercase tracking-widest text-gray-500 hover:text-[--cor-marrom] transition">Desativar</button>
+                                </div>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
