@@ -630,6 +630,78 @@
         </div>
     </div>
 
+    <div id="product-quick-edit-modal" class="modal fixed inset-0 z-[103] hidden items-end justify-center bg-black/50 backdrop-blur-sm p-0 md:items-center md:p-4">
+        <div class="storefront-copy-sheet w-full max-w-2xl bg-[#FDFBF6] rounded-t-[28px] md:rounded-[28px] shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between border-b border-[#E5E0D8] px-5 py-4">
+                <div>
+                    <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Edicao rapida</p>
+                    <h3 class="serif text-2xl text-[#45301F]">Peca da vitrine</h3>
+                </div>
+                <button type="button" id="close-product-quick-edit-modal" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <form id="product-quick-edit-form" class="max-h-[82vh] overflow-y-auto px-5 py-5 space-y-5">
+                <input type="hidden" id="product-quick-edit-id">
+
+                <section class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label class="space-y-2 sm:col-span-2">
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Nome</span>
+                        <input id="product-quick-edit-name" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Nome da peca">
+                    </label>
+
+                    <label class="space-y-2">
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Preco</span>
+                        <input id="product-quick-edit-price" type="number" min="0" step="0.01" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="0,00">
+                    </label>
+
+                    <label class="space-y-2">
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Desconto (%)</span>
+                        <input id="product-quick-edit-discount" type="number" min="0" max="95" step="1" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="0">
+                    </label>
+
+                    <label class="space-y-2">
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Status</span>
+                        <select id="product-quick-edit-status" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm">
+                            <option value="active">Ativa</option>
+                            <option value="inactive">Oculta</option>
+                        </select>
+                    </label>
+
+                    <label class="space-y-2">
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Ordem</span>
+                        <input id="product-quick-edit-order" type="number" min="0" step="1" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="0">
+                    </label>
+
+                    <label class="space-y-2">
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Categoria</span>
+                        <select id="product-quick-edit-category" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm"></select>
+                    </label>
+
+                    <label class="space-y-2">
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Colecao</span>
+                        <select id="product-quick-edit-collection" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm"></select>
+                    </label>
+                </section>
+
+                <label class="flex items-center justify-between gap-4 rounded-[22px] border border-[#E5E0D8] bg-white px-4 py-4 text-sm">
+                    <div>
+                        <p class="font-semibold text-[#45301F]">Aceita personalizacao</p>
+                        <p class="text-xs text-gray-500">Ative para receber texto e observacoes da cliente.</p>
+                    </div>
+                    <input id="product-quick-edit-personalizable" type="checkbox" class="h-5 w-5 accent-[#643f21]">
+                </label>
+
+                <label class="space-y-2 block">
+                    <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Descricao</span>
+                    <textarea id="product-quick-edit-description" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[132px]" placeholder="Detalhes desta peca na vitrine"></textarea>
+                </label>
+            </form>
+            <div class="flex flex-col gap-3 border-t border-[#E5E0D8] px-5 py-4 sm:flex-row sm:justify-end">
+                <button type="button" id="cancel-product-quick-edit" class="w-full sm:w-auto rounded-full border border-[#D8C9B6] px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#6B5139]">Cancelar</button>
+                <button type="button" id="save-product-quick-edit" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar peca</button>
+            </div>
+        </div>
+    </div>
+
     <div id="checkout-push-modal" class="modal fixed inset-0 z-[101] hidden items-center justify-center bg-black/45 backdrop-blur-sm p-4">
         <div class="modal-content w-full max-w-md bg-[#FDFBF6] rounded-2xl shadow-2xl p-6 text-center relative overflow-hidden">
             <button id="close-checkout-push-modal" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl">&times;</button>

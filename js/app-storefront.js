@@ -64,9 +64,28 @@ const pendingCollectionSlides = new Map();
 let siteCategories = [];
 let currentShopFilter = 'all';
 let currentShopSearch = '';
+let productQuickEditBound = false;
 const canUseHoverPreviews = window.matchMedia
     ? window.matchMedia('(hover: hover) and (pointer: fine)').matches
     : false;
+
+const productQuickEditElements = {
+    modal: document.getElementById('product-quick-edit-modal'),
+    form: document.getElementById('product-quick-edit-form'),
+    id: document.getElementById('product-quick-edit-id'),
+    name: document.getElementById('product-quick-edit-name'),
+    price: document.getElementById('product-quick-edit-price'),
+    discount: document.getElementById('product-quick-edit-discount'),
+    status: document.getElementById('product-quick-edit-status'),
+    order: document.getElementById('product-quick-edit-order'),
+    category: document.getElementById('product-quick-edit-category'),
+    collection: document.getElementById('product-quick-edit-collection'),
+    personalizable: document.getElementById('product-quick-edit-personalizable'),
+    description: document.getElementById('product-quick-edit-description'),
+    close: document.getElementById('close-product-quick-edit-modal'),
+    cancel: document.getElementById('cancel-product-quick-edit'),
+    save: document.getElementById('save-product-quick-edit')
+};
 
 const DEFAULT_SITE_CATEGORIES = [
     { slug: 'vestido', nome: 'Vestidos', ordem: 10, ativa: true },
@@ -156,6 +175,269 @@ function mergeSiteCategories(configEntries, productEntries) {
 function getSiteCategoryLabel(slug) {
     const match = siteCategories.find((category) => category.slug === slug);
     return match?.nome || formatCategoryLabel(slug);
+}
+
+function closeProductQuickEditModal() {
+    const modal = productQuickEditElements.modal;
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll('product-quick-edit');
+}
+
+function buildQuickEditCategoryOptions(product) {
+    const currentCategory = sanitizePlainText(product?.categoria, 80);
+    const categories = [...siteCategories];
+
+    if (currentCategory && !categories.some((entry) => entry.slug === currentCategory)) {
+        categories.push({
+            slug: currentCategory,
+            nome: formatCategoryLabel(currentCategory),
+            ordem: 9999,
+            ativa: true
+        });
+    }
+
+    return categories
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map((entry) => ({
+            value: entry.slug,
+            label: entry.nome
+        }));
+}
+
+function buildQuickEditCollectionOptions(product) {
+    const options = [{ value: '', label: 'Sem colecao' }];
+    const currentCollectionId = sanitizePlainText(product?.colecaoId, 120);
+    const collections = [...activeCollections];
+
+    if (currentCollectionId && !collections.some((entry) => entry.id === currentCollectionId)) {
+        collections.push({
+            id: currentCollectionId,
+            nome: 'Colecao atual'
+        });
+    }
+
+    collections
+        .sort((a, b) => sanitizePlainText(a.nome, 120).localeCompare(sanitizePlainText(b.nome, 120), 'pt-BR'))
+        .forEach((entry) => {
+            options.push({
+                value: entry.id,
+                label: sanitizePlainText(entry.nome, 120) || 'Colecao'
+            });
+        });
+
+    return options;
+}
+
+function fillSelectOptions(select, options, selectedValue = '') {
+    if (!select) return;
+    select.innerHTML = '';
+    options.forEach((option) => {
+        const element = document.createElement('option');
+        element.value = option.value;
+        element.textContent = option.label;
+        if (String(option.value) === String(selectedValue || '')) {
+            element.selected = true;
+        }
+        select.appendChild(element);
+    });
+}
+
+function openProductQuickEditModal(productId) {
+    if (!currentUserIsAdmin || !productQuickEditElements.modal) return;
+
+    const product = products.find((entry) => entry.id === productId);
+    if (!product) {
+        alert('Nao foi possivel localizar esta peca.');
+        return;
+    }
+
+    fillSelectOptions(productQuickEditElements.category, buildQuickEditCategoryOptions(product), product.categoria || '');
+    fillSelectOptions(productQuickEditElements.collection, buildQuickEditCollectionOptions(product), product.colecaoId || '');
+
+    if (productQuickEditElements.id) productQuickEditElements.id.value = product.id;
+    if (productQuickEditElements.name) productQuickEditElements.name.value = sanitizePlainText(product.nome, 120);
+    if (productQuickEditElements.price) productQuickEditElements.price.value = Number(product.preco || 0).toFixed(2);
+    if (productQuickEditElements.discount) productQuickEditElements.discount.value = parseInt(product.desconto || 0, 10) || 0;
+    if (productQuickEditElements.status) productQuickEditElements.status.value = product.status === 'inactive' ? 'inactive' : 'active';
+    if (productQuickEditElements.order) productQuickEditElements.order.value = parseInt(product.ordem || 0, 10) || 0;
+    if (productQuickEditElements.personalizable) {
+        productQuickEditElements.personalizable.checked = product.personalizavel === true;
+        productQuickEditElements.personalizable.disabled = product.tipo === 'combo';
+    }
+    if (productQuickEditElements.description) {
+        productQuickEditElements.description.value = sanitizePlainText(product.descricao, 2000);
+    }
+
+    productQuickEditElements.modal.classList.remove('hidden');
+    productQuickEditElements.modal.classList.add('flex');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll('product-quick-edit');
+    if (typeof toggleAdminFabPanel === 'function') toggleAdminFabPanel(false);
+}
+
+function buildQuickEditPayload() {
+    return {
+        productId: sanitizePlainText(productQuickEditElements.id?.value, 120),
+        nome: sanitizePlainText(productQuickEditElements.name?.value, 120),
+        preco: Number(productQuickEditElements.price?.value || 0),
+        desconto: parseInt(productQuickEditElements.discount?.value || 0, 10) || 0,
+        status: sanitizePlainText(productQuickEditElements.status?.value, 20).toLowerCase(),
+        ordem: parseInt(productQuickEditElements.order?.value || 0, 10) || 0,
+        categoria: sanitizePlainText(productQuickEditElements.category?.value, 80).toLowerCase(),
+        colecaoId: sanitizePlainText(productQuickEditElements.collection?.value, 120) || null,
+        personalizavel: productQuickEditElements.personalizable?.checked === true,
+        descricao: sanitizePlainText(productQuickEditElements.description?.value, 2000)
+    };
+}
+
+function replaceProductLocally(updatedProduct) {
+    if (!updatedProduct?.id) return;
+
+    const currentIndex = products.findIndex((entry) => entry.id === updatedProduct.id);
+    const normalized = {
+        ...(currentIndex >= 0 ? products[currentIndex] : {}),
+        ...updatedProduct,
+        preco: parseFloat(updatedProduct.preco || 0)
+    };
+
+    if (normalized.status === 'inactive') {
+        if (currentIndex >= 0) products.splice(currentIndex, 1);
+    } else if (currentIndex >= 0) {
+        products[currentIndex] = normalized;
+    } else {
+        products.push(normalized);
+    }
+
+    if (currentProduct?.id === updatedProduct.id) {
+        currentProduct = normalized.status === 'inactive' ? null : normalized;
+    }
+}
+
+function refreshStorefrontAfterQuickEdit(productId) {
+    renderHomeShopGrid();
+    renderizarSecoesColecoes();
+    popularPreviewColecao();
+    renderizarListaDeColecoes();
+
+    const hash = window.location.hash || '#home';
+    if (hash === '#loja') {
+        renderShopPage();
+    } else if (hash.startsWith('#/categoria/')) {
+        renderShopPage(hash.split('/')[2]);
+        renderizarGridCategoria(hash.split('/')[2]);
+    } else if (hash.startsWith('#/colecao/')) {
+        renderizarGridColecao(hash.split('/')[2]);
+    } else if (hash.startsWith('#/produto/')) {
+        const updatedProduct = products.find((entry) => entry.id === productId);
+        if (updatedProduct) {
+            showProductDetail(productId);
+        } else {
+            window.location.hash = '#loja';
+        }
+    }
+}
+
+async function saveProductQuickEdit() {
+    if (!currentUserIsAdmin || !currentUser) return;
+
+    const saveButton = productQuickEditElements.save;
+    const payload = buildQuickEditPayload();
+
+    if (!payload.productId || !payload.nome) {
+        alert('Preencha ao menos o nome da peca.');
+        return;
+    }
+
+    try {
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = 'Salvando...';
+        }
+
+        const idToken = await currentUser.getIdToken();
+        const response = await fetch(buildBackendUrl('/api/admin/storefront/update'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                Authorization: `Bearer ${idToken}`
+            },
+            body: JSON.stringify({
+                action: 'product_quick_edit',
+                payload
+            })
+        });
+
+        const result = await response.json().catch(() => null);
+        if (!response.ok || result?.ok === false) {
+            throw new Error(sanitizePlainText(result?.error || 'Nao foi possivel salvar esta peca agora.', 220));
+        }
+
+        replaceProductLocally(result?.result?.product || payload);
+        closeProductQuickEditModal();
+        refreshStorefrontAfterQuickEdit(payload.productId);
+    } catch (error) {
+        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar esta peca agora.', 220));
+    } finally {
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Salvar peca';
+        }
+    }
+}
+
+function bindProductQuickEditModal() {
+    if (productQuickEditBound) return;
+    productQuickEditBound = true;
+
+    if (productQuickEditElements.close) {
+        productQuickEditElements.close.addEventListener('click', closeProductQuickEditModal);
+    }
+
+    if (productQuickEditElements.cancel) {
+        productQuickEditElements.cancel.addEventListener('click', closeProductQuickEditModal);
+    }
+
+    if (productQuickEditElements.save) {
+        productQuickEditElements.save.addEventListener('click', saveProductQuickEdit);
+    }
+
+    if (productQuickEditElements.modal) {
+        productQuickEditElements.modal.addEventListener('click', (event) => {
+            if (event.target === productQuickEditElements.modal) {
+                closeProductQuickEditModal();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && productQuickEditElements.modal?.classList.contains('flex')) {
+            closeProductQuickEditModal();
+        }
+    });
+}
+
+function createProductQuickEditButton(peca, compact = false) {
+    if (!currentUserIsAdmin) return null;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = compact
+        ? 'inline-flex items-center gap-2 rounded-full border border-[#D8C9B6] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B5139] shadow-sm'
+        : 'absolute right-2 bottom-2 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-[#643f21] shadow-lg transition hover:scale-105';
+    button.setAttribute('aria-label', `Editar ${sanitizePlainText(peca?.nome, 120) || 'peca'}`);
+    button.innerHTML = compact
+        ? '<i class="fa-solid fa-pen text-[11px]"></i><span>Editar peca</span>'
+        : '<i class="fa-solid fa-pen text-sm"></i>';
+
+    button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openProductQuickEditModal(peca.id);
+    });
+
+    return button;
 }
 
 function renderSidebarCategoryLinks() {
@@ -422,6 +704,7 @@ function observeCollectionCarousel(section, splideId) {
 
 // --- CARREGAMENTO DE DADOS ---
 async function carregarDadosLoja() {
+    bindProductQuickEditModal();
     try {
         const [colecoesSnap, produtosSnap, catalogSettingsSnap] = await Promise.all([
             db.collection("colecoes").where("ativa", "==", true).get(),
@@ -736,8 +1019,15 @@ function criarCardProduto(peca) {
             <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${safeName}</h4>
             ${priceHtml}
             <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${catLabel}</p>
-        </div>
+         </div>
     `;
+
+    const imageWrapper = card.querySelector('.card-img-wrapper');
+    const quickEditButton = createProductQuickEditButton(peca);
+    if (imageWrapper && quickEditButton) {
+        imageWrapper.appendChild(quickEditButton);
+    }
+
     card.addEventListener('click', () => window.location.hash = `#/produto/${peca.id}`);
     return card;
 }
@@ -764,6 +1054,22 @@ function showProductDetail(id) {
     
     const isCombo = currentProduct.tipo === 'combo';
     const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
+    const titleRow = document.querySelector('#product-detail-view .flex.justify-between.items-start.mb-2');
+    if (titleRow) {
+        const existingAdminEdit = document.getElementById('detail-admin-edit-btn');
+        if (existingAdminEdit) existingAdminEdit.remove();
+
+        const favoriteButton = document.getElementById('btn-favorite');
+        const detailEditButton = createProductQuickEditButton(currentProduct, true);
+        if (detailEditButton) {
+            detailEditButton.id = 'detail-admin-edit-btn';
+            if (favoriteButton?.parentElement === titleRow) {
+                titleRow.insertBefore(detailEditButton, favoriteButton);
+            } else {
+                titleRow.appendChild(detailEditButton);
+            }
+        }
+    }
     
     const sizeSection = document.querySelector('.size-selector')?.parentElement;
     const accordionDesc = document.querySelector('.accordion-content'); 

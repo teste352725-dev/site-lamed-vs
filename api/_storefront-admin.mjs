@@ -4,6 +4,7 @@ const CATALOG_SETTINGS_DOC_ID = "__catalog_settings";
 const STOREFRONT_COPY_DOC_ID = "homepage";
 
 const PRODUCT_STATUS = new Set(["active", "inactive"]);
+const PRODUCT_TYPE = new Set(["standard", "combo"]);
 
 class StorefrontAdminError extends Error {
   constructor(status, message) {
@@ -18,6 +19,26 @@ function sanitizePlainText(value, maxLength = 160) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+function sanitizeSlug(value, maxLength = 80) {
+  return sanitizePlainText(value, maxLength)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function sanitizeInteger(value, { min = 0, max = 999999, fallback = 0 } = {}) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function sanitizeMoney(value, { min = 0, max = 100000, fallback = 0 } = {}) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  const rounded = Math.round((parsed + Number.EPSILON) * 100) / 100;
+  return Math.min(max, Math.max(min, rounded));
 }
 
 function sanitizeBoolean(value, fallback = false) {
@@ -62,6 +83,85 @@ async function updateProductStatus(db, payload, adminUid) {
     kind: "product_status",
     productId,
     status: nextStatus
+  };
+}
+
+async function updateProductQuickEdit(db, payload, adminUid) {
+  const productId = sanitizePlainText(payload?.productId, 120);
+  if (!productId) {
+    throw new StorefrontAdminError(400, "Produto invalido.");
+  }
+
+  const productRef = db.collection("pecas").doc(productId);
+  const snapshot = await productRef.get();
+  if (!snapshot.exists) {
+    throw new StorefrontAdminError(404, "Produto nao encontrado.");
+  }
+
+  const current = snapshot.data() || {};
+  const nome = sanitizePlainText(payload?.nome, 120);
+  const descricao = sanitizePlainText(payload?.descricao, 2000);
+  const categoria = sanitizeSlug(payload?.categoria, 80);
+  const status = sanitizePlainText(payload?.status, 20).toLowerCase();
+  const tipo = sanitizePlainText(current?.tipo || payload?.tipo || "standard", 20).toLowerCase();
+  const colecaoIdRaw = sanitizePlainText(payload?.colecaoId, 120);
+  const colecaoId = colecaoIdRaw || null;
+  const desconto = sanitizeInteger(payload?.desconto, { min: 0, max: 95, fallback: 0 });
+  const ordem = sanitizeInteger(payload?.ordem, { min: 0, max: 99999, fallback: 0 });
+  const preco = sanitizeMoney(payload?.preco, { min: 0, max: 100000, fallback: NaN });
+  const personalizavel = sanitizeBoolean(payload?.personalizavel, false);
+
+  if (!nome) {
+    throw new StorefrontAdminError(400, "Nome invalido.");
+  }
+
+  if (!categoria) {
+    throw new StorefrontAdminError(400, "Categoria invalida.");
+  }
+
+  if (!PRODUCT_STATUS.has(status)) {
+    throw new StorefrontAdminError(400, "Status invalido.");
+  }
+
+  if (!PRODUCT_TYPE.has(tipo)) {
+    throw new StorefrontAdminError(400, "Tipo de produto invalido.");
+  }
+
+  if (!Number.isFinite(preco) || preco < 0) {
+    throw new StorefrontAdminError(400, "Preco invalido.");
+  }
+
+  if (colecaoId && colecaoId !== CATALOG_SETTINGS_DOC_ID) {
+    const collectionSnap = await db.collection("colecoes").doc(colecaoId).get();
+    if (!collectionSnap.exists) {
+      throw new StorefrontAdminError(404, "Colecao nao encontrada.");
+    }
+  }
+
+  const nextProduct = {
+    ...current,
+    nome,
+    descricao,
+    categoria,
+    preco,
+    desconto,
+    ordem,
+    status,
+    colecaoId,
+    personalizavel: tipo === "combo" ? false : personalizavel,
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedByAdmin: sanitizePlainText(adminUid, 128)
+  };
+
+  await productRef.set(nextProduct, { merge: true });
+
+  return {
+    kind: "product_quick_edit",
+    product: {
+      id: productId,
+      ...nextProduct,
+      updatedAt: new Date().toISOString()
+    }
   };
 }
 
@@ -156,6 +256,10 @@ export async function applyStorefrontAdminAction({ action, payload, adminUid }) 
 
   if (safeAction === "product_status") {
     return updateProductStatus(db, payload, adminUid);
+  }
+
+  if (safeAction === "product_quick_edit") {
+    return updateProductQuickEdit(db, payload, adminUid);
   }
 
   if (safeAction === "collection_status") {
