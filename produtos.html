@@ -43,12 +43,11 @@
                 <div class="hero-copy">
                     <div class="hero-kicker">
                         <i class="fa-solid fa-layer-group"></i>
-                        Studio de catalogo
+                        Catalogo
                     </div>
-                    <h1 class="hero-title font-display">Produtos com cara de atelie, nao de planilha.</h1>
+                    <h1 class="hero-title font-display">Gerenciar produtos</h1>
                     <p class="hero-subtitle">
-                        Organize o catalogo, ajuste variacoes por cor, monte combos, defina a capa certa e deixe
-                        as pecas personalizaveis prontas para venda sob demanda sem sair desta tela.
+                        Cadastre, edite e organize as pecas da loja em uma tela simples.
                     </p>
                 </div>
 
@@ -97,12 +96,11 @@
             <section class="control-panel">
                 <span class="section-kicker">
                     <i class="fa-solid fa-sliders"></i>
-                    Curadoria do acervo
+                    Produtos da loja
                 </span>
-                <h2 class="section-title font-display">Encontre, filtre e ajuste a vitrine rapidamente.</h2>
+                <h2 class="section-title font-display">Buscar e editar produtos</h2>
                 <p class="section-subtitle">
-                    Use a busca para localizar pecas publicadas, filtre por categoria e acompanhe o tamanho real do acervo sem
-                    abrir outra tela.
+                    Use a busca para localizar pecas, filtrar por categoria e editar a vitrine com rapidez.
                 </p>
 
                 <div class="filters-grid">
@@ -215,9 +213,9 @@
                             <i class="fa-solid fa-pencil-ruler"></i>
                             Novo produto
                         </div>
-                        <h2 id="modal-title" class="modal-title font-display">Crie um produto com tudo no lugar.</h2>
+                        <h2 id="modal-title" class="modal-title font-display">Novo produto</h2>
                         <p id="modal-subtitle" class="modal-subtitle">
-                    Defina o posicionamento na vitrine, variacoes por cor, composicao de combo e galeria final antes de publicar.
+                    Edite as informacoes principais, as cores, o combo e as imagens antes de publicar.
                         </p>
                     </div>
                     <button type="button" onclick="fecharModalProduto()" class="modal-close" aria-label="Fechar">
@@ -227,7 +225,7 @@
 
                 <div class="modal-tabs">
                     <button type="button" class="tab-button is-active" data-tab="basic"><i class="fa-solid fa-swatchbook"></i>Informacoes</button>
-                        <button type="button" id="tab-btn-colors" class="tab-button" data-tab="colors"><i class="fa-solid fa-droplet"></i>Cores da peca</button>
+                        <button type="button" id="tab-btn-colors" class="tab-button" data-tab="colors"><i class="fa-solid fa-droplet"></i>Cores</button>
                     <button type="button" id="tab-btn-combo" class="tab-button hidden" data-tab="combo"><i class="fa-solid fa-layer-group"></i>Montar combo</button>
                     <button type="button" class="tab-button" data-tab="images"><i class="fa-solid fa-images"></i>Imagens</button>
                 </div>
@@ -406,7 +404,7 @@
                     <div id="tab-combo" class="tab-panel hidden modal-grid">
                         <div class="combo-help">
                             <span class="section-kicker"><i class="fa-solid fa-link"></i>Montagem inteligente</span>
-                            <h3 class="mt-4 text-xl font-extrabold text-[var(--mocha-deep)]">Monte o combo a partir de pecas ja cadastradas.</h3>
+                            <h3 class="mt-4 text-xl font-extrabold text-[var(--mocha-deep)]">Monte o combo com pecas ja cadastradas.</h3>
                             <p class="mt-2 text-sm leading-7 text-[rgba(32,24,20,0.66)]">O cliente escolhe a variante de cada peca na compra. Aqui voce define so a estrutura do conjunto.</p>
                         </div>
 
@@ -1221,13 +1219,13 @@
                 const product = produtos.find((item) => item.id === productId);
                 if (!product) return;
                 preencherFormularioProduto(product);
-                document.getElementById("modal-title").textContent = "Edite a peca com controle total.";
-                document.getElementById("modal-subtitle").textContent = "Atualize preco, cores, galeria e posicionamento sem sair deste workspace.";
+                document.getElementById("modal-title").textContent = "Editar produto";
+                document.getElementById("modal-subtitle").textContent = "Atualize preco, cores, combo e imagens sem sair desta tela.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Editando produto';
                 document.getElementById("delete-product-btn").classList.remove("hidden");
             } else {
-                document.getElementById("modal-title").textContent = "Crie um produto com tudo no lugar.";
-                document.getElementById("modal-subtitle").textContent = "Defina o posicionamento na vitrine, cores da peca, composicao de combo e galeria final antes de publicar.";
+                document.getElementById("modal-title").textContent = "Novo produto";
+                document.getElementById("modal-subtitle").textContent = "Preencha as informacoes da peca e publique quando estiver pronta.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pencil-ruler"></i> Novo produto';
                 document.getElementById("delete-product-btn").classList.add("hidden");
             }

@@ -970,13 +970,13 @@ async function carregarPerfilUsuario() {
         }
 
         if (heroTitle) {
-            heroTitle.textContent = `${firstName}, seu atelie pessoal de pedidos.`;
+            heroTitle.textContent = `${firstName}, acompanhe seus pedidos aqui.`;
         }
 
         if (heroCopy) {
             heroCopy.textContent = data.telefone
-                ? 'Seu perfil ja esta pronto para deixar os proximos pedidos mais fluido, com suporte e acompanhamento em um so lugar.'
-                : 'Complete seus dados para transformar o proximo pedido em uma experiencia ainda mais rapida e acompanhada.';
+                ? 'Seu perfil ja esta pronto para acompanhar pedidos e falar com o suporte com mais facilidade.'
+                : 'Complete seus dados para agilizar os proximos pedidos e facilitar o atendimento.';
         }
     } catch(e) { console.error("Erro perfil:", e); }
 }

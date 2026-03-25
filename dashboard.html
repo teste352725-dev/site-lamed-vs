@@ -56,9 +56,9 @@
       </div>
 
       <div class="mb-5 rounded-2xl bg-[var(--admin-cream)] p-4">
-        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Operacao unificada</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Painel</p>
         <p class="mt-2 text-sm leading-6 text-slate-600">
-          Produtos, pedidos, chat, colecoes, galeria e scripts agora ficam no mesmo painel.
+          Abra a area desejada pelo menu e trabalhe em um lugar so.
         </p>
       </div>
 
@@ -104,24 +104,23 @@
         <div class="panel-card overflow-hidden rounded-[28px]">
           <div class="grid gap-6 px-6 py-7 md:grid-cols-[1.25fr_0.9fr] md:px-8">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500">Dashboard unificado</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500">Painel principal</p>
               <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-5xl">
-                Tudo do admin num lugar so.
+                Administracao da loja
               </h1>
               <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-                Agora voce consegue operar loja, pedidos, colecoes, galeria, chat e automacoes sem ficar pulando de pagina.
-                Tambem deixei o fluxo de personalizacao e de combos alinhado com o carrinho e com os pedidos.
+                Abra produtos, pedidos, colecoes, galeria, atendimento e outras areas sem trocar de sistema.
               </p>
 
               <div class="mt-6 flex flex-wrap gap-3">
                 <button onclick="changeView('products')" class="rounded-full bg-[--admin-brown] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90">
-                  Organizar catalogo
+                  Produtos
                 </button>
                 <button onclick="changeView('orders')" class="rounded-full border border-[#dfd3c0] bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
-                  Revisar pedidos
+                  Pedidos
                 </button>
                 <button onclick="refreshOverview()" class="rounded-full border border-[#dfd3c0] bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
-                  Atualizar painel
+                  Atualizar
                 </button>
               </div>
             </div>
@@ -130,7 +129,7 @@
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Operacao</p>
-                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Pedidos sob demanda</h2>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Resumo rapido</h2>
                 </div>
                 <div class="flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
                   <span class="loading-dot"></span>
@@ -139,12 +138,12 @@
               </div>
 
               <p class="mt-4 text-sm leading-6 text-slate-600">
-                Como a producao acontece apos a compra, o painel agora prioriza cores, personalizacao e acompanhamento do pedido, sem baixa de estoque.
+                Veja o que precisa de atencao e entre nas areas principais com um toque.
               </p>
 
               <button onclick="changeView('orders')" class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]">
                 <i class="fa-solid fa-receipt"></i>
-                Abrir fila de pedidos
+                Abrir pedidos
               </button>
 
               <div id="sync-status" class="mt-4 hidden rounded-2xl border border-[#d7e5df] bg-white px-4 py-3 text-sm text-slate-600"></div>
@@ -207,7 +206,7 @@
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Pedidos recentes</p>
-                <h2 class="mt-2 text-2xl font-semibold text-slate-900">Ultimas entradas da loja</h2>
+                <h2 class="mt-2 text-2xl font-semibold text-slate-900">Pedidos recentes</h2>
               </div>
               <button onclick="changeView('orders')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
                 Ir para pedidos

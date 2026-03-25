@@ -612,3 +612,69 @@ body.no-scroll {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Simplificacao geral para uso mais intuitivo */
+body {
+    background-color: #f8f6f2;
+}
+
+.main-button {
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.main-button:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.home-filter-btn,
+.home-pagination-btn,
+.accordion-button,
+.admin-inline-chip,
+.admin-fab-link {
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+.home-filter-btn,
+.home-pagination-btn,
+.size-option,
+.admin-inline-chip,
+.admin-fab-link {
+    border-radius: 12px;
+}
+
+.home-filter-btn,
+.home-pagination-btn {
+    font-size: 0.82rem;
+    padding: 0.65rem 0.95rem;
+}
+
+.accordion-button {
+    font-size: 0.92rem;
+}
+
+.size-option {
+    min-width: 3rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.95rem;
+}
+
+.admin-fab-panel {
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.floating-whatsapp {
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.floating-whatsapp:hover {
+    transform: none;
+}
+
+.mobile-bottom-nav {
+    backdrop-filter: none;
+    box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.08);
+}

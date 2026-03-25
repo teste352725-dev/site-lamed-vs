@@ -1058,3 +1058,133 @@ body.account-body {
         color: var(--account-brown);
     }
 }
+
+/* Simplificacao para navegacao mais intuitiva */
+body.account-body {
+    background: #f5f2ec;
+    color: #1f2937;
+}
+
+.account-serif,
+.account-brand-title,
+.account-auth-title,
+#account-hero-title {
+    font-family: "Inter", sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.account-brand-panel::after {
+    display: none;
+}
+
+.account-brand-panel,
+.account-auth-card,
+.account-panel-card,
+.account-order-detail,
+.account-chat-shell,
+.account-profile-panel,
+.account-hero,
+.account-tabbar {
+    background: #ffffff;
+    backdrop-filter: none;
+    border-radius: 18px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.account-brand-title,
+.account-auth-title,
+#account-hero-title {
+    line-height: 1.15;
+}
+
+.account-brand-title {
+    font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.account-auth-title {
+    font-size: clamp(1.7rem, 3vw, 2.2rem);
+}
+
+.account-brand-copy,
+.account-auth-subtitle,
+#account-hero-copy,
+.account-hero-note p,
+.account-benefit-card p {
+    color: #4b5563;
+    line-height: 1.55;
+}
+
+.account-brand-kicker,
+.account-kicker {
+    background: #f7f3ed;
+    border-color: #e5dccf;
+    letter-spacing: 0.08em;
+    padding: 0.45rem 0.8rem;
+}
+
+.account-benefit-card,
+.account-hero-note {
+    border-radius: 14px;
+    background: #f9f7f3;
+    border: 1px solid #e5dccf;
+}
+
+.input-chic,
+.account-chat-input {
+    border: 1px solid #d6c9b5;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    background: #fff;
+}
+
+.input-chic:focus,
+.account-chat-input:focus {
+    border-color: var(--account-brown);
+    box-shadow: 0 0 0 3px rgba(100, 63, 33, 0.1);
+}
+
+.btn-chic,
+.account-secondary-btn,
+.account-soft-btn,
+.account-pill-btn {
+    border-radius: 12px;
+    font-size: 0.95rem;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow: none;
+}
+
+.account-pill-btn,
+.account-secondary-btn,
+.account-soft-btn {
+    border: 1px solid #d6c9b5;
+    background: #fff;
+}
+
+.account-chat-send {
+    box-shadow: none;
+}
+
+@media (max-width: 767px) {
+    .account-hero,
+    .account-brand-panel,
+    .account-auth-card,
+    .account-panel-card,
+    .account-order-detail,
+    .account-chat-shell,
+    .account-profile-panel,
+    .account-tabbar {
+        border-radius: 16px;
+    }
+
+    .account-mobile-nav {
+        backdrop-filter: none;
+        box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.08);
+    }
+
+    .account-mobile-link {
+        font-size: 0.7rem;
+        letter-spacing: 0.02em;
+        text-transform: none;
+    }
+}

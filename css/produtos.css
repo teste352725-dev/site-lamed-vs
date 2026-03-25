@@ -666,3 +666,184 @@
             .modal-footer { position: sticky; bottom: 0; }
         }
 
+        /* Simplificacao visual e de navegacao */
+        body {
+            background: #f5f2ec;
+        }
+
+        body::before,
+        .hero-panel::after,
+        .metric-card::after {
+            display: none;
+        }
+
+        .font-display,
+        .hero-title,
+        .section-title,
+        .modal-title {
+            font-family: "Manrope", sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .page-shell {
+            max-width: 1240px;
+            padding-top: 18px;
+            padding-inline: 14px;
+        }
+
+        .hero-panel,
+        .metric-card,
+        .control-panel,
+        .modal-panel,
+        .gallery-shell,
+        .loading-shell,
+        .empty-shell,
+        .product-card,
+        .modal-shell {
+            background: #ffffff;
+            backdrop-filter: none;
+            border-radius: 18px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+        }
+
+        .hero-panel {
+            position: static;
+            margin-bottom: 18px;
+        }
+
+        .hero-top,
+        .summary-strip,
+        .control-panel,
+        .modal-toolbar,
+        .modal-body,
+        .modal-footer {
+            padding: 18px;
+        }
+
+        .hero-kicker,
+        .section-kicker,
+        .metric-label,
+        .field-label {
+            letter-spacing: 0.08em;
+        }
+
+        .hero-kicker,
+        .section-kicker,
+        .tab-button {
+            background: #f7f3ed;
+            color: var(--mocha-deep);
+            border-color: #e5dccf;
+        }
+
+        .hero-title {
+            font-size: clamp(1.9rem, 4vw, 2.7rem);
+            line-height: 1.15;
+        }
+
+        .hero-subtitle,
+        .section-subtitle,
+        .panel-copy,
+        .metric-caption,
+        .product-card-copy,
+        .modal-subtitle {
+            color: #4b5563;
+            line-height: 1.55;
+        }
+
+        .hero-button,
+        .ghost-button,
+        .action-button,
+        .danger-button,
+        .secondary-button,
+        .primary-button,
+        .tab-button {
+            min-height: 46px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0;
+            text-transform: none;
+            box-shadow: none;
+        }
+
+        .ghost-button,
+        .secondary-button,
+        .action-button,
+        .tab-button {
+            background: #fff;
+            border: 1px solid #d6c9b5;
+        }
+
+        .primary-button,
+        .hero-button {
+            background: var(--mocha);
+        }
+
+        .filters-grid {
+            grid-template-columns: minmax(0, 1.8fr) repeat(2, minmax(0, 1fr));
+        }
+
+        .stack-field input,
+        .stack-field textarea,
+        .stack-field select {
+            min-height: 46px;
+            border-radius: 12px;
+            border-color: #d6c9b5;
+            box-shadow: none;
+        }
+
+        .price-preview,
+        .type-highlight,
+        .personalization-card,
+        .combo-help {
+            border-radius: 14px;
+            box-shadow: none;
+            background: #f9f7f3;
+        }
+
+        .modal-toolbar {
+            background: #f7f3ed;
+            color: var(--mocha-deep);
+            border-bottom-color: #e5dccf;
+        }
+
+        .modal-badge {
+            background: #fff;
+            border-color: #e5dccf;
+            color: var(--mocha-deep);
+        }
+
+        .tab-button.is-active {
+            background: var(--mocha);
+            color: #fff;
+            box-shadow: none;
+        }
+
+        .product-card-body {
+            padding: 14px 14px 16px;
+        }
+
+        .product-card-title {
+            font-size: 1rem;
+        }
+
+        .image-action-btn,
+        .product-tag,
+        .pill-soft,
+        .pill-gold,
+        .pill-emerald,
+        .pill-slate {
+            border-radius: 10px;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        @media (max-width: 960px) {
+            .filters-grid,
+            .summary-strip,
+            .modal-grid.two-up,
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
