@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+﻿import { createHash } from "node:crypto";
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 
 const TAXA_JUROS = 0.0549;
@@ -576,60 +576,78 @@ async function saveUserProfileIfNeeded(db, userId, cliente) {
 
 function buildWhatsAppOrderMessage(orderId, pedido) {
   const paymentKey = getPaymentKey(pedido.pagamento);
-  let message = `*Novo Pedido #${String(orderId).slice(0, 6).toUpperCase()}*\\n`;
-  message += `*Cliente:* ${pedido.cliente.nome}\\n`;
-  message += `*Pagamento:* ${pedido.pagamento}`;
-  if (paymentKey.includes("cartao")) message += ` (${pedido.parcelas}x)`;
-  message += "\\n";
+  const lines = [];
+  const orderCode = String(orderId).slice(0, 6).toUpperCase();
+  const customerName = sanitizePlainText(pedido?.cliente?.nome, 80) || "Cliente";
+  const paymentLabel = sanitizePlainText(pedido?.pagamento, 60) || "A combinar";
+  const postalCode = formatPostalCode(pedido?.cliente?.endereco?.cep);
+
+  lines.push(`*Novo pedido #${orderCode}*`);
+  lines.push(`Cliente: ${customerName}`);
+
+  let paymentLine = `Pagamento: ${paymentLabel}`;
+  if (paymentKey.includes("cartao")) {
+    paymentLine += ` (${pedido.parcelas}x)`;
+  }
+  lines.push(paymentLine);
 
   if (pedido.frete?.serviceId === "manual-pendente") {
-    message += "*Frete:* A combinar apos confirmacao\\n";
-    message += `*CEP:* ${formatPostalCode(pedido.cliente.endereco.cep)}\\n\\n`;
+    lines.push("Frete: a combinar apos confirmacao");
+    if (postalCode) {
+      lines.push(`CEP: ${postalCode}`);
+    }
   } else {
-    message += `*Frete:* ${pedido.frete.company} - ${pedido.frete.name}\\n`;
-    message += `*Entrega estimada:* ${pedido.frete.deliveryTime} dia(s) uteis\\n`;
-    message += `*Valor do frete:* ${formatCurrency(pedido.frete.price)}\\n\\n`;
+    const freightCompany = sanitizePlainText(pedido?.frete?.company, 60);
+    const freightName = sanitizePlainText(pedido?.frete?.name, 80);
+    const freightLabel = [freightCompany, freightName].filter(Boolean).join(" - ") || "Frete selecionado";
+
+    lines.push(`Frete: ${freightLabel}`);
+    lines.push(`Prazo estimado: ${Number(pedido?.frete?.deliveryTime || 0)} dia(s) uteis`);
+    lines.push(`Valor do frete: ${formatCurrency(pedido?.frete?.price)}`);
   }
 
-  message += "*Itens do Pedido:*\\n";
+  lines.push("");
+  lines.push("*Itens do pedido*");
 
-  pedido.produtos.forEach((item) => {
-    message += "------------------------------\\n";
-    message += `- *${item.quantity}x ${item.nome}*\\n`;
+  pedido.produtos.forEach((item, index) => {
+    lines.push(`${index + 1}. ${item.quantity}x ${sanitizePlainText(item.nome, 120)}`);
 
     if (item.isCombo && item.comboSelections) {
-      message += "  _Combo personalizado:_\\n";
+      lines.push("   Combo personalizado:");
       item.componentes.forEach((comp, idx) => {
         const selection = item.comboSelections[idx] || item.comboSelections[String(idx)];
         const color = sanitizePlainText(selection?.cor?.nome, 40) || "Padrao";
         const size = normalizeSizeLabel(selection?.tamanho);
         const detailParts = [color];
-        if (size && size !== "Unico") detailParts.push(`(${size})`);
-        message += `  - ${comp.quantidade}x ${comp.nome} [${detailParts.join(" ")}]\\n`;
+        if (size && size !== "Unico") detailParts.push(size);
+        lines.push(`   - ${comp.quantidade}x ${sanitizePlainText(comp.nome, 120)} (${detailParts.join(" / ")})`);
       });
     } else {
       const detailParts = [];
       const size = normalizeSizeLabel(item.tamanho);
-      if (size && size !== "Unico") detailParts.push(`Tam: ${size}`);
-      if (item.cor?.nome) detailParts.push(`Cor: ${sanitizePlainText(item.cor.nome, 40)}`);
-      if (item.personalizacao?.texto) detailParts.push(`Personalizacao: ${sanitizePlainText(item.personalizacao.texto, 120)}`);
-      if (detailParts.length > 0) message += `  (${detailParts.join(" | ")})\\n`;
+      if (size && size !== "Unico") detailParts.push(`Tam ${size}`);
+      if (item.cor?.nome) detailParts.push(`Cor ${sanitizePlainText(item.cor.nome, 40)}`);
+      if (item.personalizacao?.texto) detailParts.push(`Personalizacao ${sanitizePlainText(item.personalizacao.texto, 120)}`);
+      if (detailParts.length > 0) {
+        lines.push(`   ${detailParts.join(" | ")}`);
+      }
       if (item.personalizacao?.observacoes) {
-        message += `  Obs: ${sanitizePlainText(item.personalizacao.observacoes, 240)}\\n`;
+        lines.push(`   Obs: ${sanitizePlainText(item.personalizacao.observacoes, 240)}`);
       }
     }
 
-    message += `  Valor: ${formatCurrency(item.preco * item.quantity)}\\n`;
+    lines.push(`   Valor: ${formatCurrency(item.preco * item.quantity)}`);
+    lines.push("");
   });
 
-  message += "------------------------------\\n";
-  message += `*Subtotal:* ${formatCurrency(pedido.subtotal)}\\n`;
-  if (pedido.ajustes.pixDiscount > 0) message += `*Desconto PIX:* -${formatCurrency(pedido.ajustes.pixDiscount)}\\n`;
-  if (pedido.ajustes.cardFee > 0) message += `*Taxa Cartao:* +${formatCurrency(pedido.ajustes.cardFee)}\\n`;
-  if (pedido.ajustes.freeShipping) message += `*Desconto no frete:* -${formatCurrency(pedido.frete.originalPrice)}\\n`;
-  message += `*Total Final:* ${formatCurrency(pedido.total)}\\n`;
+  lines.push("*Resumo financeiro*");
+  lines.push(`Subtotal: ${formatCurrency(pedido.subtotal)}`);
+  if (pedido.ajustes.pixDiscount > 0) lines.push(`Desconto PIX: -${formatCurrency(pedido.ajustes.pixDiscount)}`);
+  if (pedido.ajustes.cardFee > 0) lines.push(`Taxa do cartao: +${formatCurrency(pedido.ajustes.cardFee)}`);
+  if (pedido.ajustes.freeShipping) lines.push(`Desconto no frete: -${formatCurrency(pedido.frete.originalPrice)}`);
+  lines.push(`Total final: ${formatCurrency(pedido.total)}`);
 
-  return message;
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function formatCurrency(value) {
@@ -815,3 +833,4 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
 export function isOrderRequestError(error) {
   return error instanceof RequestError;
 }
+

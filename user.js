@@ -512,6 +512,30 @@ async function sendPushSubscriptionToBackend(pathname, token) {
     return payload;
 }
 
+async function sendChatMessageToBackend(payload) {
+    if (!currentUser) {
+        throw new Error('Entre na sua conta para continuar o atendimento.');
+    }
+
+    const authToken = await currentUser.getIdToken();
+    const response = await fetch(buildBackendUrl('/api/chat/send'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const result = await response.json().catch(() => null);
+    if (!response.ok || result?.ok === false) {
+        throw new Error(sanitizePlainText(result?.error || 'Nao foi possivel enviar sua mensagem agora.', 220));
+    }
+
+    return result;
+}
+
 async function ativarPushNotifications() {
     if (pushRequestInFlight || !currentUser) return;
     pushRequestInFlight = true;
@@ -644,8 +668,15 @@ async function iniciarNotificacoesWeb() {
                 messaging.onMessage((payload) => {
                     const title = sanitizePlainText(payload?.notification?.title || payload?.data?.title || 'Laméd vs', 120);
                     const body = sanitizePlainText(payload?.notification?.body || payload?.data?.body || 'Voce recebeu uma nova atualizacao.', 240);
+                    const link = sanitizePlainText(payload?.fcmOptions?.link || payload?.data?.link || 'minha-conta.html#pedidos', 500);
+                    const icon = normalizeImageUrl(payload?.notification?.icon || payload?.data?.icon) || 'https://i.ibb.co/mr93jDHT/JM.png';
                     if (document.visibilityState === 'visible' && Notification.permission === 'granted') {
-                        new Notification(title, { body });
+                        const browserNotification = new Notification(title, { body, icon });
+                        browserNotification.onclick = () => {
+                            window.focus();
+                            window.location.href = link;
+                            browserNotification.close();
+                        };
                     }
                 });
             }
@@ -1153,6 +1184,12 @@ function carregarMeusPedidos() {
 
             if (preferredOrderId) {
                 selectAccountOrder(preferredOrderId, { updateLocation: true });
+                if (window.location.hash === '#chat' && (!activeChatOrderId || activeChatOrderId === preferredOrderId)) {
+                    activeChatOrderId = preferredOrderId;
+                    activeChatThreadId = `pedido:${preferredOrderId}`;
+                    updateChatOrderContextUI();
+                    renderChatThreadList();
+                }
             }
         }, (error) => {
             console.error('Erro ao carregar pedidos:', error);
@@ -1284,31 +1321,23 @@ function iniciarChat() {
         const inp = document.getElementById('message-input');
         const text = sanitizePlainText(inp.value, 1000);
         if(!text) return;
-        inp.value = '';
-        const userName = sanitizePlainText(currentUser.displayName || 'Cliente', 80) || 'Cliente';
-        const messageText = buildSupportPrefixedMessage(text, activeChatOrderId);
-        const threadLabel = activeChatOrderId ? `Pedido ${getOrderCode(activeChatOrderId)}` : 'Conversa geral';
-        
-        const ts = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection('chats').doc(chatId).collection('messages').add({
-            text: messageText,
-            sender: 'user',
-            timestamp: ts,
-            userName,
-            threadId: activeChatThreadId || 'geral',
-            threadLabel,
-            orderId: activeChatOrderId || ''
-        });
-        await db.collection('chats_ativos').doc(chatId).set({
-            lastMessage: messageText.slice(0, 140),
-            lastUpdate: ts,
-            userName,
-            userId: chatId,
-            unread: true,
-            activeThreadId: activeChatThreadId || 'geral',
-            activeThreadLabel: threadLabel,
-            orderId: activeChatOrderId || ''
-        }, {merge: true});
+        inp.disabled = true;
+
+        try {
+            await sendChatMessageToBackend({
+                chatId,
+                text,
+                threadId: activeChatThreadId || 'geral',
+                orderId: activeChatOrderId || ''
+            });
+            inp.value = '';
+        } catch (error) {
+            console.error('[chat.user.send]', error);
+            alert(sanitizePlainText(error?.message || 'Nao foi possivel enviar sua mensagem agora.', 220));
+        } finally {
+            inp.disabled = false;
+            inp.focus();
+        }
     }
 }
 

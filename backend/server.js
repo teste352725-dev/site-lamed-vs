@@ -2,9 +2,11 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import fs from "fs";
+import { createChatMessageFromBody, isChatRequestError } from "../api/_chat.mjs";
 import { getFirebaseAdminStatus } from "../api/_firebase-admin.mjs";
 import { createOrderFromBody, isOrderRequestError } from "../api/_orders.mjs";
 import { enforceInMemoryRateLimit, getClientAddress } from "../api/_security.mjs";
+import { isSessionRequestError, resolveAuthenticatedUser } from "../api/_session.mjs";
 import { getShippingHealth, isShippingApiEnabled, requestShippingQuote } from "../api/_shipping.mjs";
 
 dotenv.config();
@@ -569,6 +571,28 @@ app.post("/api/orders/create", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: String(error?.message || "Erro ao criar o pedido.")
+    });
+  }
+});
+
+app.post("/api/chat/send", async (req, res) => {
+  try {
+    const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
+    const decodedUser = await resolveAuthenticatedUser(authorizationHeader);
+    const result = await createChatMessageFromBody(req.body, decodedUser);
+    return res.status(201).json(result);
+  } catch (error) {
+    if (isSessionRequestError(error) || isChatRequestError(error)) {
+      return res.status(Number(error.status) || 400).json({
+        ok: false,
+        error: String(error.message || "Nao foi possivel enviar a mensagem.")
+      });
+    }
+
+    console.error("[chat.send]", error);
+    return res.status(500).json({
+      ok: false,
+      error: "Nao foi possivel enviar a mensagem agora."
     });
   }
 });

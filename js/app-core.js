@@ -19,6 +19,8 @@ try {
 
 const db = firebase.firestore();
 const auth = firebase.auth();
+const ADMIN_UIDS = new Set(["NoGsCqiKc0VJwWb6rppk7QVLV1B2"]);
+const CATALOG_SETTINGS_DOC_ID = "__catalog_settings";
 
 // Vari?veis Globais
 let products = [];
@@ -29,11 +31,20 @@ let selectedSize = null;
 let selectedColor = null;
 let comboSelections = {};
 let currentUser = null;
+let currentUserIsAdmin = false;
+let storefrontForegroundPushBound = false;
 const TAXA_JUROS = 0.0549;
 let currentHomeFilter = 'all';
 let currentHomePage = 1;
 const HOME_PAGE_SIZE = 10;
 const API_BASE_URL = resolveApiBaseUrl();
+const adminRealtimeUnsubscribers = [];
+const adminPanelState = {
+    products: [],
+    collections: [],
+    categories: [],
+    chats: []
+};
 
 // Controle Carrossel
 let mainSplideInstance = null;
@@ -91,6 +102,15 @@ const elements = {
     collectionsContainer: document.getElementById('collections-container'),
     favoriteBtn: document.getElementById('btn-favorite'),
     userIconLink: document.getElementById('header-user-icon-link'),
+    adminModePanel: document.getElementById('admin-mode-panel'),
+    adminProductsList: document.getElementById('admin-products-list'),
+    adminCollectionsList: document.getElementById('admin-collections-list'),
+    adminCategoriesList: document.getElementById('admin-categories-list'),
+    adminChatsList: document.getElementById('admin-chats-list'),
+    adminStatProducts: document.getElementById('admin-stat-products'),
+    adminStatCollections: document.getElementById('admin-stat-collections'),
+    adminStatCategories: document.getElementById('admin-stat-categories'),
+    adminStatChats: document.getElementById('admin-stat-chats'),
     
     // Auth Modal
     authPromptModal: document.getElementById('auth-prompt-modal'),
@@ -153,6 +173,290 @@ function updateMobileBottomNavState() {
     });
 }
 
+async function isAuthorizedAdminUser(user) {
+    if (!user) return false;
+    if (ADMIN_UIDS.has(user.uid)) return true;
+
+    try {
+        const tokenResult = await user.getIdTokenResult();
+        return tokenResult?.claims?.admin === true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function clearAdminRealtimeListeners() {
+    while (adminRealtimeUnsubscribers.length) {
+        const unsubscribe = adminRealtimeUnsubscribers.pop();
+        if (typeof unsubscribe === 'function') {
+            unsubscribe();
+        }
+    }
+}
+
+function formatAdminTimestamp(value) {
+    if (typeof value?.toDate === 'function') {
+        return value.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+    if (typeof value?.seconds === 'number') {
+        return new Date(value.seconds * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+    return 'Agora';
+}
+
+function createAdminInlineAction(label, variant = 'muted') {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = variant === 'danger'
+        ? 'rounded-full border border-[#D8BCA4] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#8E5D3A] hover:bg-[#FFF4E6]'
+        : 'rounded-full border border-[#E4D2BC] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B5139] hover:bg-[#FFFCF6]';
+    button.textContent = label;
+    return button;
+}
+
+function createAdminMetaLine(primary, secondary = '') {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'rounded-[20px] border border-[#EFE2D0] bg-[#FFFCF7] px-4 py-3';
+
+    const title = document.createElement('div');
+    title.className = 'text-sm font-semibold text-[#2F2015]';
+    title.textContent = primary;
+
+    const subtitle = document.createElement('div');
+    subtitle.className = 'mt-1 text-xs text-[#7A6E62]';
+    subtitle.textContent = secondary;
+
+    wrapper.appendChild(title);
+    wrapper.appendChild(subtitle);
+    return wrapper;
+}
+
+function renderAdminModePanel() {
+    if (!elements.adminModePanel) return;
+
+    elements.adminStatProducts.textContent = String(adminPanelState.products.length);
+    elements.adminStatCollections.textContent = String(adminPanelState.collections.length);
+    elements.adminStatCategories.textContent = String(adminPanelState.categories.filter((item) => item.ativa !== false).length);
+    elements.adminStatChats.textContent = String(adminPanelState.chats.filter((chat) => chat.unread === true).length || adminPanelState.chats.length);
+
+    const renderList = (container, emptyMessage, builder) => {
+        if (!container) return;
+        container.replaceChildren();
+
+        const nodes = builder();
+        if (!nodes.length) {
+            const empty = document.createElement('p');
+            empty.className = 'text-sm text-[#8D8175]';
+            empty.textContent = emptyMessage;
+            container.appendChild(empty);
+            return;
+        }
+
+        nodes.forEach((node) => container.appendChild(node));
+    };
+
+    renderList(elements.adminProductsList, 'Nenhuma peca carregada.', () => adminPanelState.products.slice(0, 4).map((product) => {
+        const row = createAdminMetaLine(
+            sanitizePlainText(product.nome || 'Produto', 90),
+            `${sanitizePlainText(product.status === 'active' ? 'Ativo' : 'Inativo', 20)} • ${sanitizePlainText(product.categoria || 'Sem categoria', 40)}`
+        );
+        const action = createAdminInlineAction(product.status === 'active' ? 'Desativar' : 'Ativar', 'danger');
+        action.addEventListener('click', async () => {
+            action.disabled = true;
+            try {
+                await toggleAdminProductStatus(product.id, product.status === 'active' ? 'inactive' : 'active');
+            } finally {
+                action.disabled = false;
+            }
+        });
+        row.appendChild(action);
+        return row;
+    }));
+
+    renderList(elements.adminCollectionsList, 'Nenhuma colecao carregada.', () => adminPanelState.collections.slice(0, 4).map((collection) => {
+        const row = createAdminMetaLine(
+            sanitizePlainText(collection.nome || 'Colecao', 90),
+            collection.ativa ? 'Em destaque no site' : 'Oculta na vitrine'
+        );
+        const action = createAdminInlineAction(collection.ativa ? 'Pausar' : 'Ativar');
+        action.addEventListener('click', async () => {
+            action.disabled = true;
+            try {
+                await toggleAdminCollectionStatus(collection.id, !collection.ativa);
+            } finally {
+                action.disabled = false;
+            }
+        });
+        row.appendChild(action);
+        return row;
+    }));
+
+    renderList(elements.adminCategoriesList, 'Nenhuma categoria configurada.', () => adminPanelState.categories.slice(0, 5).map((category) => {
+        const row = createAdminMetaLine(
+            sanitizePlainText(category.nome || 'Categoria', 90),
+            category.ativa !== false ? 'Visivel nos filtros da loja' : 'Oculta para a cliente'
+        );
+        const action = createAdminInlineAction(category.ativa !== false ? 'Ocultar' : 'Exibir');
+        action.addEventListener('click', async () => {
+            action.disabled = true;
+            try {
+                await toggleAdminCategoryStatus(category.slug);
+            } finally {
+                action.disabled = false;
+            }
+        });
+        row.appendChild(action);
+        return row;
+    }));
+
+    renderList(elements.adminChatsList, 'Nenhum chat ativo agora.', () => adminPanelState.chats.slice(0, 4).map((chat) => {
+        const row = createAdminMetaLine(
+            sanitizePlainText(chat.userName || 'Cliente', 90),
+            `${sanitizePlainText(chat.lastMessage || 'Sem mensagens ainda.', 100)} • ${formatAdminTimestamp(chat.lastUpdate)}`
+        );
+        const link = document.createElement('a');
+        link.href = `chat-admin.html?chat=${encodeURIComponent(chat.id)}&thread=${encodeURIComponent(sanitizePlainText(chat.activeThreadId, 120) || 'geral')}&pedido=${encodeURIComponent(sanitizePlainText(chat.orderId, 120))}`;
+        link.className = 'inline-flex items-center justify-center rounded-full border border-[#E4D2BC] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B5139] hover:bg-[#FFFCF6]';
+        link.textContent = chat.unread ? 'Abrir agora' : 'Abrir chat';
+        row.appendChild(link);
+        return row;
+    }));
+}
+
+async function toggleAdminProductStatus(productId, nextStatus) {
+    if (!currentUserIsAdmin || !productId) return;
+    await db.collection('pecas').doc(productId).update({
+        status: nextStatus,
+        updatedAt: new Date()
+    });
+}
+
+async function toggleAdminCollectionStatus(collectionId, nextActive) {
+    if (!currentUserIsAdmin || !collectionId) return;
+    await db.collection('colecoes').doc(collectionId).update({
+        ativa: nextActive,
+        updatedAt: new Date()
+    });
+}
+
+async function toggleAdminCategoryStatus(categorySlug) {
+    if (!currentUserIsAdmin || !categorySlug) return;
+
+    const nextCategories = adminPanelState.categories.map((category) => (
+        category.slug === categorySlug
+            ? { ...category, ativa: category.ativa === false }
+            : category
+    ));
+
+    await db.collection('colecoes').doc(CATALOG_SETTINGS_DOC_ID).set({
+        kind: 'catalog_settings',
+        categorias: nextCategories.map((category, index) => ({
+            slug: sanitizePlainText(category.slug, 60),
+            nome: sanitizePlainText(category.nome, 80),
+            ordem: Number.isFinite(Number(category.ordem)) ? Number(category.ordem) : index * 10 + 10,
+            ativa: category.ativa !== false
+        })),
+        updatedAt: new Date()
+    }, { merge: true });
+}
+
+function startAdminRealtimePanel() {
+    clearAdminRealtimeListeners();
+    if (!currentUserIsAdmin || !elements.adminModePanel) return;
+
+    elements.adminModePanel.classList.remove('hidden');
+
+    adminRealtimeUnsubscribers.push(
+        db.collection('pecas').onSnapshot((snapshot) => {
+            adminPanelState.products = snapshot.docs
+                .map((doc) => ({ id: doc.id, ...doc.data() }))
+                .sort((left, right) => String(left.nome || '').localeCompare(String(right.nome || ''), 'pt-BR'));
+            renderAdminModePanel();
+        })
+    );
+
+    adminRealtimeUnsubscribers.push(
+        db.collection('colecoes').onSnapshot((snapshot) => {
+            const collections = [];
+            let categories = adminPanelState.categories;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data() || {};
+                if (doc.id === CATALOG_SETTINGS_DOC_ID || data.kind === 'catalog_settings') {
+                    categories = Array.isArray(data.categorias) ? data.categorias : [];
+                    return;
+                }
+
+                collections.push({ id: doc.id, ...data });
+            });
+
+            adminPanelState.collections = collections.sort((left, right) => Number(left.ordem || 0) - Number(right.ordem || 0));
+            adminPanelState.categories = categories
+                .map((category, index) => ({
+                    slug: sanitizePlainText(category?.slug, 60),
+                    nome: sanitizePlainText(category?.nome || category?.slug, 80),
+                    ordem: Number.isFinite(Number(category?.ordem)) ? Number(category.ordem) : index * 10 + 10,
+                    ativa: category?.ativa !== false
+                }))
+                .filter((category) => category.slug);
+            renderAdminModePanel();
+        })
+    );
+
+    adminRealtimeUnsubscribers.push(
+        db.collection('chats_ativos').onSnapshot((snapshot) => {
+            adminPanelState.chats = snapshot.docs
+                .map((doc) => ({ id: doc.id, ...doc.data() }))
+                .sort((left, right) => {
+                    const leftTime = typeof left.lastUpdate?.seconds === 'number' ? left.lastUpdate.seconds : 0;
+                    const rightTime = typeof right.lastUpdate?.seconds === 'number' ? right.lastUpdate.seconds : 0;
+                    return rightTime - leftTime;
+                });
+            renderAdminModePanel();
+        })
+    );
+}
+
+function updateAdminModeExperience(isAdmin) {
+    if (elements.adminModePanel) {
+        elements.adminModePanel.classList.toggle('hidden', !isAdmin);
+    }
+
+    if (!isAdmin) {
+        clearAdminRealtimeListeners();
+    } else {
+        startAdminRealtimePanel();
+    }
+}
+
+function bindStorefrontForegroundNotifications() {
+    if (storefrontForegroundPushBound) return;
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    if (!firebase.messaging || typeof firebase.messaging !== 'function') return;
+
+    try {
+        const messaging = firebase.messaging();
+        if (!messaging || typeof messaging.onMessage !== 'function') return;
+
+        storefrontForegroundPushBound = true;
+        messaging.onMessage((payload) => {
+            const title = sanitizePlainText(payload?.notification?.title || payload?.data?.title || 'Lamed VS', 120);
+            const body = sanitizePlainText(payload?.notification?.body || payload?.data?.body || 'Voce recebeu uma nova atualizacao.', 240);
+            const link = sanitizePlainText(payload?.fcmOptions?.link || payload?.data?.link || 'minha-conta.html#pedidos', 500);
+            const icon = normalizeUrl(payload?.notification?.icon || payload?.data?.icon) || 'https://i.ibb.co/mr93jDHT/JM.png';
+
+            const browserNotification = new Notification(title, { body, icon });
+            browserNotification.onclick = () => {
+                window.focus();
+                window.location.href = link;
+                browserNotification.close();
+            };
+        });
+    } catch (error) {
+        storefrontForegroundPushBound = false;
+    }
+}
+
 // --- INIT ---
 function init() {
     console.log('Inicializando...');
@@ -162,7 +466,10 @@ function init() {
 
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
-        atualizarInterfaceUsuario(user);
+        currentUserIsAdmin = await isAuthorizedAdminUser(user);
+        await atualizarInterfaceUsuario(user, currentUserIsAdmin);
+        updateAdminModeExperience(currentUserIsAdmin);
+        bindStorefrontForegroundNotifications();
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
         checkAuthPrompt(user);
         if (typeof syncCheckoutAccountUI === 'function') syncCheckoutAccountUI();
@@ -848,7 +1155,7 @@ function toggleSidebarCollections() {
 }
 
 // --- ATUALIZAÃ‡ÃƒO DO USU?RIO ---
-async function atualizarInterfaceUsuario(user) {
+async function atualizarInterfaceUsuario(user, isAdmin = false) {
     const sidebarUserArea = elements.sidebarUserArea;
     if (!sidebarUserArea) return;
 
@@ -891,6 +1198,13 @@ async function atualizarInterfaceUsuario(user) {
 
         textWrap.appendChild(hello);
         textWrap.appendChild(name);
+        if (isAdmin) {
+            const adminLink = document.createElement('a');
+            adminLink.href = 'dashboard.html';
+            adminLink.className = 'mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#A58A5C] hover:underline';
+            adminLink.textContent = 'Modo admin';
+            textWrap.appendChild(adminLink);
+        }
         sidebarUserArea.appendChild(avatar);
         sidebarUserArea.appendChild(textWrap);
         return;

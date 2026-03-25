@@ -1178,11 +1178,6 @@ async function finalizarPedido(formData) {
         }
 
         const whatsappUrl = String(payload?.whatsappUrl || '').trim();
-        if (whatsappUrl) {
-            window.open(whatsappUrl, '_blank');
-        } else if (payload?.whatsappMessage) {
-            window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(String(payload.whatsappMessage))}`, '_blank');
-        }
 
         cart = [];
         localStorage.setItem('lamedCart', '[]');
@@ -1204,6 +1199,12 @@ async function finalizarPedido(formData) {
 
             window.location.href = `minha-conta.html?pedido=${encodeURIComponent(String(payload.orderId))}#pedidos`;
             return;
+        }
+
+        if (whatsappUrl) {
+            window.open(whatsappUrl, '_blank', 'noopener');
+        } else if (payload?.whatsappMessage) {
+            window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(String(payload.whatsappMessage))}`, '_blank', 'noopener');
         }
     } catch (error) {
         console.error(error);

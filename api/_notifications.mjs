@@ -4,6 +4,7 @@ import { FieldValue, getAdminDb, getAdminMessaging, getFirebaseAdminStatus } fro
 const PUSH_COLLECTION = "push_subscriptions";
 const DEFAULT_NOTIFICATION_ICON = "https://i.ibb.co/mr93jDHT/JM.png";
 const DEFAULT_CLICK_BASE_URL = "https://www.lamedvs.com.br";
+const DEFAULT_ADMIN_NOTIFICATION_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 
 class NotificationRequestError extends Error {
   constructor(status, message, details = {}) {
@@ -71,6 +72,97 @@ function buildStatusNotification(order, nextStatus) {
       orderId: sanitizePlainText(order?.id, 80),
       status: sanitizePlainText(nextStatus, 40)
     }
+  };
+}
+
+function getAdminNotificationUserIds() {
+  const configured = String(process.env.ADMIN_NOTIFICATION_UIDS || "")
+    .split(",")
+    .map((item) => sanitizePlainText(item, 128))
+    .filter(Boolean);
+
+  const merged = new Set([...DEFAULT_ADMIN_NOTIFICATION_UIDS, ...configured]);
+  return [...merged];
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+async function getActivePushTargetsByUserIds(userIds) {
+  const db = getAdminDb();
+  const safeUserIds = [...new Set((Array.isArray(userIds) ? userIds : []).map((item) => sanitizePlainText(item, 128)).filter(Boolean))];
+  if (!safeUserIds.length) {
+    return { tokens: [], tokenDocIds: [] };
+  }
+
+  const tokens = [];
+  const tokenDocIds = [];
+
+  for (const chunk of chunkArray(safeUserIds, 10)) {
+    const snapshot = await db.collection(PUSH_COLLECTION)
+      .where("userId", "in", chunk)
+      .where("enabled", "==", true)
+      .get();
+
+    snapshot.forEach((doc) => {
+      const data = doc.data() || {};
+      const token = normalizePushToken(data.token);
+      if (!token) return;
+      tokens.push(token);
+      tokenDocIds.push(doc.id);
+    });
+  }
+
+  return { tokens, tokenDocIds };
+}
+
+async function sendNotificationToUsers({ userIds, title, body, link, data }) {
+  const firebaseAdmin = getFirebaseAdminStatus();
+  if (!firebaseAdmin.configured) {
+    return { sent: 0, skipped: true, reason: "firebase_admin_not_configured" };
+  }
+
+  const { tokens, tokenDocIds } = await getActivePushTargetsByUserIds(userIds);
+  if (!tokens.length) {
+    return { sent: 0, skipped: true, reason: "no_active_tokens" };
+  }
+
+  const response = await getAdminMessaging().sendEachForMulticast({
+    tokens,
+    data: normalizeDataPayload(data),
+    webpush: {
+      notification: {
+        title: sanitizePlainText(title, 120),
+        body: sanitizePlainText(body, 240),
+        icon: getNotificationIconUrl()
+      },
+      fcmOptions: {
+        link: sanitizePlainText(link, 500)
+      }
+    }
+  });
+
+  const invalidDocIds = [];
+  response.responses.forEach((item, index) => {
+    if (item.success) return;
+    const errorCode = String(item.error?.code || "");
+    if (errorCode === "messaging/registration-token-not-registered" || errorCode === "messaging/invalid-argument") {
+      invalidDocIds.push(tokenDocIds[index]);
+    }
+  });
+
+  if (invalidDocIds.length) {
+    await disableInvalidTokens(invalidDocIds);
+  }
+
+  return {
+    sent: response.successCount,
+    failed: response.failureCount
   };
 }
 
@@ -185,61 +277,53 @@ export async function sendOrderStatusNotification({ order, nextStatus }) {
     return { sent: 0, skipped: true, reason: "order_without_user" };
   }
 
-  const db = getAdminDb();
-  const snapshot = await db.collection(PUSH_COLLECTION)
-    .where("userId", "==", safeUserId)
-    .where("enabled", "==", true)
-    .get();
-
-  if (snapshot.empty) {
-    return { sent: 0, skipped: true, reason: "no_active_tokens" };
-  }
-
-  const tokens = [];
-  const tokenDocIds = [];
-  snapshot.forEach((doc) => {
-    const data = doc.data() || {};
-    const token = normalizePushToken(data.token);
-    if (!token) return;
-    tokens.push(token);
-    tokenDocIds.push(doc.id);
-  });
-
-  if (!tokens.length) {
-    return { sent: 0, skipped: true, reason: "no_valid_tokens" };
-  }
-
   const notification = buildStatusNotification(order, nextStatus);
-  const response = await getAdminMessaging().sendEachForMulticast({
-    tokens,
-    data: normalizeDataPayload(notification.data),
-    webpush: {
-      notification: {
-        title: notification.title,
-        body: notification.body,
-        icon: getNotificationIconUrl()
-      },
-      fcmOptions: {
-        link: notification.link
-      }
-    }
+  return sendNotificationToUsers({
+    userIds: [safeUserId],
+    title: notification.title,
+    body: notification.body,
+    link: notification.link,
+    data: notification.data
   });
+}
 
-  const invalidDocIds = [];
-  response.responses.forEach((item, index) => {
-    if (item.success) return;
-    const errorCode = String(item.error?.code || "");
-    if (errorCode === "messaging/registration-token-not-registered" || errorCode === "messaging/invalid-argument") {
-      invalidDocIds.push(tokenDocIds[index]);
-    }
-  });
-
-  if (invalidDocIds.length) {
-    await disableInvalidTokens(invalidDocIds);
+export async function sendChatMessageNotification({ sender, chatId, senderName, text, orderId, threadId, threadLabel }) {
+  const safeChatId = sanitizePlainText(chatId, 128);
+  if (!safeChatId) {
+    return { sent: 0, skipped: true, reason: "chat_without_user" };
   }
 
-  return {
-    sent: response.successCount,
-    failed: response.failureCount
-  };
+  const safeThreadLabel = sanitizePlainText(threadLabel, 120) || (orderId ? `Pedido #${sanitizePlainText(orderId, 24).slice(0, 6).toUpperCase()}` : "Conversa geral");
+  const safeBody = sanitizePlainText(text, 180);
+  const baseUrl = getClickBaseUrl().replace(/\/+$/, "");
+
+  if (sender === "user") {
+    return sendNotificationToUsers({
+      userIds: getAdminNotificationUserIds(),
+      title: "Nova mensagem no atendimento",
+      body: `${sanitizePlainText(senderName || "Cliente", 60)}: ${safeBody}`,
+      link: `${baseUrl}/chat-admin.html?chat=${encodeURIComponent(safeChatId)}&thread=${encodeURIComponent(sanitizePlainText(threadId, 120) || "geral")}&pedido=${encodeURIComponent(sanitizePlainText(orderId, 120))}`,
+      data: {
+        screen: "admin-chat",
+        chatId: safeChatId,
+        orderId: sanitizePlainText(orderId, 120),
+        threadId: sanitizePlainText(threadId, 120) || "geral",
+        threadLabel: safeThreadLabel
+      }
+    });
+  }
+
+  return sendNotificationToUsers({
+    userIds: [safeChatId],
+    title: orderId ? `Nova resposta sobre ${safeThreadLabel}` : "Nova resposta do suporte",
+    body: safeBody || "A equipe respondeu sua mensagem.",
+    link: `${baseUrl}/minha-conta.html${orderId ? `?pedido=${encodeURIComponent(sanitizePlainText(orderId, 120))}` : ""}#chat`,
+    data: {
+      screen: "chat",
+      chatId: safeChatId,
+      orderId: sanitizePlainText(orderId, 120),
+      threadId: sanitizePlainText(threadId, 120) || "geral",
+      threadLabel: safeThreadLabel
+    }
+  });
 }

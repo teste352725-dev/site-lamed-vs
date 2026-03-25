@@ -74,7 +74,97 @@
                 </button>
             </div>
         </div>
-    </header>
+</header>
+
+    <section id="admin-mode-panel" class="hidden border-b border-[#E5E0D8] bg-[#FFF8EE]">
+        <div class="container mx-auto max-w-7xl px-4 py-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div class="max-w-3xl">
+                    <span class="inline-flex items-center gap-2 rounded-full border border-[#E7D6BD] bg-white px-4 py-2 text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#8B6A45]">
+                        <i class="fa-solid fa-shield-heart"></i>
+                        Modo admin ativo
+                    </span>
+                    <h2 class="mt-4 serif text-3xl md:text-4xl font-light text-[--cor-texto]">A loja se adapta para quem cuida do atelie.</h2>
+                    <p class="mt-3 max-w-2xl text-sm leading-7 text-[#6C625A]">
+                        Veja conversas ativas, altere o que esta visivel no site e acesse o painel completo sem sair da home.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <a href="dashboard.html" class="inline-flex items-center gap-2 rounded-full bg-[--cor-marrom-cta] px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-white shadow-sm hover:opacity-90">
+                        <i class="fa-solid fa-grid-2"></i>
+                        Dashboard completo
+                    </a>
+                    <a href="chat-admin.html" class="inline-flex items-center gap-2 rounded-full border border-[#D7C2A5] px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-[--cor-marrom-cta] hover:bg-white">
+                        <i class="fa-regular fa-comments"></i>
+                        Abrir atendimento
+                    </a>
+                    <a href="minha-conta.html#dados" class="inline-flex items-center gap-2 rounded-full border border-[#D7C2A5] px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] text-[--cor-marrom-cta] hover:bg-white">
+                        <i class="fa-regular fa-bell"></i>
+                        Notificacoes
+                    </a>
+                </div>
+            </div>
+
+            <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Pecas</p>
+                            <strong id="admin-stat-products" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
+                            <p class="mt-1 text-xs text-[#7B7167]">Controle rapido da vitrine.</p>
+                        </div>
+                        <i class="fa-solid fa-shirt text-2xl text-[#C09D6C]"></i>
+                    </div>
+                    <div id="admin-products-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
+                        <p class="text-sm text-[#8D8175]">Carregando pecas...</p>
+                    </div>
+                </article>
+
+                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Colecoes</p>
+                            <strong id="admin-stat-collections" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
+                            <p class="mt-1 text-xs text-[#7B7167]">Ative ou pause destaques.</p>
+                        </div>
+                        <i class="fa-solid fa-layer-group text-2xl text-[#C09D6C]"></i>
+                    </div>
+                    <div id="admin-collections-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
+                        <p class="text-sm text-[#8D8175]">Carregando colecoes...</p>
+                    </div>
+                </article>
+
+                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Categorias</p>
+                            <strong id="admin-stat-categories" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
+                            <p class="mt-1 text-xs text-[#7B7167]">Esconda ou exiba filtros da loja.</p>
+                        </div>
+                        <i class="fa-solid fa-tags text-2xl text-[#C09D6C]"></i>
+                    </div>
+                    <div id="admin-categories-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
+                        <p class="text-sm text-[#8D8175]">Carregando categorias...</p>
+                    </div>
+                </article>
+
+                <article class="rounded-[28px] border border-[#E7D6BD] bg-white/90 p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Chats</p>
+                            <strong id="admin-stat-chats" class="mt-3 block text-3xl text-[#2F2015]">0</strong>
+                            <p class="mt-1 text-xs text-[#7B7167]">Conversas abertas no momento.</p>
+                        </div>
+                        <i class="fa-regular fa-comments text-2xl text-[#C09D6C]"></i>
+                    </div>
+                    <div id="admin-chats-list" class="mt-5 space-y-3 text-sm text-[#54483E]">
+                        <p class="text-sm text-[#8D8175]">Carregando conversas...</p>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
 
     <!-- SIDEBAR (MENU LATERAL ESQUERDO) -->
     <div id="sidebar-overlay" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-opacity hidden"></div>

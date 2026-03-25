@@ -207,6 +207,15 @@
         let currentThreadId = 'geral';
         let currentThreadOrderId = '';
         let currentMessagesCache = [];
+        const initialChatRoute = (() => {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                chatId: sanitizePlainText(params.get('chat'), 120),
+                threadId: sanitizePlainText(params.get('thread'), 120),
+                orderId: sanitizePlainText(params.get('pedido'), 120),
+                used: false
+            };
+        })();
 
         async function isAuthorizedAdmin(user) {
             if (!user) return false;
@@ -234,6 +243,14 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+
+        function buildApiUrl(pathname) {
+            const safePath = String(pathname || '').startsWith('/') ? pathname : `/${pathname || ''}`;
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return `http://localhost:3001${safePath}`;
+            }
+            return safePath;
         }
 
         function buildInitial(name) {
@@ -334,6 +351,31 @@
                 const messageThreadId = sanitizePlainText(message?.threadId, 120) || 'geral';
                 return messageThreadId === currentThreadId;
             });
+        }
+
+        async function sendAdminChatMessageToBackend(payload) {
+            const authenticatedUser = auth.currentUser;
+            if (!authenticatedUser) {
+                throw new Error('Entre novamente antes de responder o chat.');
+            }
+
+            const authToken = await authenticatedUser.getIdToken();
+            const response = await fetch(buildApiUrl('/api/chat/send'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${authToken}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json().catch(() => null);
+            if (!response.ok || result?.ok === false) {
+                throw new Error(sanitizePlainText(result?.error || 'Nao foi possivel enviar a mensagem agora.', 220));
+            }
+
+            return result;
         }
 
         function atualizarEstatisticasChat() {
@@ -510,9 +552,12 @@
             document.getElementById('chat-empty-state').classList.add('hidden');
             document.getElementById('chat-workspace').classList.remove('hidden');
             const currentChatMeta = chatsMeta.find((item) => item.id === chatId) || {};
-            currentThreadId = sanitizePlainText(currentChatMeta.activeThreadId, 120) || 'geral';
-            currentThreadOrderId = sanitizePlainText(currentChatMeta.orderId, 120);
+            const routeThreadId = initialChatRoute.chatId === chatId ? initialChatRoute.threadId : '';
+            const routeOrderId = initialChatRoute.chatId === chatId ? initialChatRoute.orderId : '';
+            currentThreadId = routeThreadId || sanitizePlainText(currentChatMeta.activeThreadId, 120) || 'geral';
+            currentThreadOrderId = routeOrderId || sanitizePlainText(currentChatMeta.orderId, 120);
             currentMessagesCache = [];
+            initialChatRoute.used = initialChatRoute.chatId === chatId;
 
             db.collection('chats_ativos').doc(chatId).update({ unread: false }).catch(() => {});
 
@@ -547,6 +592,14 @@
                     atualizarEstatisticasChat();
                     renderizarListaChats();
 
+                    if (!currentChatId && !initialChatRoute.used && initialChatRoute.chatId) {
+                        const preferredChat = chatsMeta.find((item) => item.id === initialChatRoute.chatId);
+                        if (preferredChat) {
+                            abrirChat(preferredChat.id, sanitizePlainText(preferredChat.userName, 80));
+                            return;
+                        }
+                    }
+
                     if (currentChatId && !chatsMeta.find((item) => item.id === currentChatId)) {
                         currentChatId = null;
                         currentThreadId = 'geral';
@@ -564,26 +617,12 @@
             const cleanText = sanitizePlainText(text, 1000);
             if (!cleanText) return;
 
-            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
-            const threadId = currentThreadId || 'geral';
-            const threadLabel = getThreadLabel(threadId, '', currentThreadOrderId);
-            await db.collection('chats').doc(currentChatId).collection('messages').add({
+            await sendAdminChatMessageToBackend({
+                chatId: currentChatId,
                 text: cleanText,
-                sender: 'admin',
-                timestamp,
-                threadId,
-                threadLabel,
+                threadId: currentThreadId || 'geral',
                 orderId: currentThreadOrderId || ''
             });
-
-            await db.collection('chats_ativos').doc(currentChatId).set({
-                lastMessage: `Voce: ${cleanText}`,
-                lastUpdate: timestamp,
-                unread: false,
-                activeThreadId: threadId,
-                activeThreadLabel: threadLabel,
-                orderId: currentThreadOrderId || ''
-            }, { merge: true });
         }
 
         auth.onAuthStateChanged(async (user) => {
@@ -617,9 +656,17 @@
                 const text = input.value;
                 if (!text.trim() || !currentChatId) return;
 
-                await enviarMensagem(text);
-                input.value = '';
-                input.focus();
+                input.disabled = true;
+                try {
+                    await enviarMensagem(text);
+                    input.value = '';
+                    input.focus();
+                } catch (error) {
+                    console.error('[chat.admin.send]', error);
+                    alert(sanitizePlainText(error?.message || 'Nao foi possivel enviar a mensagem agora.', 220));
+                } finally {
+                    input.disabled = false;
+                }
             });
 
             document.getElementById('admin-message-input').addEventListener('keydown', async (event) => {
@@ -629,8 +676,16 @@
                     const text = input.value;
                     if (!text.trim() || !currentChatId) return;
 
-                    await enviarMensagem(text);
-                    input.value = '';
+                    input.disabled = true;
+                    try {
+                        await enviarMensagem(text);
+                        input.value = '';
+                    } catch (error) {
+                        console.error('[chat.admin.send]', error);
+                        alert(sanitizePlainText(error?.message || 'Nao foi possivel enviar a mensagem agora.', 220));
+                    } finally {
+                        input.disabled = false;
+                    }
                 }
             });
         });
