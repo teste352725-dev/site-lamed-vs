@@ -1134,12 +1134,22 @@ function carregarMeusPedidosLegacy() {
     
     db.collection('pedidos')
         .where('userId', '==', currentUser.uid)
-        .orderBy('data', 'desc')
         .onSnapshot(snap => {
             list.innerHTML = '';
+            const pedidosOrdenados = [...snap.docs].sort((leftDoc, rightDoc) => {
+                const leftData = leftDoc.data()?.data;
+                const rightData = rightDoc.data()?.data;
+                const leftTime = typeof leftData?.toDate === 'function'
+                    ? leftData.toDate().getTime()
+                    : (typeof leftData?.seconds === 'number' ? leftData.seconds * 1000 : 0);
+                const rightTime = typeof rightData?.toDate === 'function'
+                    ? rightData.toDate().getTime()
+                    : (typeof rightData?.seconds === 'number' ? rightData.seconds * 1000 : 0);
+                return rightTime - leftTime;
+            });
             
             // MUDANÇA AQUI: Mensagem personalizada quando não há pedidos
-            if(snap.empty) { 
+            if(pedidosOrdenados.length === 0) { 
                 list.innerHTML = `
                     <div class="text-center py-12">
                         <i class="fa-solid fa-bag-shopping text-4xl text-gray-300 mb-4"></i>
@@ -1152,7 +1162,7 @@ function carregarMeusPedidosLegacy() {
                 return; 
             }
             
-            snap.forEach(doc => {
+            pedidosOrdenados.forEach(doc => {
                 const p = doc.data();
                 const valorTotal = typeof p.total === 'number' ? p.total : 0;
                 const totalFormatado = valorTotal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
