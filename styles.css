@@ -417,6 +417,60 @@ body.no-scroll {
     display: none;
 }
 
+.offline-banner {
+    position: sticky;
+    top: 73px;
+    z-index: 48;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #e5d8c5;
+    background: rgba(253, 244, 228, 0.96);
+    backdrop-filter: blur(8px);
+}
+
+.offline-banner.hidden {
+    display: none;
+}
+
+.offline-banner__content {
+    min-width: 0;
+}
+
+.offline-banner__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8a623f;
+}
+
+.offline-banner__text {
+    margin: 0.2rem 0 0;
+    color: #6b5a4a;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.offline-banner__action {
+    flex-shrink: 0;
+    border: 1px solid #d8c9b6;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--cor-texto);
+    cursor: pointer;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 0.8rem 1rem;
+    text-transform: uppercase;
+}
+
 .admin-fab-trigger {
     position: fixed;
     right: 1rem;
@@ -522,6 +576,17 @@ body.no-scroll {
         backdrop-filter: blur(10px);
         box-shadow: 0 -8px 24px rgba(69, 48, 31, 0.08);
         transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .offline-banner {
+        top: 65px;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0.8rem 0.9rem;
+    }
+
+    .offline-banner__action {
+        width: 100%;
     }
 
     .mobile-bottom-link {

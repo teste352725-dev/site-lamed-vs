@@ -93,6 +93,48 @@ function chunkArray(items, size) {
   return chunks;
 }
 
+async function sendMulticastWithChunks({ tokens, tokenDocIds, title, body, link, data }) {
+  const tokenChunks = chunkArray(tokens, 500);
+  const docIdChunks = chunkArray(tokenDocIds, 500);
+  let sent = 0;
+  let failed = 0;
+  const invalidDocIds = [];
+
+  for (let index = 0; index < tokenChunks.length; index += 1) {
+    const response = await getAdminMessaging().sendEachForMulticast({
+      tokens: tokenChunks[index],
+      data: normalizeDataPayload(data),
+      webpush: {
+        notification: {
+          title: sanitizePlainText(title, 120),
+          body: sanitizePlainText(body, 240),
+          icon: getNotificationIconUrl()
+        },
+        fcmOptions: {
+          link: sanitizePlainText(link, 500)
+        }
+      }
+    });
+
+    sent += response.successCount;
+    failed += response.failureCount;
+
+    response.responses.forEach((item, responseIndex) => {
+      if (item.success) return;
+      const errorCode = String(item.error?.code || "");
+      if (errorCode === "messaging/registration-token-not-registered" || errorCode === "messaging/invalid-argument") {
+        invalidDocIds.push(docIdChunks[index][responseIndex]);
+      }
+    });
+  }
+
+  if (invalidDocIds.length) {
+    await disableInvalidTokens(invalidDocIds);
+  }
+
+  return { sent, failed };
+}
+
 async function getActivePushTargetsByUserIds(userIds) {
   const db = getAdminDb();
   const safeUserIds = [...new Set((Array.isArray(userIds) ? userIds : []).map((item) => sanitizePlainText(item, 128)).filter(Boolean))];
@@ -121,6 +163,25 @@ async function getActivePushTargetsByUserIds(userIds) {
   return { tokens, tokenDocIds };
 }
 
+async function getAllActivePushTargets() {
+  const db = getAdminDb();
+  const snapshot = await db.collection(PUSH_COLLECTION)
+    .where("enabled", "==", true)
+    .get();
+
+  const tokens = [];
+  const tokenDocIds = [];
+  snapshot.forEach((doc) => {
+    const data = doc.data() || {};
+    const token = normalizePushToken(data.token);
+    if (!token) return;
+    tokens.push(token);
+    tokenDocIds.push(doc.id);
+  });
+
+  return { tokens, tokenDocIds };
+}
+
 async function sendNotificationToUsers({ userIds, title, body, link, data }) {
   const firebaseAdmin = getFirebaseAdminStatus();
   if (!firebaseAdmin.configured) {
@@ -132,38 +193,21 @@ async function sendNotificationToUsers({ userIds, title, body, link, data }) {
     return { sent: 0, skipped: true, reason: "no_active_tokens" };
   }
 
-  const response = await getAdminMessaging().sendEachForMulticast({
-    tokens,
-    data: normalizeDataPayload(data),
-    webpush: {
-      notification: {
-        title: sanitizePlainText(title, 120),
-        body: sanitizePlainText(body, 240),
-        icon: getNotificationIconUrl()
-      },
-      fcmOptions: {
-        link: sanitizePlainText(link, 500)
-      }
-    }
-  });
+  return sendMulticastWithChunks({ tokens, tokenDocIds, title, body, link, data });
+}
 
-  const invalidDocIds = [];
-  response.responses.forEach((item, index) => {
-    if (item.success) return;
-    const errorCode = String(item.error?.code || "");
-    if (errorCode === "messaging/registration-token-not-registered" || errorCode === "messaging/invalid-argument") {
-      invalidDocIds.push(tokenDocIds[index]);
-    }
-  });
-
-  if (invalidDocIds.length) {
-    await disableInvalidTokens(invalidDocIds);
+async function sendNotificationToAll({ title, body, link, data }) {
+  const firebaseAdmin = getFirebaseAdminStatus();
+  if (!firebaseAdmin.configured) {
+    return { sent: 0, skipped: true, reason: "firebase_admin_not_configured" };
   }
 
-  return {
-    sent: response.successCount,
-    failed: response.failureCount
-  };
+  const { tokens, tokenDocIds } = await getAllActivePushTargets();
+  if (!tokens.length) {
+    return { sent: 0, skipped: true, reason: "no_active_tokens" };
+  }
+
+  return sendMulticastWithChunks({ tokens, tokenDocIds, title, body, link, data });
 }
 
 async function disableInvalidTokens(tokenDocIds) {
@@ -285,6 +329,14 @@ export async function sendOrderStatusNotification({ order, nextStatus }) {
     link: notification.link,
     data: notification.data
   });
+}
+
+export async function sendCustomNotificationToUsers({ userIds, title, body, link, data }) {
+  return sendNotificationToUsers({ userIds, title, body, link, data });
+}
+
+export async function sendBroadcastNotification({ title, body, link, data }) {
+  return sendNotificationToAll({ title, body, link, data });
 }
 
 export async function sendChatMessageNotification({ sender, chatId, senderName, text, orderId, threadId, threadLabel }) {

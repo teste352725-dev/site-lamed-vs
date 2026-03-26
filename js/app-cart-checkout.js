@@ -718,6 +718,11 @@ function setupShippingQuoteInteractions() {
 }
 
 function addToCart() {
+    if (typeof window.isStorefrontOrderingBlocked === 'function' && window.isStorefrontOrderingBlocked()) {
+        alert('A loja esta temporariamente indisponivel para novos pedidos.');
+        return;
+    }
+
     const corObj = selectedColor !== null ? currentProduct.cores[selectedColor] : null;
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto || 0) / 100);
     const isCombo = currentProduct.tipo === 'combo';
@@ -751,8 +756,12 @@ function addToCart() {
         });
     }
 
-    localStorage.setItem('lamedCart', JSON.stringify(cart));
-    updateCartUI();
+    if (typeof window.persistAccountCartState === 'function') {
+        window.persistAccountCartState().catch(() => {});
+    } else {
+        localStorage.setItem('lamedCart', JSON.stringify(cart));
+        updateCartUI();
+    }
     openCart();
 }
 
@@ -834,8 +843,12 @@ function handleCartItemClick(event) {
         }
     }
 
-    localStorage.setItem('lamedCart', JSON.stringify(cart));
-    updateCartUI();
+    if (typeof window.persistAccountCartState === 'function') {
+        window.persistAccountCartState().catch(() => {});
+    } else {
+        localStorage.setItem('lamedCart', JSON.stringify(cart));
+        updateCartUI();
+    }
 }
 
 function openCart() {
@@ -1009,6 +1022,9 @@ function closeCheckoutModal() {
 
 async function openCheckoutModal() {
     if (cart.length === 0) return alert('Sua sacola esta vazia.');
+    if (typeof window.isStorefrontOrderingBlocked === 'function' && window.isStorefrontOrderingBlocked()) {
+        return alert('A loja esta temporariamente indisponivel para novos pedidos.');
+    }
 
     updateCheckoutSummary();
 
@@ -1222,8 +1238,12 @@ async function finalizarPedido(formData) {
 
         if (response.status === 409 && Array.isArray(payload?.canonicalCart)) {
             cart = payload.canonicalCart;
-            localStorage.setItem('lamedCart', JSON.stringify(payload.canonicalCart));
-            updateCartUI();
+            if (typeof window.persistAccountCartState === 'function') {
+                await window.persistAccountCartState({ mode: 'replace' }).catch(() => {});
+            } else {
+                localStorage.setItem('lamedCart', JSON.stringify(payload.canonicalCart));
+                updateCartUI();
+            }
             renderShippingOptions();
             updateCheckoutSummary();
             throw new Error(sanitizePlainText(payload?.error || 'Seu carrinho foi atualizado com os dados mais recentes. Revise o pedido e confirme novamente.', 220));
@@ -1236,7 +1256,11 @@ async function finalizarPedido(formData) {
         const whatsappUrl = String(payload?.whatsappUrl || '').trim();
 
         cart = [];
-        localStorage.setItem('lamedCart', '[]');
+        if (typeof window.clearAccountCartState === 'function') {
+            await window.clearAccountCartState().catch(() => {});
+        } else {
+            localStorage.setItem('lamedCart', '[]');
+        }
         shippingQuoteState = createEmptyShippingQuoteState();
         updateCartUI();
         renderShippingOptions();

@@ -1,5 +1,7 @@
 ﻿import { createHash } from "node:crypto";
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
+import { clearUserCart } from "./_cart.mjs";
+import { getStoreOperations, isPublicStorefrontBlocked } from "./_store-operations.mjs";
 
 const TAXA_JUROS = 0.0549;
 const DEFAULT_ORDER_PHONE = "5527999287657";
@@ -543,9 +545,18 @@ function normalizePagamento(rawPagamento, rawParcelas) {
   throw new RequestError(400, "Selecione uma forma de pagamento valida.");
 }
 
-async function resolveAuthenticatedUserId(authorizationHeader) {
+function isAdminDecodedToken(decoded) {
+  return Boolean(
+    decoded?.uid && (
+      decoded.uid === "NoGsCqiKc0VJwWb6rppk7QVLV1B2" ||
+      decoded.admin === true
+    )
+  );
+}
+
+async function resolveAuthenticatedUserSession(authorizationHeader) {
   const rawHeader = String(authorizationHeader || "").trim();
-  if (!rawHeader) return null;
+  if (!rawHeader) return { userId: null, isAdmin: false };
 
   const match = rawHeader.match(/^Bearer\s+(.+)$/i);
   if (!match) {
@@ -554,7 +565,10 @@ async function resolveAuthenticatedUserId(authorizationHeader) {
 
   try {
     const decoded = await getAdminAuth().verifyIdToken(match[1]);
-    return decoded?.uid || null;
+    return {
+      userId: decoded?.uid || null,
+      isAdmin: isAdminDecodedToken(decoded)
+    };
   } catch (error) {
     throw new RequestError(401, "Nao foi possivel validar sua sessao. Entre novamente e tente de novo.");
   }
@@ -748,7 +762,14 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
   }
 
   const db = getAdminDb();
-  const userId = await resolveAuthenticatedUserId(authorizationHeader);
+  const session = await resolveAuthenticatedUserSession(authorizationHeader);
+  const userId = session.userId;
+  const operations = await getStoreOperations(db);
+  if (isPublicStorefrontBlocked(operations, session.isAdmin)) {
+    throw new RequestError(403, operations.maintenanceMode
+      ? "A loja esta em manutencao no momento. Tente novamente em instantes."
+      : "A loja esta temporariamente fechada para novos pedidos.");
+  }
 
   const cliente = buildCliente(body?.cliente);
   const { pagamento, parcelas } = normalizePagamento(body?.pagamento, body?.parcelas);
@@ -805,6 +826,7 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
     userId,
     estoque_baixado: false,
     fingerprint,
+    productIds: canonicalCart.map((item) => sanitizePlainText(item?.id, 120)).filter(Boolean),
     metadata: {
       clientAddress: sanitizePlainText(requestMeta?.clientAddress, 80),
       userAgent: sanitizePlainText(requestMeta?.userAgent, 240)
@@ -814,6 +836,7 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
   await saveUserProfileIfNeeded(db, userId, cliente);
 
   const ref = await db.collection("pedidos").add(pedido);
+  await clearUserCart(userId).catch(() => {});
   const publicOrder = {
     ...pedido,
     data: new Date().toISOString()

@@ -51,10 +51,10 @@
     <!--
       MAPA DE MANUTENCAO:
       - CSS desta pagina: styles.css
-      - JS local ligado a esta pagina: js/app-core.js, js/app-storefront.js, js/app-cart-checkout.js, script inline desta pagina
+      - JS local ligado a esta pagina: js/app-core.js, js/app-storefront.js, js/app-cart-checkout.js, js/app-account-cart.js, js/app-operations.js, script inline desta pagina
       - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
       - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
-      - Ids usados pelo JS: #add-to-cart-button, #admin-fab-panel, #admin-fab-shell, #admin-fab-toggle, #admin-open-copy-editor, #auth-prompt-dismiss, #auth-prompt-modal, #back-to-gallery
+      - Ids usados pelo JS: #add-to-cart-button, #admin-fab-panel, #admin-fab-shell, #admin-fab-toggle, #admin-open-copy-editor, #admin-open-operations-editor, #auth-prompt-dismiss, #auth-prompt-modal, #back-to-gallery
       - Ids usados pelo JS: #btn-favorite, #cancel-product-quick-edit, #cancel-storefront-copy, #cart-btn, #cart-count, #cart-drawer, #cart-empty-msg, #cart-items-container
       - Ids usados pelo JS: #cart-overlay, #cart-subtotal, #checkout-account-assist, #checkout-account-copy, #checkout-account-password, #checkout-account-password-wrap, #checkout-cep, #checkout-form
       - Ids usados pelo JS: #checkout-google-login-btn, #checkout-guest-card, #checkout-logged-in-card, #checkout-modal, #checkout-push-enable-btn, #checkout-push-later-btn, #checkout-push-modal, #checkout-submit-btn
@@ -70,6 +70,7 @@
       - Ids usados pelo JS: #shop-category-filters, #shop-grid, #shop-results-copy, #shop-search-input, #sidebar-arrow, #sidebar-collections-toggle, #sidebar-menu, #sidebar-overlay
       - Ids usados pelo JS: #sidebar-submenu, #sidebar-toggle, #sidebar-user-area, #storefront-copy-form, #storefront-copy-hero-cta, #storefront-copy-hero-subtitle, #storefront-copy-hero-title, #storefront-copy-message-body-1
       - Ids usados pelo JS: #storefront-copy-message-body-2, #storefront-copy-message-title, #storefront-copy-modal, #storefront-copy-philosophy-body, #storefront-copy-philosophy-title, #storefront-copy-shop-subtitle, #storefront-copy-shop-title, #thumbnail-carousel-list
+      - Ids usados pelo JS: #page-store-status, #store-operations-modal, #store-operations-form, #store-operations-public-enabled, #store-operations-maintenance-mode, #store-operations-discount-schedules, #store-operations-collection-schedules
     -->
 
 
@@ -100,11 +101,26 @@
         </div>
 </header>
 
+    <div id="offline-banner" class="offline-banner hidden" role="status" aria-live="polite">
+        <div class="offline-banner__content">
+            <span class="offline-banner__label">
+                <i class="fa-solid fa-wifi-slash"></i>
+                Sem internet
+            </span>
+            <p class="offline-banner__text">Algumas partes da loja podem ficar limitadas ate a conexao voltar.</p>
+        </div>
+        <button type="button" id="offline-banner-retry" class="offline-banner__action">Tentar novamente</button>
+    </div>
+
     <div id="admin-fab-shell" class="hidden">
         <div class="admin-fab-panel hidden" id="admin-fab-panel">
             <button type="button" class="admin-fab-link" id="admin-open-copy-editor">
                 <i class="fa-solid fa-pen-nib"></i>
                 Editar textos
+            </button>
+            <button type="button" class="admin-fab-link" id="admin-open-operations-editor">
+                <i class="fa-solid fa-sliders"></i>
+                Operacao
             </button>
             <button type="button" class="admin-fab-link" id="admin-open-products-editor">
                 <i class="fa-solid fa-shirt"></i>
@@ -297,6 +313,22 @@
                     <span class="allura text-5xl text-[--cor-marrom-cta]">Laméd</span>
                                 <span class="text-xl gold-accent serif">vs</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="page-store-status" class="page">
+            <section class="min-h-[70vh] px-4 py-16 flex items-center">
+                <div class="container mx-auto max-w-3xl">
+                    <div class="store-status-card rounded-[28px] border border-[#E5E0D8] bg-white/90 p-8 md:p-12 text-center shadow-sm">
+                        <span id="store-status-tag" class="inline-flex rounded-full bg-[#F4ECE0] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#8A6B4E]">Manutencao</span>
+                        <h2 id="store-status-title" class="serif mt-6 text-4xl md:text-5xl text-[--cor-texto]">Estamos ajustando a loja</h2>
+                        <p id="store-status-body" class="mx-auto mt-5 max-w-2xl text-base leading-8 text-gray-500">Voltamos em instantes com a vitrine pronta para receber seu pedido.</p>
+                        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                            <a id="store-status-home-link" href="minha-conta.html" class="inline-flex items-center justify-center rounded-full border border-[#D8C9B6] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#6B5139]">Minha conta</a>
+                            <a href="https://wa.me/5527999287657" class="inline-flex items-center justify-center rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Falar com a loja</a>
                         </div>
                     </div>
                 </div>
@@ -654,6 +686,109 @@
         </div>
     </div>
 
+    <div id="store-operations-modal" class="modal fixed inset-0 z-[102] hidden items-end justify-center bg-black/50 backdrop-blur-sm p-0 md:items-center md:p-4">
+        <div class="storefront-copy-sheet w-full max-w-4xl bg-[#FDFBF6] rounded-t-[28px] md:rounded-[28px] shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between border-b border-[#E5E0D8] px-5 py-4">
+                <div>
+                    <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Operacao da loja</p>
+                    <h3 class="serif text-2xl text-[#45301F]">Agenda, avisos e visibilidade</h3>
+                </div>
+                <button type="button" id="close-store-operations-modal" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+
+            <form id="store-operations-form" class="max-h-[82vh] overflow-y-auto px-5 py-5 space-y-7">
+                <section class="space-y-4">
+                    <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Estado da loja</h4>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <label class="flex items-start gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600">
+                            <input type="checkbox" id="store-operations-public-enabled" class="mt-1">
+                            <span>
+                                <strong class="block text-[--cor-texto]">Loja aberta ao publico</strong>
+                                <span class="text-xs text-gray-500">Desative para pausar novas compras sem mexer no codigo.</span>
+                            </span>
+                        </label>
+                        <label class="flex items-start gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600">
+                            <input type="checkbox" id="store-operations-maintenance-mode" class="mt-1">
+                            <span>
+                                <strong class="block text-[--cor-texto]">Modo manutencao</strong>
+                                <span class="text-xs text-gray-500">Exibe uma tela de manutencao no lugar da vitrine publica.</span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <label class="space-y-2">
+                            <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Titulo da manutencao</span>
+                            <input id="store-operations-maintenance-title" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm">
+                        </label>
+                        <label class="space-y-2">
+                            <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Titulo da loja fechada</span>
+                            <input id="store-operations-closed-title" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm">
+                        </label>
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <label class="space-y-2">
+                            <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Texto da manutencao</span>
+                            <textarea id="store-operations-maintenance-body" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[110px]"></textarea>
+                        </label>
+                        <label class="space-y-2">
+                            <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Texto da loja fechada</span>
+                            <textarea id="store-operations-closed-body" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[110px]"></textarea>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="space-y-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Biblioteca de notificacoes</h4>
+                            <p class="mt-1 text-sm text-gray-500">Escolha em quais momentos a loja envia avisos para o aparelho da cliente.</p>
+                        </div>
+                        <button type="button" id="run-store-operations-now" class="rounded-full border border-[#D8C9B6] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B5139]">Executar agora</button>
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-order-status" type="checkbox"> Status de pedido</label>
+                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-chat-reply" type="checkbox"> Resposta do suporte</label>
+                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-favorite-promotion" type="checkbox"> Favorito entrou em promocao</label>
+                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-purchase-promotion" type="checkbox"> Compra anterior entrou em promocao</label>
+                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-favorite-low-stock" type="checkbox"> Favorito com pouco estoque</label>
+                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-collection-launch" type="checkbox"> Lancamento de colecao</label>
+                    </div>
+                    <label class="space-y-2 block max-w-xs">
+                        <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Limite de pouco estoque</span>
+                        <input id="store-operations-low-stock-threshold" type="number" min="1" max="50" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm">
+                    </label>
+                </section>
+
+                <section class="space-y-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Agendar retirada de descontos</h4>
+                            <p class="mt-1 text-sm text-gray-500">Defina horario e data para zerar descontos ativos automaticamente.</p>
+                        </div>
+                        <button type="button" id="store-operations-add-discount-schedule" class="rounded-full border border-[#D8C9B6] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B5139]">Novo horario</button>
+                    </div>
+                    <div id="store-operations-discount-schedules" class="space-y-3"></div>
+                </section>
+
+                <section class="space-y-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Agendar colecoes</h4>
+                            <p class="mt-1 text-sm text-gray-500">Ative ou encerre colecoes automaticamente em datas especificas.</p>
+                        </div>
+                        <button type="button" id="store-operations-add-collection-schedule" class="rounded-full border border-[#D8C9B6] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B5139]">Nova janela</button>
+                    </div>
+                    <div id="store-operations-collection-schedules" class="space-y-3"></div>
+                </section>
+            </form>
+
+            <div class="flex flex-col gap-3 border-t border-[#E5E0D8] px-5 py-4 sm:flex-row sm:justify-end">
+                <button type="button" id="cancel-store-operations" class="w-full sm:w-auto rounded-full border border-[#D8C9B6] px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#6B5139]">Cancelar</button>
+                <button type="button" id="save-store-operations" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar operacao</button>
+            </div>
+        </div>
+    </div>
+
     <div id="product-quick-edit-modal" class="modal fixed inset-0 z-[103] hidden items-end justify-center bg-black/50 backdrop-blur-sm p-0 md:items-center md:p-4">
         <div class="storefront-copy-sheet w-full max-w-2xl bg-[#FDFBF6] rounded-t-[28px] md:rounded-[28px] shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between border-b border-[#E5E0D8] px-5 py-4">
@@ -876,6 +1011,8 @@
     <script defer src="js/app-core.js"></script>
     <script defer src="js/app-storefront.js"></script>
     <script defer src="js/app-cart-checkout.js"></script>
+    <script defer src="js/app-account-cart.js"></script>
+    <script defer src="js/app-operations.js"></script>
     
     <script>
         const canUseServiceWorker = window.location.protocol === 'http:' || window.location.protocol === 'https:';

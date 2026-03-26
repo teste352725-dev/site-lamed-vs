@@ -1,4 +1,5 @@
 import { FieldValue, getAdminDb } from "./_firebase-admin.mjs";
+import { saveStoreOperationsConfig } from "./_store-operations.mjs";
 
 const CATALOG_SETTINGS_DOC_ID = "__catalog_settings";
 const STOREFRONT_COPY_DOC_ID = "homepage";
@@ -343,6 +344,13 @@ export async function applyStorefrontAdminAction({ action, payload, adminUid }) 
 
   if (safeAction === "site_copy") {
     return updateStorefrontCopy(db, payload, adminUid);
+  }
+
+  if (safeAction === "store_operations_save") {
+    return {
+      kind: "store_operations_save",
+      operations: await saveStoreOperationsConfig(db, payload, adminUid)
+    };
   }
 
   if (safeAction === "product_status") {

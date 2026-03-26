@@ -105,6 +105,7 @@ const elements = {
     adminFabToggle: document.getElementById('admin-fab-toggle'),
     adminFabPanel: document.getElementById('admin-fab-panel'),
     adminOpenCopyEditor: document.getElementById('admin-open-copy-editor'),
+    adminOpenOperationsEditor: document.getElementById('admin-open-operations-editor'),
     adminOpenProductsEditor: document.getElementById('admin-open-products-editor'),
     adminOpenCollectionsEditor: document.getElementById('admin-open-collections-editor'),
     adminOpenCategoriesEditor: document.getElementById('admin-open-categories-editor'),
@@ -131,7 +132,11 @@ const elements = {
     // Popup de prazo
     deliveryPopupOverlay: document.getElementById('delivery-popup-overlay'),
     dismissDeliveryPopupBtn: document.getElementById('dismiss-delivery-popup'),
-    closeDeliveryPopupBtn: document.getElementById('close-delivery-popup')
+    closeDeliveryPopupBtn: document.getElementById('close-delivery-popup'),
+
+    // Offline
+    offlineBanner: document.getElementById('offline-banner'),
+    offlineBannerRetry: document.getElementById('offline-banner-retry')
 };
 
 const bodyScrollLocks = new Set();
@@ -178,6 +183,12 @@ function updateMobileBottomNavState() {
             link.removeAttribute('aria-current');
         }
     });
+}
+
+function updateOfflineBannerState() {
+    if (!elements.offlineBanner) return;
+    const isOnline = navigator.onLine !== false;
+    elements.offlineBanner.classList.toggle('hidden', isOnline);
 }
 
 async function isAuthorizedAdminUser(user) {
@@ -380,6 +391,12 @@ function openInlineCategoriesEditing() {
     }
 }
 
+function openInlineOperationsEditing() {
+    if (typeof window.openStoreOperationsEditor === 'function') {
+        window.openStoreOperationsEditor();
+    }
+}
+
 async function signInWithGoogleFromEntryAssist() {
     try {
         if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
@@ -475,14 +492,17 @@ function bindStorefrontAdminTools() {
 
     mountTools('admin-hero-inline-tools', [
         { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal },
+        { label: 'Operacao', icon: 'fa-sliders', onClick: openInlineOperationsEditing },
         { label: 'Pecas', icon: 'fa-shirt', onClick: openInlineProductEditing }
     ]);
     mountTools('admin-collections-inline-tools', [
+        { label: 'Operacao', icon: 'fa-sliders', onClick: openInlineOperationsEditing },
         { label: 'Colecoes', icon: 'fa-layer-group', onClick: openInlineCollectionsEditing },
         { label: 'Pecas', icon: 'fa-shirt', onClick: openInlineProductEditing }
     ]);
     mountTools('admin-shop-inline-tools', [
         { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal },
+        { label: 'Operacao', icon: 'fa-sliders', onClick: openInlineOperationsEditing },
         { label: 'Categorias', icon: 'fa-tags', onClick: openInlineCategoriesEditing },
         { label: 'Pecas', icon: 'fa-shirt', onClick: openInlineProductEditing }
     ]);
@@ -500,6 +520,10 @@ function bindStorefrontAdminTools() {
 
     if (elements.adminOpenCopyEditor) {
         elements.adminOpenCopyEditor.addEventListener('click', openStorefrontCopyModal);
+    }
+
+    if (elements.adminOpenOperationsEditor) {
+        elements.adminOpenOperationsEditor.addEventListener('click', openInlineOperationsEditing);
     }
 
     if (elements.adminOpenProductsEditor) {
@@ -600,12 +624,17 @@ function init() {
 
     scheduleDeliveryPopupCheck();
     updateMobileBottomNavState();
+    updateOfflineBannerState();
 
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         currentUserIsAdmin = await isAuthorizedAdminUser(user);
+        if (typeof window.hydrateAccountCartState === 'function') {
+            await window.hydrateAccountCartState(user);
+        }
         await atualizarInterfaceUsuario(user, currentUserIsAdmin);
         updateAdminModeExperience(currentUserIsAdmin);
+        if (typeof handleRouting === 'function') handleRouting();
         bindStorefrontForegroundNotifications();
         if(currentUser && currentProduct) checkFavoriteStatus(currentProduct.id);
         checkAuthPrompt(user);
@@ -770,6 +799,25 @@ function setupEventListeners() {
             }
         });
     }
+
+    if (elements.offlineBannerRetry) {
+        elements.offlineBannerRetry.addEventListener('click', () => {
+            if (navigator.onLine) {
+                window.location.reload();
+                return;
+            }
+
+            updateOfflineBannerState();
+        });
+    }
+
+    window.addEventListener('online', () => {
+        updateOfflineBannerState();
+    });
+
+    window.addEventListener('offline', () => {
+        updateOfflineBannerState();
+    });
 
     if(elements.checkoutCepInput) {
         elements.checkoutCepInput.addEventListener('blur', updateCheckoutSummary);

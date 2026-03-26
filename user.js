@@ -160,8 +160,8 @@ function updateNotificationSummaryState() {
 
     if (statusCopy) {
         statusCopy.textContent = granted
-            ? 'Este aparelho pode receber avisos sobre seu pedido e sobre respostas do suporte.'
-            : 'Ative neste aparelho para receber avisos de pedido, suporte e proximas etapas.';
+            ? 'Este aparelho pode receber avisos de pedido, respostas do suporte e alertas de promocao dos seus favoritos.'
+            : 'Ative neste aparelho para receber avisos de pedido, suporte, promocao e novas etapas.';
     }
 }
 

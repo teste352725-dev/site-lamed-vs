@@ -4,7 +4,11 @@
     if(elements.sidebarMenu && elements.sidebarMenu.classList.contains('open')) toggleSidebar();
     if (typeof closeCart === 'function' && hash !== '#sacola') closeCart();
 
-    if (hash === '#sacola') {
+    if (typeof window.shouldShowStoreStatusPage === 'function' && window.shouldShowStoreStatusPage()) {
+        if (typeof closeCart === 'function') closeCart();
+        showPage('page-store-status');
+    }
+    else if (hash === '#sacola') {
         showPage('page-home');
         if (typeof openCart === 'function') openCart();
     }
@@ -52,6 +56,9 @@ function showPage(pageId, param1 = null, param2 = null) {
     else if (pageId === 'page-collections-list') {
         document.getElementById('page-collections-list').classList.add('active');
         renderizarListaDeColecoes(); 
+    }
+    else if (pageId === 'page-store-status') {
+        document.getElementById('page-store-status').classList.add('active');
     }
     window.scrollTo(0, 0);
 }

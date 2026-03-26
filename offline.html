@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voce esta offline | Lamed vs</title>
+    <link rel="icon" href="/favicon.ico">
+    <style>
+        :root {
+            --cor-fundo: #fdfbf6;
+            --cor-texto: #45301f;
+            --cor-marrom: #643f21;
+            --cor-borda: #e5e0d8;
+            --cor-destaque: #a58a5c;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            min-height: 100%;
+            background: radial-gradient(circle at top, #fffdf8 0%, #f6f1e8 100%);
+            color: var(--cor-texto);
+            font-family: Inter, Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .offline-card {
+            width: min(560px, 100%);
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid var(--cor-borda);
+            border-radius: 28px;
+            padding: 32px 24px;
+            box-shadow: 0 20px 44px rgba(69, 48, 31, 0.08);
+            text-align: center;
+        }
+
+        .offline-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: #f4ece0;
+            color: #8a6b4e;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            padding: 10px 14px;
+        }
+
+        .offline-title {
+            margin: 22px 0 12px;
+            font-family: "Cormorant Garamond", Georgia, serif;
+            font-size: clamp(2rem, 4vw, 3.2rem);
+            font-weight: 500;
+            line-height: 1.05;
+        }
+
+        .offline-copy {
+            margin: 0 auto;
+            max-width: 34rem;
+            color: #65584d;
+            font-size: 1rem;
+            line-height: 1.8;
+        }
+
+        .offline-list {
+            margin: 28px 0 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .offline-list li {
+            border: 1px solid var(--cor-borda);
+            border-radius: 18px;
+            background: #fffdfa;
+            padding: 14px 16px;
+            color: #5e534a;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .offline-actions {
+            margin-top: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .offline-btn {
+            appearance: none;
+            border: 1px solid var(--cor-borda);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--cor-texto);
+            cursor: pointer;
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            padding: 14px 20px;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .offline-btn-primary {
+            background: var(--cor-marrom);
+            border-color: var(--cor-marrom);
+            color: #fff;
+        }
+
+        .offline-status {
+            margin-top: 18px;
+            color: var(--cor-destaque);
+            font-size: 0.86rem;
+        }
+
+        @media (max-width: 640px) {
+            .offline-card {
+                padding: 28px 18px;
+                border-radius: 24px;
+            }
+
+            .offline-actions {
+                flex-direction: column;
+            }
+
+            .offline-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="offline-card">
+        <div class="offline-badge">Sem conexao</div>
+        <h1 class="offline-title">Voce esta offline.</h1>
+        <p class="offline-copy">
+            A loja precisa de internet para carregar novidades, pedidos e suporte. Se voce ja visitou algumas partes do site, parte do conteudo pode continuar disponivel.
+        </p>
+
+        <ul class="offline-list">
+            <li>Se o sinal voltar, toque em <strong>Tentar novamente</strong>.</li>
+            <li>Pedidos, chat, favoritos e atualizacoes em tempo real voltam a funcionar assim que a conexao retornar.</li>
+            <li>Se preferir, voce tambem pode abrir sua conta ou falar com a loja quando estiver online.</li>
+        </ul>
+
+        <div class="offline-actions">
+            <button type="button" class="offline-btn offline-btn-primary" id="retry-offline">Tentar novamente</button>
+            <a href="/index.html" class="offline-btn">Voltar para a home</a>
+            <a href="/minha-conta.html" class="offline-btn">Minha conta</a>
+        </div>
+
+        <p class="offline-status" id="offline-status">Aguardando sua conexao voltar.</p>
+    </main>
+
+    <script>
+        const retryButton = document.getElementById('retry-offline');
+        const statusText = document.getElementById('offline-status');
+
+        function updateOfflineStatus() {
+            if (navigator.onLine) {
+                statusText.textContent = 'Conexao detectada. Recarregando...';
+                window.location.href = '/index.html';
+                return;
+            }
+
+            statusText.textContent = 'Aguardando sua conexao voltar.';
+        }
+
+        retryButton.addEventListener('click', () => {
+            updateOfflineStatus();
+            if (!navigator.onLine) {
+                statusText.textContent = 'Ainda sem internet. Tente novamente em alguns instantes.';
+            }
+        });
+
+        window.addEventListener('online', updateOfflineStatus);
+        updateOfflineStatus();
+    </script>
+</body>
+</html>

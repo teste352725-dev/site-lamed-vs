@@ -1,12 +1,16 @@
-const CACHE_NAME = 'lamed-v6';
+const CACHE_NAME = 'lamed-v7';
 const APP_SHELL = [
   '/',
   '/index.html',
+  '/offline.html',
   '/styles.css',
   '/manifest.json',
+  '/favicon.ico',
   '/js/app-core.js',
   '/js/app-storefront.js',
-  '/js/app-cart-checkout.js'
+  '/js/app-cart-checkout.js',
+  '/js/app-account-cart.js',
+  '/js/app-operations.js'
 ];
 
 const STATIC_FILE_PATTERN = /\.(?:css|js|png|jpg|jpeg|webp|svg|gif|ico|json|woff2?|ttf)$/i;
@@ -72,7 +76,7 @@ async function networkFirst(request, preloadResponsePromise) {
   } catch (error) {
     const cachedResponse = await caches.match(request);
     if (cachedResponse) return cachedResponse;
-    return caches.match('/index.html');
+    return caches.match('/offline.html');
   }
 }
 
@@ -91,7 +95,7 @@ async function staleWhileRevalidate(request) {
   const networkResponse = await networkPromise;
   if (networkResponse) return networkResponse;
 
-  return caches.match('/index.html');
+  return caches.match('/offline.html');
 }
 
 self.addEventListener('fetch', (event) => {

@@ -295,8 +295,12 @@ service cloud.firestore {
     }
 
     match /site_config/{documentId} {
-      allow read: if documentId == 'homepage';
+      allow read: if documentId == 'homepage' || documentId == 'store_operations';
       allow write: if isAdmin();
+    }
+
+    match /shopping_carts/{userId} {
+      allow read, write: if false;
     }
 
     match /visitas/{document=**} {
