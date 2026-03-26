@@ -65,6 +65,42 @@ function normalizeStorefrontCopy(payload) {
   };
 }
 
+function normalizeCollectionEditorEntry(entry, fallbackOrder = 0) {
+  if (!entry || typeof entry !== "object") return null;
+
+  const id = sanitizePlainText(entry.id, 120);
+  const nome = sanitizePlainText(entry.nome, 120);
+  const ordem = sanitizeInteger(entry.ordem, { min: 0, max: 99999, fallback: fallbackOrder });
+  const ativa = sanitizeBoolean(entry.ativa, true);
+
+  if (!id || !nome) return null;
+
+  return { id, nome, ordem, ativa };
+}
+
+function normalizeCategoryEditorEntries(entries) {
+  const normalized = [];
+  const seen = new Set();
+
+  (Array.isArray(entries) ? entries : []).forEach((entry, index) => {
+    if (!entry || typeof entry !== "object") return;
+
+    const slug = sanitizeSlug(entry.slug || entry.nome, 80);
+    const nome = sanitizePlainText(entry.nome || entry.slug, 120);
+    if (!slug || !nome || seen.has(slug)) return;
+
+    seen.add(slug);
+    normalized.push({
+      slug,
+      nome,
+      ordem: sanitizeInteger(entry.ordem, { min: 0, max: 99999, fallback: (index + 1) * 10 }),
+      ativa: sanitizeBoolean(entry.ativa, true)
+    });
+  });
+
+  return normalized.sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
 async function updateProductStatus(db, payload, adminUid) {
   const productId = sanitizePlainText(payload?.productId, 120);
   const nextStatus = sanitizePlainText(payload?.status, 20).toLowerCase();
@@ -185,6 +221,42 @@ async function updateCollectionStatus(db, payload, adminUid) {
   };
 }
 
+async function saveCollectionsBulk(db, payload, adminUid) {
+  const entries = Array.isArray(payload?.collections) ? payload.collections : [];
+  const normalizedEntries = entries
+    .map((entry, index) => normalizeCollectionEditorEntry(entry, (index + 1) * 10))
+    .filter(Boolean);
+
+  if (normalizedEntries.length === 0) {
+    throw new StorefrontAdminError(400, "Nenhuma colecao valida foi enviada.");
+  }
+
+  const batch = db.batch();
+  normalizedEntries.forEach((entry) => {
+    const ref = db.collection("colecoes").doc(entry.id);
+    batch.set(ref, {
+      nome: entry.nome,
+      ordem: entry.ordem,
+      ativa: entry.ativa,
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedByAdmin: sanitizePlainText(adminUid, 128)
+    }, { merge: true });
+  });
+
+  await batch.commit();
+
+  const collectionsSnap = await db.collection("colecoes").get();
+  const collections = collectionsSnap.docs
+    .filter((doc) => doc.id !== CATALOG_SETTINGS_DOC_ID)
+    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .sort((a, b) => (Number(a?.ordem) || 0) - (Number(b?.ordem) || 0) || sanitizePlainText(a?.nome, 120).localeCompare(sanitizePlainText(b?.nome, 120), "pt-BR"));
+
+  return {
+    kind: "collections_bulk_save",
+    collections
+  };
+}
+
 async function updateCategoryVisibility(db, payload, adminUid) {
   const slug = sanitizePlainText(payload?.slug, 80);
   if (!slug) {
@@ -223,6 +295,25 @@ async function updateCategoryVisibility(db, payload, adminUid) {
     kind: "category_visibility",
     slug,
     ativa
+  };
+}
+
+async function saveCategoriesBulk(db, payload, adminUid) {
+  const categorias = normalizeCategoryEditorEntries(payload?.categories);
+  if (categorias.length === 0) {
+    throw new StorefrontAdminError(400, "Nenhuma categoria valida foi enviada.");
+  }
+
+  await db.collection("colecoes").doc(CATALOG_SETTINGS_DOC_ID).set({
+    kind: "catalog_settings",
+    categorias,
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedByAdmin: sanitizePlainText(adminUid, 128)
+  }, { merge: true });
+
+  return {
+    kind: "categories_bulk_save",
+    categories: categorias
   };
 }
 
@@ -266,8 +357,16 @@ export async function applyStorefrontAdminAction({ action, payload, adminUid }) 
     return updateCollectionStatus(db, payload, adminUid);
   }
 
+  if (safeAction === "collections_bulk_save") {
+    return saveCollectionsBulk(db, payload, adminUid);
+  }
+
   if (safeAction === "category_visibility") {
     return updateCategoryVisibility(db, payload, adminUid);
+  }
+
+  if (safeAction === "categories_bulk_save") {
+    return saveCategoriesBulk(db, payload, adminUid);
   }
 
   throw new StorefrontAdminError(400, "Acao administrativa invalida.");

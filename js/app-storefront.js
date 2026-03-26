@@ -65,6 +65,10 @@ let siteCategories = [];
 let currentShopFilter = 'all';
 let currentShopSearch = '';
 let productQuickEditBound = false;
+let collectionManagerBound = false;
+let categoryManagerBound = false;
+let adminCollectionsCache = [];
+let adminCategoriesCache = [];
 const canUseHoverPreviews = window.matchMedia
     ? window.matchMedia('(hover: hover) and (pointer: fine)').matches
     : false;
@@ -85,6 +89,25 @@ const productQuickEditElements = {
     close: document.getElementById('close-product-quick-edit-modal'),
     cancel: document.getElementById('cancel-product-quick-edit'),
     save: document.getElementById('save-product-quick-edit')
+};
+
+const collectionManagerElements = {
+    modal: document.getElementById('collection-manager-modal'),
+    list: document.getElementById('collection-manager-list'),
+    close: document.getElementById('close-collection-manager-modal'),
+    cancel: document.getElementById('cancel-collection-manager'),
+    save: document.getElementById('save-collection-manager')
+};
+
+const categoryManagerElements = {
+    modal: document.getElementById('category-manager-modal'),
+    list: document.getElementById('category-manager-list'),
+    close: document.getElementById('close-category-manager-modal'),
+    cancel: document.getElementById('cancel-category-manager'),
+    save: document.getElementById('save-category-manager'),
+    newName: document.getElementById('category-manager-new-name'),
+    newOrder: document.getElementById('category-manager-new-order'),
+    add: document.getElementById('category-manager-add')
 };
 
 const DEFAULT_SITE_CATEGORIES = [
@@ -172,6 +195,33 @@ function mergeSiteCategories(configEntries, productEntries) {
         .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
+function buildEditableSiteCategories(configEntries, productEntries) {
+    const merged = new Map();
+    const append = (entry) => {
+        const normalized = normalizeCategoryEntry(entry, merged.size * 10 + 10);
+        if (!normalized) return;
+
+        const existing = merged.get(normalized.slug) || {};
+        merged.set(normalized.slug, {
+            ...existing,
+            ...normalized,
+            nome: normalized.nome || existing.nome || normalized.slug
+        });
+    };
+
+    DEFAULT_SITE_CATEGORIES.forEach(append);
+    (Array.isArray(productEntries) ? productEntries : []).forEach((slug, index) => append({
+        slug,
+        nome: formatCategoryLabel(slug),
+        ordem: 500 + index,
+        ativa: true
+    }));
+    (Array.isArray(configEntries) ? configEntries : []).forEach(append);
+
+    return [...merged.values()]
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
 function getSiteCategoryLabel(slug) {
     const match = siteCategories.find((category) => category.slug === slug);
     return match?.nome || formatCategoryLabel(slug);
@@ -243,6 +293,161 @@ function fillSelectOptions(select, options, selectedValue = '') {
         select.appendChild(element);
     });
 }
+
+function applyCollectionsLocally(collections) {
+    adminCollectionsCache = (Array.isArray(collections) ? collections : [])
+        .filter((entry) => entry?.id)
+        .map((entry) => ({
+            id: sanitizePlainText(entry.id, 120),
+            nome: sanitizePlainText(entry.nome, 120) || 'Colecao',
+            ordem: Number.isFinite(Number(entry.ordem)) ? Number(entry.ordem) : 0,
+            ativa: entry.ativa !== false
+        }))
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    activeCollections = adminCollectionsCache.filter((entry) => entry.ativa !== false);
+}
+
+function applyCategoriesLocally(categories) {
+    adminCategoriesCache = buildEditableSiteCategories(
+        categories,
+        [...new Set(products.map((product) => product.categoria).filter(Boolean))]
+    );
+    siteCategories = mergeSiteCategories(
+        adminCategoriesCache,
+        [...new Set(products.map((product) => product.categoria).filter(Boolean))]
+    );
+}
+
+function renderCollectionManagerList() {
+    const container = collectionManagerElements.list;
+    if (!container) return;
+
+    if (!Array.isArray(adminCollectionsCache) || adminCollectionsCache.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Nenhuma colecao encontrada.</p>';
+        return;
+    }
+
+    container.innerHTML = adminCollectionsCache.map((entry) => `
+        <div class="rounded-[22px] border border-[#E5E0D8] bg-white px-4 py-4 collection-manager-item" data-collection-id="${escapeHtmlAttr(entry.id)}">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_0.5fr_auto] md:items-center">
+                <label class="space-y-1">
+                    <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Nome</span>
+                    <input type="text" class="collection-manager-name w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" value="${escapeHtmlAttr(entry.nome)}" placeholder="Nome da colecao">
+                </label>
+                <label class="space-y-1">
+                    <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Ordem</span>
+                    <input type="number" min="0" step="1" class="collection-manager-order w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" value="${Number(entry.ordem || 0)}">
+                </label>
+                <label class="flex items-center justify-between gap-3 rounded-2xl border border-[#E5E0D8] px-4 py-3 text-sm">
+                    <span class="font-medium text-[#45301F]">Ativa</span>
+                    <input type="checkbox" class="collection-manager-active h-5 w-5 accent-[#643f21]" ${entry.ativa !== false ? 'checked' : ''}>
+                </label>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderCategoryManagerList() {
+    const container = categoryManagerElements.list;
+    if (!container) return;
+
+    if (!Array.isArray(adminCategoriesCache) || adminCategoriesCache.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Nenhuma categoria encontrada.</p>';
+        return;
+    }
+
+    container.innerHTML = adminCategoriesCache.map((entry) => `
+        <div class="rounded-[22px] border border-[#E5E0D8] bg-white px-4 py-4 category-manager-item" data-category-slug="${escapeHtmlAttr(entry.slug)}">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_0.8fr_0.5fr_auto] md:items-center">
+                <label class="space-y-1">
+                    <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Nome</span>
+                    <input type="text" class="category-manager-name w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" value="${escapeHtmlAttr(entry.nome)}" placeholder="Nome da categoria">
+                </label>
+                <div class="space-y-1">
+                    <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Slug</span>
+                    <div class="rounded-2xl border border-dashed border-[#E5E0D8] bg-[#F8F6F0] px-4 py-3 text-xs text-gray-500 break-all">${escapeHtml(entry.slug)}</div>
+                </div>
+                <label class="space-y-1">
+                    <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Ordem</span>
+                    <input type="number" min="0" step="1" class="category-manager-order w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" value="${Number(entry.ordem || 0)}">
+                </label>
+                <label class="flex items-center justify-between gap-3 rounded-2xl border border-[#E5E0D8] px-4 py-3 text-sm">
+                    <span class="font-medium text-[#45301F]">Ativa</span>
+                    <input type="checkbox" class="category-manager-active h-5 w-5 accent-[#643f21]" ${entry.ativa !== false ? 'checked' : ''}>
+                </label>
+            </div>
+        </div>
+    `).join('');
+}
+
+function closeCollectionManagerModal() {
+    const modal = collectionManagerElements.modal;
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll('collection-manager');
+}
+
+function closeCategoryManagerModal() {
+    const modal = categoryManagerElements.modal;
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll('category-manager');
+}
+
+async function openCollectionManagerModal() {
+    if (!currentUserIsAdmin || !collectionManagerElements.modal) return;
+
+    try {
+        collectionManagerElements.list.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Carregando colecoes...</p>';
+        const snapshot = await db.collection('colecoes').get();
+        applyCollectionsLocally(snapshot.docs
+            .filter((doc) => doc.id !== '__catalog_settings')
+            .map((doc) => ({ id: doc.id, ...doc.data() })));
+        renderCollectionManagerList();
+        collectionManagerElements.modal.classList.remove('hidden');
+        collectionManagerElements.modal.classList.add('flex');
+        if (typeof lockBodyScroll === 'function') lockBodyScroll('collection-manager');
+        if (typeof toggleAdminFabPanel === 'function') toggleAdminFabPanel(false);
+    } catch (error) {
+        alert('Nao foi possivel carregar as colecoes agora.');
+    }
+}
+
+async function openCategoryManagerModal() {
+    if (!currentUserIsAdmin || !categoryManagerElements.modal) return;
+
+    try {
+        categoryManagerElements.list.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Carregando categorias...</p>';
+        const catalogSettingsSnap = await db.collection('colecoes').doc('__catalog_settings').get();
+        const configCategories = catalogSettingsSnap.exists ? catalogSettingsSnap.data()?.categorias : [];
+        adminCategoriesCache = buildEditableSiteCategories(
+            configCategories,
+            [...new Set(products.map((product) => product.categoria).filter(Boolean))]
+        );
+        renderCategoryManagerList();
+        categoryManagerElements.modal.classList.remove('hidden');
+        categoryManagerElements.modal.classList.add('flex');
+        if (typeof lockBodyScroll === 'function') lockBodyScroll('category-manager');
+        if (typeof toggleAdminFabPanel === 'function') toggleAdminFabPanel(false);
+    } catch (error) {
+        alert('Nao foi possivel carregar as categorias agora.');
+    }
+}
+
+function openProductManagerInline() {
+    if (typeof toggleAdminFabPanel === 'function') toggleAdminFabPanel(false);
+    window.location.hash = '#loja';
+    window.setTimeout(() => {
+        document.getElementById('shop-search-input')?.focus();
+    }, 120);
+}
+
+window.openStorefrontProductManager = openProductManagerInline;
+window.openStorefrontCollectionsEditor = openCollectionManagerModal;
+window.openStorefrontCategoriesEditor = openCategoryManagerModal;
 
 function openProductQuickEditModal(productId) {
     if (!currentUserIsAdmin || !productQuickEditElements.modal) return;
@@ -338,6 +543,30 @@ function refreshStorefrontAfterQuickEdit(productId) {
     }
 }
 
+async function sendStorefrontAdminAction(action, payload, fallbackMessage) {
+    if (!currentUserIsAdmin || !currentUser) {
+        throw new Error('Sua sessao de administracao nao esta disponivel.');
+    }
+
+    const idToken = await currentUser.getIdToken();
+    const response = await fetch(buildBackendUrl('/api/admin/storefront/update'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ action, payload })
+    });
+
+    const result = await response.json().catch(() => null);
+    if (!response.ok || result?.ok === false) {
+        throw new Error(sanitizePlainText(result?.error || fallbackMessage, 220));
+    }
+
+    return result?.result || {};
+}
+
 async function saveProductQuickEdit() {
     if (!currentUserIsAdmin || !currentUser) return;
 
@@ -355,26 +584,9 @@ async function saveProductQuickEdit() {
             saveButton.textContent = 'Salvando...';
         }
 
-        const idToken = await currentUser.getIdToken();
-        const response = await fetch(buildBackendUrl('/api/admin/storefront/update'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                Authorization: `Bearer ${idToken}`
-            },
-            body: JSON.stringify({
-                action: 'product_quick_edit',
-                payload
-            })
-        });
+        const result = await sendStorefrontAdminAction('product_quick_edit', payload, 'Nao foi possivel salvar esta peca agora.');
 
-        const result = await response.json().catch(() => null);
-        if (!response.ok || result?.ok === false) {
-            throw new Error(sanitizePlainText(result?.error || 'Nao foi possivel salvar esta peca agora.', 220));
-        }
-
-        replaceProductLocally(result?.result?.product || payload);
+        replaceProductLocally(result?.product || payload);
         closeProductQuickEditModal();
         refreshStorefrontAfterQuickEdit(payload.productId);
     } catch (error) {
@@ -383,6 +595,116 @@ async function saveProductQuickEdit() {
         if (saveButton) {
             saveButton.disabled = false;
             saveButton.textContent = 'Salvar peca';
+        }
+    }
+}
+
+function readCollectionsManagerPayload() {
+    return Array.from(collectionManagerElements.list?.querySelectorAll('.collection-manager-item') || []).map((item) => ({
+        id: sanitizePlainText(item.dataset.collectionId, 120),
+        nome: sanitizePlainText(item.querySelector('.collection-manager-name')?.value, 120),
+        ordem: parseInt(item.querySelector('.collection-manager-order')?.value || 0, 10) || 0,
+        ativa: item.querySelector('.collection-manager-active')?.checked === true
+    })).filter((entry) => entry.id && entry.nome);
+}
+
+async function saveCollectionManager() {
+    if (!currentUserIsAdmin || !currentUser) return;
+
+    const payload = { collections: readCollectionsManagerPayload() };
+    if (!payload.collections.length) {
+        alert('Nenhuma colecao valida para salvar.');
+        return;
+    }
+
+    try {
+        if (collectionManagerElements.save) {
+            collectionManagerElements.save.disabled = true;
+            collectionManagerElements.save.textContent = 'Salvando...';
+        }
+
+        const result = await sendStorefrontAdminAction('collections_bulk_save', payload, 'Nao foi possivel salvar as colecoes agora.');
+        applyCollectionsLocally(result?.collections || payload.collections);
+        renderCollectionManagerList();
+        closeCollectionManagerModal();
+        refreshStorefrontAfterQuickEdit('');
+    } catch (error) {
+        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar as colecoes agora.', 220));
+    } finally {
+        if (collectionManagerElements.save) {
+            collectionManagerElements.save.disabled = false;
+            collectionManagerElements.save.textContent = 'Salvar colecoes';
+        }
+    }
+}
+
+function readCategoryManagerPayload() {
+    return Array.from(categoryManagerElements.list?.querySelectorAll('.category-manager-item') || []).map((item) => ({
+        slug: sanitizePlainText(item.dataset.categorySlug, 80),
+        nome: sanitizePlainText(item.querySelector('.category-manager-name')?.value, 120),
+        ordem: parseInt(item.querySelector('.category-manager-order')?.value || 0, 10) || 0,
+        ativa: item.querySelector('.category-manager-active')?.checked === true
+    })).filter((entry) => entry.slug && entry.nome);
+}
+
+function addCategoryManagerEntry() {
+    const nome = sanitizePlainText(categoryManagerElements.newName?.value, 120);
+    if (!nome) {
+        alert('Digite o nome da categoria.');
+        return;
+    }
+
+    const slug = slugifyCategoryName(nome);
+    if (adminCategoriesCache.some((entry) => entry.slug === slug)) {
+        alert('Essa categoria ja existe.');
+        return;
+    }
+
+    const ordem = parseInt(categoryManagerElements.newOrder?.value || 0, 10)
+        || ((adminCategoriesCache.at(-1)?.ordem || 0) + 10);
+
+    adminCategoriesCache.push({
+        slug,
+        nome,
+        ordem,
+        ativa: true
+    });
+    adminCategoriesCache.sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
+    renderCategoryManagerList();
+
+    if (categoryManagerElements.newName) categoryManagerElements.newName.value = '';
+    if (categoryManagerElements.newOrder) categoryManagerElements.newOrder.value = '';
+}
+
+async function saveCategoryManager() {
+    if (!currentUserIsAdmin || !currentUser) return;
+
+    const payload = { categories: readCategoryManagerPayload() };
+    if (!payload.categories.length) {
+        alert('Nenhuma categoria valida para salvar.');
+        return;
+    }
+
+    try {
+        if (categoryManagerElements.save) {
+            categoryManagerElements.save.disabled = true;
+            categoryManagerElements.save.textContent = 'Salvando...';
+        }
+
+        const result = await sendStorefrontAdminAction('categories_bulk_save', payload, 'Nao foi possivel salvar as categorias agora.');
+        applyCategoriesLocally(result?.categories || payload.categories);
+        renderCategoryManagerList();
+        closeCategoryManagerModal();
+        renderSidebarCategoryLinks();
+        renderHomeShopFilters();
+        renderShopPage(currentShopFilter);
+        renderHomeShopGrid();
+    } catch (error) {
+        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar as categorias agora.', 220));
+    } finally {
+        if (categoryManagerElements.save) {
+            categoryManagerElements.save.disabled = false;
+            categoryManagerElements.save.textContent = 'Salvar categorias';
         }
     }
 }
@@ -412,10 +734,72 @@ function bindProductQuickEditModal() {
     }
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && productQuickEditElements.modal?.classList.contains('flex')) {
+        if (event.key !== 'Escape') return;
+
+        if (productQuickEditElements.modal?.classList.contains('flex')) {
             closeProductQuickEditModal();
         }
+        if (collectionManagerElements.modal?.classList.contains('flex')) {
+            closeCollectionManagerModal();
+        }
+        if (categoryManagerElements.modal?.classList.contains('flex')) {
+            closeCategoryManagerModal();
+        }
     });
+}
+
+function bindCollectionManagerModal() {
+    if (collectionManagerBound) return;
+    collectionManagerBound = true;
+
+    if (collectionManagerElements.close) {
+        collectionManagerElements.close.addEventListener('click', closeCollectionManagerModal);
+    }
+
+    if (collectionManagerElements.cancel) {
+        collectionManagerElements.cancel.addEventListener('click', closeCollectionManagerModal);
+    }
+
+    if (collectionManagerElements.save) {
+        collectionManagerElements.save.addEventListener('click', saveCollectionManager);
+    }
+
+    if (collectionManagerElements.modal) {
+        collectionManagerElements.modal.addEventListener('click', (event) => {
+            if (event.target === collectionManagerElements.modal) {
+                closeCollectionManagerModal();
+            }
+        });
+    }
+}
+
+function bindCategoryManagerModal() {
+    if (categoryManagerBound) return;
+    categoryManagerBound = true;
+
+    if (categoryManagerElements.close) {
+        categoryManagerElements.close.addEventListener('click', closeCategoryManagerModal);
+    }
+
+    if (categoryManagerElements.cancel) {
+        categoryManagerElements.cancel.addEventListener('click', closeCategoryManagerModal);
+    }
+
+    if (categoryManagerElements.save) {
+        categoryManagerElements.save.addEventListener('click', saveCategoryManager);
+    }
+
+    if (categoryManagerElements.add) {
+        categoryManagerElements.add.addEventListener('click', addCategoryManagerEntry);
+    }
+
+    if (categoryManagerElements.modal) {
+        categoryManagerElements.modal.addEventListener('click', (event) => {
+            if (event.target === categoryManagerElements.modal) {
+                closeCategoryManagerModal();
+            }
+        });
+    }
 }
 
 function createProductQuickEditButton(peca, compact = false) {
@@ -705,6 +1089,8 @@ function observeCollectionCarousel(section, splideId) {
 // --- CARREGAMENTO DE DADOS ---
 async function carregarDadosLoja() {
     bindProductQuickEditModal();
+    bindCollectionManagerModal();
+    bindCategoryManagerModal();
     try {
         const [colecoesSnap, produtosSnap, catalogSettingsSnap] = await Promise.all([
             db.collection("colecoes").where("ativa", "==", true).get(),
@@ -723,6 +1109,7 @@ async function carregarDadosLoja() {
         activeCollections = colecoesSnap.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+        adminCollectionsCache = [...activeCollections];
 
         products = produtosSnap.docs
             .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
@@ -732,6 +1119,7 @@ async function carregarDadosLoja() {
             : [];
         const productCategories = [...new Set(products.map((product) => product.categoria).filter(Boolean))];
         siteCategories = mergeSiteCategories(configCategories, productCategories);
+        adminCategoriesCache = buildEditableSiteCategories(configCategories, productCategories);
         if (typeof applyStorefrontCopy === 'function') {
             applyStorefrontCopy(storefrontCopyData);
         }

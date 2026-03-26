@@ -105,6 +105,9 @@ const elements = {
     adminFabToggle: document.getElementById('admin-fab-toggle'),
     adminFabPanel: document.getElementById('admin-fab-panel'),
     adminOpenCopyEditor: document.getElementById('admin-open-copy-editor'),
+    adminOpenProductsEditor: document.getElementById('admin-open-products-editor'),
+    adminOpenCollectionsEditor: document.getElementById('admin-open-collections-editor'),
+    adminOpenCategoriesEditor: document.getElementById('admin-open-categories-editor'),
     entryAssistTitle: document.getElementById('entry-assist-title'),
     entryAssistCopy: document.getElementById('entry-assist-copy'),
     entryAssistIcon: document.getElementById('entry-assist-icon'),
@@ -354,6 +357,29 @@ function closeStorefrontCopyModal() {
     unlockBodyScroll('storefront-copy');
 }
 
+function openInlineProductEditing() {
+    if (typeof window.openStorefrontProductManager === 'function') {
+        window.openStorefrontProductManager();
+        return;
+    }
+
+    window.location.hash = '#loja';
+}
+
+function openInlineCollectionsEditing() {
+    if (typeof window.openStorefrontCollectionsEditor === 'function') {
+        window.openStorefrontCollectionsEditor();
+        return;
+    }
+}
+
+function openInlineCategoriesEditing() {
+    if (typeof window.openStorefrontCategoriesEditor === 'function') {
+        window.openStorefrontCategoriesEditor();
+        return;
+    }
+}
+
 async function signInWithGoogleFromEntryAssist() {
     try {
         if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
@@ -449,16 +475,16 @@ function bindStorefrontAdminTools() {
 
     mountTools('admin-hero-inline-tools', [
         { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal },
-        { label: 'Pecas', href: 'produtos.html', icon: 'fa-shirt' }
+        { label: 'Pecas', icon: 'fa-shirt', onClick: openInlineProductEditing }
     ]);
     mountTools('admin-collections-inline-tools', [
-        { label: 'Colecoes', href: 'colecoes.html', icon: 'fa-layer-group' },
-        { label: 'Pecas', href: 'produtos.html', icon: 'fa-shirt' }
+        { label: 'Colecoes', icon: 'fa-layer-group', onClick: openInlineCollectionsEditing },
+        { label: 'Pecas', icon: 'fa-shirt', onClick: openInlineProductEditing }
     ]);
     mountTools('admin-shop-inline-tools', [
         { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal },
-        { label: 'Categorias', href: 'produtos.html', icon: 'fa-tags' },
-        { label: 'Pecas', href: 'produtos.html', icon: 'fa-shirt' }
+        { label: 'Categorias', icon: 'fa-tags', onClick: openInlineCategoriesEditing },
+        { label: 'Pecas', icon: 'fa-shirt', onClick: openInlineProductEditing }
     ]);
     mountTools('admin-philosophy-inline-tools', [
         { label: 'Editar texto', icon: 'fa-pen-nib', onClick: openStorefrontCopyModal }
@@ -474,6 +500,18 @@ function bindStorefrontAdminTools() {
 
     if (elements.adminOpenCopyEditor) {
         elements.adminOpenCopyEditor.addEventListener('click', openStorefrontCopyModal);
+    }
+
+    if (elements.adminOpenProductsEditor) {
+        elements.adminOpenProductsEditor.addEventListener('click', openInlineProductEditing);
+    }
+
+    if (elements.adminOpenCollectionsEditor) {
+        elements.adminOpenCollectionsEditor.addEventListener('click', openInlineCollectionsEditing);
+    }
+
+    if (elements.adminOpenCategoriesEditor) {
+        elements.adminOpenCategoriesEditor.addEventListener('click', openInlineCategoriesEditing);
     }
 
     if (elements.closeStorefrontCopyModalBtn) {
