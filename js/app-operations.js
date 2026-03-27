@@ -5,6 +5,8 @@ let storeOperationsState = getDefaultStoreOperationsState();
 let unsubscribeStoreOperations = null;
 let storeOperationsModalBound = false;
 let operationsCollectionsCache = [];
+let storeOperationsSaveInFlight = false;
+let storeOperationsAutoSaveQueued = false;
 
 const storeOperationsElements = {
     openFabBtn: document.getElementById('admin-open-operations-editor'),
@@ -465,15 +467,32 @@ function closeStoreOperationsModal() {
 
 window.openStoreOperationsEditor = openStoreOperationsModal;
 
-async function saveStoreOperations() {
+async function saveStoreOperations(options = {}) {
     if (!currentUser || !currentUserIsAdmin) return;
 
+    const {
+        closeAfterSave = true,
+        source = 'manual'
+    } = options && typeof options === 'object' ? options : {};
+
+    if (storeOperationsSaveInFlight) {
+        if (source === 'toggle') {
+            storeOperationsAutoSaveQueued = true;
+        }
+        return;
+    }
+
     try {
+        storeOperationsSaveInFlight = true;
+
         if (storeOperationsElements.saveBtn) {
             storeOperationsElements.saveBtn.disabled = true;
-            storeOperationsElements.saveBtn.textContent = 'Salvando...';
+            storeOperationsElements.saveBtn.textContent = source === 'toggle' ? 'Salvando estado...' : 'Salvando...';
         }
-        updateStoreOperationsFeedback('Salvando o estado da loja...', 'neutral');
+        updateStoreOperationsFeedback(
+            source === 'toggle' ? 'Salvando o estado da loja automaticamente...' : 'Salvando o estado da loja...',
+            'neutral'
+        );
 
         const nextState = readStoreOperationsForm();
         const idToken = await currentUser.getIdToken();
@@ -498,14 +517,24 @@ async function saveStoreOperations() {
         storeOperationsState = normalizeStoreOperationsState(payload?.result?.operations || nextState);
         applyStoreOperationsPublicState();
         refreshStoreOperationsMetaUi();
-        closeStoreOperationsModal();
+        if (closeAfterSave) {
+            closeStoreOperationsModal();
+        }
     } catch (error) {
         updateStoreOperationsFeedback(sanitizePlainText(error?.message || 'Nao foi possivel salvar agora.', 220), 'error');
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar agora.', 220));
+        if (source !== 'toggle') {
+            alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar agora.', 220));
+        }
     } finally {
+        storeOperationsSaveInFlight = false;
         if (storeOperationsElements.saveBtn) {
             storeOperationsElements.saveBtn.disabled = false;
             storeOperationsElements.saveBtn.textContent = 'Salvar operacao';
+        }
+
+        if (storeOperationsAutoSaveQueued) {
+            storeOperationsAutoSaveQueued = false;
+            saveStoreOperations({ closeAfterSave: false, source: 'toggle' });
         }
     }
 }
@@ -561,7 +590,7 @@ function bindStoreOperationsModal() {
     }
 
     if (storeOperationsElements.saveBtn) {
-        storeOperationsElements.saveBtn.addEventListener('click', saveStoreOperations);
+        storeOperationsElements.saveBtn.addEventListener('click', () => saveStoreOperations());
     }
 
     if (storeOperationsElements.runNowBtn) {
@@ -571,14 +600,16 @@ function bindStoreOperationsModal() {
     if (storeOperationsElements.publicStoreEnabled) {
         storeOperationsElements.publicStoreEnabled.addEventListener('change', () => {
             refreshStoreOperationsMetaUi(true);
-            updateStoreOperationsFeedback('Modo selecionado pronto para salvar.', 'neutral');
+            updateStoreOperationsFeedback('Modo selecionado. Salvando automaticamente...', 'neutral');
+            saveStoreOperations({ closeAfterSave: false, source: 'toggle' });
         });
     }
 
     if (storeOperationsElements.maintenanceMode) {
         storeOperationsElements.maintenanceMode.addEventListener('change', () => {
             refreshStoreOperationsMetaUi(true);
-            updateStoreOperationsFeedback('Modo selecionado pronto para salvar.', 'neutral');
+            updateStoreOperationsFeedback('Modo selecionado. Salvando automaticamente...', 'neutral');
+            saveStoreOperations({ closeAfterSave: false, source: 'toggle' });
         });
     }
 
