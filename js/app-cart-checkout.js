@@ -241,9 +241,15 @@ async function ensureCheckoutPushServiceWorkerRegistration() {
         throw new Error('Este navegador nao suporta notificacoes web.');
     }
 
-    return navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/firebase-cloud-messaging-push-scope'
+    await navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+        updateViaCache: 'none'
     });
+    const registration = await navigator.serviceWorker.ready;
+    if (!registration?.active) {
+        throw new Error('O service worker de notificacoes ainda nao ficou ativo. Atualize a pagina e tente novamente.');
+    }
+    return registration;
 }
 
 async function sendCheckoutPushSubscription(token) {
