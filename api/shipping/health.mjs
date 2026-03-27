@@ -1,8 +1,8 @@
 import {
   getShippingHealth,
   setNoStore
-} from "../_shipping.mjs";
-import { requireDiagnosticAccess } from "../_diagnostics.mjs";
+} from "../../server/_shipping.mjs";
+import { requireDiagnosticAccess } from "../../server/_diagnostics.mjs";
 
 export default function handler(req, res) {
   setNoStore(res);

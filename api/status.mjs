@@ -1,7 +1,7 @@
-import { getFirebaseAdminStatus } from "./_firebase-admin.mjs";
-import { requireDiagnosticAccess } from "./_diagnostics.mjs";
-import { getPushPublicConfig } from "./_notifications.mjs";
-import { getShippingHealth, setNoStore } from "./_shipping.mjs";
+import { getFirebaseAdminStatus } from "../server/_firebase-admin.mjs";
+import { requireDiagnosticAccess } from "../server/_diagnostics.mjs";
+import { getPushPublicConfig } from "../server/_notifications.mjs";
+import { getShippingHealth, setNoStore } from "../server/_shipping.mjs";
 
 export default function handler(req, res) {
   setNoStore(res);

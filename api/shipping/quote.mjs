@@ -4,7 +4,7 @@ import {
   normalizePostalCode,
   requestShippingQuote,
   setNoStore
-} from "../_shipping.mjs";
+} from "../../server/_shipping.mjs";
 
 export default async function handler(req, res) {
   setNoStore(res);

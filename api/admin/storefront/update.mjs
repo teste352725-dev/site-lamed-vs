@@ -1,6 +1,6 @@
-import { applyStorefrontAdminAction, isStorefrontAdminError } from "../../_storefront-admin.mjs";
-import { requireAdminUser, isSessionRequestError } from "../../_session.mjs";
-import { getRequestBody, setNoStore } from "../../_shipping.mjs";
+import { applyStorefrontAdminAction, isStorefrontAdminError } from "../../../server/_storefront-admin.mjs";
+import { requireAdminUser, isSessionRequestError } from "../../../server/_session.mjs";
+import { getRequestBody, setNoStore } from "../../../server/_shipping.mjs";
 
 export default async function handler(req, res) {
   setNoStore(res);

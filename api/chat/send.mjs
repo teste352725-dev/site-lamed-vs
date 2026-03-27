@@ -1,6 +1,6 @@
-import { createChatMessageFromBody, isChatRequestError } from "../_chat.mjs";
-import { getRequestBody, setNoStore } from "../_shipping.mjs";
-import { isSessionRequestError, resolveAuthenticatedUser } from "../_session.mjs";
+import { createChatMessageFromBody, isChatRequestError } from "../../server/_chat.mjs";
+import { getRequestBody, setNoStore } from "../../server/_shipping.mjs";
+import { isSessionRequestError, resolveAuthenticatedUser } from "../../server/_session.mjs";
 
 export default async function handler(req, res) {
   setNoStore(res);

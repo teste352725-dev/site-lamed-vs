@@ -1,6 +1,6 @@
-import { runStoreAutomation } from "../_store-automation.mjs";
-import { setNoStore } from "../_shipping.mjs";
-import { isSessionRequestError, requireAdminUser } from "../_session.mjs";
+import { runStoreAutomation } from "../../server/_store-automation.mjs";
+import { setNoStore } from "../../server/_shipping.mjs";
+import { isSessionRequestError, requireAdminUser } from "../../server/_session.mjs";
 
 function isAuthorizedCronRequest(authorizationHeader) {
   const secret = String(process.env.CRON_SECRET || "").trim();
