@@ -33,6 +33,17 @@ function sanitizeIsoDateTime(value) {
   return parsed.toISOString();
 }
 
+function normalizeTimestampLike(value) {
+  if (!value) return "";
+
+  if (typeof value?.toDate === "function") {
+    const parsed = value.toDate();
+    return Number.isNaN(parsed?.getTime?.()) ? "" : parsed.toISOString();
+  }
+
+  return sanitizeIsoDateTime(value);
+}
+
 function sanitizeScheduleId(value, fallbackPrefix) {
   const safe = sanitizePlainText(value, 120)
     .toLowerCase()
@@ -66,7 +77,9 @@ export function getDefaultStoreOperations() {
     closedBody: "Estamos preparando uma nova fase da loja. Em breve tudo volta ao ar.",
     notificationRules: getDefaultNotificationRules(),
     discountSchedules: [],
-    collectionSchedules: []
+    collectionSchedules: [],
+    updatedAt: "",
+    updatedByAdmin: ""
   };
 }
 
@@ -155,7 +168,9 @@ export function mergeStoreOperationsWithDefaults(rawValue) {
     closedBody: sanitizePlainText(raw.closedBody, 400) || defaults.closedBody,
     notificationRules: normalizeNotificationRules(raw.notificationRules),
     discountSchedules: normalizeDiscountSchedules(raw.discountSchedules),
-    collectionSchedules: normalizeCollectionSchedules(raw.collectionSchedules)
+    collectionSchedules: normalizeCollectionSchedules(raw.collectionSchedules),
+    updatedAt: normalizeTimestampLike(raw.updatedAt),
+    updatedByAdmin: sanitizePlainText(raw.updatedByAdmin, 128)
   };
 }
 
@@ -173,6 +188,8 @@ export function isPublicStorefrontBlocked(operations, isAdmin = false) {
 
 export async function saveStoreOperationsConfig(db, payload, adminUid) {
   const normalized = mergeStoreOperationsWithDefaults(payload);
+  const safeAdminUid = sanitizePlainText(adminUid, 128);
+  const savedAt = new Date().toISOString();
 
   await db.collection("site_config").doc(STORE_OPERATIONS_DOC_ID).set({
     kind: "store_operations",
@@ -186,8 +203,12 @@ export async function saveStoreOperationsConfig(db, payload, adminUid) {
     discountSchedules: normalized.discountSchedules,
     collectionSchedules: normalized.collectionSchedules,
     updatedAt: FieldValue.serverTimestamp(),
-    updatedByAdmin: sanitizePlainText(adminUid, 128)
+    updatedByAdmin: safeAdminUid
   }, { merge: true });
 
-  return normalized;
+  return {
+    ...normalized,
+    updatedAt: savedAt,
+    updatedByAdmin: safeAdminUid
+  };
 }

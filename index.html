@@ -728,7 +728,11 @@
 
             <form id="store-operations-form" class="max-h-[82vh] overflow-y-auto px-5 py-5 space-y-7">
                 <section class="space-y-4">
-                    <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Estado da loja</h4>
+                    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Estado da loja</h4>
+                        <span id="store-operations-current-mode" class="inline-flex items-center rounded-full border border-[#E5E0D8] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#6B5139]">Modo atual: Loja aberta</span>
+                    </div>
+                    <p id="store-operations-save-feedback" class="rounded-2xl border border-[#EFE5D8] bg-white px-4 py-3 text-sm text-gray-500">As alteracoes ficam salvas e continuam ativas mesmo depois de atualizar a pagina.</p>
                     <div class="grid gap-3 md:grid-cols-2">
                         <label class="flex items-start gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600">
                             <input type="checkbox" id="store-operations-public-enabled" class="mt-1">

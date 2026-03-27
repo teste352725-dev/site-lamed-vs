@@ -35,7 +35,9 @@ const storeOperationsElements = {
     storeStatusTitle: document.getElementById('store-status-title'),
     storeStatusBody: document.getElementById('store-status-body'),
     storeStatusTag: document.getElementById('store-status-tag'),
-    storeStatusHomeLink: document.getElementById('store-status-home-link')
+    storeStatusHomeLink: document.getElementById('store-status-home-link'),
+    currentMode: document.getElementById('store-operations-current-mode'),
+    saveFeedback: document.getElementById('store-operations-save-feedback')
 };
 
 function getDefaultStoreOperationsState() {
@@ -56,7 +58,9 @@ function getDefaultStoreOperationsState() {
             lowStockThreshold: 3
         },
         discountSchedules: [],
-        collectionSchedules: []
+        collectionSchedules: [],
+        updatedAt: '',
+        updatedByAdmin: ''
     };
 }
 
@@ -68,6 +72,11 @@ function normalizeBoolean(value, fallback = false) {
 }
 
 function normalizeIsoDateTime(value) {
+    if (value && typeof value?.toDate === 'function') {
+        const parsed = value.toDate();
+        return Number.isNaN(parsed?.getTime?.()) ? '' : parsed.toISOString();
+    }
+
     const raw = String(value ?? '').trim();
     if (!raw) return '';
     const parsed = new Date(raw);
@@ -117,8 +126,50 @@ function normalizeStoreOperationsState(rawValue) {
             enabled: normalizeBoolean(entry?.enabled, true),
             lastStartRunAt: normalizeIsoDateTime(entry?.lastStartRunAt),
             lastEndRunAt: normalizeIsoDateTime(entry?.lastEndRunAt)
-        })).filter((entry) => entry.collectionId && (entry.startAt || entry.endAt))
+        })).filter((entry) => entry.collectionId && (entry.startAt || entry.endAt)),
+        updatedAt: normalizeIsoDateTime(raw.updatedAt),
+        updatedByAdmin: sanitizePlainText(raw.updatedByAdmin, 128)
     };
+}
+
+function getStoreOperationsModeLabel() {
+    if (storeOperationsState.maintenanceMode) return 'Modo atual: Manutencao';
+    if (storeOperationsState.publicStoreEnabled === false) return 'Modo atual: Loja fechada';
+    return 'Modo atual: Loja aberta';
+}
+
+function updateStoreOperationsFeedback(message, tone = 'neutral') {
+    if (!storeOperationsElements.saveFeedback) return;
+
+    const element = storeOperationsElements.saveFeedback;
+    element.textContent = message;
+    element.className = 'rounded-2xl border px-4 py-3 text-sm';
+
+    if (tone === 'success') {
+        element.classList.add('border-green-200', 'bg-green-50', 'text-green-700');
+        return;
+    }
+
+    if (tone === 'error') {
+        element.classList.add('border-red-200', 'bg-red-50', 'text-red-700');
+        return;
+    }
+
+    element.classList.add('border-[#EFE5D8]', 'bg-white', 'text-gray-500');
+}
+
+function refreshStoreOperationsMetaUi() {
+    if (storeOperationsElements.currentMode) {
+        storeOperationsElements.currentMode.textContent = getStoreOperationsModeLabel();
+    }
+
+    if (storeOperationsState.updatedAt) {
+        const formatted = new Date(storeOperationsState.updatedAt).toLocaleString('pt-BR');
+        updateStoreOperationsFeedback(`Ultima gravacao salva: ${formatted}. Essas configuracoes continuam ativas mesmo depois de atualizar a pagina.`, 'success');
+        return;
+    }
+
+    updateStoreOperationsFeedback('As alteracoes ficam salvas e continuam ativas mesmo depois de atualizar a pagina.', 'neutral');
 }
 
 function isStorefrontBlockedForPublic() {
@@ -315,6 +366,7 @@ function fillStoreOperationsForm() {
 
     renderDiscountSchedules();
     renderCollectionSchedules();
+    refreshStoreOperationsMetaUi();
 }
 
 function readStoreOperationsForm() {
@@ -407,6 +459,7 @@ async function saveStoreOperations() {
             storeOperationsElements.saveBtn.disabled = true;
             storeOperationsElements.saveBtn.textContent = 'Salvando...';
         }
+        updateStoreOperationsFeedback('Salvando o estado da loja...', 'neutral');
 
         const nextState = readStoreOperationsForm();
         const idToken = await currentUser.getIdToken();
@@ -430,8 +483,10 @@ async function saveStoreOperations() {
 
         storeOperationsState = normalizeStoreOperationsState(payload?.result?.operations || nextState);
         applyStoreOperationsPublicState();
+        refreshStoreOperationsMetaUi();
         closeStoreOperationsModal();
     } catch (error) {
+        updateStoreOperationsFeedback(sanitizePlainText(error?.message || 'Nao foi possivel salvar agora.', 220), 'error');
         alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar agora.', 220));
     } finally {
         if (storeOperationsElements.saveBtn) {
@@ -546,9 +601,11 @@ function startStoreOperationsFeed() {
         .onSnapshot((snapshot) => {
             storeOperationsState = normalizeStoreOperationsState(snapshot.exists ? snapshot.data() : null);
             applyStoreOperationsPublicState();
+            refreshStoreOperationsMetaUi();
         }, () => {
             storeOperationsState = getDefaultStoreOperationsState();
             applyStoreOperationsPublicState();
+            updateStoreOperationsFeedback('Nao foi possivel ler a configuracao salva agora. A tela esta usando o modo padrao temporariamente.', 'error');
         });
 }
 
