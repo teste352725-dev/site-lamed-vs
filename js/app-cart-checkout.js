@@ -5,6 +5,12 @@ let orderSubmissionInFlight = false;
 let checkoutPushConfigCache = null;
 let checkoutPushToken = '';
 
+function isFirestorePermissionError(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code === 'permission-denied' || message.includes('missing or insufficient permissions');
+}
+
 function sanitizeCheckoutPhone(value) {
     return String(value ?? '')
         .replace(/[^\d+\-() ]/g, '')
@@ -110,6 +116,17 @@ async function ensureCheckoutUserProfileDoc(user, cliente) {
     await ref.set(normalizedProfile);
 }
 
+async function tryEnsureCheckoutUserProfileDoc(user, cliente) {
+    try {
+        await ensureCheckoutUserProfileDoc(user, cliente);
+    } catch (error) {
+        if (!isFirestorePermissionError(error)) {
+            throw error;
+        }
+        console.warn('[checkout.profile.sync.skipped]', error);
+    }
+}
+
 async function populateCheckoutFormFromUser(user) {
     if (!user || !elements.checkoutForm) return;
 
@@ -140,7 +157,7 @@ async function loginWithGoogleForCheckout() {
         const result = await auth.signInWithPopup(provider);
         const user = result.user;
 
-        await ensureCheckoutUserProfileDoc(user, {
+        await tryEnsureCheckoutUserProfileDoc(user, {
             nome: sanitizePlainText(user.displayName, 80),
             telefone: '',
             endereco: null
@@ -158,7 +175,7 @@ async function loginWithGoogleForCheckout() {
 async function prepareCheckoutAccount(formData, cliente) {
     const alreadyAuthenticatedUser = currentUser || auth.currentUser;
     if (alreadyAuthenticatedUser) {
-        await ensureCheckoutUserProfileDoc(alreadyAuthenticatedUser, cliente);
+        await tryEnsureCheckoutUserProfileDoc(alreadyAuthenticatedUser, cliente);
         return alreadyAuthenticatedUser;
     }
 
@@ -188,7 +205,7 @@ async function prepareCheckoutAccount(formData, cliente) {
             await user.updateProfile({ displayName: sanitizePlainText(cliente.nome, 80) });
         }
 
-        await ensureCheckoutUserProfileDoc(user, cliente);
+        await tryEnsureCheckoutUserProfileDoc(user, cliente);
         await populateCheckoutFormFromUser(user);
         syncCheckoutAccountUI();
         return user;
