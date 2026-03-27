@@ -112,6 +112,31 @@
         <button type="button" id="offline-banner-retry" class="offline-banner__action">Tentar novamente</button>
     </div>
 
+    <div id="admin-quickbar" class="admin-quickbar hidden">
+        <div class="admin-quickbar__scroll">
+            <button type="button" id="admin-quickbar-operations" class="admin-quickbar__btn">
+                <i class="fa-solid fa-sliders"></i>
+                Operacao
+            </button>
+            <button type="button" id="admin-quickbar-products" class="admin-quickbar__btn">
+                <i class="fa-solid fa-shirt"></i>
+                Pecas
+            </button>
+            <button type="button" id="admin-quickbar-collections" class="admin-quickbar__btn">
+                <i class="fa-solid fa-layer-group"></i>
+                Colecoes
+            </button>
+            <button type="button" id="admin-quickbar-categories" class="admin-quickbar__btn">
+                <i class="fa-solid fa-tags"></i>
+                Categorias
+            </button>
+            <a href="chat-admin.html" class="admin-quickbar__btn">
+                <i class="fa-regular fa-comments"></i>
+                Chats
+            </a>
+        </div>
+    </div>
+
     <div id="admin-fab-shell" class="hidden">
         <div class="admin-fab-panel hidden" id="admin-fab-panel">
             <button type="button" class="admin-fab-link" id="admin-open-copy-editor">
@@ -220,6 +245,11 @@
                     <a href="minha-conta.html" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">
                         Meus Pedidos
                     </a>
+                </li>
+                <li id="sidebar-admin-operation-item" class="hidden">
+                    <button type="button" id="sidebar-admin-operation-link" class="sidebar-link w-full text-left block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-marrom-cta] hover:bg-[#F0EEE6]">
+                        Operacao da Loja
+                    </button>
                 </li>
                 <li>
                     <a href="#contato" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">

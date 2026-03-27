@@ -104,11 +104,18 @@ const elements = {
     adminFabShell: document.getElementById('admin-fab-shell'),
     adminFabToggle: document.getElementById('admin-fab-toggle'),
     adminFabPanel: document.getElementById('admin-fab-panel'),
+    adminQuickbar: document.getElementById('admin-quickbar'),
+    adminQuickbarOperations: document.getElementById('admin-quickbar-operations'),
+    adminQuickbarProducts: document.getElementById('admin-quickbar-products'),
+    adminQuickbarCollections: document.getElementById('admin-quickbar-collections'),
+    adminQuickbarCategories: document.getElementById('admin-quickbar-categories'),
     adminOpenCopyEditor: document.getElementById('admin-open-copy-editor'),
     adminOpenOperationsEditor: document.getElementById('admin-open-operations-editor'),
     adminOpenProductsEditor: document.getElementById('admin-open-products-editor'),
     adminOpenCollectionsEditor: document.getElementById('admin-open-collections-editor'),
     adminOpenCategoriesEditor: document.getElementById('admin-open-categories-editor'),
+    sidebarAdminOperationItem: document.getElementById('sidebar-admin-operation-item'),
+    sidebarAdminOperationLink: document.getElementById('sidebar-admin-operation-link'),
     entryAssistTitle: document.getElementById('entry-assist-title'),
     entryAssistCopy: document.getElementById('entry-assist-copy'),
     entryAssistIcon: document.getElementById('entry-assist-icon'),
@@ -522,6 +529,22 @@ function bindStorefrontAdminTools() {
         elements.adminOpenCopyEditor.addEventListener('click', openStorefrontCopyModal);
     }
 
+    if (elements.adminQuickbarOperations) {
+        elements.adminQuickbarOperations.addEventListener('click', openInlineOperationsEditing);
+    }
+
+    if (elements.adminQuickbarProducts) {
+        elements.adminQuickbarProducts.addEventListener('click', openInlineProductEditing);
+    }
+
+    if (elements.adminQuickbarCollections) {
+        elements.adminQuickbarCollections.addEventListener('click', openInlineCollectionsEditing);
+    }
+
+    if (elements.adminQuickbarCategories) {
+        elements.adminQuickbarCategories.addEventListener('click', openInlineCategoriesEditing);
+    }
+
     if (elements.adminOpenOperationsEditor) {
         elements.adminOpenOperationsEditor.addEventListener('click', openInlineOperationsEditing);
     }
@@ -536,6 +559,13 @@ function bindStorefrontAdminTools() {
 
     if (elements.adminOpenCategoriesEditor) {
         elements.adminOpenCategoriesEditor.addEventListener('click', openInlineCategoriesEditing);
+    }
+
+    if (elements.sidebarAdminOperationLink) {
+        elements.sidebarAdminOperationLink.addEventListener('click', () => {
+            if (elements.sidebarMenu?.classList.contains('open')) toggleSidebar();
+            openInlineOperationsEditing();
+        });
     }
 
     if (elements.closeStorefrontCopyModalBtn) {
@@ -578,6 +608,14 @@ function updateAdminModeExperience(isAdmin) {
 
     if (elements.adminFabShell) {
         elements.adminFabShell.classList.toggle('hidden', !isAdmin);
+    }
+
+    if (elements.adminQuickbar) {
+        elements.adminQuickbar.classList.toggle('hidden', !isAdmin);
+    }
+
+    if (elements.sidebarAdminOperationItem) {
+        elements.sidebarAdminOperationItem.classList.toggle('hidden', !isAdmin);
     }
 
     if (elements.floatingWhatsapp) {

@@ -471,6 +471,50 @@ body.no-scroll {
     text-transform: uppercase;
 }
 
+.admin-quickbar {
+    position: sticky;
+    top: 73px;
+    z-index: 47;
+    background: rgba(253, 251, 246, 0.96);
+    border-bottom: 1px solid #ece3d6;
+    backdrop-filter: blur(8px);
+}
+
+.admin-quickbar.hidden {
+    display: none;
+}
+
+.admin-quickbar__scroll {
+    display: flex;
+    gap: 0.65rem;
+    overflow-x: auto;
+    padding: 0.8rem 1rem;
+    scrollbar-width: none;
+}
+
+.admin-quickbar__scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.admin-quickbar__btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid #ddcfbe;
+    border-radius: 999px;
+    background: #fff;
+    color: #5b432e;
+    cursor: pointer;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 0.8rem 1rem;
+    text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
 .admin-fab-trigger {
     position: fixed;
     right: 1rem;
@@ -583,6 +627,10 @@ body.no-scroll {
         flex-direction: column;
         align-items: stretch;
         padding: 0.8rem 0.9rem;
+    }
+
+    .admin-quickbar {
+        top: 65px;
     }
 
     .offline-banner__action {
