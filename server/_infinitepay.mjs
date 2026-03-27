@@ -150,6 +150,21 @@ function buildInfinitePayItems(produtos) {
   })).filter((item) => item.price > 0);
 }
 
+function buildInfinitePayShippingItem(frete) {
+  const price = toCents(frete?.price || 0);
+  if (price <= 0) return null;
+
+  const company = sanitizePlainText(frete?.company, 80);
+  const name = sanitizePlainText(frete?.name, 120);
+  const description = [company, name].filter(Boolean).join(" - ") || "Frete";
+
+  return {
+    quantity: 1,
+    price,
+    description: sanitizePlainText(`Frete ${description}`, 120)
+  };
+}
+
 function buildInfinitePayCustomer(cliente) {
   const name = sanitizePlainText(cliente?.nome, 120);
   const email = normalizeEmail(cliente?.email);
@@ -215,6 +230,8 @@ export async function createInfinitePayCheckoutLink({ orderId, pedido, requestMe
   }
 
   const items = buildInfinitePayItems(pedido?.produtos);
+  const shippingItem = buildInfinitePayShippingItem(pedido?.frete);
+  if (shippingItem) items.push(shippingItem);
   if (items.length === 0) {
     throw new InfinitePayRequestError(400, "Nao foi possivel gerar o checkout sem itens validos.");
   }

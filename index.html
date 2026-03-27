@@ -630,19 +630,11 @@
 
                 <!-- Campos de Pagamento -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Pagamento</h3>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
-                        <input type="radio" name="pagamento" value="PIX" required class="mr-2"> 
-                        <span class="text-sm font-medium">PIX (-5%)</span>
-                    </label>
-                    <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
-                        <input type="radio" name="pagamento" value="Cartão de Crédito" required class="mr-2">
-                        <span class="text-sm font-medium">Cartão</span>
-                    </label>
-                    <label class="block p-3 border border-[#dcdcdc] rounded cursor-pointer hover:bg-[#F0EEE6]">
-                        <input type="radio" name="pagamento" value="InfinitePay" required class="mr-2">
-                        <span class="text-sm font-medium">InfinitePay</span>
-                        <span class="mt-1 block text-xs text-gray-500">Pix ou cartão no checkout seguro</span>
+                <div class="grid grid-cols-1 gap-3">
+                    <label class="block p-4 border border-[#dcdcdc] rounded bg-[#F8F6F0] cursor-pointer">
+                        <input type="radio" name="pagamento" value="InfinitePay" required checked class="mr-2">
+                        <span class="text-sm font-semibold">InfinitePay</span>
+                        <span class="mt-1 block text-xs text-gray-500">Pix ou cartão no checkout seguro, com parcelamento direto no pagamento.</span>
                     </label>
                 </div>
                 <div id="parcelamento-container" class="hidden mt-2 bg-[#F8F6F0] p-2 rounded">

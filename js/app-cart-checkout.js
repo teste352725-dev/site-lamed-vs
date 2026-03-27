@@ -461,6 +461,12 @@ function buildShippingRequestItems(cartItems) {
     })).filter((item) => item.id);
 }
 
+function getSelectedCheckoutPaymentValue() {
+    return document.querySelector('input[name="pagamento"]:checked')?.value
+        || document.querySelector('input[name="pagamento"]')?.value
+        || '';
+}
+
 function getSelectedShippingOption() {
     if (!shippingQuoteState.selectedOptionId) return null;
     const match = shippingQuoteState.options.find((option) => option.id === shippingQuoteState.selectedOptionId);
@@ -487,7 +493,7 @@ function buildManualShippingSelection(destinationCep = '') {
 }
 
 function getCheckoutContext() {
-    const pagamento = document.querySelector('input[name="pagamento"]:checked')?.value || '';
+    const pagamento = getSelectedCheckoutPaymentValue();
     const parcelas = parseInt(document.getElementById('parcelas-select')?.value, 10) || 1;
     const cep = normalizePostalCode(elements.checkoutCepInput?.value);
     const shipping = SHIPPING_QUOTE_ENABLED ? getSelectedShippingOption() : null;
@@ -938,7 +944,7 @@ function syncParcelamentoVisibility() {
     const container = document.getElementById('parcelamento-container');
     if (!container) return;
 
-    const selectedPayment = document.querySelector('input[name="pagamento"]:checked')?.value || '';
+    const selectedPayment = getSelectedCheckoutPaymentValue();
     const paymentKey = getPaymentKey(selectedPayment);
     const isCardPayment = paymentKey.includes('cartao');
 
@@ -1187,7 +1193,7 @@ function updateCheckoutSummary() {
 function renderCheckoutSubmitButton(isSubmitting = orderSubmissionInFlight) {
     if (!elements.checkoutSubmitButton) return;
 
-    const selectedPayment = document.querySelector('input[name="pagamento"]:checked')?.value || '';
+    const selectedPayment = getSelectedCheckoutPaymentValue();
     const paymentKey = getPaymentKey(selectedPayment);
 
     if (isSubmitting) {
@@ -1268,6 +1274,12 @@ async function finalizarPedido(formData) {
             }
         }
 
+        const selectedShipping = SHIPPING_QUOTE_ENABLED ? getSelectedShippingOption() : null;
+
+        if (SHIPPING_QUOTE_ENABLED && !selectedShipping) {
+            throw new Error('Escolha uma opcao de frete antes de continuar.');
+        }
+
         const response = await fetch(buildBackendUrl('/api/orders/create'), {
             method: 'POST',
             headers: {
@@ -1280,6 +1292,7 @@ async function finalizarPedido(formData) {
                 pagamento,
                 parcelas: parcelasSeguras,
                 cart,
+                shipping: selectedShipping,
                 expectedTotal
             })
         });
@@ -1360,5 +1373,5 @@ document.addEventListener('DOMContentLoaded', setupPaymentOptions);
 document.addEventListener('DOMContentLoaded', setupCheckoutExperience);
 window.enablePushNotificationsFromCheckout = enablePushNotificationsFromCheckout;
 
-const SHIPPING_QUOTE_ENABLED = false;
+const SHIPPING_QUOTE_ENABLED = true;
 const MANUAL_SHIPPING_ORIGIN_POSTAL_CODE = '29056015';

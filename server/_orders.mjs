@@ -2,6 +2,7 @@
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 import { clearUserCart } from "./_cart.mjs";
 import { createInfinitePayCheckoutLink, isInfinitePayConfigured } from "./_infinitepay.mjs";
+import { isShippingApiEnabled, requestShippingQuote } from "./_shipping.mjs";
 import { getStoreOperations, isPublicStorefrontBlocked } from "./_store-operations.mjs";
 
 const TAXA_JUROS = 0.0549;
@@ -309,6 +310,45 @@ function buildManualShippingSelection(destinationCep = "") {
     toPostalCode: normalizedDestinationCep,
     freeShippingApplied: false
   };
+}
+
+async function resolveOrderShippingSelection(cliente, canonicalCart, submittedShipping) {
+  if (!isShippingApiEnabled()) {
+    return buildManualShippingSelection(cliente?.endereco?.cep);
+  }
+
+  const normalizedSelection = normalizeShippingSelection(submittedShipping);
+  if (!normalizedSelection) {
+    throw new RequestError(400, "Escolha uma opcao de frete antes de continuar.");
+  }
+
+  let quote;
+  try {
+    quote = await requestShippingQuote({
+      destinationPostalCode: cliente?.endereco?.cep,
+      items: canonicalCart
+    });
+  } catch (error) {
+    throw new RequestError(502, String(error?.message || "Nao foi possivel validar o frete agora."));
+  }
+
+  const options = Array.isArray(quote?.options)
+    ? quote.options.map((option) => normalizeShippingSelection(option)).filter(Boolean)
+    : [];
+
+  const matchedOption = options.find((option) =>
+    option.id === normalizedSelection.id ||
+    (
+      option.serviceId === normalizedSelection.serviceId &&
+      option.serviceCode === normalizedSelection.serviceCode
+    )
+  );
+
+  if (!matchedOption) {
+    throw new RequestError(400, "A opcao de frete escolhida nao esta mais disponivel. Revise o CEP e selecione novamente.");
+  }
+
+  return matchedOption;
 }
 
 async function getProductMapByIds(db, ids) {
@@ -809,8 +849,8 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
     throw new RequestError(400, "Os itens do carrinho nao estao mais disponiveis.");
   }
 
-  const frete = buildManualShippingSelection(cliente.endereco.cep);
-  const totals = calculateCheckoutTotals(canonicalCart, pagamento, parcelas, cliente.endereco.cep, null);
+  const frete = await resolveOrderShippingSelection(cliente, canonicalCart, body?.shipping);
+  const totals = calculateCheckoutTotals(canonicalCart, pagamento, parcelas, cliente.endereco.cep, frete);
   const sourceSignature = buildComparableCartSignature(submittedCart);
   const canonicalSignature = buildComparableCartSignature(canonicalCart);
 
