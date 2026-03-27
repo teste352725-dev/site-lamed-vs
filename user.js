@@ -40,6 +40,7 @@ let currentPushToken = "";
 let pushConfigCache = null;
 let pushRequestInFlight = false;
 let pushForegroundListenerBound = false;
+let infinitePayReturnInFlight = false;
 
 function resolveApiBaseUrl() {
     const configured = document.querySelector('meta[name="lamed-api-base-url"]')?.getAttribute('content')?.trim();
@@ -274,6 +275,7 @@ function getStatusLabel(status) {
     const safeStatus = sanitizePlainText(status, 30).toLowerCase();
     const labels = {
         pendente: 'Pendente',
+        pago: 'Pago',
         processando: 'Em producao',
         enviado: 'Enviado',
         entregue: 'Entregue',
@@ -358,6 +360,96 @@ function persistFocusedOrder(orderId) {
     url.searchParams.set('pedido', orderId);
     url.hash = '#pedidos';
     window.history.replaceState({}, '', url.toString());
+}
+
+function getInfinitePayReturnContext() {
+    const url = new URL(window.location.href);
+    const gateway = sanitizePlainText(url.searchParams.get('gateway'), 40).toLowerCase();
+    if (gateway !== 'infinitepay') return null;
+
+    const orderId = sanitizePlainText(url.searchParams.get('order_nsu') || url.searchParams.get('pedido'), 120);
+    if (!orderId) return null;
+
+    return {
+        orderId,
+        slug: sanitizePlainText(url.searchParams.get('slug'), 180),
+        transactionNsu: sanitizePlainText(url.searchParams.get('transaction_nsu'), 180)
+    };
+}
+
+function cleanupInfinitePayReturnUrl(orderId) {
+    const url = new URL(window.location.href);
+    [
+        'gateway',
+        'order_nsu',
+        'slug',
+        'transaction_nsu',
+        'capture_method',
+        'receipt_url'
+    ].forEach((key) => url.searchParams.delete(key));
+
+    if (orderId) {
+        url.searchParams.set('pedido', orderId);
+    }
+
+    url.hash = '#pedidos';
+    window.history.replaceState({}, '', url.toString());
+}
+
+async function maybeHandleInfinitePayReturn(user) {
+    const context = getInfinitePayReturnContext();
+    if (!user || !context || infinitePayReturnInFlight) return;
+
+    const sessionKey = `lamed_infinitepay_return_${context.orderId}_${context.transactionNsu || context.slug || 'paid'}`;
+
+    try {
+        if (sessionStorage.getItem(sessionKey) === 'done') {
+            cleanupInfinitePayReturnUrl(context.orderId);
+            return;
+        }
+    } catch (error) {}
+
+    infinitePayReturnInFlight = true;
+
+    try {
+        const idToken = await user.getIdToken();
+        const response = await fetch(buildBackendUrl('/api/payments/infinitepay/confirm'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                Authorization: `Bearer ${idToken}`
+            },
+            body: JSON.stringify(context)
+        });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) {
+            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel confirmar o pagamento da InfinitePay.', 220));
+        }
+
+        try {
+            sessionStorage.setItem(sessionKey, 'done');
+        } catch (error) {}
+
+        persistFocusedOrder(context.orderId);
+        activateAccountTab('pedidos');
+        cleanupInfinitePayReturnUrl(context.orderId);
+
+        const whatsappUrl = normalizeHttpUrl(payload?.whatsappUrl);
+        if (whatsappUrl) {
+            const popup = window.open(whatsappUrl, '_blank', 'noopener');
+            if (!popup) {
+                window.location.href = whatsappUrl;
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('[infinitepay.return]', error);
+        alert(sanitizePlainText(error?.message || 'Nao foi possivel concluir a volta do pagamento agora.', 220));
+    } finally {
+        infinitePayReturnInFlight = false;
+    }
 }
 
 function buildSupportPrefixedMessage(text, orderId) {
@@ -901,6 +993,7 @@ auth.onAuthStateChanged(async (user) => {
         iniciarChat();
         startAdminActiveChatsFeed();
         applyTabFromHash();
+        await maybeHandleInfinitePayReturn(user);
         
     } else {
         currentUser = null;
@@ -1302,6 +1395,7 @@ function carregarMeusPedidosLegacy() {
 }
 
 function getStatusClass(status) {
+    if(status === 'pago') return 'text-emerald-700 bg-emerald-50';
     if(status === 'entregue') return 'text-green-600 bg-green-50';
     if(status === 'cancelado') return 'text-red-600 bg-red-50';
     if(status === 'enviado') return 'text-blue-600 bg-blue-50';

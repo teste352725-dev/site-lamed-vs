@@ -1,4 +1,5 @@
 import { FieldValue, getAdminDb } from "./_firebase-admin.mjs";
+import { isAdminDecodedToken } from "./_session.mjs";
 
 class InfinitePayRequestError extends Error {
   constructor(status, message, details = {}) {
@@ -36,6 +37,17 @@ function roundCurrency(value) {
 
 function toCents(value) {
   return Math.round(roundCurrency(value) * 100);
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(Number(value || 0));
+}
+
+function normalizeOrderCode(orderId) {
+  return String(orderId || "").slice(0, 6).toUpperCase();
 }
 
 function normalizeInfinitePayWebhookEvent(payload) {
@@ -162,6 +174,55 @@ function buildInfinitePayShippingItem(frete) {
     quantity: 1,
     price,
     description: sanitizePlainText(`Frete ${description}`, 120)
+  };
+}
+
+function getWhatsAppPhone() {
+  return sanitizePlainText(process.env.LAMED_WHATSAPP_PHONE, 20) || "5527999287657";
+}
+
+function getCaptureMethodLabel(order) {
+  const method = sanitizePlainText(order?.payment?.captureMethod, 40).toLowerCase();
+  if (method === "pix") return "Pix";
+  if (method === "credit_card") {
+    const installments = Math.max(1, parseInt(order?.payment?.installments || order?.parcelas, 10) || 1);
+    return installments > 1 ? `Cartao (${installments}x)` : "Cartao";
+  }
+  return sanitizePlainText(order?.pagamento, 60) || "Pagamento confirmado";
+}
+
+function buildPaidOrderWhatsAppMessage(orderId, order) {
+  const lines = [];
+  const customerName = sanitizePlainText(order?.cliente?.nome, 80) || "Cliente";
+  const orderCode = normalizeOrderCode(orderId);
+  const freteCompany = sanitizePlainText(order?.frete?.company, 80);
+  const freteName = sanitizePlainText(order?.frete?.name, 120);
+  const freteLabel = [freteCompany, freteName].filter(Boolean).join(" - ") || "Frete confirmado";
+
+  lines.push(`*Pedido pago #${orderCode}*`);
+  lines.push(`Cliente: ${customerName}`);
+  lines.push(`Pagamento confirmado: ${getCaptureMethodLabel(order)}`);
+
+  if (Number(order?.frete?.price || 0) > 0) {
+    lines.push(`Frete: ${freteLabel}`);
+    lines.push(`Valor do frete: ${formatCurrency(order?.frete?.price)}`);
+  } else {
+    lines.push("Frete: sem cobranca adicional");
+  }
+
+  lines.push(`Total pago: ${formatCurrency(order?.total)}`);
+  lines.push("");
+  lines.push("Pedido confirmado e liberado para o atelie.");
+
+  return lines.join("\n").trim();
+}
+
+function buildPaidOrderWhatsAppUrl(orderId, order) {
+  const message = buildPaidOrderWhatsAppMessage(orderId, order);
+  const phone = getWhatsAppPhone();
+  return {
+    whatsappMessage: message,
+    whatsappUrl: `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
   };
 }
 
@@ -363,9 +424,10 @@ export async function applyInfinitePayWebhook(payload, db = getAdminDb()) {
   const order = snapshot.data() || {};
   const paymentUpdate = buildPaymentSummaryUpdate(order, normalizedPayload);
 
-  const nextStatus = sanitizePlainText(order?.status, 20).toLowerCase() === "pendente"
-    ? "processando"
-    : sanitizePlainText(order?.status, 20) || "processando";
+  const currentStatus = sanitizePlainText(order?.status, 20).toLowerCase();
+  const nextStatus = ["enviado", "entregue", "cancelado"].includes(currentStatus)
+    ? currentStatus
+    : "pago";
 
   await orderRef.set({
     paymentGateway: paymentUpdate.paymentGateway,
@@ -385,4 +447,101 @@ export async function applyInfinitePayWebhook(payload, db = getAdminDb()) {
 
 export function isInfinitePayRequestError(error) {
   return error instanceof InfinitePayRequestError;
+}
+
+async function requestInfinitePayPaymentCheck({ orderId, slug, transactionNsu }) {
+  const response = await fetch(`${getInfinitePayApiBaseUrl()}/invoices/public/checkout/payment_check`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      handle: getInfinitePayHandle(),
+      order_nsu: orderId,
+      transaction_nsu: transactionNsu,
+      slug
+    })
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new InfinitePayRequestError(
+      502,
+      sanitizePlainText(payload?.message || payload?.error || "Nao foi possivel confirmar o pagamento na InfinitePay.", 220),
+      { providerPayload: payload }
+    );
+  }
+
+  if (payload?.success !== true || payload?.paid !== true) {
+    throw new InfinitePayRequestError(409, "O pagamento ainda nao foi confirmado pela InfinitePay.");
+  }
+
+  return payload || {};
+}
+
+export async function confirmInfinitePayPayment({ orderId, slug, transactionNsu, decodedUser }, db = getAdminDb()) {
+  const safeOrderId = sanitizePlainText(orderId, 120);
+  const safeSlug = sanitizePlainText(slug, 160);
+  const safeTransactionNsu = sanitizePlainText(transactionNsu, 160);
+
+  if (!safeOrderId) {
+    throw new InfinitePayRequestError(400, "Pedido nao informado para confirmar o pagamento.");
+  }
+
+  const orderRef = db.collection("pedidos").doc(safeOrderId);
+  const snapshot = await orderRef.get();
+  if (!snapshot.exists) {
+    throw new InfinitePayRequestError(404, "Pedido nao encontrado.");
+  }
+
+  const order = { id: snapshot.id, ...(snapshot.data() || {}) };
+  const orderOwnerId = sanitizePlainText(order?.userId, 128);
+  const requesterId = sanitizePlainText(decodedUser?.uid, 128);
+  const requesterIsAdmin = isAdminDecodedToken(decodedUser);
+
+  if (!requesterIsAdmin && (!requesterId || !orderOwnerId || requesterId !== orderOwnerId)) {
+    throw new InfinitePayRequestError(403, "Voce nao pode confirmar este pagamento.");
+  }
+
+  const currentPaymentStatus = sanitizePlainText(order?.paymentStatus || order?.payment?.status, 40).toLowerCase();
+  if (currentPaymentStatus === "paid") {
+    return {
+      ok: true,
+      orderId: safeOrderId,
+      paymentStatus: "paid",
+      status: sanitizePlainText(order?.status, 20).toLowerCase() || "pago",
+      ...buildPaidOrderWhatsAppUrl(safeOrderId, order)
+    };
+  }
+
+  if (!safeSlug || !safeTransactionNsu) {
+    throw new InfinitePayRequestError(400, "Nao foi possivel validar o retorno da InfinitePay para este pedido.");
+  }
+
+  const checkPayload = await requestInfinitePayPaymentCheck({
+    orderId: safeOrderId,
+    slug: safeSlug,
+    transactionNsu: safeTransactionNsu
+  });
+
+  await applyInfinitePayWebhook({
+    ...checkPayload,
+    slug: safeSlug,
+    invoice_slug: checkPayload?.invoice_slug || safeSlug,
+    transaction_nsu: checkPayload?.transaction_nsu || safeTransactionNsu,
+    order_nsu: safeOrderId
+  }, db);
+
+  const updatedSnapshot = await orderRef.get();
+  const updatedOrder = { id: updatedSnapshot.id, ...(updatedSnapshot.data() || {}) };
+
+  return {
+    ok: true,
+    orderId: safeOrderId,
+    paymentStatus: "paid",
+    status: sanitizePlainText(updatedOrder?.status, 20).toLowerCase() || "pago",
+    ...buildPaidOrderWhatsAppUrl(safeOrderId, updatedOrder)
+  };
 }

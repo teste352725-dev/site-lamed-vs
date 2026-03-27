@@ -3,7 +3,7 @@ import { sendOrderStatusNotification } from "../../../server/_notifications.mjs"
 import { requireAdminUser, isSessionRequestError } from "../../../server/_session.mjs";
 import { getRequestBody, setNoStore } from "../../../server/_shipping.mjs";
 
-const STATUS_ORDER = new Set(["pendente", "processando", "enviado", "entregue", "cancelado"]);
+const STATUS_ORDER = new Set(["pendente", "pago", "processando", "enviado", "entregue", "cancelado"]);
 
 function sanitizePlainText(value, maxLength = 120) {
   return String(value ?? "")

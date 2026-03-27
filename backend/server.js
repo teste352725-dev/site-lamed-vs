@@ -5,7 +5,7 @@ import fs from "fs";
 import { createChatMessageFromBody, isChatRequestError } from "../server/_chat.mjs";
 import { getFirebaseAdminStatus } from "../server/_firebase-admin.mjs";
 import { getInfinitePayHealth } from "../server/_infinitepay.mjs";
-import { applyInfinitePayWebhook, assertInfinitePayWebhookAccess, isInfinitePayRequestError } from "../server/_infinitepay.mjs";
+import { applyInfinitePayWebhook, assertInfinitePayWebhookAccess, confirmInfinitePayPayment, isInfinitePayRequestError } from "../server/_infinitepay.mjs";
 import { createOrderFromBody, isOrderRequestError } from "../server/_orders.mjs";
 import { enforceInMemoryRateLimit, getClientAddress } from "../server/_security.mjs";
 import { isSessionRequestError, requireAdminUser, resolveAuthenticatedUser } from "../server/_session.mjs";
@@ -623,6 +623,33 @@ app.post("/api/payments/infinitepay/webhook", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: "Nao foi possivel processar o webhook da InfinitePay."
+    });
+  }
+});
+
+app.post("/api/payments/infinitepay/confirm", async (req, res) => {
+  try {
+    const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
+    const decodedUser = await resolveAuthenticatedUser(authorizationHeader);
+    const result = await confirmInfinitePayPayment({
+      orderId: req.body?.orderId || req.body?.order_nsu,
+      slug: req.body?.slug,
+      transactionNsu: req.body?.transactionNsu || req.body?.transaction_nsu,
+      decodedUser
+    });
+    return res.status(200).json(result);
+  } catch (error) {
+    if (isSessionRequestError(error) || isInfinitePayRequestError(error)) {
+      return res.status(Number(error.status) || 400).json({
+        ok: false,
+        error: String(error.message || "Nao foi possivel confirmar o pagamento da InfinitePay.")
+      });
+    }
+
+    console.error("[local.payments.infinitepay.confirm]", error);
+    return res.status(500).json({
+      ok: false,
+      error: "Nao foi possivel confirmar o pagamento da InfinitePay."
     });
   }
 });

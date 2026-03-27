@@ -10,12 +10,13 @@ const ordersFirebaseConfig = {
 const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 const STATUS_META = {
     pendente: { label: "Pendente", className: "status-pendente", icon: "fa-solid fa-hourglass-half" },
+    pago: { label: "Pago", className: "status-entregue", icon: "fa-solid fa-circle-check" },
     processando: { label: "Processando", className: "status-processando", icon: "fa-solid fa-scissors" },
     enviado: { label: "Enviado", className: "status-enviado", icon: "fa-solid fa-truck-fast" },
     entregue: { label: "Entregue", className: "status-entregue", icon: "fa-solid fa-house-circle-check" },
     cancelado: { label: "Cancelado", className: "status-cancelado", icon: "fa-solid fa-ban" }
 };
-const STATUS_ORDER = ["pendente", "processando", "enviado", "entregue", "cancelado"];
+const STATUS_ORDER = ["pendente", "pago", "processando", "enviado", "entregue", "cancelado"];
 const ADMIN_OPERATIONAL_SHIPPING_ENABLED = false;
 const ADMIN_OPERATIONAL_SHIPPING_PAUSE_MESSAGE = "Cotacao automatica pausada temporariamente. Use esta area apenas para organizar a expedicao manual.";
 const DEFAULT_SHIPPING_PROFILES = {
@@ -326,7 +327,7 @@ function stripAccents(value) {
 }
 
 function normalizeOrderStatus(value) {
-    const aliases = { pago: "processando", concluido: "entregue" };
+    const aliases = { concluido: "entregue" };
     const normalized = stripAccents(sanitizePlainText(value, 40)).toLowerCase();
     const canonical = aliases[normalized] || normalized;
     return STATUS_ORDER.includes(canonical) ? canonical : "pendente";
@@ -704,7 +705,7 @@ function renderOverviewStats() {
     state.orders.forEach((order) => {
         const status = normalizeOrderStatus(order.status);
         if (status === "pendente") pending += 1;
-        if (status === "processando") processing += 1;
+        if (status === "pago" || status === "processando") processing += 1;
         if (hasCustomWork(order)) custom += 1;
         if (isExpeditionReady(order)) ready += 1;
         if (getRemessaId(order)) remessas.add(getRemessaId(order));
