@@ -132,10 +132,22 @@ function normalizeStoreOperationsState(rawValue) {
     };
 }
 
-function getStoreOperationsModeLabel() {
-    if (storeOperationsState.maintenanceMode) return 'Modo atual: Manutencao';
-    if (storeOperationsState.publicStoreEnabled === false) return 'Modo atual: Loja fechada';
+function getStoreOperationsModeLabel(source = storeOperationsState) {
+    const current = source && typeof source === 'object' ? source : storeOperationsState;
+    if (current.maintenanceMode) return 'Modo atual: Manutencao';
+    if (current.publicStoreEnabled === false) return 'Modo atual: Loja fechada';
     return 'Modo atual: Loja aberta';
+}
+
+function getDraftStoreOperationsModeState() {
+    return {
+        publicStoreEnabled: storeOperationsElements.publicStoreEnabled
+            ? storeOperationsElements.publicStoreEnabled.checked === true
+            : storeOperationsState.publicStoreEnabled,
+        maintenanceMode: storeOperationsElements.maintenanceMode
+            ? storeOperationsElements.maintenanceMode.checked === true
+            : storeOperationsState.maintenanceMode
+    };
 }
 
 function updateStoreOperationsFeedback(message, tone = 'neutral') {
@@ -158,9 +170,11 @@ function updateStoreOperationsFeedback(message, tone = 'neutral') {
     element.classList.add('border-[#EFE5D8]', 'bg-white', 'text-gray-500');
 }
 
-function refreshStoreOperationsMetaUi() {
+function refreshStoreOperationsMetaUi(useDraftValues = false) {
     if (storeOperationsElements.currentMode) {
-        storeOperationsElements.currentMode.textContent = getStoreOperationsModeLabel();
+        storeOperationsElements.currentMode.textContent = getStoreOperationsModeLabel(
+            useDraftValues ? getDraftStoreOperationsModeState() : storeOperationsState
+        );
     }
 
     if (storeOperationsState.updatedAt) {
@@ -552,6 +566,20 @@ function bindStoreOperationsModal() {
 
     if (storeOperationsElements.runNowBtn) {
         storeOperationsElements.runNowBtn.addEventListener('click', runStoreAutomationNow);
+    }
+
+    if (storeOperationsElements.publicStoreEnabled) {
+        storeOperationsElements.publicStoreEnabled.addEventListener('change', () => {
+            refreshStoreOperationsMetaUi(true);
+            updateStoreOperationsFeedback('Modo selecionado pronto para salvar.', 'neutral');
+        });
+    }
+
+    if (storeOperationsElements.maintenanceMode) {
+        storeOperationsElements.maintenanceMode.addEventListener('change', () => {
+            refreshStoreOperationsMetaUi(true);
+            updateStoreOperationsFeedback('Modo selecionado pronto para salvar.', 'neutral');
+        });
     }
 
     if (storeOperationsElements.modal) {
