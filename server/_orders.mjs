@@ -1,6 +1,7 @@
 ﻿import { createHash } from "node:crypto";
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 import { clearUserCart } from "./_cart.mjs";
+import { createInfinitePayCheckoutLink, isInfinitePayConfigured } from "./_infinitepay.mjs";
 import { getStoreOperations, isPublicStorefrontBlocked } from "./_store-operations.mjs";
 
 const TAXA_JUROS = 0.0549;
@@ -542,6 +543,13 @@ function normalizePagamento(rawPagamento, rawParcelas) {
     };
   }
 
+  if (paymentKey.includes("infinitepay")) {
+    return {
+      pagamento: "InfinitePay",
+      parcelas: 1
+    };
+  }
+
   throw new RequestError(400, "Selecione uma forma de pagamento valida.");
 }
 
@@ -773,12 +781,23 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
 
   const cliente = buildCliente(body?.cliente);
   const { pagamento, parcelas } = normalizePagamento(body?.pagamento, body?.parcelas);
+  const paymentKey = getPaymentKey(pagamento);
   const submittedCart = Array.isArray(body?.cart) ? body.cart : [];
   const hasExpectedTotal = body?.expectedTotal !== undefined && body?.expectedTotal !== null && String(body.expectedTotal).trim() !== "";
   const expectedTotal = hasExpectedTotal ? roundCurrency(Number(body.expectedTotal)) : null;
 
   if (submittedCart.length === 0) {
     throw new RequestError(400, "Sua sacola esta vazia.");
+  }
+
+  if (paymentKey === "infinitepay") {
+    if (!isInfinitePayConfigured()) {
+      throw new RequestError(503, "A InfinitePay ainda nao esta configurada neste ambiente.");
+    }
+
+    if (!userId) {
+      throw new RequestError(401, "Entre ou crie sua conta para pagar com InfinitePay.");
+    }
   }
 
   if (submittedCart.length > MAX_CART_ITEMS) {
@@ -802,6 +821,19 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
   const fingerprint = buildOrderFingerprint(cliente, pagamento, parcelas, canonicalCart, totals);
   const duplicatedOrder = await findRecentDuplicateOrder(db, fingerprint);
   if (duplicatedOrder) {
+    const existingCheckoutUrl = normalizeUrl(duplicatedOrder?.payment?.checkoutUrl);
+    if (paymentKey === "infinitepay" && existingCheckoutUrl) {
+      return {
+        ok: true,
+        reusedOrder: true,
+        orderId: duplicatedOrder.id,
+        order: duplicatedOrder,
+        paymentGateway: "infinitepay",
+        paymentStatus: sanitizePlainText(duplicatedOrder?.paymentStatus || duplicatedOrder?.payment?.status, 40).toLowerCase() || "pending",
+        paymentRedirectUrl: existingCheckoutUrl
+      };
+    }
+
     throw new RequestError(409, "Ja recebemos um pedido igual ha pouco tempo. Se precisar, fale com a loja antes de tentar novamente.", {
       code: "DUPLICATE_ORDER",
       duplicatedOrderId: duplicatedOrder.id
@@ -823,6 +855,8 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
     },
     data: FieldValue.serverTimestamp(),
     status: "pendente",
+    paymentGateway: paymentKey === "infinitepay" ? "infinitepay" : "manual",
+    paymentStatus: "pending",
     userId,
     estoque_baixado: false,
     fingerprint,
@@ -835,7 +869,65 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
 
   await saveUserProfileIfNeeded(db, userId, cliente);
 
-  const ref = await db.collection("pedidos").add(pedido);
+  const pedidosCollection = db.collection("pedidos");
+  const ref = pedidosCollection.doc();
+
+  if (paymentKey === "infinitepay") {
+    const publicOrder = {
+      ...pedido,
+      data: new Date().toISOString()
+    };
+
+    await ref.set(pedido);
+
+    try {
+      const checkout = await createInfinitePayCheckoutLink({
+        orderId: ref.id,
+        pedido: publicOrder,
+        requestMeta: {
+          ...requestMeta,
+          userId
+        }
+      });
+
+      await ref.set({
+        payment: {
+          gateway: "infinitepay",
+          status: "pending",
+          checkoutUrl: checkout.checkoutUrl,
+          redirectUrl: checkout.redirectUrl,
+          handle: checkout.handle,
+          updatedAt: new Date().toISOString()
+        },
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      await clearUserCart(userId).catch(() => {});
+
+      return {
+        ok: true,
+        orderId: ref.id,
+        order: {
+          ...publicOrder,
+          payment: {
+            gateway: "infinitepay",
+            status: "pending",
+            checkoutUrl: checkout.checkoutUrl,
+            redirectUrl: checkout.redirectUrl,
+            handle: checkout.handle
+          }
+        },
+        paymentGateway: "infinitepay",
+        paymentStatus: "pending",
+        paymentRedirectUrl: checkout.checkoutUrl
+      };
+    } catch (error) {
+      await ref.delete().catch(() => {});
+      throw new RequestError(Number(error?.status) || 502, String(error?.message || "Nao foi possivel iniciar o checkout InfinitePay."));
+    }
+  }
+
+  await ref.set(pedido);
   await clearUserCart(userId).catch(() => {});
   const publicOrder = {
     ...pedido,

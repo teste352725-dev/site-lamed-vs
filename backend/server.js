@@ -2,13 +2,15 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import fs from "fs";
-import { createChatMessageFromBody, isChatRequestError } from "../api/_chat.mjs";
-import { getFirebaseAdminStatus } from "../api/_firebase-admin.mjs";
-import { createOrderFromBody, isOrderRequestError } from "../api/_orders.mjs";
-import { enforceInMemoryRateLimit, getClientAddress } from "../api/_security.mjs";
-import { isSessionRequestError, requireAdminUser, resolveAuthenticatedUser } from "../api/_session.mjs";
-import { getShippingHealth, isShippingApiEnabled, requestShippingQuote } from "../api/_shipping.mjs";
-import { applyStorefrontAdminAction, isStorefrontAdminError } from "../api/_storefront-admin.mjs";
+import { createChatMessageFromBody, isChatRequestError } from "../server/_chat.mjs";
+import { getFirebaseAdminStatus } from "../server/_firebase-admin.mjs";
+import { getInfinitePayHealth } from "../server/_infinitepay.mjs";
+import { applyInfinitePayWebhook, assertInfinitePayWebhookAccess, isInfinitePayRequestError } from "../server/_infinitepay.mjs";
+import { createOrderFromBody, isOrderRequestError } from "../server/_orders.mjs";
+import { enforceInMemoryRateLimit, getClientAddress } from "../server/_security.mjs";
+import { isSessionRequestError, requireAdminUser, resolveAuthenticatedUser } from "../server/_session.mjs";
+import { getShippingHealth, isShippingApiEnabled, requestShippingQuote } from "../server/_shipping.mjs";
+import { applyStorefrontAdminAction, isStorefrontAdminError } from "../server/_storefront-admin.mjs";
 
 dotenv.config();
 
@@ -407,6 +409,7 @@ app.use(express.json({ limit: "250kb" }));
 
 app.get("/api/status", requireDiagnosticAccess, (req, res) => {
   const firebaseAdmin = getFirebaseAdminStatus();
+  const infinitePay = getInfinitePayHealth();
   const shipping = getShippingHealth();
 
   res.json({
@@ -416,6 +419,8 @@ app.get("/api/status", requireDiagnosticAccess, (req, res) => {
     envLoaded: !!process.env.EFI_CLIENT_ID,
     shippingConfigured: shipping.ok,
     shippingProvider: shipping.provider,
+    infinitePayConfigured: infinitePay.ok,
+    infinitePay,
     ordersConfigured: firebaseAdmin.configured,
     firebaseAdmin
   });
@@ -542,7 +547,10 @@ app.post("/api/orders/create", async (req, res) => {
     const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
     const result = await createOrderFromBody(req.body, authorizationHeader, {
       clientAddress,
-      userAgent: String(req.headers?.["user-agent"] || "").slice(0, 240)
+      userAgent: String(req.headers?.["user-agent"] || "").slice(0, 240),
+      origin: String(req.headers?.origin || "").slice(0, 240),
+      host: String(req.headers?.["x-forwarded-host"] || req.headers?.host || "").slice(0, 240),
+      protocol: String(req.headers?.["x-forwarded-proto"] || req.protocol || "https").slice(0, 20)
     });
     return res.status(201).json(result);
   } catch (error) {
@@ -594,6 +602,27 @@ app.post("/api/chat/send", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: "Nao foi possivel enviar a mensagem agora."
+    });
+  }
+});
+
+app.post("/api/payments/infinitepay/webhook", async (req, res) => {
+  try {
+    assertInfinitePayWebhookAccess(req);
+    const result = await applyInfinitePayWebhook(req.body);
+    return res.status(200).json(result);
+  } catch (error) {
+    if (isInfinitePayRequestError(error)) {
+      return res.status(Number(error.status) || 400).json({
+        ok: false,
+        error: String(error.message || "Nao foi possivel processar o webhook da InfinitePay.")
+      });
+    }
+
+    console.error("[local.payments.infinitepay.webhook]", error);
+    return res.status(500).json({
+      ok: false,
+      error: "Nao foi possivel processar o webhook da InfinitePay."
     });
   }
 });

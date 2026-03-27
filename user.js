@@ -92,6 +92,19 @@ function normalizeImageUrl(value) {
     }
 }
 
+function normalizeHttpUrl(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    try {
+        const parsed = new URL(raw, window.location.origin);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+        return parsed.toString();
+    } catch (error) {
+        return '';
+    }
+}
+
 function normalizeProfileAddress(address) {
     if (!address || typeof address !== 'object') return null;
 
@@ -269,6 +282,45 @@ function getStatusLabel(status) {
     return labels[safeStatus] || (safeStatus ? safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1) : 'Pendente');
 }
 
+function isAwaitingInfinitePay(order) {
+    if (!order || typeof order !== 'object') return false;
+
+    const gateway = sanitizePlainText(order.paymentGateway || order.payment?.gateway, 40).toLowerCase();
+    const paymentStatus = sanitizePlainText(order.paymentStatus || order.payment?.status, 40).toLowerCase();
+    return gateway === 'infinitepay' && paymentStatus === 'pending';
+}
+
+function getOrderDisplayStatus(order) {
+    if (isAwaitingInfinitePay(order)) {
+        return 'Aguardando pagamento';
+    }
+
+    return getStatusLabel(order?.status);
+}
+
+function getOrderDisplayStatusClass(order) {
+    if (isAwaitingInfinitePay(order)) {
+        return 'text-amber-700 bg-amber-50';
+    }
+
+    return getStatusClass(order?.status);
+}
+
+function getOrderPaymentMeta(order) {
+    if (isAwaitingInfinitePay(order)) {
+        return {
+            label: 'InfinitePay',
+            detail: 'Finalize o pagamento no checkout seguro da InfinitePay.'
+        };
+    }
+
+    const parcelas = Number(order?.parcelas || 1);
+    return {
+        label: sanitizePlainText(order?.pagamento, 60) || 'A combinar',
+        detail: `${parcelas}x ${parcelas > 1 ? 'no cartao' : 'na finalizacao'}`
+    };
+}
+
 function formatOrderDate(value) {
     if (typeof value?.toDate === 'function') {
         return value.toDate().toLocaleDateString('pt-BR');
@@ -331,7 +383,7 @@ function updateChatOrderContextUI() {
 
     const order = ordersCache.find((item) => item.id === activeChatOrderId);
     orderLabel.textContent = order
-        ? `${getOrderCode(order.id)} - ${getStatusLabel(order.data.status)}`
+        ? `${getOrderCode(order.id)} - ${getOrderDisplayStatus(order.data)}`
         : getOrderCode(activeChatOrderId);
     context.classList.remove('hidden');
     if (input) input.placeholder = `Fale sobre ${orderLabel.textContent.toLowerCase()}...`;
@@ -434,9 +486,11 @@ function renderSelectedOrderDetail() {
     }
 
     const pedido = selectedOrder.data || {};
+    const paymentMeta = getOrderPaymentMeta(pedido);
     const totalFormatado = Number(pedido.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const subtotalFormatado = Number(pedido.subtotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const dataPedido = formatOrderDate(pedido.data);
+    const paymentLink = normalizeHttpUrl(pedido?.payment?.checkoutUrl);
     const endereco = [
         sanitizePlainText(pedido?.cliente?.endereco?.rua, 140),
         sanitizePlainText(pedido?.cliente?.endereco?.numero, 40),
@@ -468,9 +522,9 @@ function renderSelectedOrderDetail() {
             <div>
                 <p class="account-detail-label">Pedido em foco</p>
                 <h3>${getOrderCode(selectedOrder.id)}</h3>
-                <p class="account-panel-copy mt-2">Criado em ${dataPedido} e atualmente em ${getStatusLabel(pedido.status).toLowerCase()}.</p>
+                <p class="account-panel-copy mt-2">Criado em ${dataPedido} e atualmente em ${getOrderDisplayStatus(pedido).toLowerCase()}.</p>
             </div>
-            <span class="account-order-status ${getStatusClass(pedido.status)}">${getStatusLabel(pedido.status)}</span>
+            <span class="account-order-status ${getOrderDisplayStatusClass(pedido)}">${getOrderDisplayStatus(pedido)}</span>
         </div>
 
         <div class="account-detail-section">
@@ -486,9 +540,9 @@ function renderSelectedOrderDetail() {
                 <div class="account-detail-item">
                     <div class="account-detail-item-header">
                         <span>Pagamento</span>
-                        <span>${sanitizePlainText(pedido.pagamento, 60) || 'A combinar'}</span>
+                        <span>${paymentMeta.label}</span>
                     </div>
-                    <div class="account-detail-item-meta">${Number(pedido.parcelas || 1)}x ${Number(pedido.parcelas || 1) > 1 ? 'no cartao' : 'na finalizacao'}</div>
+                    <div class="account-detail-item-meta">${paymentMeta.detail}</div>
                 </div>
             </div>
         </div>
@@ -504,6 +558,12 @@ function renderSelectedOrderDetail() {
         </div>
 
         <div class="account-order-actions">
+            ${isAwaitingInfinitePay(pedido) && paymentLink ? `
+            <a href="${paymentLink}" target="_blank" rel="noopener" class="account-soft-btn account-highlight-btn">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                Continuar pagamento
+            </a>
+            ` : ''}
             <button type="button" class="account-soft-btn account-highlight-btn" onclick="iniciarSuportePedido('${selectedOrder.id}')">
                 <i class="fa-regular fa-comments"></i>
                 Falar sobre este pedido
@@ -1311,7 +1371,7 @@ function carregarMeusPedidos() {
                                 <div class="account-order-code">${getOrderCode(entry.id)}</div>
                                 <div class="account-order-date">${dataPedido}</div>
                             </div>
-                            <span class="account-order-status ${getStatusClass(pedido.status)}">${getStatusLabel(pedido.status)}</span>
+                            <span class="account-order-status ${getOrderDisplayStatusClass(pedido)}">${getOrderDisplayStatus(pedido)}</span>
                         </div>
                         <div class="account-order-lines">${previewItens}</div>
                         <div class="account-order-card-footer">

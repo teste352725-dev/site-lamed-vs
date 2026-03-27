@@ -930,6 +930,8 @@ function syncParcelamentoVisibility() {
     if (isCardPayment) {
         preencherParcelas();
     }
+
+    renderCheckoutSubmitButton(false);
 }
 
 function preencherParcelas() {
@@ -1162,6 +1164,29 @@ function updateCheckoutSummary() {
     }
 
     elements.checkoutTotal.textContent = formatarReal(totals.final);
+    renderCheckoutSubmitButton(false);
+}
+
+function renderCheckoutSubmitButton(isSubmitting = orderSubmissionInFlight) {
+    if (!elements.checkoutSubmitButton) return;
+
+    const selectedPayment = document.querySelector('input[name="pagamento"]:checked')?.value || '';
+    const paymentKey = getPaymentKey(selectedPayment);
+
+    if (isSubmitting) {
+        const loadingText = paymentKey === 'infinitepay'
+            ? 'Criando pagamento...'
+            : 'Enviando pedido...';
+        elements.checkoutSubmitButton.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${loadingText}`;
+        return;
+    }
+
+    if (paymentKey === 'infinitepay') {
+        elements.checkoutSubmitButton.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> Pagar com InfinitePay';
+        return;
+    }
+
+    elements.checkoutSubmitButton.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Enviar pedido';
 }
 
 function setCheckoutSubmitState(isSubmitting) {
@@ -1172,9 +1197,7 @@ function setCheckoutSubmitState(isSubmitting) {
     elements.checkoutSubmitButton.disabled = isSubmitting;
     elements.checkoutSubmitButton.classList.toggle('opacity-60', isSubmitting);
     elements.checkoutSubmitButton.classList.toggle('cursor-not-allowed', isSubmitting);
-    elements.checkoutSubmitButton.textContent = isSubmitting
-        ? 'Enviando pedido...'
-        : 'Finalizar pedido';
+    renderCheckoutSubmitButton(isSubmitting);
 }
 
 async function finalizarPedido(formData) {
@@ -1215,6 +1238,10 @@ async function finalizarPedido(formData) {
         const preparedUser = await prepareCheckoutAccount(formData, cliente);
         let authToken = '';
         const authenticatedUser = preparedUser || currentUser || auth.currentUser;
+
+        if (paymentKey === 'infinitepay' && !authenticatedUser) {
+            throw new Error('Entre ou crie sua conta para pagar com InfinitePay.');
+        }
 
         if (authenticatedUser) {
             try {
@@ -1260,6 +1287,7 @@ async function finalizarPedido(formData) {
         }
 
         const whatsappUrl = String(payload?.whatsappUrl || '').trim();
+        const paymentRedirectUrl = String(payload?.paymentRedirectUrl || '').trim();
 
         cart = [];
         if (typeof window.clearAccountCartState === 'function') {
@@ -1277,6 +1305,11 @@ async function finalizarPedido(formData) {
                 sessionStorage.setItem('lamed_last_order_id', String(payload.orderId));
             } catch (error) {}
 
+            if (paymentRedirectUrl) {
+                window.location.href = paymentRedirectUrl;
+                return;
+            }
+
             if (whatsappUrl) {
                 window.open(whatsappUrl, '_blank', 'noopener');
             } else if (payload?.whatsappMessage) {
@@ -1284,6 +1317,11 @@ async function finalizarPedido(formData) {
             }
 
             window.location.href = `minha-conta.html?pedido=${encodeURIComponent(String(payload.orderId))}#pedidos`;
+            return;
+        }
+
+        if (paymentRedirectUrl) {
+            window.location.href = paymentRedirectUrl;
             return;
         }
 

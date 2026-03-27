@@ -30,7 +30,10 @@ export default async function handler(req, res) {
     const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
     const result = await createOrderFromBody(body, authorizationHeader, {
       clientAddress,
-      userAgent: String(req.headers?.["user-agent"] || "").slice(0, 240)
+      userAgent: String(req.headers?.["user-agent"] || "").slice(0, 240),
+      origin: String(req.headers?.origin || "").slice(0, 240),
+      host: String(req.headers?.["x-forwarded-host"] || req.headers?.host || "").slice(0, 240),
+      protocol: String(req.headers?.["x-forwarded-proto"] || "https").slice(0, 20)
     });
     return res.status(201).json(result);
   } catch (error) {
