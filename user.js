@@ -388,6 +388,24 @@ function updateNotificationSummaryState() {
     }
 }
 
+function getPushCardElement() {
+    return document.getElementById('push-notification-card');
+}
+
+function shouldHidePushCard() {
+    const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+    return Boolean(currentUser && granted && currentPushToken);
+}
+
+function updatePushCardVisibility() {
+    const card = getPushCardElement();
+    if (!card) return;
+
+    const hideCard = shouldHidePushCard();
+    card.classList.toggle('hidden', hideCard);
+    card.setAttribute('aria-hidden', hideCard ? 'true' : 'false');
+}
+
 async function isAuthorizedAdminUser(user) {
     if (!user) return false;
     if (ADMIN_UIDS.has(user.uid)) return true;
@@ -911,6 +929,7 @@ function setPushStatus(message) {
         statusEl.textContent = sanitizePlainText(message, 220);
     }
     updateNotificationSummaryState();
+    updatePushCardVisibility();
 }
 
 function updatePushButtonsState({ enableDisabled = false, disableDisabled = false, enableLabel = 'Ativar neste aparelho' } = {}) {
@@ -929,6 +948,8 @@ function updatePushButtonsState({ enableDisabled = false, disableDisabled = fals
         disableBtn.classList.toggle('opacity-60', disableDisabled);
         disableBtn.classList.toggle('cursor-not-allowed', disableDisabled);
     }
+
+    updatePushCardVisibility();
 }
 
 async function fetchPushConfig() {
@@ -1109,6 +1130,7 @@ async function iniciarNotificacoesWeb() {
 
     enableBtn.onclick = ativarPushNotifications;
     disableBtn.onclick = desativarPushNotifications;
+    updatePushCardVisibility();
 
     if (!currentUser) {
         setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
