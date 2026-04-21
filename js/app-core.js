@@ -216,15 +216,21 @@ async function isAuthorizedAdminUser(user) {
 
 async function ensureEntryAssistUserProfileDoc(user) {
     if (!user) return;
-
-    const profileRef = db.collection('usuarios').doc(user.uid);
-    const snapshot = await profileRef.get();
-    const existingData = snapshot.data() || {};
-    const normalizedProfile = normalizeUserProfileRecordForFirestore(existingData, user, {
-        createdAt: snapshot.exists ? getPersistedProfileCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
+    const authToken = await user.getIdToken();
+    const response = await fetch(buildBackendUrl('/api/notifications/profile-sync'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ profile: {} })
     });
 
-    await profileRef.set(normalizedProfile);
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua conta agora.', 220));
+    }
 }
 
 function getDefaultStorefrontCopy() {
@@ -408,29 +414,6 @@ function openInlineOperationsEditing() {
     }
 }
 
-function shouldPreferGoogleRedirect() {
-    const ua = String(navigator?.userAgent || '').toLowerCase();
-    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(ua);
-
-    try {
-        return isMobileDevice || window.matchMedia('(max-width: 960px)').matches;
-    } catch (error) {
-        return isMobileDevice;
-    }
-}
-
-function shouldFallbackGooglePopupToRedirect(error) {
-    const code = String(error?.code || '').toLowerCase();
-    const message = String(error?.message || '').toLowerCase();
-
-    return [
-        'auth/popup-blocked',
-        'auth/popup-closed-by-user',
-        'auth/cancelled-popup-request',
-        'auth/operation-not-supported-in-this-environment'
-    ].includes(code) || message.includes('cross-origin-opener-policy');
-}
-
 async function signInWithGoogleSafe() {
     if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
         throw new Error('O login com Google nao esta disponivel agora.');
@@ -438,30 +421,15 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-
-    if (shouldPreferGoogleRedirect()) {
-        await auth.signInWithRedirect(provider);
-        return null;
-    }
-
-    try {
-        const result = await auth.signInWithPopup(provider);
-        return result?.user || auth.currentUser || null;
-    } catch (error) {
-        if (shouldFallbackGooglePopupToRedirect(error)) {
-            await auth.signInWithRedirect(provider);
-            return null;
-        }
-
-        throw error;
-    }
+    await auth.signInWithRedirect(provider);
+    return null;
 }
 
 async function signInWithGoogleFromEntryAssist() {
     try {
         if (elements.entryAssistActionBtn) {
             elements.entryAssistActionBtn.disabled = true;
-            elements.entryAssistActionBtn.textContent = shouldPreferGoogleRedirect() ? 'Redirecionando...' : 'Conectando...';
+            elements.entryAssistActionBtn.textContent = 'Redirecionando...';
         }
 
         const authenticatedUser = await signInWithGoogleSafe();

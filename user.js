@@ -313,27 +313,32 @@ function isFirestorePermissionError(error) {
     return code === 'permission-denied' || message.includes('missing or insufficient permissions');
 }
 
-function shouldPreferGoogleRedirect() {
-    const ua = String(navigator?.userAgent || '').toLowerCase();
-    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(ua);
-
-    try {
-        return isMobileDevice || window.matchMedia('(max-width: 960px)').matches;
-    } catch (error) {
-        return isMobileDevice;
+async function getUserSessionAuthToken(user = currentUser || auth.currentUser) {
+    if (!user) {
+        throw new Error('Entre na sua conta para continuar.');
     }
+
+    return user.getIdToken();
 }
 
-function shouldFallbackGooglePopupToRedirect(error) {
-    const code = String(error?.code || '').toLowerCase();
-    const message = String(error?.message || '').toLowerCase();
+async function sendProfileSyncToBackend(profile = {}, user = currentUser || auth.currentUser) {
+    const authToken = await getUserSessionAuthToken(user);
+    const response = await fetch(buildBackendUrl('/api/notifications/profile-sync'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ profile })
+    });
 
-    return [
-        'auth/popup-blocked',
-        'auth/popup-closed-by-user',
-        'auth/cancelled-popup-request',
-        'auth/operation-not-supported-in-this-environment'
-    ].includes(code) || message.includes('cross-origin-opener-policy');
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua conta agora.', 220));
+    }
+
+    return payload;
 }
 
 async function signInWithGoogleSafe() {
@@ -343,39 +348,17 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-
-    if (shouldPreferGoogleRedirect()) {
-        await auth.signInWithRedirect(provider);
-        return null;
-    }
-
-    try {
-        const result = await auth.signInWithPopup(provider);
-        return result?.user || auth.currentUser || null;
-    } catch (error) {
-        if (shouldFallbackGooglePopupToRedirect(error)) {
-            await auth.signInWithRedirect(provider);
-            return null;
-        }
-
-        throw error;
-    }
+    await auth.signInWithRedirect(provider);
+    return null;
 }
 
 async function syncGoogleUserProfileDoc(user) {
     if (!user) return;
-
-    const docRef = db.collection('usuarios').doc(user.uid);
-    const docSnap = await docRef.get();
-    const existingData = docSnap.data() || {};
-    const normalizedProfile = buildUserProfileRecord(existingData, user, {
-        nome: sanitizePlainText(user.displayName, 120) || sanitizePlainText(existingData.nome, 120) || 'Cliente',
-        email: sanitizePlainText(user.email, 120) || sanitizePlainText(existingData.email, 120),
-        fotoUrl: normalizeImageUrl(user.photoURL) || normalizeImageUrl(existingData.fotoUrl) || null,
-        createdAt: docSnap.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await docRef.set(normalizedProfile);
+    await sendProfileSyncToBackend({
+        nome: sanitizePlainText(user.displayName, 120) || 'Cliente',
+        email: sanitizePlainText(user.email, 120),
+        fotoUrl: normalizeImageUrl(user.photoURL) || null
+    }, user);
 }
 
 function splitFullName(name) {
@@ -915,15 +898,7 @@ function selectAccountOrder(orderId, { updateLocation = true, switchToTab = fals
 
 async function ensureUserProfileDoc(user) {
     if (!user) return;
-
-    const ref = db.collection('usuarios').doc(user.uid);
-    const snapshot = await ref.get();
-    const existingData = snapshot.data() || {};
-    const normalizedProfile = buildUserProfileRecord(existingData, user, {
-        createdAt: snapshot.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await ref.set(normalizedProfile);
+    await sendProfileSyncToBackend({}, user);
 }
 
 function getPushStatusElement() {
@@ -1211,16 +1186,27 @@ auth.onAuthStateChanged(async (user) => {
             currentUserIsAdmin = await isAuthorizedAdminUser(user);
             if(authContainer) authContainer.classList.add('hidden');
             if(userPanel) userPanel.classList.remove('hidden');
-            
-            await ensureUserProfileDoc(user);
-            await carregarPerfilUsuario();
-            await iniciarNotificacoesWeb();
-            carregarMeusPedidos();
-            carregarFavoritos();
-            iniciarChat();
-            startAdminActiveChatsFeed();
-            applyTabFromHash();
-            await maybeHandleInfinitePayReturn(user);
+
+            const startupTasks = [
+                ['profile.sync', () => ensureUserProfileDoc(user)],
+                ['profile.load', () => carregarPerfilUsuario()],
+                ['push.init', () => iniciarNotificacoesWeb()],
+                ['payments.return', () => maybeHandleInfinitePayReturn(user)]
+            ];
+
+            for (const [label, task] of startupTasks) {
+                try {
+                    await task();
+                } catch (error) {
+                    console.error(`[account.authState.${label}]`, error);
+                }
+            }
+
+            try { carregarMeusPedidos(); } catch (error) { console.error('[account.authState.orders]', error); }
+            try { carregarFavoritos(); } catch (error) { console.error('[account.authState.favorites]', error); }
+            try { iniciarChat(); } catch (error) { console.error('[account.authState.chat]', error); }
+            try { startAdminActiveChatsFeed(); } catch (error) { console.error('[account.authState.adminChats]', error); }
+            try { applyTabFromHash(); } catch (error) { console.error('[account.authState.tabs]', error); }
             
         } else {
             currentUser = null;
@@ -1302,19 +1288,15 @@ if(regForm) {
             const nomeCompleto = sanitizePlainText(`${nome} ${sobrenome}`, 80);
             
             await user.updateProfile({ displayName: nomeCompleto });
-            
-            await db.collection('usuarios').doc(user.uid).set(
-                buildUserProfileRecord({}, user, {
-                    nome: nomeCompleto,
-                    email,
-                    telefone: phone,
-                    documento,
-                    endereco,
-                    fotoUrl: null,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    favoritos: []
-                })
-            );
+            await sendProfileSyncToBackend({
+                nome: nomeCompleto,
+                email,
+                telefone: phone,
+                documento,
+                endereco,
+                fotoUrl: null,
+                favoritos: []
+            }, user);
             
         } catch(err) {
             const errorCode = String(err?.code || '');
@@ -1422,14 +1404,7 @@ window.uploadFotoPerfil = async (input) => {
         const url = await ref.getDownloadURL();
 
         await currentUser.updateProfile({ photoURL: url });
-        const profileRef = db.collection('usuarios').doc(currentUser.uid);
-        const snapshot = await profileRef.get();
-        const existingData = snapshot.data() || {};
-        const normalizedProfile = buildUserProfileRecord(existingData, currentUser, {
-            fotoUrl: url,
-            createdAt: snapshot.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
-        });
-        await profileRef.set(normalizedProfile);
+        await sendProfileSyncToBackend({ fotoUrl: url });
 
         imgPreview.src = url;
         document.getElementById('user-avatar-display').src = url;
@@ -1471,19 +1446,12 @@ if(profileForm) {
                     photoURL: fotoUrl || normalizeImageUrl(currentUser.photoURL) || null
                 });
             }
-
-            const profileRef = db.collection('usuarios').doc(currentUser.uid);
-            const snapshot = await profileRef.get();
-            const existingData = snapshot.data() || {};
-            const normalizedProfile = buildUserProfileRecord(existingData, currentUser, {
+            await sendProfileSyncToBackend({
                 nome,
                 telefone: phone,
                 fotoUrl,
-                endereco,
-                createdAt: snapshot.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
+                endereco
             });
-
-            await profileRef.set(normalizedProfile);
             
             alert("Dados atualizados!");
             location.reload(); 

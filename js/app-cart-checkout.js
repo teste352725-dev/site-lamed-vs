@@ -17,27 +17,55 @@ function isFirestorePermissionError(error) {
     return code === 'permission-denied' || message.includes('missing or insufficient permissions');
 }
 
-function shouldPreferGoogleRedirect() {
-    const ua = String(navigator?.userAgent || '').toLowerCase();
-    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(ua);
-
-    try {
-        return isMobileDevice || window.matchMedia('(max-width: 960px)').matches;
-    } catch (error) {
-        return isMobileDevice;
+async function getCheckoutSessionAuthToken(user = currentUser || auth.currentUser) {
+    if (!user) {
+        throw new Error('Entre na sua conta para continuar.');
     }
+
+    return user.getIdToken();
 }
 
-function shouldFallbackGooglePopupToRedirect(error) {
-    const code = String(error?.code || '').toLowerCase();
-    const message = String(error?.message || '').toLowerCase();
+async function sendCheckoutProfileSyncToBackend(profile = {}, user = currentUser || auth.currentUser) {
+    const authToken = await getCheckoutSessionAuthToken(user);
+    const response = await fetch(buildBackendUrl('/api/notifications/profile-sync'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ profile })
+    });
 
-    return [
-        'auth/popup-blocked',
-        'auth/popup-closed-by-user',
-        'auth/cancelled-popup-request',
-        'auth/operation-not-supported-in-this-environment'
-    ].includes(code) || message.includes('cross-origin-opener-policy');
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua conta agora.', 220));
+    }
+
+    return payload;
+}
+
+async function sendFavoriteToggleToBackend(productId, favorite, user = currentUser || auth.currentUser) {
+    const authToken = await getCheckoutSessionAuthToken(user);
+    const response = await fetch(buildBackendUrl('/api/notifications/favorite-toggle'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+            productId,
+            favorite
+        })
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel salvar este favorito agora.', 220));
+    }
+
+    return payload;
 }
 
 async function signInWithGoogleSafeForCheckout() {
@@ -47,23 +75,8 @@ async function signInWithGoogleSafeForCheckout() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-
-    if (shouldPreferGoogleRedirect()) {
-        await auth.signInWithRedirect(provider);
-        return null;
-    }
-
-    try {
-        const result = await auth.signInWithPopup(provider);
-        return result?.user || auth.currentUser || null;
-    } catch (error) {
-        if (shouldFallbackGooglePopupToRedirect(error)) {
-            await auth.signInWithRedirect(provider);
-            return null;
-        }
-
-        throw error;
-    }
+    await auth.signInWithRedirect(provider);
+    return null;
 }
 
 function sanitizeCheckoutPhone(value) {
@@ -573,20 +586,12 @@ function syncCheckoutAccountUI() {
 
 async function ensureCheckoutUserProfileDoc(user, cliente) {
     if (!user) return;
-
-    const ref = db.collection('usuarios').doc(user.uid);
-    const snapshot = await ref.get();
-    const existingData = snapshot.data() || {};
-    const mergedAddress = mergeCheckoutAddressRecords(existingData.endereco, cliente?.endereco);
-    const normalizedProfile = buildCheckoutUserProfileRecord(existingData, user, {
-        nome: cliente?.nome || existingData.nome || user.displayName || 'Cliente',
-        telefone: cliente?.telefone || existingData.telefone,
-        documento: existingData.documento || cliente?.documento,
-        endereco: mergedAddress,
-        createdAt: snapshot.exists ? getPersistedCheckoutCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await ref.set(normalizedProfile);
+    await sendCheckoutProfileSyncToBackend({
+        nome: sanitizePlainText(cliente?.nome || user.displayName || 'Cliente', 120) || 'Cliente',
+        telefone: sanitizeCheckoutPhone(cliente?.telefone),
+        documento: normalizeCheckoutDocument(cliente?.documento),
+        endereco: cliente?.endereco || null
+    }, user);
 }
 
 async function tryEnsureCheckoutUserProfileDoc(user, cliente) {
@@ -1557,20 +1562,8 @@ async function toggleFavorite() {
     icon.className = nextFavoriteState ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
 
     try {
-        const ref = db.collection('usuarios').doc(authenticatedUser.uid);
-        const existingDoc = await ref.get();
-        const existingData = existingDoc.data() || {};
-        const favorites = normalizeCheckoutFavorites(existingData.favoritos);
-        const nextFavorites = nextFavoriteState
-            ? normalizeCheckoutFavorites([...favorites, currentProduct.id])
-            : favorites.filter((productId) => productId !== currentProduct.id);
-
-        const normalizedProfile = buildCheckoutUserProfileRecord(existingData, authenticatedUser, {
-            createdAt: existingDoc.exists ? getPersistedCheckoutCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp(),
-            favoritos: nextFavorites
-        });
-
-        await ref.set(normalizedProfile);
+        const result = await sendFavoriteToggleToBackend(currentProduct.id, nextFavoriteState, authenticatedUser);
+        icon.className = result?.favorite ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
     } catch (error) {
         console.error(error);
         icon.className = isFavorite ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
