@@ -95,6 +95,134 @@ function splitCityAndState(cityValue, stateValue = "") {
   };
 }
 
+function sanitizeSavedAddressId(value, fallback = "") {
+  const normalized = sanitizePlainText(value, 80)
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return normalized || fallback || "";
+}
+
+function extractAddressFields(address) {
+  if (!address || typeof address !== "object") return null;
+
+  const cityState = splitCityAndState(address.cidade, address.estado);
+  const normalized = {
+    rua: sanitizePlainText(address.rua, 140),
+    numero: sanitizePlainText(address.numero, 40),
+    complemento: sanitizePlainText(address.complemento, 120),
+    bairro: sanitizePlainText(address.bairro, 80),
+    cidade: cityState.cidade,
+    estado: cityState.estado,
+    cep: normalizePostalCode(address.cep)
+  };
+
+  return Object.values(normalized).some(Boolean) ? normalized : null;
+}
+
+function buildAddressSignature(address) {
+  const normalized = extractAddressFields(address);
+  if (!normalized) return "";
+
+  return [
+    sanitizePlainText(normalized.rua, 140).toLowerCase(),
+    sanitizePlainText(normalized.numero, 40).toLowerCase(),
+    sanitizePlainText(normalized.complemento, 120).toLowerCase(),
+    sanitizePlainText(normalized.bairro, 80).toLowerCase(),
+    sanitizePlainText(normalized.cidade, 120).toLowerCase(),
+    sanitizePlainText(normalized.estado, 2).toLowerCase(),
+    normalizePostalCode(normalized.cep)
+  ].join("|");
+}
+
+function normalizeSavedAddressEntry(address, index = 0) {
+  const normalized = extractAddressFields(address);
+  if (!normalized) return null;
+
+  return {
+    id: sanitizeSavedAddressId(address?.id, `address-${index + 1}`),
+    label: sanitizePlainText(address?.label, 60),
+    principal: address?.principal === true,
+    ...normalized
+  };
+}
+
+function normalizeSavedAddressBook(list, primaryAddress = null, primaryAddressId = "") {
+  const sourceList = Array.isArray(list) ? list : [];
+  const entries = sourceList
+    .map((item, index) => normalizeSavedAddressEntry(item, index))
+    .filter(Boolean)
+    .slice(0, 10);
+
+  const normalizedPrimary = extractAddressFields(primaryAddress);
+  let selectedId = sanitizeSavedAddressId(primaryAddressId);
+
+  if (!selectedId) {
+    selectedId = entries.find((item) => item.principal)?.id || "";
+  }
+
+  if (normalizedPrimary) {
+    const primarySignature = buildAddressSignature(normalizedPrimary);
+    const matchingEntry = primarySignature
+      ? entries.find((item) => buildAddressSignature(item) === primarySignature)
+      : null;
+
+    if (matchingEntry) {
+      Object.assign(matchingEntry, normalizedPrimary);
+    } else if (!entries.length) {
+      selectedId = selectedId || "address-1";
+      entries.unshift({
+        id: selectedId,
+        label: "Endereco principal",
+        principal: true,
+        ...normalizedPrimary
+      });
+    } else {
+      entries.push({
+        id: `address-${entries.length + 1}`,
+        label: `Endereco salvo ${entries.length + 1}`,
+        principal: false,
+        ...normalizedPrimary
+      });
+    }
+  }
+
+  const normalizedEntries = entries
+    .slice(0, 10)
+    .map((item, index) => ({
+      ...item,
+      id: sanitizeSavedAddressId(item.id, `address-${index + 1}`),
+      label: sanitizePlainText(item.label, 60),
+      principal: false
+    }));
+
+  if (!selectedId) {
+    selectedId = normalizedEntries[0]?.id || "";
+  }
+
+  const selectedEntry = normalizedEntries.find((item) => item.id === selectedId) || normalizedEntries[0] || null;
+
+  if (selectedEntry) {
+    selectedEntry.principal = true;
+    if (!selectedEntry.label) {
+      selectedEntry.label = "Endereco principal";
+    }
+  }
+
+  normalizedEntries.forEach((item, index) => {
+    if (!item.label) {
+      item.label = item.principal ? "Endereco principal" : `Endereco salvo ${index + 1}`;
+    }
+  });
+
+  return {
+    enderecos: normalizedEntries,
+    enderecoPrincipalId: selectedEntry?.id || null,
+    endereco: extractAddressFields(selectedEntry) || normalizedPrimary || null
+  };
+}
+
 function formatPostalCode(value) {
   const digits = normalizePostalCode(value);
   if (digits.length <= 5) return digits;
@@ -692,13 +820,24 @@ async function resolveAuthenticatedUserSession(authorizationHeader) {
 async function saveUserProfileIfNeeded(db, userId, cliente) {
   if (!userId) return;
 
-  await db.collection("usuarios").doc(userId).set(
+  const ref = db.collection("usuarios").doc(userId);
+  const snapshot = await ref.get();
+  const existingData = snapshot.data() || {};
+  const addressBook = normalizeSavedAddressBook(
+    existingData.enderecos,
+    cliente.endereco,
+    existingData.enderecoPrincipalId
+  );
+
+  await ref.set(
     {
       nome: cliente.nome,
       email: cliente.email,
       telefone: cliente.telefone,
       documento: cliente.documento,
-      endereco: cliente.endereco
+      endereco: addressBook.endereco,
+      enderecos: addressBook.enderecos,
+      enderecoPrincipalId: addressBook.enderecoPrincipalId
     },
     { merge: true }
   );

@@ -37,6 +37,10 @@ service cloud.firestore {
       return value == null || value == '' || validDocumento(value);
     }
 
+    function validSavedAddresses(value) {
+      return value == null || (value is list && value.size() <= 10);
+    }
+
     function validProfileAddress(endereco) {
       return endereco is map &&
         endereco.keys().hasOnly(['rua', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep']) &&
@@ -56,6 +60,8 @@ service cloud.firestore {
           'telefone',
           'documento',
           'endereco',
+          'enderecos',
+          'enderecoPrincipalId',
           'fotoUrl',
           'createdAt',
           'favoritos'
@@ -65,6 +71,8 @@ service cloud.firestore {
         validOptionalString(request.resource.data.telefone, 30) &&
         validOptionalDocumento(request.resource.data.documento) &&
         (request.resource.data.endereco == null || validProfileAddress(request.resource.data.endereco)) &&
+        validSavedAddresses(request.resource.data.enderecos) &&
+        validOptionalString(request.resource.data.enderecoPrincipalId, 80) &&
         validOptionalString(request.resource.data.fotoUrl, 500) &&
         validOptionalTimestamp(request.resource.data.createdAt) &&
         (

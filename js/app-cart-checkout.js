@@ -5,6 +5,11 @@ let orderSubmissionInFlight = false;
 let checkoutPushConfigCache = null;
 let checkoutPushToken = '';
 let checkoutAddressLookupToken = 0;
+let checkoutSavedAddressesState = {
+    addresses: [],
+    selectedId: '',
+    mode: 'manual'
+};
 
 function isFirestorePermissionError(error) {
     const code = String(error?.code || '').toLowerCase();
@@ -48,9 +53,18 @@ function sanitizeCheckoutState(value) {
 }
 
 function mergeCheckoutAddressRecords(primaryAddress, fallbackAddress) {
-    const primary = primaryAddress && typeof primaryAddress === 'object' ? primaryAddress : {};
-    const fallback = fallbackAddress && typeof fallbackAddress === 'object' ? fallbackAddress : {};
-    return { ...fallback, ...primary };
+    const primary = normalizeCheckoutProfileAddress(primaryAddress) || {};
+    const fallback = normalizeCheckoutProfileAddress(fallbackAddress) || {};
+
+    return {
+        rua: primary.rua || fallback.rua || '',
+        numero: primary.numero || fallback.numero || '',
+        complemento: primary.complemento || fallback.complemento || '',
+        bairro: primary.bairro || fallback.bairro || '',
+        cidade: primary.cidade || fallback.cidade || '',
+        estado: primary.estado || fallback.estado || '',
+        cep: primary.cep || fallback.cep || ''
+    };
 }
 
 function splitCheckoutCityAndState(cityValue, stateValue = '') {
@@ -133,6 +147,8 @@ function buildCheckoutUserProfileRecord(source = {}, user = null, overrides = {}
         telefone: sanitizeCheckoutPhone(extra.telefone ?? base.telefone),
         documento: normalizeCheckoutDocument(extra.documento ?? base.documento),
         endereco: normalizeCheckoutProfileAddress(mergeCheckoutAddressRecords(extra.endereco, base.endereco)),
+        enderecos: Array.isArray(extra.enderecos ?? base.enderecos) ? (extra.enderecos ?? base.enderecos) : [],
+        enderecoPrincipalId: sanitizePlainText(extra.enderecoPrincipalId ?? base.enderecoPrincipalId, 80),
         fotoUrl: sanitizePlainText(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL, 500),
         createdAt: createdAt ?? null,
         favoritos: normalizeCheckoutFavorites(extra.favoritos ?? base.favoritos)
@@ -160,6 +176,240 @@ function fillCheckoutAddressFields(form, address = {}, overwrite = true) {
     setCheckoutInputValue(form, 'cidade', cityState.cidade, overwrite);
     setCheckoutInputValue(form, 'estado', cityState.estado, overwrite);
     setCheckoutInputValue(form, 'cep', formatPostalCode(address.cep || ''), overwrite);
+}
+
+function clearCheckoutAddressFields(form) {
+    fillCheckoutAddressFields(form, {
+        rua: '',
+        numero: '',
+        complemento: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        cep: ''
+    }, true);
+}
+
+function sanitizeCheckoutAddressId(value, fallback = '') {
+    const normalized = sanitizePlainText(value, 80)
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .replace(/-{2,}/g, '-')
+        .replace(/^-|-$/g, '');
+
+    return normalized || fallback || '';
+}
+
+function buildCheckoutAddressSignature(address) {
+    const normalized = normalizeCheckoutProfileAddress(address);
+    if (!normalized) return '';
+
+    return [
+        sanitizePlainText(normalized.rua, 140).toLowerCase(),
+        sanitizePlainText(normalized.numero, 40).toLowerCase(),
+        sanitizePlainText(normalized.complemento, 120).toLowerCase(),
+        sanitizePlainText(normalized.bairro, 80).toLowerCase(),
+        sanitizePlainText(normalized.cidade, 120).toLowerCase(),
+        sanitizePlainText(normalized.estado, 2).toLowerCase(),
+        sanitizePlainText(normalized.cep, 12)
+    ].join('|');
+}
+
+function normalizeSavedCheckoutAddressEntry(address, index = 0) {
+    const normalized = normalizeCheckoutProfileAddress(address);
+    if (!normalized) return null;
+
+    return {
+        id: sanitizeCheckoutAddressId(address?.id, `address-${index + 1}`),
+        label: sanitizePlainText(address?.label, 60),
+        principal: address?.principal === true,
+        ...normalized
+    };
+}
+
+function normalizeCheckoutSavedAddresses(list, primaryAddress = null, primaryAddressId = '') {
+    const entries = (Array.isArray(list) ? list : [])
+        .map((item, index) => normalizeSavedCheckoutAddressEntry(item, index))
+        .filter(Boolean)
+        .slice(0, 10);
+
+    const normalizedPrimary = normalizeCheckoutProfileAddress(primaryAddress);
+    let selectedId = sanitizeCheckoutAddressId(primaryAddressId);
+
+    if (!selectedId) {
+        selectedId = entries.find((item) => item.principal)?.id || '';
+    }
+
+    if (normalizedPrimary) {
+        const primarySignature = buildCheckoutAddressSignature(normalizedPrimary);
+        let selectedEntry = entries.find((item) => item.id === selectedId);
+
+        if (!selectedEntry && primarySignature) {
+            selectedEntry = entries.find((item) => buildCheckoutAddressSignature(item) === primarySignature);
+        }
+
+        if (selectedEntry) {
+            Object.assign(selectedEntry, normalizedPrimary);
+            selectedId = selectedEntry.id;
+        } else {
+            selectedId = selectedId || `address-${entries.length + 1}`;
+            entries.unshift({
+                id: selectedId,
+                label: 'Endereco principal',
+                principal: true,
+                ...normalizedPrimary
+            });
+        }
+    }
+
+    const normalizedEntries = entries
+        .slice(0, 10)
+        .map((item, index) => ({
+            ...item,
+            id: sanitizeCheckoutAddressId(item.id, `address-${index + 1}`),
+            label: sanitizePlainText(item.label, 60),
+            principal: false
+        }));
+
+    if (!selectedId) {
+        selectedId = normalizedEntries[0]?.id || '';
+    }
+
+    const selectedEntry = normalizedEntries.find((item) => item.id === selectedId) || normalizedEntries[0] || null;
+    if (selectedEntry) {
+        selectedEntry.principal = true;
+        if (!selectedEntry.label) {
+            selectedEntry.label = 'Endereco principal';
+        }
+    }
+
+    normalizedEntries.forEach((item, index) => {
+        if (!item.label) {
+            item.label = item.principal ? 'Endereco principal' : `Endereco salvo ${index + 1}`;
+        }
+    });
+
+    return {
+        addresses: normalizedEntries,
+        selectedId: selectedEntry?.id || '',
+        endereco: selectedEntry ? normalizeCheckoutProfileAddress(selectedEntry) : normalizedPrimary
+    };
+}
+
+function getSelectedCheckoutSavedAddress() {
+    return checkoutSavedAddressesState.addresses.find((item) => item.id === checkoutSavedAddressesState.selectedId) || null;
+}
+
+function formatCheckoutAddressSummary(address) {
+    const normalized = normalizeCheckoutProfileAddress(address);
+    if (!normalized) return '';
+
+    return [
+        [normalized.rua, normalized.numero].filter(Boolean).join(', '),
+        normalized.complemento || '',
+        [normalized.bairro, normalized.cidade, normalized.estado].filter(Boolean).join(' - '),
+        formatPostalCode(normalized.cep || '')
+    ].filter(Boolean).join(' • ');
+}
+
+function applyCheckoutSelectedAddress(address) {
+    if (!elements.checkoutForm || !address) return;
+    fillCheckoutAddressFields(elements.checkoutForm, address, true);
+    if (SHIPPING_QUOTE_ENABLED && normalizePostalCode(address.cep).length === 8) {
+        scheduleShippingQuote(true);
+    }
+}
+
+function syncCheckoutAddressVisibility() {
+    const hasSavedAddresses = checkoutSavedAddressesState.addresses.length > 0 && Boolean(currentUser || auth.currentUser);
+    if (elements.checkoutSavedAddressesPanel) {
+        elements.checkoutSavedAddressesPanel.classList.toggle('hidden', !hasSavedAddresses);
+    }
+    if (elements.checkoutAddressFormSection) {
+        elements.checkoutAddressFormSection.classList.toggle('hidden', hasSavedAddresses && checkoutSavedAddressesState.mode !== 'manual');
+    }
+    if (elements.checkoutAddAddressBtn) {
+        elements.checkoutAddAddressBtn.textContent = hasSavedAddresses && checkoutSavedAddressesState.mode === 'manual'
+            ? 'Usar salvo'
+            : 'Adicionar outro';
+    }
+}
+
+function renderCheckoutSavedAddressCards() {
+    const container = elements.checkoutAddressCards;
+    if (!container) return;
+
+    container.replaceChildren();
+    if (!checkoutSavedAddressesState.addresses.length || !(currentUser || auth.currentUser)) {
+        syncCheckoutAddressVisibility();
+        return;
+    }
+
+    checkoutSavedAddressesState.addresses.forEach((address) => {
+        const isSelected = checkoutSavedAddressesState.mode !== 'manual' && address.id === checkoutSavedAddressesState.selectedId;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `w-full rounded-2xl border p-4 text-left transition ${
+            isSelected
+                ? 'border-[--cor-marrom-cta] bg-[#F8F1E7] shadow-sm'
+                : 'border-[#E5D9C8] bg-white hover:border-[--cor-ouro-acento]'
+        }`;
+        button.innerHTML = `
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">${address.principal ? 'Principal' : 'Salvo'}</p>
+                    <h4 class="mt-1 text-sm font-semibold text-[--cor-texto]">${escapeHtml(address.label || 'Endereco salvo')}</h4>
+                    <p class="mt-2 text-sm leading-relaxed text-gray-600">${escapeHtml(formatCheckoutAddressSummary(address))}</p>
+                </div>
+                <span class="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                    isSelected ? 'border-[--cor-marrom-cta] bg-[--cor-marrom-cta] text-white' : 'border-[#D6C6AE] text-transparent'
+                }">
+                    <i class="fa-solid fa-check text-[10px]"></i>
+                </span>
+            </div>
+        `;
+        button.addEventListener('click', () => {
+            checkoutSavedAddressesState.selectedId = address.id;
+            checkoutSavedAddressesState.mode = 'saved';
+            applyCheckoutSelectedAddress(address);
+            renderCheckoutSavedAddressCards();
+            syncCheckoutAddressVisibility();
+            updateCheckoutSummary();
+        });
+        container.appendChild(button);
+    });
+
+    syncCheckoutAddressVisibility();
+}
+
+function resetCheckoutSavedAddresses() {
+    checkoutSavedAddressesState = {
+        addresses: [],
+        selectedId: '',
+        mode: 'manual'
+    };
+    renderCheckoutSavedAddressCards();
+}
+
+function syncCheckoutSavedAddressesFromProfile(data = {}) {
+    const normalized = normalizeCheckoutSavedAddresses(
+        data?.enderecos,
+        data?.endereco,
+        data?.enderecoPrincipalId
+    );
+
+    checkoutSavedAddressesState = {
+        addresses: normalized.addresses,
+        selectedId: normalized.selectedId,
+        mode: normalized.addresses.length ? 'saved' : 'manual'
+    };
+
+    if (normalized.endereco) {
+        applyCheckoutSelectedAddress(normalized.endereco);
+    } else if (elements.checkoutForm && !normalized.addresses.length) {
+        clearCheckoutAddressFields(elements.checkoutForm);
+    }
+
+    renderCheckoutSavedAddressCards();
 }
 
 function buildCheckoutClienteFromFormData(formData) {
@@ -247,6 +497,7 @@ function syncCheckoutAccountUI() {
         if (copy) {
             copy.textContent = 'Sua conta ja esta ativa. O pedido sera associado automaticamente ao seu painel.';
         }
+        syncCheckoutAddressVisibility();
         return;
     }
 
@@ -264,6 +515,11 @@ function syncCheckoutAccountUI() {
             copy.textContent = 'Crie uma senha agora e este pedido ja nasce dentro da sua conta.';
         }
     }
+
+    if (!authenticatedUser && checkoutSavedAddressesState.addresses.length) {
+        resetCheckoutSavedAddresses();
+    }
+    syncCheckoutAddressVisibility();
 }
 
 async function ensureCheckoutUserProfileDoc(user, cliente) {
@@ -272,11 +528,11 @@ async function ensureCheckoutUserProfileDoc(user, cliente) {
     const ref = db.collection('usuarios').doc(user.uid);
     const snapshot = await ref.get();
     const existingData = snapshot.data() || {};
-    const mergedAddress = mergeCheckoutAddressRecords(cliente?.endereco, existingData.endereco);
+    const mergedAddress = mergeCheckoutAddressRecords(existingData.endereco, cliente?.endereco);
     const normalizedProfile = buildCheckoutUserProfileRecord(existingData, user, {
         nome: cliente?.nome || existingData.nome || user.displayName || 'Cliente',
         telefone: cliente?.telefone || existingData.telefone,
-        documento: cliente?.documento || existingData.documento,
+        documento: existingData.documento || cliente?.documento,
         endereco: mergedAddress,
         createdAt: snapshot.exists ? getPersistedCheckoutCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -309,12 +565,11 @@ async function populateCheckoutFormFromUser(user) {
             if (getCheckoutFormInput(form, 'documento')) {
                 setCheckoutInputValue(form, 'documento', formatCheckoutDocument(data.documento || ''), true);
             }
-            if (data.endereco) {
-                fillCheckoutAddressFields(form, data.endereco, true);
-            }
+            syncCheckoutSavedAddressesFromProfile(data);
         } else {
             elements.checkoutForm.email.value = user.email || '';
             if (user.displayName) elements.checkoutForm.nome.value = user.displayName;
+            resetCheckoutSavedAddresses();
         }
     } catch (error) {}
 }
@@ -924,6 +1179,32 @@ function setupShippingQuoteInteractions() {
         });
     }
 
+    if (elements.checkoutAddAddressBtn) {
+        elements.checkoutAddAddressBtn.addEventListener('click', () => {
+            const hasSavedAddresses = checkoutSavedAddressesState.addresses.length > 0;
+            if (!hasSavedAddresses) return;
+
+            if (checkoutSavedAddressesState.mode === 'manual') {
+                checkoutSavedAddressesState.mode = 'saved';
+                const selected = getSelectedCheckoutSavedAddress() || checkoutSavedAddressesState.addresses[0] || null;
+                if (selected) {
+                    checkoutSavedAddressesState.selectedId = selected.id;
+                    applyCheckoutSelectedAddress(selected);
+                }
+            } else {
+                checkoutSavedAddressesState.mode = 'manual';
+                clearCheckoutAddressFields(elements.checkoutForm);
+                setCheckoutInputValue(elements.checkoutForm, 'cep', '', true);
+                shippingQuoteState = createEmptyShippingQuoteState();
+                renderShippingOptions();
+                updateCheckoutSummary();
+            }
+
+            renderCheckoutSavedAddressCards();
+            syncCheckoutAddressVisibility();
+        });
+    }
+
     const checkoutDocumentInput = getCheckoutFormInput(elements.checkoutForm, 'documento');
     if (checkoutDocumentInput) {
         checkoutDocumentInput.addEventListener('input', (event) => {
@@ -1256,6 +1537,8 @@ async function openCheckoutModal() {
 
     if (authenticatedUser) {
         await populateCheckoutFormFromUser(authenticatedUser);
+    } else {
+        resetCheckoutSavedAddresses();
     }
 
     elements.checkoutModal.classList.remove('hidden');

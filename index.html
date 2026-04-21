@@ -56,9 +56,10 @@
       - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
       - Ids usados pelo JS: #add-to-cart-button, #admin-fab-panel, #admin-fab-shell, #admin-fab-toggle, #admin-open-copy-editor, #admin-open-operations-editor, #auth-prompt-dismiss, #auth-prompt-modal, #back-to-gallery
       - Ids usados pelo JS: #btn-favorite, #cancel-product-quick-edit, #cancel-storefront-copy, #cart-btn, #cart-count, #cart-drawer, #cart-empty-msg, #cart-items-container
-      - Ids usados pelo JS: #cart-overlay, #cart-subtotal, #checkout-account-assist, #checkout-account-copy, #checkout-account-password, #checkout-account-password-wrap, #checkout-cep, #checkout-form
-      - Ids usados pelo JS: #checkout-google-login-btn, #checkout-guest-card, #checkout-logged-in-card, #checkout-modal, #checkout-push-enable-btn, #checkout-push-later-btn, #checkout-push-modal, #checkout-submit-btn
-      - Ids usados pelo JS: #checkout-summary, #checkout-total, #close-auth-prompt, #close-cart-btn, #close-checkout-push-modal, #close-delivery-popup, #close-product-quick-edit-modal, #close-sidebar
+      - Ids usados pelo JS: #cart-overlay, #cart-subtotal, #checkout-account-assist, #checkout-account-copy, #checkout-account-password, #checkout-account-password-wrap, #checkout-address-cards, #checkout-add-address-btn
+      - Ids usados pelo JS: #checkout-address-form-section, #checkout-cep, #checkout-documento, #checkout-form, #checkout-google-login-btn, #checkout-guest-card, #checkout-logged-in-card, #checkout-modal
+      - Ids usados pelo JS: #checkout-push-enable-btn, #checkout-push-later-btn, #checkout-push-modal, #checkout-saved-addresses-panel, #checkout-submit-btn, #checkout-summary, #checkout-total, #close-auth-prompt
+      - Ids usados pelo JS: #close-cart-btn, #close-checkout-push-modal, #close-delivery-popup, #close-product-quick-edit-modal, #close-sidebar
       - Ids usados pelo JS: #close-storefront-copy-modal, #collection-gallery, #collection-grid, #collections-container, #collections-list-grid, #combo-selector-container, #delivery-popup-overlay, #detail-admin-edit-btn
       - Ids usados pelo JS: #detail-description, #detail-price, #detail-title, #dismiss-delivery-popup, #entry-assist-action-btn, #entry-assist-copy, #entry-assist-icon, #entry-assist-link
       - Ids usados pelo JS: #entry-assist-title, #finalizar-pedido-btn, #header-user-icon-link, #home-featured-grid, #home-hero-cta, #home-shop-filters, #home-shop-grid, #home-shop-next
@@ -608,19 +609,35 @@
                 <!-- Campos de Entrega -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Entrega</h3>
                 <p class="text-xs leading-relaxed text-gray-500">Pedimos documento e endereco completo para gerar sua etiqueta sem retrabalho quando formos postar o pedido.</p>
-                <div class="grid gap-4 md:grid-cols-2">
-                    <input type="text" id="checkout-documento" name="documento" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF ou CNPJ do recebedor" autocomplete="off" inputmode="numeric" required>
-                    <input type="text" id="checkout-cep" name="cep" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CEP" autocomplete="postal-code" inputmode="numeric" required>
+                <input type="text" id="checkout-documento" name="documento" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF ou CNPJ do recebedor" autocomplete="off" inputmode="numeric" required>
+
+                <div id="checkout-saved-addresses-panel" class="hidden rounded-2xl border border-[#E5E0D8] bg-[#FCFAF6] p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Enderecos salvos</p>
+                            <p class="mt-1 text-sm text-gray-500">Escolha o endereco principal ou adicione outro sem preencher tudo de novo.</p>
+                        </div>
+                        <button type="button" id="checkout-add-address-btn" class="shrink-0 rounded-full border border-[#D8C8B3] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[--cor-marrom-cta] transition hover:bg-[#F5EBDD]">
+                            Adicionar outro
+                        </button>
+                    </div>
+                    <div id="checkout-address-cards" class="mt-4 space-y-3"></div>
                 </div>
-                <input type="text" id="checkout-rua" name="rua" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Rua / Avenida" autocomplete="address-line1" required>
-                <div class="grid gap-4 md:grid-cols-2">
-                    <input type="text" id="checkout-numero" name="numero" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Numero" autocomplete="address-line2" required>
-                    <input type="text" id="checkout-complemento" name="complemento" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Complemento (opcional)" autocomplete="address-line3">
-                </div>
-                <div class="grid gap-4 md:grid-cols-3">
-                    <input type="text" id="checkout-bairro" name="bairro" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Bairro" autocomplete="address-level3" required>
-                    <input type="text" id="checkout-cidade" name="cidade" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Cidade" autocomplete="address-level2" required>
-                    <input type="text" id="checkout-estado" name="estado" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento] uppercase" placeholder="UF" autocomplete="address-level1" maxlength="2" required>
+
+                <div id="checkout-address-form-section" class="space-y-4">
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <input type="text" id="checkout-cep" name="cep" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CEP" autocomplete="postal-code" inputmode="numeric" required>
+                        <input type="text" id="checkout-rua" name="rua" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Rua / Avenida" autocomplete="address-line1" required>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <input type="text" id="checkout-numero" name="numero" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Numero" autocomplete="address-line2" required>
+                        <input type="text" id="checkout-complemento" name="complemento" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Complemento (opcional)" autocomplete="address-line3">
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <input type="text" id="checkout-bairro" name="bairro" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Bairro" autocomplete="address-level3" required>
+                        <input type="text" id="checkout-cidade" name="cidade" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Cidade" autocomplete="address-level2" required>
+                        <input type="text" id="checkout-estado" name="estado" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento] uppercase" placeholder="UF" autocomplete="address-level1" maxlength="2" required>
+                    </div>
                 </div>
 
                 <div class="rounded-2xl border border-[#E5E0D8] bg-white p-4 shadow-sm">

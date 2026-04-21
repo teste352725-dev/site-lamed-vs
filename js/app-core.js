@@ -90,6 +90,10 @@ const elements = {
     checkoutAccountPasswordWrap: document.getElementById('checkout-account-password-wrap'),
     checkoutAccountPasswordInput: document.getElementById('checkout-account-password'),
     checkoutAccountCopy: document.getElementById('checkout-account-copy'),
+    checkoutSavedAddressesPanel: document.getElementById('checkout-saved-addresses-panel'),
+    checkoutAddressCards: document.getElementById('checkout-address-cards'),
+    checkoutAddAddressBtn: document.getElementById('checkout-add-address-btn'),
+    checkoutAddressFormSection: document.getElementById('checkout-address-form-section'),
     shippingMessageBox: document.getElementById('shipping-message-box'),
     shippingCostMsg: document.getElementById('shipping-cost-msg'),
     shippingQuoteStatus: document.getElementById('shipping-quote-status'),
@@ -940,9 +944,18 @@ function normalizeProfileDocument(value) {
 }
 
 function mergeProfileAddressRecords(primaryAddress, fallbackAddress) {
-    const primary = primaryAddress && typeof primaryAddress === 'object' ? primaryAddress : {};
-    const fallback = fallbackAddress && typeof fallbackAddress === 'object' ? fallbackAddress : {};
-    return { ...fallback, ...primary };
+    const primary = normalizeProfileAddress(primaryAddress) || {};
+    const fallback = normalizeProfileAddress(fallbackAddress) || {};
+
+    return {
+        rua: primary.rua || fallback.rua || '',
+        numero: primary.numero || fallback.numero || '',
+        complemento: primary.complemento || fallback.complemento || '',
+        bairro: primary.bairro || fallback.bairro || '',
+        cidade: primary.cidade || fallback.cidade || '',
+        estado: primary.estado || fallback.estado || '',
+        cep: primary.cep || fallback.cep || ''
+    };
 }
 
 function normalizeProfileAddress(address) {
@@ -959,6 +972,119 @@ function normalizeProfileAddress(address) {
     };
 
     return Object.values(normalized).some(Boolean) ? normalized : null;
+}
+
+function sanitizeProfileAddressId(value, fallback = '') {
+    const normalized = sanitizePlainText(value, 80)
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .replace(/-{2,}/g, '-')
+        .replace(/^-|-$/g, '');
+
+    return normalized || fallback || '';
+}
+
+function buildProfileAddressSignature(address) {
+    const normalized = normalizeProfileAddress(address);
+    if (!normalized) return '';
+
+    return [
+        sanitizePlainText(normalized.rua, 140).toLowerCase(),
+        sanitizePlainText(normalized.numero, 40).toLowerCase(),
+        sanitizePlainText(normalized.complemento, 120).toLowerCase(),
+        sanitizePlainText(normalized.bairro, 80).toLowerCase(),
+        sanitizePlainText(normalized.cidade, 120).toLowerCase(),
+        sanitizePlainText(normalized.estado, 2).toLowerCase(),
+        sanitizePlainText(normalized.cep, 12)
+    ].join('|');
+}
+
+function extractProfileAddressFields(address) {
+    const normalized = normalizeProfileAddress(address);
+    if (!normalized) return null;
+    return { ...normalized };
+}
+
+function normalizeSavedProfileAddressEntry(address, index = 0) {
+    const normalized = normalizeProfileAddress(address);
+    if (!normalized) return null;
+
+    return {
+        id: sanitizeProfileAddressId(address?.id, `address-${index + 1}`),
+        label: sanitizePlainText(address?.label, 60),
+        principal: address?.principal === true,
+        ...normalized
+    };
+}
+
+function normalizeSavedProfileAddressBook(list, primaryAddress = null, primaryAddressId = '') {
+    const sourceList = Array.isArray(list) ? list : [];
+    const entries = sourceList
+        .map((item, index) => normalizeSavedProfileAddressEntry(item, index))
+        .filter(Boolean)
+        .slice(0, 10);
+
+    const normalizedPrimary = normalizeProfileAddress(primaryAddress);
+    let selectedId = sanitizeProfileAddressId(primaryAddressId);
+
+    if (!selectedId) {
+        selectedId = entries.find((item) => item.principal)?.id || '';
+    }
+
+    if (normalizedPrimary) {
+        const primarySignature = buildProfileAddressSignature(normalizedPrimary);
+        let primaryEntry = entries.find((item) => item.id === selectedId);
+
+        if (!primaryEntry && primarySignature) {
+            primaryEntry = entries.find((item) => buildProfileAddressSignature(item) === primarySignature);
+        }
+
+        if (primaryEntry) {
+            Object.assign(primaryEntry, normalizedPrimary);
+            selectedId = primaryEntry.id;
+        } else {
+            selectedId = selectedId || `address-${entries.length + 1}`;
+            entries.unshift({
+                id: selectedId,
+                label: 'Endereco principal',
+                principal: true,
+                ...normalizedPrimary
+            });
+        }
+    }
+
+    const normalizedEntries = entries
+        .slice(0, 10)
+        .map((item, index) => ({
+            ...item,
+            id: sanitizeProfileAddressId(item.id, `address-${index + 1}`),
+            label: sanitizePlainText(item.label, 60),
+            principal: false
+        }));
+
+    if (!selectedId) {
+        selectedId = normalizedEntries[0]?.id || '';
+    }
+
+    const selectedEntry = normalizedEntries.find((item) => item.id === selectedId) || normalizedEntries[0] || null;
+
+    if (selectedEntry) {
+        selectedEntry.principal = true;
+        if (!selectedEntry.label) {
+            selectedEntry.label = 'Endereco principal';
+        }
+    }
+
+    normalizedEntries.forEach((item, index) => {
+        if (!item.label) {
+            item.label = item.principal ? 'Endereco principal' : `Endereco salvo ${index + 1}`;
+        }
+    });
+
+    return {
+        enderecos: normalizedEntries,
+        enderecoPrincipalId: selectedEntry?.id || null,
+        endereco: extractProfileAddressFields(selectedEntry) || normalizedPrimary || null
+    };
 }
 
 function normalizeFavoritesList(list) {
@@ -981,13 +1107,20 @@ function normalizeUserProfileRecordForFirestore(source = {}, user = null, overri
     const createdAt = Object.prototype.hasOwnProperty.call(extra, 'createdAt')
         ? extra.createdAt
         : getPersistedProfileCreatedAt(base.createdAt);
+    const addressBook = normalizeSavedProfileAddressBook(
+        extra.enderecos ?? base.enderecos,
+        mergeProfileAddressRecords(extra.endereco, base.endereco),
+        extra.enderecoPrincipalId ?? base.enderecoPrincipalId
+    );
 
     return {
         nome: sanitizePlainText(extra.nome ?? base.nome ?? user?.displayName ?? user?.email?.split('@')[0] ?? 'Cliente', 120) || 'Cliente',
         email: sanitizePlainText(extra.email ?? base.email ?? user?.email, 120),
         telefone: sanitizeProfilePhone(extra.telefone ?? base.telefone),
         documento: normalizeProfileDocument(extra.documento ?? base.documento),
-        endereco: normalizeProfileAddress(mergeProfileAddressRecords(extra.endereco, base.endereco)),
+        endereco: addressBook.endereco,
+        enderecos: addressBook.enderecos,
+        enderecoPrincipalId: addressBook.enderecoPrincipalId,
         fotoUrl: normalizeUrl(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL),
         createdAt: createdAt ?? null,
         favoritos: normalizeFavoritesList(extra.favoritos ?? base.favoritos)
