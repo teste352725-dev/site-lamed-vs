@@ -29,6 +29,10 @@ service cloud.firestore {
       return value == null || value is timestamp;
     }
 
+    function hasField(data, field) {
+      return data.keys().hasAny([field]);
+    }
+
     function validDocumento(value) {
       return value is string && value.matches('^([0-9]{11}|[0-9]{14})$');
     }
@@ -66,21 +70,35 @@ service cloud.firestore {
           'createdAt',
           'favoritos'
         ]) &&
+        hasField(request.resource.data, 'nome') &&
         validString(request.resource.data.nome, 1, 120) &&
-        validOptionalString(request.resource.data.email, 120) &&
-        validOptionalString(request.resource.data.telefone, 30) &&
-        validOptionalDocumento(request.resource.data.documento) &&
-        (request.resource.data.endereco == null || validProfileAddress(request.resource.data.endereco)) &&
-        validSavedAddresses(request.resource.data.enderecos) &&
-        validOptionalString(request.resource.data.enderecoPrincipalId, 80) &&
-        validOptionalString(request.resource.data.fotoUrl, 2000) &&
-        validOptionalTimestamp(request.resource.data.createdAt) &&
+        (!hasField(request.resource.data, 'email') || validOptionalString(request.resource.data.email, 120)) &&
+        (!hasField(request.resource.data, 'telefone') || validOptionalString(request.resource.data.telefone, 30)) &&
+        (!hasField(request.resource.data, 'documento') || validOptionalDocumento(request.resource.data.documento)) &&
         (
-          resource == null
-            ? (request.resource.data.createdAt == null || request.resource.data.createdAt == request.time)
-            : request.resource.data.createdAt == resource.data.createdAt
+          !hasField(request.resource.data, 'endereco') ||
+          request.resource.data.endereco == null ||
+          validProfileAddress(request.resource.data.endereco)
+        ) &&
+        (!hasField(request.resource.data, 'enderecos') || validSavedAddresses(request.resource.data.enderecos)) &&
+        (!hasField(request.resource.data, 'enderecoPrincipalId') || validOptionalString(request.resource.data.enderecoPrincipalId, 80)) &&
+        (!hasField(request.resource.data, 'fotoUrl') || validOptionalString(request.resource.data.fotoUrl, 2000)) &&
+        (
+          !hasField(request.resource.data, 'createdAt') ||
+          (
+            validOptionalTimestamp(request.resource.data.createdAt) &&
+            (
+              resource == null
+                ? (request.resource.data.createdAt == null || request.resource.data.createdAt == request.time)
+                : (
+                    (resource.data.createdAt is timestamp && request.resource.data.createdAt == resource.data.createdAt) ||
+                    (!(resource.data.createdAt is timestamp) && request.resource.data.createdAt == null)
+                  )
+            )
+          )
         ) &&
         (
+          !hasField(request.resource.data, 'favoritos') ||
           request.resource.data.favoritos == null ||
           (
             request.resource.data.favoritos is list &&

@@ -2,7 +2,7 @@
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 import { clearUserCart } from "./_cart.mjs";
 import { createInfinitePayCheckoutLink, isInfinitePayConfigured } from "./_infinitepay.mjs";
-import { isShippingApiEnabled, requestShippingQuote } from "./_shipping.mjs";
+import { isShippingApiEnabled, isShippingProviderCredentialError, requestShippingQuote } from "./_shipping.mjs";
 import { getStoreOperations, isPublicStorefrontBlocked } from "./_store-operations.mjs";
 
 const TAXA_JUROS = 0.0549;
@@ -503,6 +503,11 @@ async function resolveOrderShippingSelection(cliente, canonicalCart, submittedSh
     throw new RequestError(400, "Escolha uma opcao de frete antes de continuar.");
   }
 
+  const requestedManualFallback =
+    normalizedSelection.id === "manual-pendente" ||
+    normalizedSelection.serviceId === "manual-pendente" ||
+    normalizedSelection.serviceCode === "manual-pendente";
+
   let quote;
   try {
     quote = await requestShippingQuote({
@@ -510,6 +515,10 @@ async function resolveOrderShippingSelection(cliente, canonicalCart, submittedSh
       items: canonicalCart
     });
   } catch (error) {
+    if (requestedManualFallback || isShippingProviderCredentialError(error)) {
+      return buildManualShippingSelection(cliente?.endereco?.cep);
+    }
+
     throw new RequestError(502, String(error?.message || "Nao foi possivel validar o frete agora."));
   }
 
@@ -526,6 +535,10 @@ async function resolveOrderShippingSelection(cliente, canonicalCart, submittedSh
   );
 
   if (!matchedOption) {
+    if (requestedManualFallback) {
+      return buildManualShippingSelection(cliente?.endereco?.cep);
+    }
+
     throw new RequestError(400, "A opcao de frete escolhida nao esta mais disponivel. Revise o CEP e selecione novamente.");
   }
 

@@ -246,6 +246,18 @@ function extractMelhorEnvioError(payload, status) {
   return `Melhor Envio respondeu com status ${status}.`;
 }
 
+export function isShippingProviderCredentialError(error) {
+  const safeMessage = String(error?.message || error || "").toLowerCase();
+  return safeMessage.includes("token has been revoked") ||
+    safeMessage.includes("acesso nao autorizado") ||
+    safeMessage.includes("acesso não autorizado") ||
+    safeMessage.includes("unauthorized") ||
+    safeMessage.includes("forbidden") ||
+    safeMessage.includes("api restrita") ||
+    safeMessage.includes("token expirado") ||
+    safeMessage.includes("token invalido");
+}
+
 async function refreshMelhorEnvioAccessToken() {
   const refreshToken = String(cachedRefreshToken || process.env.MELHOR_ENVIO_REFRESH_TOKEN || "").trim();
   const clientId = String(process.env.MELHOR_ENVIO_CLIENT_ID || "").trim();

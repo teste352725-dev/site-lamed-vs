@@ -17,6 +17,55 @@ function isFirestorePermissionError(error) {
     return code === 'permission-denied' || message.includes('missing or insufficient permissions');
 }
 
+function shouldPreferGoogleRedirect() {
+    const ua = String(navigator?.userAgent || '').toLowerCase();
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(ua);
+
+    try {
+        return isMobileDevice || window.matchMedia('(max-width: 960px)').matches;
+    } catch (error) {
+        return isMobileDevice;
+    }
+}
+
+function shouldFallbackGooglePopupToRedirect(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+
+    return [
+        'auth/popup-blocked',
+        'auth/popup-closed-by-user',
+        'auth/cancelled-popup-request',
+        'auth/operation-not-supported-in-this-environment'
+    ].includes(code) || message.includes('cross-origin-opener-policy');
+}
+
+async function signInWithGoogleSafeForCheckout() {
+    if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
+        throw new Error('O login com Google nao esta disponivel agora.');
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    if (shouldPreferGoogleRedirect()) {
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || auth.currentUser || null;
+    } catch (error) {
+        if (shouldFallbackGooglePopupToRedirect(error)) {
+            await auth.signInWithRedirect(provider);
+            return null;
+        }
+
+        throw error;
+    }
+}
+
 function sanitizeCheckoutPhone(value) {
     return String(value ?? '')
         .replace(/[^\d+\-() ]/g, '')
@@ -149,7 +198,7 @@ function buildCheckoutUserProfileRecord(source = {}, user = null, overrides = {}
         endereco: normalizeCheckoutProfileAddress(mergeCheckoutAddressRecords(extra.endereco, base.endereco)),
         enderecos: Array.isArray(extra.enderecos ?? base.enderecos) ? (extra.enderecos ?? base.enderecos) : [],
         enderecoPrincipalId: sanitizePlainText(extra.enderecoPrincipalId ?? base.enderecoPrincipalId, 80),
-        fotoUrl: sanitizePlainText(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL, 500),
+        fotoUrl: sanitizePlainText(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL, 2000),
         createdAt: createdAt ?? null,
         favoritos: normalizeCheckoutFavorites(extra.favoritos ?? base.favoritos)
     };
@@ -576,9 +625,11 @@ async function populateCheckoutFormFromUser(user) {
 
 async function loginWithGoogleForCheckout() {
     try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const result = await auth.signInWithPopup(provider);
-        const user = result.user;
+        const user = await signInWithGoogleSafeForCheckout();
+
+        if (!user) {
+            return;
+        }
 
         await tryEnsureCheckoutUserProfileDoc(user, {
             nome: sanitizePlainText(user.displayName, 80),
@@ -803,21 +854,21 @@ function extractShippingErrorMessage(payload, response = null) {
     const rawError = payload?.error;
 
     if (typeof rawError === 'string' && rawError.trim()) {
-        return sanitizePlainText(rawError, 220);
+        return normalizeShippingBackendMessage(rawError);
     }
 
     if (rawError && typeof rawError === 'object') {
         if (typeof rawError.message === 'string' && rawError.message.trim()) {
-            return sanitizePlainText(rawError.message, 220);
+            return normalizeShippingBackendMessage(rawError.message);
         }
 
         if (typeof rawError.error === 'string' && rawError.error.trim()) {
-            return sanitizePlainText(rawError.error, 220);
+            return normalizeShippingBackendMessage(rawError.error);
         }
     }
 
     if (typeof payload?.message === 'string' && payload.message.trim()) {
-        return sanitizePlainText(payload.message, 220);
+        return normalizeShippingBackendMessage(payload.message);
     }
 
     if (response?.status === 404) {
@@ -834,7 +885,7 @@ function extractShippingErrorMessage(payload, response = null) {
 }
 
 function extractShippingRequestErrorMessage(error) {
-    const message = sanitizePlainText(error?.message || '', 220);
+    const message = normalizeShippingBackendMessage(error?.message || '');
 
     if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
         return API_BASE_URL
@@ -843,6 +894,28 @@ function extractShippingRequestErrorMessage(error) {
     }
 
     return message || 'Falha ao calcular o frete.';
+}
+
+function isShippingProviderCredentialErrorMessage(message) {
+    const safe = String(message || '').toLowerCase();
+    return safe.includes('token has been revoked') ||
+        safe.includes('acesso nao autorizado') ||
+        safe.includes('acesso não autorizado') ||
+        safe.includes('unauthorized') ||
+        safe.includes('forbidden') ||
+        safe.includes('api restrita') ||
+        safe.includes('token expirado') ||
+        safe.includes('token invalido');
+}
+
+function normalizeShippingBackendMessage(message) {
+    const safe = sanitizePlainText(message || '', 220);
+
+    if (isShippingProviderCredentialErrorMessage(safe)) {
+        return 'A integracao de frete esta em ajuste. O pedido continua disponivel e o frete sera confirmado manualmente pela equipe.';
+    }
+
+    return safe;
 }
 
 function createEmptyShippingQuoteState() {
@@ -1122,19 +1195,22 @@ async function quoteShippingOptions({ force = false, cartItems = cart, destinati
     } catch (error) {
         if (requestToken !== shippingQuoteRequestToken) return [];
 
+        const friendlyError = extractShippingRequestErrorMessage(error);
+        const shouldFallbackToManual = isShippingProviderCredentialErrorMessage(error?.message || friendlyError);
+
         shippingQuoteState = {
             loading: false,
             requested: true,
             destinationCep: cep,
             cartSignature,
-            options: [],
-            selectedOptionId: '',
-            error: extractShippingRequestErrorMessage(error)
+            options: shouldFallbackToManual ? [buildManualShippingSelection(cep)] : [],
+            selectedOptionId: shouldFallbackToManual ? 'manual-pendente' : '',
+            error: shouldFallbackToManual ? '' : friendlyError
         };
 
         renderShippingOptions();
         updateCheckoutSummary();
-        return [];
+        return shippingQuoteState.options;
     }
 }
 

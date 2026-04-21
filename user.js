@@ -307,6 +307,77 @@ function buildAvatarUrl(name) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}&background=A58A5C&color=fff`;
 }
 
+function isFirestorePermissionError(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code === 'permission-denied' || message.includes('missing or insufficient permissions');
+}
+
+function shouldPreferGoogleRedirect() {
+    const ua = String(navigator?.userAgent || '').toLowerCase();
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(ua);
+
+    try {
+        return isMobileDevice || window.matchMedia('(max-width: 960px)').matches;
+    } catch (error) {
+        return isMobileDevice;
+    }
+}
+
+function shouldFallbackGooglePopupToRedirect(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+
+    return [
+        'auth/popup-blocked',
+        'auth/popup-closed-by-user',
+        'auth/cancelled-popup-request',
+        'auth/operation-not-supported-in-this-environment'
+    ].includes(code) || message.includes('cross-origin-opener-policy');
+}
+
+async function signInWithGoogleSafe() {
+    if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
+        throw new Error('O login com Google nao esta disponivel agora.');
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    if (shouldPreferGoogleRedirect()) {
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || auth.currentUser || null;
+    } catch (error) {
+        if (shouldFallbackGooglePopupToRedirect(error)) {
+            await auth.signInWithRedirect(provider);
+            return null;
+        }
+
+        throw error;
+    }
+}
+
+async function syncGoogleUserProfileDoc(user) {
+    if (!user) return;
+
+    const docRef = db.collection('usuarios').doc(user.uid);
+    const docSnap = await docRef.get();
+    const existingData = docSnap.data() || {};
+    const normalizedProfile = buildUserProfileRecord(existingData, user, {
+        nome: sanitizePlainText(user.displayName, 120) || sanitizePlainText(existingData.nome, 120) || 'Cliente',
+        email: sanitizePlainText(user.email, 120) || sanitizePlainText(existingData.email, 120),
+        fotoUrl: normalizeImageUrl(user.photoURL) || normalizeImageUrl(existingData.fotoUrl) || null,
+        createdAt: docSnap.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await docRef.set(normalizedProfile);
+}
+
 function splitFullName(name) {
     const safe = sanitizePlainText(name, 80);
     if (!safe) return { firstName: 'Cliente', fullName: 'Cliente' };
@@ -1263,26 +1334,19 @@ if(regForm) {
 
 // --- GOOGLE LOGIN ---
 window.fazerLoginGoogle = () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).then(async (result) => {
-        const user = result.user;
-        const docRef = db.collection('usuarios').doc(user.uid);
-        const docSnap = await docRef.get();
-        
-        if (!docSnap.exists) {
-            await docRef.set({
-                nome: sanitizePlainText(user.displayName, 80) || 'Cliente',
-                email: sanitizePlainText(user.email, 120),
-                fotoUrl: normalizeImageUrl(user.photoURL) || '',
-                telefone: '',
-                endereco: null,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
-    }).catch((err) => {
-        console.error(err);
-        alert('Nao foi possivel entrar com Google agora.');
-    });
+    signInWithGoogleSafe()
+        .then(async (user) => {
+            if (!user) return;
+            await syncGoogleUserProfileDoc(user);
+        })
+        .catch((err) => {
+            console.error(err);
+            if (isFirestorePermissionError(err)) {
+                alert('Sua conta entrou, mas o perfil ainda nao conseguiu sincronizar. Tente novamente em instantes.');
+                return;
+            }
+            alert('Nao foi possivel entrar com Google agora.');
+        });
 };
 
 window.fazerLogout = () => auth.signOut();

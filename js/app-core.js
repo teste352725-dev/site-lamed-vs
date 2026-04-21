@@ -408,23 +408,66 @@ function openInlineOperationsEditing() {
     }
 }
 
+function shouldPreferGoogleRedirect() {
+    const ua = String(navigator?.userAgent || '').toLowerCase();
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(ua);
+
+    try {
+        return isMobileDevice || window.matchMedia('(max-width: 960px)').matches;
+    } catch (error) {
+        return isMobileDevice;
+    }
+}
+
+function shouldFallbackGooglePopupToRedirect(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+
+    return [
+        'auth/popup-blocked',
+        'auth/popup-closed-by-user',
+        'auth/cancelled-popup-request',
+        'auth/operation-not-supported-in-this-environment'
+    ].includes(code) || message.includes('cross-origin-opener-policy');
+}
+
+async function signInWithGoogleSafe() {
+    if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
+        throw new Error('O login com Google nao esta disponivel agora.');
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    if (shouldPreferGoogleRedirect()) {
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || auth.currentUser || null;
+    } catch (error) {
+        if (shouldFallbackGooglePopupToRedirect(error)) {
+            await auth.signInWithRedirect(provider);
+            return null;
+        }
+
+        throw error;
+    }
+}
+
 async function signInWithGoogleFromEntryAssist() {
     try {
-        if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
-            throw new Error('O login com Google nao esta disponivel agora.');
-        }
-
         if (elements.entryAssistActionBtn) {
             elements.entryAssistActionBtn.disabled = true;
-            elements.entryAssistActionBtn.textContent = 'Conectando...';
+            elements.entryAssistActionBtn.textContent = shouldPreferGoogleRedirect() ? 'Redirecionando...' : 'Conectando...';
         }
 
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const result = await auth.signInWithPopup(provider);
-        const authenticatedUser = result?.user || auth.currentUser;
+        const authenticatedUser = await signInWithGoogleSafe();
 
         if (!authenticatedUser) {
-            throw new Error('Nao foi possivel concluir sua entrada com Google.');
+            return;
         }
 
         await ensureEntryAssistUserProfileDoc(authenticatedUser);
