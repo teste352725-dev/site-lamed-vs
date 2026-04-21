@@ -982,8 +982,10 @@ body.account-body {
     }
 
     .account-topbar-row {
-        align-items: flex-start;
-        flex-direction: column;
+        align-items: center;
+        flex-direction: row;
+        justify-content: space-between;
+        flex-wrap: wrap;
     }
 
     .account-hero,
@@ -1005,12 +1007,99 @@ body.account-body {
         padding: 1.2rem;
     }
 
-    .account-stat-grid {
+    .account-user-tools {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .account-avatar {
+        width: 2.7rem;
+        height: 2.7rem;
+    }
+
+    .account-hero {
+        background: rgba(255, 251, 245, 0.95);
+        background-color: rgba(255, 251, 245, 0.95);
+        color: var(--account-ink);
+        box-shadow: 0 12px 28px rgba(69, 48, 31, 0.08);
+    }
+
+    .account-hero h1 {
+        color: var(--account-ink);
+        font-size: 2.1rem;
+        line-height: 1.02;
+    }
+
+    .account-hero p {
+        color: var(--account-muted);
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .account-quick-actions {
+        display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+
+    .account-pill-btn {
+        justify-content: center;
+        padding: 0.82rem 0.75rem;
+        border: 1px solid var(--account-border);
+        background: #fff;
+        color: var(--account-brown);
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+    }
+
+    .account-hero-side {
+        gap: 0.7rem;
+    }
+
+    .account-hero-note {
+        background: rgba(255, 255, 255, 0.96);
+        border-color: var(--account-border);
+    }
+
+    .account-hero-note strong {
+        color: var(--account-ink);
+    }
+
+    .account-hero-note p {
+        color: var(--account-muted);
+    }
+
+    .account-stat-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .account-stat-card {
+        padding: 1rem 1.05rem;
+        border-radius: 20px;
+        box-shadow: none;
+    }
+
+    .account-stat-card strong {
+        font-size: 1.6rem;
+    }
+
+    .account-stat-card p {
+        font-size: 0.82rem;
     }
 
     .account-tabbar {
-        border-radius: 24px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border-radius: 20px;
+        gap: 0.55rem;
+        padding: 0.8rem;
+    }
+
+    .tab-btn {
+        padding: 0.8rem 0.75rem;
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
     }
 
     .account-profile-two,

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -188,7 +188,7 @@
                             <p class="text-[0.68rem] uppercase tracking-[0.22em] text-[#a49382] font-bold">Conta ativa</p>
                             <p id="user-name-display" class="text-sm font-semibold text-[#2d2017]">Cliente</p>
                         </div>
-                        <img id="user-avatar-display" src="" class="account-avatar" alt="Avatar da conta">
+                        <img id="user-avatar-display" src="https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff" class="account-avatar" alt="Avatar da conta" onerror="this.src='https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff'">
                         <button type="button" onclick="fazerLogout()" class="account-power-btn" title="Sair">
                             <i class="fa-solid fa-power-off"></i>
                         </button>
@@ -345,7 +345,7 @@
                             <form id="profile-form" class="mt-6">
                                 <div class="account-avatar-editor">
                                     <div class="relative w-28 h-28 avatar-container cursor-pointer">
-                                        <img id="profile-edit-avatar" src="" class="w-full h-full rounded-full object-cover border-4 border-white shadow-md" alt="Foto de perfil">
+                                        <img id="profile-edit-avatar" src="https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff" class="w-full h-full rounded-full object-cover border-4 border-white shadow-md" alt="Foto de perfil" onerror="this.src='https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff'">
                                         <div class="absolute inset-0 rounded-full avatar-overlay flex items-center justify-center text-white" onclick="document.getElementById('file-upload-profile').click()">
                                             <i class="fa-solid fa-camera text-xl"></i>
                                         </div>

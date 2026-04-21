@@ -1,4 +1,4 @@
-﻿function handleRouting() {
+function handleRouting() {
     const hash = window.location.hash;
     
     if(elements.sidebarMenu && elements.sidebarMenu.classList.contains('open')) toggleSidebar();
@@ -1942,6 +1942,10 @@ function getProductImages(product) {
         'storage.googleapis.com',
         'placehold.co'
     ]);
+    const isAllowedStorefrontImageHost = (hostname) => {
+        const normalizedHost = String(hostname || '').trim().toLowerCase();
+        return allowedHosts.has(normalizedHost) || normalizedHost.endsWith('.firebasestorage.app');
+    };
     const normalizeStorefrontImageUrl = (value) => {
         const raw = String(value || '').trim();
         if (!raw) return '';
@@ -1950,7 +1954,7 @@ function getProductImages(product) {
             const parsed = new URL(raw, window.location.origin);
             if (!['http:', 'https:'].includes(parsed.protocol)) return '';
             if (parsed.origin === window.location.origin) return parsed.toString();
-            if (!allowedHosts.has(parsed.hostname)) return '';
+            if (!isAllowedStorefrontImageHost(parsed.hostname)) return '';
             return parsed.toString();
         } catch (error) {
             return '';

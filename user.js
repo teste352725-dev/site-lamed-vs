@@ -86,7 +86,13 @@ function normalizeImageUrl(value) {
     try {
         const parsed = new URL(raw, window.location.origin);
         if (!['http:', 'https:'].includes(parsed.protocol)) return '';
-        if (parsed.origin !== window.location.origin && !ALLOWED_REMOTE_IMAGE_HOSTS.has(parsed.hostname)) return '';
+                if (
+            parsed.origin !== window.location.origin &&
+            !ALLOWED_REMOTE_IMAGE_HOSTS.has(parsed.hostname) &&
+            !String(parsed.hostname || '').toLowerCase().endsWith('.firebasestorage.app')
+        ) {
+            return '';
+        }
         return parsed.toString();
     } catch (error) {
         return '';
