@@ -73,7 +73,7 @@ service cloud.firestore {
         (request.resource.data.endereco == null || validProfileAddress(request.resource.data.endereco)) &&
         validSavedAddresses(request.resource.data.enderecos) &&
         validOptionalString(request.resource.data.enderecoPrincipalId, 80) &&
-        validOptionalString(request.resource.data.fotoUrl, 500) &&
+        validOptionalString(request.resource.data.fotoUrl, 2000) &&
         validOptionalTimestamp(request.resource.data.createdAt) &&
         (
           resource == null
