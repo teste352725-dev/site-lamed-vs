@@ -112,14 +112,29 @@ function normalizeHttpUrl(value) {
     }
 }
 
+function normalizeProfileDocument(value) {
+    return String(value ?? '')
+        .replace(/\D/g, '')
+        .slice(0, 14);
+}
+
+function mergeProfileAddressRecords(primaryAddress, fallbackAddress) {
+    const primary = primaryAddress && typeof primaryAddress === 'object' ? primaryAddress : {};
+    const fallback = fallbackAddress && typeof fallbackAddress === 'object' ? fallbackAddress : {};
+    return { ...fallback, ...primary };
+}
+
 function normalizeProfileAddress(address) {
     if (!address || typeof address !== 'object') return null;
 
     const normalized = {
         rua: sanitizePlainText(address.rua, 140),
         numero: sanitizePlainText(address.numero, 40),
-        cep: sanitizePlainText(address.cep, 12),
-        cidade: sanitizePlainText(address.cidade, 120)
+        complemento: sanitizePlainText(address.complemento, 120),
+        bairro: sanitizePlainText(address.bairro, 80),
+        cidade: sanitizePlainText(address.cidade, 120),
+        estado: sanitizePlainText(address.estado, 2).toUpperCase(),
+        cep: sanitizePlainText(address.cep, 12)
     };
 
     return Object.values(normalized).some(Boolean) ? normalized : null;
@@ -135,18 +150,23 @@ function normalizeFavoritesList(list) {
     )).slice(0, 200);
 }
 
+function getPersistedCreatedAt(value) {
+    return value && typeof value.toDate === 'function' ? value : null;
+}
+
 function buildUserProfileRecord(source = {}, user = null, overrides = {}) {
     const base = source && typeof source === 'object' ? source : {};
     const extra = overrides && typeof overrides === 'object' ? overrides : {};
     const createdAt = Object.prototype.hasOwnProperty.call(extra, 'createdAt')
         ? extra.createdAt
-        : (Object.prototype.hasOwnProperty.call(base, 'createdAt') ? base.createdAt : null);
+        : getPersistedCreatedAt(base.createdAt);
 
     return {
         nome: sanitizePlainText(extra.nome ?? base.nome ?? user?.displayName ?? user?.email?.split('@')[0] ?? 'Cliente', 120) || 'Cliente',
         email: sanitizePlainText(extra.email ?? base.email ?? user?.email, 120),
         telefone: sanitizePhone(extra.telefone ?? base.telefone),
-        endereco: normalizeProfileAddress(extra.endereco ?? base.endereco),
+        documento: normalizeProfileDocument(extra.documento ?? base.documento),
+        endereco: normalizeProfileAddress(mergeProfileAddressRecords(extra.endereco, base.endereco)),
         fotoUrl: normalizeImageUrl(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL),
         createdAt: createdAt ?? null,
         favoritos: normalizeFavoritesList(extra.favoritos ?? base.favoritos)
@@ -700,7 +720,7 @@ async function ensureUserProfileDoc(user) {
     const snapshot = await ref.get();
     const existingData = snapshot.data() || {};
     const normalizedProfile = buildUserProfileRecord(existingData, user, {
-        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: snapshot.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
     });
 
     await ref.set(normalizedProfile);
@@ -985,49 +1005,54 @@ auth.onAuthStateChanged(async (user) => {
     const authContainer = document.getElementById('auth-container');
     const userPanel = document.getElementById('user-panel');
 
-    if (user) {
-        currentUser = user;
-        currentUserIsAdmin = await isAuthorizedAdminUser(user);
-        if(authContainer) authContainer.classList.add('hidden');
-        if(userPanel) userPanel.classList.remove('hidden');
-        
-        await ensureUserProfileDoc(user);
-        await carregarPerfilUsuario();
-        await iniciarNotificacoesWeb();
-        carregarMeusPedidos();
-        carregarFavoritos();
-        iniciarChat();
-        startAdminActiveChatsFeed();
-        applyTabFromHash();
-        await maybeHandleInfinitePayReturn(user);
-        
-    } else {
-        currentUser = null;
-        currentUserIsAdmin = false;
-        ordersCache = [];
-        selectedOrderId = '';
-        activeChatOrderId = '';
-        activeChatThreadId = 'geral';
-        currentChatMessages = [];
-        if (unsubscribeOrders) {
-            unsubscribeOrders();
-            unsubscribeOrders = null;
+    try {
+        if (user) {
+            currentUser = user;
+            currentUserIsAdmin = await isAuthorizedAdminUser(user);
+            if(authContainer) authContainer.classList.add('hidden');
+            if(userPanel) userPanel.classList.remove('hidden');
+            
+            await ensureUserProfileDoc(user);
+            await carregarPerfilUsuario();
+            await iniciarNotificacoesWeb();
+            carregarMeusPedidos();
+            carregarFavoritos();
+            iniciarChat();
+            startAdminActiveChatsFeed();
+            applyTabFromHash();
+            await maybeHandleInfinitePayReturn(user);
+            
+        } else {
+            currentUser = null;
+            currentUserIsAdmin = false;
+            ordersCache = [];
+            selectedOrderId = '';
+            activeChatOrderId = '';
+            activeChatThreadId = 'geral';
+            currentChatMessages = [];
+            if (unsubscribeOrders) {
+                unsubscribeOrders();
+                unsubscribeOrders = null;
+            }
+            if (unsubscribeChat) {
+                unsubscribeChat();
+                unsubscribeChat = null;
+            }
+            stopAdminActiveChatsFeed();
+            currentPushToken = '';
+            if(authContainer) authContainer.classList.remove('hidden');
+            if(userPanel) userPanel.classList.add('hidden');
+            switchAuthView('login');
+            setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
+            updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
+            updateAccountStat('account-stat-orders', 0);
+            updateAccountStat('account-stat-favorites', 0);
+            updateAccountStat('account-stat-support', 'Ativo');
+            renderAdminActiveChatsList([]);
         }
-        if (unsubscribeChat) {
-            unsubscribeChat();
-            unsubscribeChat = null;
-        }
-        stopAdminActiveChatsFeed();
-        currentPushToken = '';
-        if(authContainer) authContainer.classList.remove('hidden');
-        if(userPanel) userPanel.classList.add('hidden');
-        switchAuthView('login');
-        setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
-        updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
-        updateAccountStat('account-stat-orders', 0);
-        updateAccountStat('account-stat-favorites', 0);
-        updateAccountStat('account-stat-support', 'Ativo');
-        renderAdminActiveChatsList([]);
+    } catch (error) {
+        console.error('[account.authState]', error);
+        alert('Nao foi possivel carregar ou atualizar sua conta agora.');
     }
 });
 
@@ -1058,6 +1083,7 @@ if(regForm) {
         const nome = sanitizePlainText(document.getElementById('reg-nome').value, 60);
         const sobrenome = sanitizePlainText(document.getElementById('reg-sobrenome').value, 60);
         const phone = sanitizePhone(document.getElementById('reg-phone').value);
+        const documento = normalizeProfileDocument(document.getElementById('reg-documento')?.value);
         
         const endereco = {
             cep: sanitizePlainText(document.getElementById('reg-cep').value, 12),
@@ -1077,14 +1103,18 @@ if(regForm) {
             
             await user.updateProfile({ displayName: nomeCompleto });
             
-            await db.collection('usuarios').doc(user.uid).set({
-                nome: nomeCompleto,
-                email: email,
-                telefone: phone,
-                endereco: endereco,
-                fotoUrl: null,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            await db.collection('usuarios').doc(user.uid).set(
+                buildUserProfileRecord({}, user, {
+                    nome: nomeCompleto,
+                    email,
+                    telefone: phone,
+                    documento,
+                    endereco,
+                    fotoUrl: null,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    favoritos: []
+                })
+            );
             
         } catch(err) {
             const errorCode = String(err?.code || '');
@@ -1199,9 +1229,14 @@ window.uploadFotoPerfil = async (input) => {
         const url = await ref.getDownloadURL();
 
         await currentUser.updateProfile({ photoURL: url });
-        await db.collection('usuarios').doc(currentUser.uid).update({
-            fotoUrl: url
+        const profileRef = db.collection('usuarios').doc(currentUser.uid);
+        const snapshot = await profileRef.get();
+        const existingData = snapshot.data() || {};
+        const normalizedProfile = buildUserProfileRecord(existingData, currentUser, {
+            fotoUrl: url,
+            createdAt: snapshot.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
         });
+        await profileRef.set(normalizedProfile);
 
         imgPreview.src = url;
         document.getElementById('user-avatar-display').src = url;
@@ -1252,7 +1287,7 @@ if(profileForm) {
                 telefone: phone,
                 fotoUrl,
                 endereco,
-                createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: snapshot.exists ? getPersistedCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
             });
 
             await profileRef.set(normalizedProfile);

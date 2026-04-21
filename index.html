@@ -607,12 +607,21 @@
 
                 <!-- Campos de Entrega -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Entrega</h3>
-                <div class="grid grid-cols-3 gap-4">
-                    <input type="text" id="checkout-cep" name="cep" class="col-span-1 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CEP" required>
-                    <input type="text" name="cidade" class="col-span-2 w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Cidade/UF" required>
+                <p class="text-xs leading-relaxed text-gray-500">Pedimos documento e endereco completo para gerar sua etiqueta sem retrabalho quando formos postar o pedido.</p>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <input type="text" id="checkout-documento" name="documento" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF ou CNPJ do recebedor" autocomplete="off" inputmode="numeric" required>
+                    <input type="text" id="checkout-cep" name="cep" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CEP" autocomplete="postal-code" inputmode="numeric" required>
                 </div>
-                <input type="text" name="rua" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Endereço (Rua)" required>
-                <input type="text" name="numero" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Número e Complemento" required>
+                <input type="text" id="checkout-rua" name="rua" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Rua / Avenida" autocomplete="address-line1" required>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <input type="text" id="checkout-numero" name="numero" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Numero" autocomplete="address-line2" required>
+                    <input type="text" id="checkout-complemento" name="complemento" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Complemento (opcional)" autocomplete="address-line3">
+                </div>
+                <div class="grid gap-4 md:grid-cols-3">
+                    <input type="text" id="checkout-bairro" name="bairro" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Bairro" autocomplete="address-level3" required>
+                    <input type="text" id="checkout-cidade" name="cidade" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Cidade" autocomplete="address-level2" required>
+                    <input type="text" id="checkout-estado" name="estado" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento] uppercase" placeholder="UF" autocomplete="address-level1" maxlength="2" required>
+                </div>
 
                 <div class="rounded-2xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
                     <div class="flex flex-col gap-3">

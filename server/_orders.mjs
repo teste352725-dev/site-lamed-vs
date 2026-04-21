@@ -42,6 +42,59 @@ function normalizePostalCode(value) {
   return String(value ?? "").replace(/\D/g, "").slice(0, 8);
 }
 
+function normalizeDocument(value) {
+  return String(value ?? "").replace(/\D/g, "").slice(0, 14);
+}
+
+function formatDocument(value) {
+  const digits = normalizeDocument(value);
+  if (digits.length === 11) {
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+
+  if (digits.length === 14) {
+    return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  }
+
+  return digits;
+}
+
+function sanitizeStateCode(value) {
+  return sanitizePlainText(value, 2).replace(/[^a-z]/gi, "").toUpperCase();
+}
+
+function splitCityAndState(cityValue, stateValue = "") {
+  const explicitState = sanitizeStateCode(stateValue);
+  const rawCity = sanitizePlainText(cityValue, 120);
+
+  if (!rawCity) {
+    return {
+      cidade: "",
+      estado: explicitState
+    };
+  }
+
+  if (explicitState) {
+    return {
+      cidade: rawCity.replace(/\s*[-/]\s*[A-Za-z]{2}$/u, "").trim(),
+      estado: explicitState
+    };
+  }
+
+  const match = rawCity.match(/^(.*?)(?:\s*[-/]\s*)([A-Za-z]{2})$/u);
+  if (match) {
+    return {
+      cidade: sanitizePlainText(match[1], 120),
+      estado: sanitizeStateCode(match[2])
+    };
+  }
+
+  return {
+    cidade: rawCity,
+    estado: explicitState
+  };
+}
+
 function formatPostalCode(value) {
   const digits = normalizePostalCode(value);
   if (digits.length <= 5) return digits;
@@ -538,15 +591,26 @@ function buildComparableCartSignature(cartItems) {
 }
 
 function buildCliente(rawCliente) {
+  const cityState = splitCityAndState(rawCliente?.endereco?.cidade, rawCliente?.endereco?.estado);
+  const documento = normalizeDocument(
+    rawCliente?.documento ||
+    rawCliente?.cpf ||
+    rawCliente?.cnpj ||
+    rawCliente?.endereco?.documento
+  );
   const cliente = {
     nome: sanitizePlainText(rawCliente?.nome, 120),
     telefone: sanitizePlainText(rawCliente?.telefone, 30),
     email: sanitizePlainText(rawCliente?.email, 120),
+    documento,
     endereco: {
       rua: sanitizePlainText(rawCliente?.endereco?.rua, 140),
       numero: sanitizePlainText(rawCliente?.endereco?.numero, 40),
+      complemento: sanitizePlainText(rawCliente?.endereco?.complemento, 120),
+      bairro: sanitizePlainText(rawCliente?.endereco?.bairro, 80),
+      estado: cityState.estado,
       cep: normalizePostalCode(rawCliente?.endereco?.cep),
-      cidade: sanitizePlainText(rawCliente?.endereco?.cidade, 120)
+      cidade: cityState.cidade
     }
   };
 
@@ -554,12 +618,15 @@ function buildCliente(rawCliente) {
     !cliente.nome ||
     !cliente.telefone ||
     !cliente.email ||
+    ![11, 14].includes(cliente.documento.length) ||
     !cliente.endereco.rua ||
     !cliente.endereco.numero ||
+    !cliente.endereco.bairro ||
     cliente.endereco.cep.length !== 8 ||
-    !cliente.endereco.cidade
+    !cliente.endereco.cidade ||
+    cliente.endereco.estado.length !== 2
   ) {
-    throw new RequestError(400, "Preencha todos os dados obrigatorios antes de finalizar.");
+    throw new RequestError(400, "Preencha nome, WhatsApp, e-mail, CPF ou CNPJ, CEP, rua, numero, bairro, cidade e UF antes de finalizar.");
   }
 
   return cliente;
@@ -630,6 +697,7 @@ async function saveUserProfileIfNeeded(db, userId, cliente) {
       nome: cliente.nome,
       email: cliente.email,
       telefone: cliente.telefone,
+      documento: cliente.documento,
       endereco: cliente.endereco
     },
     { merge: true }
@@ -641,11 +709,25 @@ function buildWhatsAppOrderMessage(orderId, pedido) {
   const lines = [];
   const orderCode = String(orderId).slice(0, 6).toUpperCase();
   const customerName = sanitizePlainText(pedido?.cliente?.nome, 80) || "Cliente";
+  const customerDocument = formatDocument(pedido?.cliente?.documento);
   const paymentLabel = sanitizePlainText(pedido?.pagamento, 60) || "A combinar";
   const postalCode = formatPostalCode(pedido?.cliente?.endereco?.cep);
+  const addressLine = [
+    sanitizePlainText(pedido?.cliente?.endereco?.rua, 140),
+    sanitizePlainText(pedido?.cliente?.endereco?.numero, 40)
+  ].filter(Boolean).join(", ");
+  const complementLine = sanitizePlainText(pedido?.cliente?.endereco?.complemento, 120);
+  const districtLine = [
+    sanitizePlainText(pedido?.cliente?.endereco?.bairro, 80),
+    sanitizePlainText(pedido?.cliente?.endereco?.cidade, 120),
+    sanitizeStateCode(pedido?.cliente?.endereco?.estado)
+  ].filter(Boolean).join(" - ");
 
   lines.push(`*Novo pedido #${orderCode}*`);
   lines.push(`Cliente: ${customerName}`);
+  if (customerDocument) {
+    lines.push(`Documento: ${customerDocument}`);
+  }
 
   let paymentLine = `Pagamento: ${paymentLabel}`;
   if (paymentKey.includes("cartao")) {
@@ -655,9 +737,6 @@ function buildWhatsAppOrderMessage(orderId, pedido) {
 
   if (pedido.frete?.serviceId === "manual-pendente") {
     lines.push("Frete: a combinar apos confirmacao");
-    if (postalCode) {
-      lines.push(`CEP: ${postalCode}`);
-    }
   } else {
     const freightCompany = sanitizePlainText(pedido?.frete?.company, 60);
     const freightName = sanitizePlainText(pedido?.frete?.name, 80);
@@ -666,6 +745,19 @@ function buildWhatsAppOrderMessage(orderId, pedido) {
     lines.push(`Frete: ${freightLabel}`);
     lines.push(`Prazo estimado: ${Number(pedido?.frete?.deliveryTime || 0)} dia(s) uteis`);
     lines.push(`Valor do frete: ${formatCurrency(pedido?.frete?.price)}`);
+  }
+
+  if (addressLine) {
+    lines.push(`Endereco: ${addressLine}`);
+  }
+  if (complementLine) {
+    lines.push(`Complemento: ${complementLine}`);
+  }
+  if (districtLine) {
+    lines.push(`Bairro/Cidade: ${districtLine}`);
+  }
+  if (postalCode) {
+    lines.push(`CEP: ${postalCode}`);
   }
 
   lines.push("");
@@ -744,7 +836,9 @@ function buildOrderFingerprint(cliente, pagamento, parcelas, canonicalCart, tota
     cliente: {
       email: normalizeEmail(cliente?.email),
       telefone: String(cliente?.telefone || "").replace(/\D/g, "").slice(-11),
-      cep: normalizePostalCode(cliente?.endereco?.cep)
+      documento: normalizeDocument(cliente?.documento),
+      cep: normalizePostalCode(cliente?.endereco?.cep),
+      numero: sanitizePlainText(cliente?.endereco?.numero, 40)
     },
     pagamento: getPaymentKey(pagamento),
     parcelas: Math.max(1, parseInt(parcelas, 10) || 1),

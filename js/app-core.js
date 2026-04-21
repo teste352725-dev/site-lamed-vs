@@ -217,7 +217,7 @@ async function ensureEntryAssistUserProfileDoc(user) {
     const snapshot = await profileRef.get();
     const existingData = snapshot.data() || {};
     const normalizedProfile = normalizeUserProfileRecordForFirestore(existingData, user, {
-        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: snapshot.exists ? getPersistedProfileCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
     });
 
     await profileRef.set(normalizedProfile);
@@ -933,14 +933,29 @@ function sanitizeProfilePhone(value) {
         .slice(0, 30);
 }
 
+function normalizeProfileDocument(value) {
+    return String(value ?? '')
+        .replace(/\D/g, '')
+        .slice(0, 14);
+}
+
+function mergeProfileAddressRecords(primaryAddress, fallbackAddress) {
+    const primary = primaryAddress && typeof primaryAddress === 'object' ? primaryAddress : {};
+    const fallback = fallbackAddress && typeof fallbackAddress === 'object' ? fallbackAddress : {};
+    return { ...fallback, ...primary };
+}
+
 function normalizeProfileAddress(address) {
     if (!address || typeof address !== 'object') return null;
 
     const normalized = {
         rua: sanitizePlainText(address.rua, 140),
         numero: sanitizePlainText(address.numero, 40),
-        cep: sanitizePlainText(address.cep, 12),
-        cidade: sanitizePlainText(address.cidade, 120)
+        complemento: sanitizePlainText(address.complemento, 120),
+        bairro: sanitizePlainText(address.bairro, 80),
+        cidade: sanitizePlainText(address.cidade, 120),
+        estado: sanitizePlainText(address.estado, 2).toUpperCase(),
+        cep: sanitizePlainText(address.cep, 12)
     };
 
     return Object.values(normalized).some(Boolean) ? normalized : null;
@@ -956,18 +971,23 @@ function normalizeFavoritesList(list) {
     )).slice(0, 200);
 }
 
+function getPersistedProfileCreatedAt(value) {
+    return value && typeof value.toDate === 'function' ? value : null;
+}
+
 function normalizeUserProfileRecordForFirestore(source = {}, user = null, overrides = {}) {
     const base = source && typeof source === 'object' ? source : {};
     const extra = overrides && typeof overrides === 'object' ? overrides : {};
     const createdAt = Object.prototype.hasOwnProperty.call(extra, 'createdAt')
         ? extra.createdAt
-        : (Object.prototype.hasOwnProperty.call(base, 'createdAt') ? base.createdAt : null);
+        : getPersistedProfileCreatedAt(base.createdAt);
 
     return {
         nome: sanitizePlainText(extra.nome ?? base.nome ?? user?.displayName ?? user?.email?.split('@')[0] ?? 'Cliente', 120) || 'Cliente',
         email: sanitizePlainText(extra.email ?? base.email ?? user?.email, 120),
         telefone: sanitizeProfilePhone(extra.telefone ?? base.telefone),
-        endereco: normalizeProfileAddress(extra.endereco ?? base.endereco),
+        documento: normalizeProfileDocument(extra.documento ?? base.documento),
+        endereco: normalizeProfileAddress(mergeProfileAddressRecords(extra.endereco, base.endereco)),
         fotoUrl: normalizeUrl(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL),
         createdAt: createdAt ?? null,
         favoritos: normalizeFavoritesList(extra.favoritos ?? base.favoritos)

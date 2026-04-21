@@ -454,14 +454,14 @@ function normalizeDestination(order) {
         nome: sanitizePlainText(source.nome || client.nome, 120),
         telefone: sanitizePlainText(source.telefone || client.telefone, 30),
         email: sanitizePlainText(source.email || client.email, 120),
-        documento: sanitizePlainText(source.documento, 30),
+        documento: sanitizePlainText(source.documento || client.documento || address.documento, 30),
         cep: normalizePostalCode(source.cep || address.cep || order?.frete?.toPostalCode || ""),
         rua: sanitizePlainText(source.rua || address.rua, 140),
         numero: sanitizePlainText(source.numero || address.numero, 40),
-        complemento: sanitizePlainText(source.complemento, 80),
-        bairro: sanitizePlainText(source.bairro, 80),
+        complemento: sanitizePlainText(source.complemento || address.complemento, 80),
+        bairro: sanitizePlainText(source.bairro || address.bairro, 80),
         cidade: sanitizePlainText(source.cidade || address.cidade, 120),
-        estado: sanitizePlainText(source.estado, 2).toUpperCase()
+        estado: sanitizePlainText(source.estado || address.estado, 2).toUpperCase()
     };
 }
 

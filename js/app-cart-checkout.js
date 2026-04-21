@@ -4,6 +4,7 @@ let shippingQuoteRequestToken = 0;
 let orderSubmissionInFlight = false;
 let checkoutPushConfigCache = null;
 let checkoutPushToken = '';
+let checkoutAddressLookupToken = 0;
 
 function isFirestorePermissionError(error) {
     const code = String(error?.code || '').toLowerCase();
@@ -18,14 +19,84 @@ function sanitizeCheckoutPhone(value) {
         .slice(0, 30);
 }
 
+function normalizeCheckoutDocument(value) {
+    return String(value ?? '')
+        .replace(/\D/g, '')
+        .slice(0, 14);
+}
+
+function formatCheckoutDocument(value) {
+    const digits = normalizeCheckoutDocument(value);
+    if (!digits) return '';
+
+    if (digits.length <= 11) {
+        return digits
+            .replace(/^(\d{3})(\d)/, '$1.$2')
+            .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/\.(\d{3})(\d)/, '.$1-$2');
+    }
+
+    return digits
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
+function sanitizeCheckoutState(value) {
+    return sanitizePlainText(value, 2).replace(/[^a-z]/gi, '').toUpperCase();
+}
+
+function mergeCheckoutAddressRecords(primaryAddress, fallbackAddress) {
+    const primary = primaryAddress && typeof primaryAddress === 'object' ? primaryAddress : {};
+    const fallback = fallbackAddress && typeof fallbackAddress === 'object' ? fallbackAddress : {};
+    return { ...fallback, ...primary };
+}
+
+function splitCheckoutCityAndState(cityValue, stateValue = '') {
+    const explicitState = sanitizeCheckoutState(stateValue);
+    const rawCity = sanitizePlainText(cityValue, 120);
+
+    if (!rawCity) {
+        return {
+            cidade: '',
+            estado: explicitState
+        };
+    }
+
+    if (explicitState) {
+        return {
+            cidade: rawCity.replace(/\s*[-/]\s*[A-Za-z]{2}$/u, '').trim(),
+            estado: explicitState
+        };
+    }
+
+    const cityMatch = rawCity.match(/^(.*?)(?:\s*[-/]\s*)([A-Za-z]{2})$/u);
+    if (cityMatch) {
+        return {
+            cidade: sanitizePlainText(cityMatch[1], 120),
+            estado: sanitizeCheckoutState(cityMatch[2])
+        };
+    }
+
+    return {
+        cidade: rawCity,
+        estado: explicitState
+    };
+}
+
 function normalizeCheckoutProfileAddress(address) {
     if (!address || typeof address !== 'object') return null;
 
+    const cityState = splitCheckoutCityAndState(address.cidade, address.estado);
     const normalized = {
         rua: sanitizePlainText(address.rua, 140),
         numero: sanitizePlainText(address.numero, 40),
-        cep: sanitizePlainText(address.cep, 12),
-        cidade: sanitizePlainText(address.cidade, 120)
+        complemento: sanitizePlainText(address.complemento, 120),
+        bairro: sanitizePlainText(address.bairro, 80),
+        cidade: cityState.cidade,
+        estado: cityState.estado,
+        cep: sanitizePlainText(address.cep, 12)
     };
 
     return Object.values(normalized).some(Boolean) ? normalized : null;
@@ -41,6 +112,10 @@ function normalizeCheckoutFavorites(list) {
     )).slice(0, 200);
 }
 
+function getPersistedCheckoutCreatedAt(value) {
+    return value && typeof value.toDate === 'function' ? value : null;
+}
+
 function buildCheckoutUserProfileRecord(source = {}, user = null, overrides = {}) {
     if (typeof normalizeUserProfileRecordForFirestore === 'function') {
         return normalizeUserProfileRecordForFirestore(source, user, overrides);
@@ -50,17 +125,108 @@ function buildCheckoutUserProfileRecord(source = {}, user = null, overrides = {}
     const extra = overrides && typeof overrides === 'object' ? overrides : {};
     const createdAt = Object.prototype.hasOwnProperty.call(extra, 'createdAt')
         ? extra.createdAt
-        : (Object.prototype.hasOwnProperty.call(base, 'createdAt') ? base.createdAt : null);
+        : getPersistedCheckoutCreatedAt(base.createdAt);
 
     return {
         nome: sanitizePlainText(extra.nome ?? base.nome ?? user?.displayName ?? user?.email?.split('@')[0] ?? 'Cliente', 120) || 'Cliente',
         email: sanitizePlainText(extra.email ?? base.email ?? user?.email, 120),
         telefone: sanitizeCheckoutPhone(extra.telefone ?? base.telefone),
-        endereco: normalizeCheckoutProfileAddress(extra.endereco ?? base.endereco),
+        documento: normalizeCheckoutDocument(extra.documento ?? base.documento),
+        endereco: normalizeCheckoutProfileAddress(mergeCheckoutAddressRecords(extra.endereco, base.endereco)),
         fotoUrl: sanitizePlainText(extra.fotoUrl ?? base.fotoUrl ?? user?.photoURL, 500),
         createdAt: createdAt ?? null,
         favoritos: normalizeCheckoutFavorites(extra.favoritos ?? base.favoritos)
     };
+}
+
+function getCheckoutFormInput(form, name) {
+    const field = form?.elements?.namedItem?.(name);
+    return field && typeof field === 'object' && 'value' in field ? field : null;
+}
+
+function setCheckoutInputValue(form, name, value, overwrite = true) {
+    const input = getCheckoutFormInput(form, name);
+    if (!input) return;
+    if (!overwrite && String(input.value || '').trim()) return;
+    input.value = value;
+}
+
+function fillCheckoutAddressFields(form, address = {}, overwrite = true) {
+    const cityState = splitCheckoutCityAndState(address.cidade, address.estado);
+    setCheckoutInputValue(form, 'rua', sanitizePlainText(address.rua, 140), overwrite);
+    setCheckoutInputValue(form, 'numero', sanitizePlainText(address.numero, 40), overwrite);
+    setCheckoutInputValue(form, 'complemento', sanitizePlainText(address.complemento, 120), overwrite);
+    setCheckoutInputValue(form, 'bairro', sanitizePlainText(address.bairro, 80), overwrite);
+    setCheckoutInputValue(form, 'cidade', cityState.cidade, overwrite);
+    setCheckoutInputValue(form, 'estado', cityState.estado, overwrite);
+    setCheckoutInputValue(form, 'cep', formatPostalCode(address.cep || ''), overwrite);
+}
+
+function buildCheckoutClienteFromFormData(formData) {
+    const cityState = splitCheckoutCityAndState(formData.get('cidade'), formData.get('estado'));
+
+    return {
+        nome: sanitizePlainText(formData.get('nome'), 120),
+        telefone: sanitizeCheckoutPhone(formData.get('telefone')),
+        email: sanitizePlainText(formData.get('email'), 120),
+        documento: normalizeCheckoutDocument(formData.get('documento')),
+        endereco: {
+            rua: sanitizePlainText(formData.get('rua'), 140),
+            numero: sanitizePlainText(formData.get('numero'), 40),
+            complemento: sanitizePlainText(formData.get('complemento'), 120),
+            bairro: sanitizePlainText(formData.get('bairro'), 80),
+            cidade: cityState.cidade,
+            estado: cityState.estado,
+            cep: normalizePostalCode(formData.get('cep'))
+        }
+    };
+}
+
+function isCheckoutCustomerReady(cliente) {
+    const documentLength = String(cliente?.documento || '').length;
+
+    return Boolean(
+        cliente?.nome &&
+        cliente?.telefone &&
+        cliente?.email &&
+        (documentLength === 11 || documentLength === 14) &&
+        cliente?.endereco?.rua &&
+        cliente?.endereco?.numero &&
+        cliente?.endereco?.bairro &&
+        cliente?.endereco?.cidade &&
+        cliente?.endereco?.estado &&
+        cliente?.endereco?.cep?.length === 8
+    );
+}
+
+async function autofillCheckoutAddressFromPostalCode(rawPostalCode) {
+    const cep = normalizePostalCode(rawPostalCode);
+    if (cep.length !== 8 || !elements.checkoutForm) return null;
+
+    const requestId = ++checkoutAddressLookupToken;
+
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' }
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (requestId !== checkoutAddressLookupToken) return null;
+        if (!response.ok || !payload || payload.erro) return null;
+
+        fillCheckoutAddressFields(elements.checkoutForm, {
+            cep,
+            rua: payload.logradouro,
+            bairro: payload.bairro,
+            cidade: payload.localidade,
+            estado: payload.uf
+        }, true);
+
+        return payload;
+    } catch (error) {
+        return null;
+    }
 }
 
 function getCheckoutAccountMode() {
@@ -106,11 +272,13 @@ async function ensureCheckoutUserProfileDoc(user, cliente) {
     const ref = db.collection('usuarios').doc(user.uid);
     const snapshot = await ref.get();
     const existingData = snapshot.data() || {};
+    const mergedAddress = mergeCheckoutAddressRecords(cliente?.endereco, existingData.endereco);
     const normalizedProfile = buildCheckoutUserProfileRecord(existingData, user, {
-        nome: existingData.nome || cliente?.nome || user.displayName || 'Cliente',
-        telefone: existingData.telefone || cliente?.telefone,
-        endereco: existingData.endereco || cliente?.endereco || null,
-        createdAt: snapshot.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp()
+        nome: cliente?.nome || existingData.nome || user.displayName || 'Cliente',
+        telefone: cliente?.telefone || existingData.telefone,
+        documento: cliente?.documento || existingData.documento,
+        endereco: mergedAddress,
+        createdAt: snapshot.exists ? getPersistedCheckoutCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
     });
 
     await ref.set(normalizedProfile);
@@ -138,11 +306,11 @@ async function populateCheckoutFormFromUser(user) {
             if (data.nome) form.nome.value = data.nome;
             if (data.email) form.email.value = data.email;
             if (data.telefone) form.telefone.value = data.telefone;
+            if (getCheckoutFormInput(form, 'documento')) {
+                setCheckoutInputValue(form, 'documento', formatCheckoutDocument(data.documento || ''), true);
+            }
             if (data.endereco) {
-                form.rua.value = data.endereco.rua || '';
-                form.numero.value = data.endereco.numero || '';
-                form.cep.value = formatPostalCode(data.endereco.cep || '');
-                form.cidade.value = data.endereco.cidade || '';
+                fillCheckoutAddressFields(form, data.endereco, true);
             }
         } else {
             elements.checkoutForm.email.value = user.email || '';
@@ -737,11 +905,36 @@ function setupShippingQuoteInteractions() {
                 updateCheckoutSummary();
             }
         });
+
+        elements.checkoutCepInput.addEventListener('blur', () => {
+            const cep = normalizePostalCode(elements.checkoutCepInput.value);
+            if (cep.length !== 8) return;
+
+            autofillCheckoutAddressFromPostalCode(cep).then(() => {
+                if (SHIPPING_QUOTE_ENABLED) {
+                    scheduleShippingQuote(true);
+                }
+            }).catch(() => {});
+        });
     }
 
     if (elements.shippingCalculateBtn) {
         elements.shippingCalculateBtn.addEventListener('click', () => {
             quoteShippingOptions({ force: true }).catch(() => {});
+        });
+    }
+
+    const checkoutDocumentInput = getCheckoutFormInput(elements.checkoutForm, 'documento');
+    if (checkoutDocumentInput) {
+        checkoutDocumentInput.addEventListener('input', (event) => {
+            event.target.value = formatCheckoutDocument(event.target.value);
+        });
+    }
+
+    const checkoutStateInput = getCheckoutFormInput(elements.checkoutForm, 'estado');
+    if (checkoutStateInput) {
+        checkoutStateInput.addEventListener('input', (event) => {
+            event.target.value = sanitizeCheckoutState(event.target.value);
         });
     }
 }
@@ -1016,7 +1209,7 @@ async function toggleFavorite() {
             : favorites.filter((productId) => productId !== currentProduct.id);
 
         const normalizedProfile = buildCheckoutUserProfileRecord(existingData, authenticatedUser, {
-            createdAt: existingDoc.exists ? (existingData.createdAt || null) : firebase.firestore.FieldValue.serverTimestamp(),
+            createdAt: existingDoc.exists ? getPersistedCheckoutCreatedAt(existingData.createdAt) : firebase.firestore.FieldValue.serverTimestamp(),
             favoritos: nextFavorites
         });
 
@@ -1228,17 +1421,7 @@ async function finalizarPedido(formData) {
         return;
     }
 
-    const cliente = {
-        nome: sanitizePlainText(formData.get('nome'), 120),
-        telefone: sanitizePlainText(formData.get('telefone'), 30),
-        email: sanitizePlainText(formData.get('email'), 120),
-        endereco: {
-            rua: sanitizePlainText(formData.get('rua'), 140),
-            numero: sanitizePlainText(formData.get('numero'), 40),
-            cep: normalizePostalCode(formData.get('cep')),
-            cidade: sanitizePlainText(formData.get('cidade'), 120)
-        }
-    };
+    const cliente = buildCheckoutClienteFromFormData(formData);
 
     const pagamento = sanitizePlainText(formData.get('pagamento'), 40);
     const paymentKey = getPaymentKey(pagamento);
@@ -1253,8 +1436,8 @@ async function finalizarPedido(formData) {
             throw new Error('Sua sacola esta vazia.');
         }
 
-        if (!cliente.nome || !cliente.telefone || !cliente.email || !cliente.endereco.rua || !cliente.endereco.numero || cliente.endereco.cep.length !== 8 || !cliente.endereco.cidade) {
-            throw new Error('Preencha todos os dados obrigatorios antes de finalizar.');
+        if (!isCheckoutCustomerReady(cliente)) {
+            throw new Error('Preencha nome, WhatsApp, e-mail, CPF ou CNPJ, CEP, rua, numero, bairro, cidade e UF antes de finalizar.');
         }
 
         const expectedTotal = parseCurrencyText(elements.checkoutTotal.textContent);

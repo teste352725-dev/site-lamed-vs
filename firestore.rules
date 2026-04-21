@@ -29,20 +29,32 @@ service cloud.firestore {
       return value == null || value is timestamp;
     }
 
+    function validDocumento(value) {
+      return value is string && value.matches('^([0-9]{11}|[0-9]{14})$');
+    }
+
+    function validOptionalDocumento(value) {
+      return value == null || value == '' || validDocumento(value);
+    }
+
     function validProfileAddress(endereco) {
       return endereco is map &&
-        endereco.keys().hasOnly(['rua', 'numero', 'cep', 'cidade']) &&
+        endereco.keys().hasOnly(['rua', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep']) &&
         validOptionalString(endereco.rua, 140) &&
         validOptionalString(endereco.numero, 40) &&
+        validOptionalString(endereco.complemento, 120) &&
+        validOptionalString(endereco.bairro, 80) &&
+        validOptionalString(endereco.estado, 2) &&
         validOptionalString(endereco.cep, 12) &&
         validOptionalString(endereco.cidade, 120);
     }
 
     function validUsuarioData() {
-      return request.resource.data.keys().hasOnly([
+        return request.resource.data.keys().hasOnly([
           'nome',
           'email',
           'telefone',
+          'documento',
           'endereco',
           'fotoUrl',
           'createdAt',
@@ -51,6 +63,7 @@ service cloud.firestore {
         validString(request.resource.data.nome, 1, 120) &&
         validOptionalString(request.resource.data.email, 120) &&
         validOptionalString(request.resource.data.telefone, 30) &&
+        validOptionalDocumento(request.resource.data.documento) &&
         (request.resource.data.endereco == null || validProfileAddress(request.resource.data.endereco)) &&
         validOptionalString(request.resource.data.fotoUrl, 500) &&
         validOptionalTimestamp(request.resource.data.createdAt) &&
@@ -70,21 +83,25 @@ service cloud.firestore {
 
     function validEndereco(endereco) {
       return endereco is map &&
-        endereco.keys().hasAll(['rua', 'numero', 'cep', 'cidade']) &&
-        endereco.keys().hasOnly(['rua', 'numero', 'cep', 'cidade']) &&
+        endereco.keys().hasAll(['rua', 'numero', 'bairro', 'cidade', 'estado', 'cep']) &&
+        endereco.keys().hasOnly(['rua', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep']) &&
         validString(endereco.rua, 1, 140) &&
         validString(endereco.numero, 1, 40) &&
+        validOptionalString(endereco.complemento, 120) &&
+        validString(endereco.bairro, 1, 80) &&
+        validString(endereco.estado, 2, 2) &&
         validString(endereco.cep, 8, 12) &&
         validString(endereco.cidade, 1, 120);
     }
 
     function validCliente(cliente) {
       return cliente is map &&
-        cliente.keys().hasAll(['nome', 'telefone', 'email', 'endereco']) &&
-        cliente.keys().hasOnly(['nome', 'telefone', 'email', 'endereco']) &&
+        cliente.keys().hasAll(['nome', 'telefone', 'email', 'documento', 'endereco']) &&
+        cliente.keys().hasOnly(['nome', 'telefone', 'email', 'documento', 'endereco']) &&
         validString(cliente.nome, 2, 120) &&
         validString(cliente.telefone, 8, 30) &&
         validString(cliente.email, 5, 120) &&
+        validDocumento(cliente.documento) &&
         validEndereco(cliente.endereco);
     }
 
