@@ -421,6 +421,14 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    const blockedInAppBrowser = /(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|wv)/i.test(browserFingerprint);
+
+    if (blockedInAppBrowser) {
+        const error = new Error('GOOGLE_BLOCKED_INAPP_BROWSER');
+        error.code = 'auth/disallowed-useragent';
+        throw error;
+    }
     const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
         `${navigator.userAgent || ''} ${navigator.platform || ''}`
     );
@@ -477,6 +485,10 @@ async function signInWithGoogleFromEntryAssist() {
             await populateCheckoutFormFromUser(authenticatedUser).catch(() => {});
         }
     } catch (error) {
+        if (String(error?.code || '') === 'auth/disallowed-useragent' || String(error?.message || '') === 'GOOGLE_BLOCKED_INAPP_BROWSER') {
+            alert('O Google bloqueia login dentro do navegador interno do app. Abra no Chrome/Safari e tente novamente.');
+            return;
+        }
         alert(sanitizePlainText(error?.message || 'Nao foi possivel entrar com Google agora.', 220));
     } finally {
         if (elements.entryAssistActionBtn) {

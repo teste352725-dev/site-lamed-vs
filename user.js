@@ -348,6 +348,15 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    const blockedInAppBrowser = /(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|wv)/i.test(browserFingerprint);
+
+    if (blockedInAppBrowser) {
+        const error = new Error('GOOGLE_BLOCKED_INAPP_BROWSER');
+        error.code = 'auth/disallowed-useragent';
+        throw error;
+    }
+
     const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
         `${navigator.userAgent || ''} ${navigator.platform || ''}`
     );
@@ -1423,6 +1432,10 @@ window.fazerLoginGoogle = () => {
         })
         .catch((err) => {
             console.error(err);
+            if (String(err?.code || '') === 'auth/disallowed-useragent' || String(err?.message || '') === 'GOOGLE_BLOCKED_INAPP_BROWSER') {
+                alert('O Google bloqueia login dentro de navegador interno do app. Abra no Chrome/Safari e tente de novo.');
+                return;
+            }
             if (isFirestorePermissionError(err)) {
                 alert('Sua conta entrou, mas o perfil ainda nao conseguiu sincronizar. Tente novamente em instantes.');
                 return;

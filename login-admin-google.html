@@ -139,6 +139,8 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    const blockedInAppBrowser = /(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|wv)/i.test(browserFingerprint);
 
     window.addEventListener('error', (evt) => {
       log('ERROR', 'Erro global de JS', { message: evt.message, source: evt.filename, line: evt.lineno });
@@ -152,6 +154,9 @@
       statusEl.textContent = 'Iniciando login com Google...';
       errorEl.textContent = '';
       try {
+        if (blockedInAppBrowser) {
+          throw Object.assign(new Error('GOOGLE_BLOCKED_INAPP_BROWSER'), { code: 'auth/disallowed-useragent' });
+        }
         await setPersistence(auth, browserSessionPersistence);
 
         try {
@@ -164,7 +169,11 @@
         }
       } catch (error) {
         log('ERROR', 'Erro no fluxo de login Google', { code: error?.code, message: error?.message });
-        errorEl.textContent = 'Erro no login com Google. Veja os logs abaixo.';
+        if (String(error?.code || '') === 'auth/disallowed-useragent' || String(error?.message || '') === 'GOOGLE_BLOCKED_INAPP_BROWSER') {
+          errorEl.textContent = 'Google bloqueia login no navegador interno do app. Abra no Chrome/Safari e tente novamente.';
+        } else {
+          errorEl.textContent = 'Erro no login com Google. Veja os logs abaixo.';
+        }
       } finally {
         setBusy(false);
       }
