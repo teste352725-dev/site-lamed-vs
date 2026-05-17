@@ -75,8 +75,39 @@ async function signInWithGoogleSafeForCheckout() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await auth.signInWithRedirect(provider);
-    return null;
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
+        `${navigator.userAgent || ''} ${navigator.platform || ''}`
+    );
+
+    if (isMobileDevice) {
+        console.info('[checkout.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || null;
+    } catch (popupError) {
+        const popupCode = String(popupError?.code || '');
+        const shouldFallbackToRedirect = [
+            'auth/popup-blocked',
+            'auth/popup-closed-by-user',
+            'auth/cancelled-popup-request'
+        ].includes(popupCode);
+
+        if (!shouldFallbackToRedirect) {
+            throw popupError;
+        }
+
+        console.warn('[checkout.google.popupFallback]', {
+            code: popupError?.code,
+            message: popupError?.message
+        });
+
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
 }
 
 function sanitizeCheckoutPhone(value) {
