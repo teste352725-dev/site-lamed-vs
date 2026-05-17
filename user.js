@@ -348,8 +348,29 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await auth.signInWithRedirect(provider);
-    return null;
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || null;
+    } catch (popupError) {
+        const popupCode = String(popupError?.code || '');
+        const shouldFallbackToRedirect = [
+            'auth/popup-blocked',
+            'auth/popup-closed-by-user',
+            'auth/cancelled-popup-request'
+        ].includes(popupCode);
+
+        if (!shouldFallbackToRedirect) {
+            throw popupError;
+        }
+
+        console.warn('[account.google.popupFallback]', {
+            code: popupError?.code,
+            message: popupError?.message
+        });
+
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
 }
 
 async function syncGoogleUserProfileDoc(user) {
@@ -1264,6 +1285,26 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
+auth.getRedirectResult()
+    .then(async (result) => {
+        if (!result?.user) return;
+        console.info('[account.google.redirectResult] login concluido', {
+            uid: result.user.uid,
+            email: result.user.email || ''
+        });
+        try {
+            await syncGoogleUserProfileDoc(result.user);
+        } catch (error) {
+            console.error('[account.google.redirectResult.sync]', error);
+        }
+    })
+    .catch((error) => {
+        console.error('[account.google.redirectResult]', {
+            code: error?.code,
+            message: error?.message
+        });
+    });
+
 window.switchAuthView = (view) => {
     document.querySelectorAll('.auth-view').forEach(v => v.classList.remove('active'));
     document.getElementById(`view-${view}`).classList.add('active');
@@ -1272,12 +1313,39 @@ window.switchAuthView = (view) => {
 // --- LOGIN ---
 const loginForm = document.getElementById('login-form');
 if(loginForm) {
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('login-email').value;
+        const email = sanitizePlainText(document.getElementById('login-email').value, 120);
         const pass = document.getElementById('login-pass').value;
-        auth.signInWithEmailAndPassword(email, pass)
-            .catch(() => alert("Nao foi possivel entrar com esse email e senha."));
+        const submitBtn = loginForm.querySelector('button[type=\"submit\"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Entrando...';
+        }
+
+        try {
+            await auth.signInWithEmailAndPassword(email, pass);
+        } catch (error) {
+            console.error('[account.login.email]', {
+                code: error?.code,
+                message: error?.message
+            });
+            const code = String(error?.code || '');
+            if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+                alert('Email ou senha invalidos.');
+            } else if (code === 'auth/too-many-requests') {
+                alert('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+            } else if (code === 'auth/invalid-email') {
+                alert('Email invalido.');
+            } else {
+                alert('Nao foi possivel entrar com esse email e senha.');
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Entrar';
+            }
+        }
     });
 }
 
