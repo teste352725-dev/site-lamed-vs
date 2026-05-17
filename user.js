@@ -348,6 +348,16 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
+        `${navigator.userAgent || ''} ${navigator.platform || ''}`
+    );
+
+    if (isMobileDevice) {
+        console.info('[account.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
     try {
         const result = await auth.signInWithPopup(provider);
         return result?.user || null;
