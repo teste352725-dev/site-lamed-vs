@@ -1118,7 +1118,17 @@ async function carregarDadosLoja() {
             .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
         adminCollectionsCache = [...activeCollections];
 
-        products = produtosSnap.docs
+        let productDocs = produtosSnap.docs;
+        if (productDocs.length === 0) {
+            console.warn("Nenhum produto retornado por status=active. Aplicando fallback para compatibilidade de dados.");
+            const fallbackSnap = await db.collection("pecas").get();
+            productDocs = fallbackSnap.docs.filter((productDoc) => {
+                const status = String(productDoc.data()?.status || "").trim().toLowerCase();
+                return status !== "inactive";
+            });
+        }
+
+        products = productDocs
             .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
 
         const configCategories = catalogSettingsSnap.exists
@@ -2058,4 +2068,3 @@ function updateAddToCartButton() {
         btn.classList.remove('hover:bg-[#4a2e18]');
     }
 }
-
