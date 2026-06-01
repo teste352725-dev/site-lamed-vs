@@ -313,6 +313,58 @@ function isFirestorePermissionError(error) {
     return code === 'permission-denied' || message.includes('missing or insufficient permissions');
 }
 
+function getAccountAuthFeedbackElement() {
+    return document.getElementById('account-auth-feedback');
+}
+
+function clearAccountAuthFeedback() {
+    const feedback = getAccountAuthFeedbackElement();
+    if (!feedback) return;
+    feedback.classList.add('hidden');
+    feedback.replaceChildren();
+}
+
+function showAccountAuthFeedback(message, { actionLabel = '', action = null } = {}) {
+    const feedback = getAccountAuthFeedbackElement();
+    if (!feedback) {
+        alert(message);
+        return;
+    }
+
+    feedback.classList.remove('hidden');
+    feedback.replaceChildren();
+
+    const text = document.createElement('p');
+    text.textContent = sanitizePlainText(message, 500);
+    feedback.appendChild(text);
+
+    if (actionLabel && typeof action === 'function') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'mt-3 rounded-full bg-[#5f3d2f] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-white';
+        button.textContent = actionLabel;
+        button.addEventListener('click', action);
+        feedback.appendChild(button);
+    }
+}
+
+function showOpenInBrowserGuidance() {
+    showAccountAuthFeedback(
+        'O Google bloqueia login dentro de navegador interno de apps. Toque no menu do app e escolha "Abrir no navegador" (Chrome/Safari), ou copie o link abaixo e abra no navegador.',
+        {
+            actionLabel: 'Copiar link',
+            action: async () => {
+                try {
+                    await navigator.clipboard.writeText(window.location.href);
+                    showAccountAuthFeedback('Link copiado. Agora abra o Chrome/Safari e cole o endereco para entrar com Google.');
+                } catch (error) {
+                    showAccountAuthFeedback(`Copie este link e abra no Chrome/Safari: ${window.location.href}`);
+                }
+            }
+        }
+    );
+}
+
 async function getUserSessionAuthToken(user = currentUser || auth.currentUser) {
     if (!user) {
         throw new Error('Entre na sua conta para continuar.');
@@ -348,8 +400,48 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await auth.signInWithRedirect(provider);
-    return null;
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    const blockedInAppBrowser = /(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|twitter|linkedin|pinterest|snapchat|gsa|googleapp|wv)/i.test(browserFingerprint);
+
+    if (blockedInAppBrowser) {
+        const error = new Error('GOOGLE_BLOCKED_INAPP_BROWSER');
+        error.code = 'auth/disallowed-useragent';
+        throw error;
+    }
+
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
+        `${navigator.userAgent || ''} ${navigator.platform || ''}`
+    );
+
+    if (isMobileDevice) {
+        console.info('[account.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || null;
+    } catch (popupError) {
+        const popupCode = String(popupError?.code || '');
+        const shouldFallbackToRedirect = [
+            'auth/popup-blocked',
+            'auth/popup-closed-by-user',
+            'auth/cancelled-popup-request'
+        ].includes(popupCode);
+
+        if (!shouldFallbackToRedirect) {
+            throw popupError;
+        }
+
+        console.warn('[account.google.popupFallback]', {
+            code: popupError?.code,
+            message: popupError?.message
+        });
+
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
 }
 
 async function syncGoogleUserProfileDoc(user) {
@@ -1264,6 +1356,29 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
+auth.getRedirectResult()
+    .then(async (result) => {
+        if (!result?.user) return;
+        console.info('[account.google.redirectResult] login concluido', {
+            uid: result.user.uid,
+            email: result.user.email || ''
+        });
+        try {
+            await syncGoogleUserProfileDoc(result.user);
+        } catch (error) {
+            console.error('[account.google.redirectResult.sync]', error);
+        }
+    })
+    .catch((error) => {
+        console.error('[account.google.redirectResult]', {
+            code: error?.code,
+            message: error?.message
+        });
+        if (String(error?.code || '') === 'auth/disallowed-useragent') {
+            showOpenInBrowserGuidance();
+        }
+    });
+
 window.switchAuthView = (view) => {
     document.querySelectorAll('.auth-view').forEach(v => v.classList.remove('active'));
     document.getElementById(`view-${view}`).classList.add('active');
@@ -1272,12 +1387,40 @@ window.switchAuthView = (view) => {
 // --- LOGIN ---
 const loginForm = document.getElementById('login-form');
 if(loginForm) {
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('login-email').value;
+        clearAccountAuthFeedback();
+        const email = sanitizePlainText(document.getElementById('login-email').value, 120);
         const pass = document.getElementById('login-pass').value;
-        auth.signInWithEmailAndPassword(email, pass)
-            .catch(() => alert("Nao foi possivel entrar com esse email e senha."));
+        const submitBtn = loginForm.querySelector('button[type=\"submit\"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Entrando...';
+        }
+
+        try {
+            await auth.signInWithEmailAndPassword(email, pass);
+        } catch (error) {
+            console.error('[account.login.email]', {
+                code: error?.code,
+                message: error?.message
+            });
+            const code = String(error?.code || '');
+            if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+                showAccountAuthFeedback('Email ou senha invalidos.');
+            } else if (code === 'auth/too-many-requests') {
+                showAccountAuthFeedback('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+            } else if (code === 'auth/invalid-email') {
+                showAccountAuthFeedback('Email invalido.');
+            } else {
+                showAccountAuthFeedback('Nao foi possivel entrar com esse email e senha.');
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Entrar';
+            }
+        }
     });
 }
 
@@ -1338,6 +1481,7 @@ if(regForm) {
 
 // --- GOOGLE LOGIN ---
 window.fazerLoginGoogle = () => {
+    clearAccountAuthFeedback();
     signInWithGoogleSafe()
         .then(async (user) => {
             if (!user) return;
@@ -1345,11 +1489,15 @@ window.fazerLoginGoogle = () => {
         })
         .catch((err) => {
             console.error(err);
-            if (isFirestorePermissionError(err)) {
-                alert('Sua conta entrou, mas o perfil ainda nao conseguiu sincronizar. Tente novamente em instantes.');
+            if (String(err?.code || '') === 'auth/disallowed-useragent' || String(err?.message || '') === 'GOOGLE_BLOCKED_INAPP_BROWSER') {
+                showOpenInBrowserGuidance();
                 return;
             }
-            alert('Nao foi possivel entrar com Google agora.');
+            if (isFirestorePermissionError(err)) {
+                showAccountAuthFeedback('Sua conta entrou, mas o perfil ainda nao conseguiu sincronizar. Tente novamente em instantes.');
+                return;
+            }
+            showAccountAuthFeedback('Nao foi possivel entrar com Google agora.');
         });
 };
 

@@ -221,6 +221,24 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
             db = getFirestore(app);
         } catch (e) { console.error(e); }
 
+        // Camada de compatibilidade para scripts antigos do executor
+        // Permite usar sintaxe legada: db.collection('pecas').get()
+        const dbCompat = {
+            collection: (path) => ({
+                get: () => getDocs(collection(db, path)),
+                doc: (id) => ({
+                    get: () => getDoc(doc(db, path, id)),
+                    update: (payload) => updateDoc(doc(db, path, id), payload),
+                    delete: () => deleteDoc(doc(db, path, id)),
+                    ref: doc(db, path, id)
+                }),
+                where: (field, op, value) => ({
+                    get: () => getDocs(query(collection(db, path), where(field, op, value)))
+                }),
+                add: (payload) => addDoc(collection(db, path), payload)
+            })
+        };
+
         // --- AutenticaÃ§Ã£o ---
         // ATUALIZADO COM SEU NOVO ID
         const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
@@ -409,7 +427,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
 
         // --- EXECUTOR DE SCRIPT PERSONALIZADO ---
 
-        const CUSTOM_SCRIPT_EXECUTOR_ENABLED = false;
+        const CUSTOM_SCRIPT_EXECUTOR_ENABLED = true;
 
         window.executarScriptPersonalizado = async () => {
             if (!CUSTOM_SCRIPT_EXECUTOR_ENABLED) {
@@ -440,7 +458,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                 );
 
                 await func(
-                    db, auth, log, 
+                    dbCompat, auth, log, 
                     collection, getDocs, doc, updateDoc, deleteDoc, addDoc, query, where, writeBatch
                 );
                 
@@ -525,4 +543,3 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
     </script>
 </body>
 </html>
-

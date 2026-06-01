@@ -75,8 +75,47 @@ async function signInWithGoogleSafeForCheckout() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await auth.signInWithRedirect(provider);
-    return null;
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    const blockedInAppBrowser = /(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|twitter|linkedin|pinterest|snapchat|gsa|googleapp|wv)/i.test(browserFingerprint);
+
+    if (blockedInAppBrowser) {
+        const error = new Error('GOOGLE_BLOCKED_INAPP_BROWSER');
+        error.code = 'auth/disallowed-useragent';
+        throw error;
+    }
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
+        `${navigator.userAgent || ''} ${navigator.platform || ''}`
+    );
+
+    if (isMobileDevice) {
+        console.info('[checkout.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || null;
+    } catch (popupError) {
+        const popupCode = String(popupError?.code || '');
+        const shouldFallbackToRedirect = [
+            'auth/popup-blocked',
+            'auth/popup-closed-by-user',
+            'auth/cancelled-popup-request'
+        ].includes(popupCode);
+
+        if (!shouldFallbackToRedirect) {
+            throw popupError;
+        }
+
+        console.warn('[checkout.google.popupFallback]', {
+            code: popupError?.code,
+            message: popupError?.message
+        });
+
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
 }
 
 function sanitizeCheckoutPhone(value) {
@@ -647,6 +686,10 @@ async function loginWithGoogleForCheckout() {
         await maybePromptCheckoutPushModal();
     } catch (error) {
         console.error(error);
+        if (String(error?.code || '') === 'auth/disallowed-useragent' || String(error?.message || '') === 'GOOGLE_BLOCKED_INAPP_BROWSER') {
+            alert('Google bloqueia login no navegador interno do app. Abra no Chrome/Safari e tente novamente.');
+            return;
+        }
         alert('Nao foi possivel entrar com Google agora.');
     }
 }

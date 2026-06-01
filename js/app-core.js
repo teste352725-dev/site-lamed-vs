@@ -37,12 +37,46 @@ let currentUserIsAdmin = false;
 let storefrontForegroundPushBound = false;
 const TAXA_JUROS = 0.0549;
 let currentHomeFilter = 'all';
+let currentCatalogSegment = 'mesa';
 let currentHomePage = 1;
 const HOME_PAGE_SIZE = 10;
 const API_BASE_URL = resolveApiBaseUrl();
 let entryAssistTimer = null;
 let storefrontCopyState = null;
 let storefrontAdminToolsBound = false;
+
+
+const CATALOG_SEGMENT_STORAGE_KEY = 'lamed_catalog_segment';
+const CATALOG_SEGMENTS = {
+    moda: { label: 'Roupas', title: 'Roupas', subtitle: 'Vestidos, conjuntos e peças autorais para vestir seu momento.' },
+    mesa: { label: 'Mesa posta', title: 'Mesa posta', subtitle: 'Peças artesanais para transformar sua mesa e receber com afeto.' }
+};
+
+function normalizeCatalogSegment(value) {
+    const safeValue = String(value || '').trim().toLowerCase();
+    return ['moda', 'roupa', 'roupas', 'fashion'].includes(safeValue) ? 'moda' : 'mesa';
+}
+
+function getProductSegment(product) {
+    const explicitSegment = normalizeCatalogSegment(product?.segmento);
+    if (product?.segmento) return explicitSegment;
+    return checkIsMesaPosta(product?.categoria) ? 'mesa' : 'moda';
+}
+
+function readSavedCatalogSegment() {
+    try {
+        const savedSegment = localStorage.getItem(CATALOG_SEGMENT_STORAGE_KEY);
+        return savedSegment ? normalizeCatalogSegment(savedSegment) : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function saveCatalogSegment(segment) {
+    try {
+        localStorage.setItem(CATALOG_SEGMENT_STORAGE_KEY, normalizeCatalogSegment(segment));
+    } catch (error) {}
+}
 
 // Controle Carrossel
 let mainSplideInstance = null;
@@ -174,12 +208,8 @@ function updateMobileBottomNavState() {
     const hash = window.location.hash;
     let activeHref = '#home';
 
-    if (hash === '#loja' || hash.startsWith('#/categoria/')) {
+    if (hash === '#loja' || hash === '#colecoes' || hash === '#conheca-loja' || hash.startsWith('#/categoria/') || hash.startsWith('#/colecao/')) {
         activeHref = '#loja';
-    } else if (hash === '#colecoes' || hash.startsWith('#/colecao/')) {
-        activeHref = '#colecoes';
-    } else if (hash === '#conheca-loja') {
-        activeHref = '#conheca-loja';
     } else if (hash === '#sacola') {
         activeHref = '';
     }
@@ -421,8 +451,47 @@ async function signInWithGoogleSafe() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await auth.signInWithRedirect(provider);
-    return null;
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    const blockedInAppBrowser = /(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|twitter|linkedin|pinterest|snapchat|gsa|googleapp|wv)/i.test(browserFingerprint);
+
+    if (blockedInAppBrowser) {
+        const error = new Error('GOOGLE_BLOCKED_INAPP_BROWSER');
+        error.code = 'auth/disallowed-useragent';
+        throw error;
+    }
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
+        `${navigator.userAgent || ''} ${navigator.platform || ''}`
+    );
+
+    if (isMobileDevice) {
+        console.info('[storefront.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
+
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result?.user || null;
+    } catch (popupError) {
+        const popupCode = String(popupError?.code || '');
+        const shouldFallbackToRedirect = [
+            'auth/popup-blocked',
+            'auth/popup-closed-by-user',
+            'auth/cancelled-popup-request'
+        ].includes(popupCode);
+
+        if (!shouldFallbackToRedirect) {
+            throw popupError;
+        }
+
+        console.warn('[storefront.google.popupFallback]', {
+            code: popupError?.code,
+            message: popupError?.message
+        });
+
+        await auth.signInWithRedirect(provider);
+        return null;
+    }
 }
 
 async function signInWithGoogleFromEntryAssist() {
@@ -446,6 +515,10 @@ async function signInWithGoogleFromEntryAssist() {
             await populateCheckoutFormFromUser(authenticatedUser).catch(() => {});
         }
     } catch (error) {
+        if (String(error?.code || '') === 'auth/disallowed-useragent' || String(error?.message || '') === 'GOOGLE_BLOCKED_INAPP_BROWSER') {
+            alert('O Google bloqueia login dentro do navegador interno do app. Abra no Chrome/Safari e tente novamente.');
+            return;
+        }
         alert(sanitizePlainText(error?.message || 'Nao foi possivel entrar com Google agora.', 220));
     } finally {
         if (elements.entryAssistActionBtn) {
