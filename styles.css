@@ -614,7 +614,7 @@ body.no-scroll {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.9rem;
+        gap: 0.55rem;
         width: auto;
         padding: 0;
         background: transparent;
@@ -645,13 +645,13 @@ body.no-scroll {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: clamp(4.25rem, 21vw, 5rem);
-        height: clamp(4.25rem, 21vw, 5rem);
+        width: clamp(3.35rem, 17vw, 3.85rem);
+        height: clamp(3.35rem, 17vw, 3.85rem);
         color: rgba(255, 255, 255, 0.92);
         text-decoration: none;
         background: rgba(22, 24, 22, 0.74);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 1.35rem;
+        border-radius: 1.1rem;
         box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
@@ -677,7 +677,7 @@ body.no-scroll {
     }
 
     .mobile-bottom-link i {
-        font-size: clamp(1.65rem, 7vw, 2.15rem);
+        font-size: clamp(1.35rem, 6vw, 1.75rem);
         color: currentColor;
     }
 
@@ -687,10 +687,10 @@ body.no-scroll {
 
     .floating-whatsapp {
         right: 1rem;
-        bottom: calc(6.25rem + env(safe-area-inset-bottom));
-        width: 54px;
-        height: 54px;
-        font-size: 1.8rem;
+        bottom: calc(5.9rem + env(safe-area-inset-bottom));
+        width: 48px;
+        height: 48px;
+        font-size: 1.55rem;
     }
 
     .admin-fab-trigger {
