@@ -48,8 +48,20 @@ let storefrontAdminToolsBound = false;
 
 const CATALOG_SEGMENT_STORAGE_KEY = 'lamed_catalog_segment';
 const CATALOG_SEGMENTS = {
-    moda: { label: 'Roupas', title: 'Roupas', subtitle: 'Vestidos, conjuntos e peças autorais para vestir seu momento.' },
-    mesa: { label: 'Mesa posta', title: 'Mesa posta', subtitle: 'Peças artesanais para transformar sua mesa e receber com afeto.' }
+    moda: {
+        label: 'Roupas',
+        title: 'Roupas',
+        subtitle: 'Vestidos, conjuntos e peças autorais para vestir seu momento.',
+        heroTitle: 'Roupas Laméd',
+        heroSubtitle: 'Peças autorais para vestir seu momento'
+    },
+    mesa: {
+        label: 'Mesa posta',
+        title: 'Mesa posta',
+        subtitle: 'Peças artesanais para transformar sua mesa e receber com afeto.',
+        heroTitle: 'Mesa Posta Laméd',
+        heroSubtitle: 'Peças artesanais para transformar sua mesa'
+    }
 };
 
 function normalizeCatalogSegment(value) {

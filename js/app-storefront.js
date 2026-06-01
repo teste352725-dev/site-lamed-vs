@@ -904,9 +904,13 @@ function applyCatalogSegmentCopy() {
     const segmentConfig = CATALOG_SEGMENTS[currentCatalogSegment] || CATALOG_SEGMENTS.mesa;
     const title = document.getElementById('home-shop-title');
     const subtitle = document.getElementById('home-shop-subtitle');
+    const heroTitle = document.getElementById('home-hero-title');
+    const heroSubtitle = document.getElementById('home-hero-subtitle');
 
     if (title) title.textContent = segmentConfig.title;
     if (subtitle) subtitle.textContent = segmentConfig.subtitle;
+    if (heroTitle) heroTitle.textContent = segmentConfig.heroTitle || segmentConfig.title;
+    if (heroSubtitle) heroSubtitle.textContent = segmentConfig.heroSubtitle || segmentConfig.subtitle;
 
     document.querySelectorAll('[data-segment]').forEach((button) => {
         const isActive = button.dataset.segment === currentCatalogSegment;
@@ -940,14 +944,16 @@ function setCatalogSegment(segment, persist = true) {
 
 function setupCatalogSegmentSwitch() {
     if (catalogSegmentSwitchBound) return;
-    const switcher = document.getElementById('catalog-segment-switch');
-    if (!switcher) return;
+    const switchers = Array.from(document.querySelectorAll('.catalog-segment-switch'));
+    if (!switchers.length) return;
 
     catalogSegmentSwitchBound = true;
-    switcher.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-segment]');
-        if (!button) return;
-        setCatalogSegment(button.dataset.segment || 'mesa');
+    switchers.forEach((switcher) => {
+        switcher.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-segment]');
+            if (!button) return;
+            setCatalogSegment(button.dataset.segment || 'mesa');
+        });
     });
 }
 
