@@ -864,6 +864,16 @@ function timestampToMillis(value) {
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function getProductLaunchMillis(product) {
+    return timestampToMillis(product?.createdAt || product?.dataLancamento || product?.lancadoEm || product?.updatedAt);
+}
+
+function sortProductsByNewest(a, b) {
+    return getProductLaunchMillis(b) - getProductLaunchMillis(a)
+        || (b.ordem || 0) - (a.ordem || 0)
+        || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+}
+
 function getLatestCollectionSegment() {
     const rankedCollections = [...activeCollections]
         .sort((a, b) => (
@@ -997,7 +1007,7 @@ function getShopFilteredProducts() {
     const normalizedSearch = currentShopSearch.trim();
 
     return getSegmentedProducts()
-        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
+        .sort(sortProductsByNewest)
         .filter((product) => {
             if (currentShopFilter === 'combo') {
                 if (product.tipo !== 'combo') return false;
@@ -1270,7 +1280,9 @@ function renderizarSecoesColecoes() {
     if (segmentCollections.length === 0) return;
 
     segmentCollections.forEach((colecao, index) => {
-        const prods = products.filter(p => p.colecaoId === colecao.id && getProductSegment(p) === currentCatalogSegment);
+        const prods = products
+            .filter(p => p.colecaoId === colecao.id && getProductSegment(p) === currentCatalogSegment)
+            .sort(sortProductsByNewest);
         if (prods.length === 0) return; 
 
         const section = document.createElement('section');
@@ -1308,7 +1320,7 @@ function popularPreviewColecao() {
     if (!grid) return;
 
     const destaques = getSegmentedProducts()
-        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        .sort(sortProductsByNewest)
         .slice(0, 4);
     grid.innerHTML = '';
 
@@ -1366,7 +1378,7 @@ function setupHomeShopFilters() {
 
 function getHomeShopProducts() {
     const orderedProducts = getSegmentedProducts()
-        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+        .sort(sortProductsByNewest);
 
     if (currentHomeFilter === 'all') return orderedProducts;
     if (currentHomeFilter === 'combo') return orderedProducts.filter((product) => product.tipo === 'combo');
@@ -1446,7 +1458,9 @@ function renderizarGridColecao(collectionId) {
     grid.innerHTML = '';
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
-    const prods = products.filter(p => p.colecaoId === collectionId && getProductSegment(p) === currentCatalogSegment);
+    const prods = products
+        .filter(p => p.colecaoId === collectionId && getProductSegment(p) === currentCatalogSegment)
+        .sort(sortProductsByNewest);
     renderProductsIntoGrid(grid, prods, '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>');
 }
 
@@ -1485,7 +1499,7 @@ function renderizarGridCategoria(catSlug) {
             return p.tipo === 'combo' && checkIsMesaPosta(p.categoria);
         }
         return p.categoria === catSlug;
-    });
+    }).sort(sortProductsByNewest);
 
     renderProductsIntoGrid(
         grid,
