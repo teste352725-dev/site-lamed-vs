@@ -37,12 +37,46 @@ let currentUserIsAdmin = false;
 let storefrontForegroundPushBound = false;
 const TAXA_JUROS = 0.0549;
 let currentHomeFilter = 'all';
+let currentCatalogSegment = 'mesa';
 let currentHomePage = 1;
 const HOME_PAGE_SIZE = 10;
 const API_BASE_URL = resolveApiBaseUrl();
 let entryAssistTimer = null;
 let storefrontCopyState = null;
 let storefrontAdminToolsBound = false;
+
+
+const CATALOG_SEGMENT_STORAGE_KEY = 'lamed_catalog_segment';
+const CATALOG_SEGMENTS = {
+    moda: { label: 'Roupas', title: 'Roupas', subtitle: 'Vestidos, conjuntos e peças autorais para vestir seu momento.' },
+    mesa: { label: 'Mesa posta', title: 'Mesa posta', subtitle: 'Peças artesanais para transformar sua mesa e receber com afeto.' }
+};
+
+function normalizeCatalogSegment(value) {
+    const safeValue = String(value || '').trim().toLowerCase();
+    return ['moda', 'roupa', 'roupas', 'fashion'].includes(safeValue) ? 'moda' : 'mesa';
+}
+
+function getProductSegment(product) {
+    const explicitSegment = normalizeCatalogSegment(product?.segmento);
+    if (product?.segmento) return explicitSegment;
+    return checkIsMesaPosta(product?.categoria) ? 'mesa' : 'moda';
+}
+
+function readSavedCatalogSegment() {
+    try {
+        const savedSegment = localStorage.getItem(CATALOG_SEGMENT_STORAGE_KEY);
+        return savedSegment ? normalizeCatalogSegment(savedSegment) : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function saveCatalogSegment(segment) {
+    try {
+        localStorage.setItem(CATALOG_SEGMENT_STORAGE_KEY, normalizeCatalogSegment(segment));
+    } catch (error) {}
+}
 
 // Controle Carrossel
 let mainSplideInstance = null;

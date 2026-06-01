@@ -71,6 +71,7 @@ const pendingCollectionSlides = new Map();
 let siteCategories = [];
 let currentShopFilter = 'all';
 let currentShopSearch = '';
+let catalogSegmentSwitchBound = false;
 let productQuickEditBound = false;
 let collectionManagerBound = false;
 let categoryManagerBound = false;
@@ -703,6 +704,7 @@ async function saveCategoryManager() {
         renderCategoryManagerList();
         closeCategoryManagerModal();
         renderSidebarCategoryLinks();
+        applyCatalogSegmentCopy();
         renderHomeShopFilters();
         renderShopPage(currentShopFilter);
         renderHomeShopGrid();
@@ -835,7 +837,8 @@ function renderSidebarCategoryLinks() {
     const submenu = document.getElementById('sidebar-submenu');
     if (!submenu) return;
 
-    const categoryLinks = siteCategories.map((category) =>         `<a href="#/categoria/${category.slug}" class="sidebar-link block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">${category.nome}</a>`
+    const segmentCategoryUsage = new Set(getSegmentedProducts().map((product) => product.categoria).filter(Boolean));
+    const categoryLinks = siteCategories.filter((category) => segmentCategoryUsage.has(category.slug)).map((category) =>         `<a href="#/categoria/${category.slug}" class="sidebar-link block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50">${category.nome}</a>`
     ).join('');
 
     submenu.innerHTML =         `<a href="#loja" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Loja Completa</a>
@@ -851,11 +854,99 @@ function renderSidebarCategoryLinks() {
     });
 }
 
+
+function timestampToMillis(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getLatestCollectionSegment() {
+    const rankedCollections = [...activeCollections]
+        .sort((a, b) => (
+            timestampToMillis(b.updatedAt || b.createdAt) - timestampToMillis(a.updatedAt || a.createdAt)
+        ) || ((b.ordem || 0) - (a.ordem || 0)));
+
+    for (const collection of rankedCollections) {
+        const firstProduct = products.find((product) => product.colecaoId === collection.id);
+        if (firstProduct) return getProductSegment(firstProduct);
+    }
+
+    const firstProduct = products[0];
+    return firstProduct ? getProductSegment(firstProduct) : 'mesa';
+}
+
+function getSegmentedProducts(segment = currentCatalogSegment) {
+    const safeSegment = normalizeCatalogSegment(segment);
+    return products.filter((product) => getProductSegment(product) === safeSegment);
+}
+
+function getSegmentedCollections(segment = currentCatalogSegment) {
+    const segmentProducts = getSegmentedProducts(segment);
+    const collectionIds = new Set(segmentProducts.map((product) => product.colecaoId).filter(Boolean));
+    return activeCollections.filter((collection) => collectionIds.has(collection.id));
+}
+
+function applyCatalogSegmentCopy() {
+    const segmentConfig = CATALOG_SEGMENTS[currentCatalogSegment] || CATALOG_SEGMENTS.mesa;
+    const title = document.getElementById('home-shop-title');
+    const subtitle = document.getElementById('home-shop-subtitle');
+
+    if (title) title.textContent = segmentConfig.title;
+    if (subtitle) subtitle.textContent = segmentConfig.subtitle;
+
+    document.querySelectorAll('[data-segment]').forEach((button) => {
+        const isActive = button.dataset.segment === currentCatalogSegment;
+        button.classList.toggle('bg-[--cor-marrom-cta]', isActive);
+        button.classList.toggle('text-white', isActive);
+        button.classList.toggle('text-gray-500', !isActive);
+    });
+}
+
+function setCatalogSegment(segment, persist = true) {
+    const nextSegment = normalizeCatalogSegment(segment);
+    if (currentCatalogSegment === nextSegment) {
+        applyCatalogSegmentCopy();
+        return;
+    }
+
+    currentCatalogSegment = nextSegment;
+    currentHomeFilter = 'all';
+    currentHomePage = 1;
+    currentShopFilter = 'all';
+    if (persist) saveCatalogSegment(nextSegment);
+
+    applyCatalogSegmentCopy();
+    renderSidebarCategoryLinks();
+    renderHomeShopFilters();
+    renderHomeShopGrid();
+    renderizarSecoesColecoes();
+    popularPreviewColecao();
+    if (window.location.hash === '#loja') renderShopPage('all');
+}
+
+function setupCatalogSegmentSwitch() {
+    if (catalogSegmentSwitchBound) return;
+    const switcher = document.getElementById('catalog-segment-switch');
+    if (!switcher) return;
+
+    catalogSegmentSwitchBound = true;
+    switcher.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-segment]');
+        if (!button) return;
+        setCatalogSegment(button.dataset.segment || 'mesa');
+    });
+}
+
 function getHomeFilterEntries() {
-    const categoryUsage = new Set(products.map((product) => product.categoria).filter(Boolean));
+    const segmentProducts = getSegmentedProducts();
+    const categoryUsage = new Set(segmentProducts.map((product) => product.categoria).filter(Boolean));
     const entries = [{ slug: 'all', nome: 'Todas' }];
 
-    if (products.some((product) => product.tipo === 'combo')) {
+    if (segmentProducts.some((product) => product.tipo === 'combo')) {
         entries.push({ slug: 'combo', nome: 'Combos / Kits' });
     }
 
@@ -905,7 +996,7 @@ function setupShopPageFilters() {
 function getShopFilteredProducts() {
     const normalizedSearch = currentShopSearch.trim();
 
-    return [...products]
+    return getSegmentedProducts()
         .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
         .filter((product) => {
             if (currentShopFilter === 'combo') {
@@ -925,11 +1016,14 @@ function renderShopFilterButtons() {
 
     const filterEntries = [{ slug: 'all', nome: 'Todas' }];
 
-    if (products.some((product) => product.tipo === 'combo')) {
+    const segmentProducts = getSegmentedProducts();
+    const segmentCategoryUsage = new Set(segmentProducts.map((product) => product.categoria).filter(Boolean));
+
+    if (segmentProducts.some((product) => product.tipo === 'combo')) {
         filterEntries.push({ slug: 'combo', nome: 'Combos / Kits' });
     }
 
-    filterEntries.push(...siteCategories);
+    filterEntries.push(...siteCategories.filter((category) => segmentCategoryUsage.has(category.slug)));
 
     container.innerHTML = filterEntries.map((entry) =>         `<button type="button" class="home-filter-btn ${currentShopFilter === entry.slug ? 'active' : ''}" data-shop-filter="${entry.slug}">${entry.nome}</button>`
     ).join('');
@@ -950,10 +1044,13 @@ function renderShopPage(initialFilter = null) {
     }
 
     const availableShopFilters = new Set(['all']);
-    if (products.some((product) => product.tipo === 'combo')) {
+    const segmentProducts = getSegmentedProducts();
+    if (segmentProducts.some((product) => product.tipo === 'combo')) {
         availableShopFilters.add('combo');
     }
-    siteCategories.forEach((category) => availableShopFilters.add(category.slug));
+    siteCategories.forEach((category) => {
+        if (segmentProducts.some((product) => product.categoria === category.slug)) availableShopFilters.add(category.slug);
+    });
     if (!availableShopFilters.has(currentShopFilter)) {
         currentShopFilter = 'all';
     }
@@ -1098,6 +1195,9 @@ async function carregarDadosLoja() {
     bindProductQuickEditModal();
     bindCollectionManagerModal();
     bindCategoryManagerModal();
+    setupCatalogSegmentSwitch();
+    currentCatalogSegment = readSavedCatalogSegment() || 'mesa';
+    applyCatalogSegmentCopy();
     try {
         const [colecoesSnap, produtosSnap, catalogSettingsSnap] = await Promise.all([
             db.collection("colecoes").where("ativa", "==", true).get(),
@@ -1131,6 +1231,10 @@ async function carregarDadosLoja() {
         products = productDocs
             .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
 
+        const savedCatalogSegment = readSavedCatalogSegment();
+        currentCatalogSegment = savedCatalogSegment || getLatestCollectionSegment();
+        if (!savedCatalogSegment) saveCatalogSegment(currentCatalogSegment);
+
         const configCategories = catalogSettingsSnap.exists
             ? catalogSettingsSnap.data()?.categorias
             : [];
@@ -1142,6 +1246,7 @@ async function carregarDadosLoja() {
         }
 
         renderSidebarCategoryLinks();
+        applyCatalogSegmentCopy();
         renderHomeShopFilters();
         setupHomeShopFilters();
         renderHomeShopGrid();
@@ -1161,10 +1266,11 @@ function renderizarSecoesColecoes() {
     if (!container) return;
     container.innerHTML = '';
     resetCollectionCarouselObserver();
-    if (activeCollections.length === 0) return;
+    const segmentCollections = getSegmentedCollections();
+    if (segmentCollections.length === 0) return;
 
-    activeCollections.forEach((colecao, index) => {
-        const prods = products.filter(p => p.colecaoId === colecao.id);
+    segmentCollections.forEach((colecao, index) => {
+        const prods = products.filter(p => p.colecaoId === colecao.id && getProductSegment(p) === currentCatalogSegment);
         if (prods.length === 0) return; 
 
         const section = document.createElement('section');
@@ -1201,8 +1307,7 @@ function popularPreviewColecao() {
     const grid = document.getElementById('home-featured-grid');
     if (!grid) return;
 
-    const destaques = products
-        .filter(p => checkIsMesaPosta(p.categoria))
+    const destaques = getSegmentedProducts()
         .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
         .slice(0, 4);
     grid.innerHTML = '';
@@ -1260,7 +1365,7 @@ function setupHomeShopFilters() {
 }
 
 function getHomeShopProducts() {
-    const orderedProducts = [...products]
+    const orderedProducts = getSegmentedProducts()
         .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
 
     if (currentHomeFilter === 'all') return orderedProducts;
@@ -1309,12 +1414,13 @@ function renderizarListaDeColecoes() {
     const grid = document.getElementById('collections-list-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    if (activeCollections.length === 0) {
+    const segmentCollections = getSegmentedCollections();
+    if (segmentCollections.length === 0) {
         grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-20">Nenhuma coleção ativa no momento.</p>';
         return;
     }
-    activeCollections.forEach(col => {
-        const count = products.filter(p => p.colecaoId === col.id).length;
+    segmentCollections.forEach(col => {
+        const count = getSegmentedProducts().filter(p => p.colecaoId === col.id).length;
         const img = col.imagemDestaque || 'https://placehold.co/600x400/eee/ccc?text=Sem+Imagem';
         const card = document.createElement('div');
         card.className = "group cursor-pointer";
@@ -1340,7 +1446,7 @@ function renderizarGridColecao(collectionId) {
     grid.innerHTML = '';
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
-    const prods = products.filter(p => p.colecaoId === collectionId);
+    const prods = products.filter(p => p.colecaoId === collectionId && getProductSegment(p) === currentCatalogSegment);
     renderProductsIntoGrid(grid, prods, '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>');
 }
 
@@ -1363,9 +1469,19 @@ function renderizarGridCategoria(catSlug) {
 
     if (title) title.textContent = nomesCategorias[catSlug] || catSlug.toUpperCase();
 
+    const categorySegment = catSlug === 'combo' || checkIsMesaPosta(catSlug) ? 'mesa' : 'moda';
+    if (categorySegment !== currentCatalogSegment) {
+        currentCatalogSegment = categorySegment;
+        saveCatalogSegment(categorySegment);
+        applyCatalogSegmentCopy();
+        renderSidebarCategoryLinks();
+        renderHomeShopFilters();
+        renderHomeShopGrid();
+    }
+
     const prods = products.filter(p => {
+        if (getProductSegment(p) !== currentCatalogSegment) return false;
         if (catSlug === 'combo') {
-            // Filtro espec?fico: Produto ? tipo Combo E ? da categoria Mesa Posta (ou subcategorias)
             return p.tipo === 'combo' && checkIsMesaPosta(p.categoria);
         }
         return p.categoria === catSlug;

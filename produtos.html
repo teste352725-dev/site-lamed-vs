@@ -268,6 +268,13 @@
                                     </label>
                                     <div class="modal-grid two-up">
                                         <label class="stack-field">
+                                            <span class="field-label">Vitrine do produto</span>
+                                            <select id="product-segment" required>
+                                                <option value="moda">Roupas</option>
+                                                <option value="mesa">Mesa posta</option>
+                                            </select>
+                                        </label>
+                                        <label class="stack-field">
                                             <span class="field-label">Categoria principal</span>
                                             <select id="product-category" required>
                                                 <optgroup label="Alfaiataria">
@@ -661,11 +668,24 @@
             return Array.isArray(product?.cores) ? product.cores.length : 0;
         }
 
+        function isMesaPostaCategory(categoria) {
+            return ["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"].includes(String(categoria || ""));
+        }
+
         function formatCategoryLabel(value) {
             const safeValue = String(value || "sem categoria");
             const found = categoryDefinitions.find((category) => category.slug === safeValue);
             return found?.nome || safeValue.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
         }
+
+        function syncProductSegmentFromCategory() {
+            const categorySelect = document.getElementById("product-category");
+            const segmentSelect = document.getElementById("product-segment");
+            if (!categorySelect || !segmentSelect) return;
+            segmentSelect.value = isMesaPostaCategory(categorySelect.value) ? "mesa" : "moda";
+        }
+
+        document.getElementById("product-category")?.addEventListener("change", syncProductSegmentFromCategory);
 
         function readShippingProfileFromForm() {
             const peso = parseFloat(document.getElementById("product-shipping-weight").value);
@@ -1248,6 +1268,7 @@
             document.getElementById("product-id").value = "";
             document.getElementById("product-type").value = "standard";
             document.getElementById("product-status").value = "active";
+            document.getElementById("product-segment").value = "moda";
             document.getElementById("product-order").value = "0";
             document.getElementById("product-personalizable").checked = false;
             document.getElementById("product-shipping-weight").value = "";
@@ -1272,6 +1293,7 @@
             document.getElementById("product-discount").value = produto.desconto || 0;
             document.getElementById("product-description").value = produto.descricao || "";
             document.getElementById("product-category").value = produto.categoria || "vestido";
+            document.getElementById("product-segment").value = produto.segmento || (isMesaPostaCategory(produto.categoria) ? "mesa" : "moda");
             document.getElementById("product-type").value = produto.tipo || (produto.categoria === "combo" ? "combo" : "standard");
             document.getElementById("product-status").value = produto.status || "active";
             document.getElementById("product-order").value = produto.ordem || 0;
@@ -1303,6 +1325,7 @@
             const nome = document.getElementById("product-name").value.trim();
             const preco = parseFloat(document.getElementById("product-price").value);
             const categoria = document.getElementById("product-category").value;
+            const segmento = document.getElementById("product-segment").value || (isMesaPostaCategory(categoria) ? "mesa" : "moda");
             const tipo = document.getElementById("product-type").value;
             if (!nome || Number.isNaN(preco)) {
                 alert("Preencha nome e preco.");
@@ -1325,6 +1348,7 @@
                     desconto: parseInt(document.getElementById("product-discount").value, 10) || 0,
                     descricao: document.getElementById("product-description").value.trim(),
                     categoria,
+                    segmento,
                     tipo,
                     status: document.getElementById("product-status").value,
                     ordem: parseInt(document.getElementById("product-order").value, 10) || 0,
