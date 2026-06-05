@@ -108,7 +108,67 @@
                 </div>
             </div>
 
-            <!-- AÃ§Ãµes de EmergÃªncia -->
+            <!-- Central de Operações -->
+            <div class="card">
+                <div class="p-4 border-b bg-amber-50 flex justify-between items-center">
+                    <h2 class="font-bold text-amber-900"><i class="fa-solid fa-sliders mr-2"></i>Central de Operações</h2>
+                    <span class="text-xs text-amber-700 font-bold">Edição em massa</span>
+                </div>
+
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b">
+                    <div class="rounded-lg border border-amber-100 bg-white p-4">
+                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-percent text-amber-600 mr-2"></i>Desconto global</h3>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Percentual (%)</label>
+                        <input id="bulk-discount-percent" type="number" min="0" max="90" value="10" class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-3">
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="runScript('aplicarDescontoGlobal')" class="btn btn-primary text-xs">Aplicar</button>
+                            <button onclick="runScript('removerDescontosProdutos')" class="btn btn-secondary text-xs">Remover todos</button>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg border border-blue-100 bg-white p-4">
+                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-droplet text-blue-600 mr-2"></i>Adicionar cor em peças</h3>
+                        <input id="bulk-color-name" type="text" placeholder="Nome da cor" class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-2">
+                        <div class="flex gap-2 mb-3">
+                            <input id="bulk-color-hex" type="color" value="#000000" class="h-10 w-14 rounded border border-gray-200">
+                            <input id="bulk-color-hex-text" type="text" value="#000000" class="flex-1 rounded border border-gray-200 px-3 py-2 text-sm">
+                        </div>
+                        <select id="bulk-product-select" multiple size="6" class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-3"></select>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="selecionarProdutosFiltrados()" class="btn btn-secondary text-xs">Selecionar busca</button>
+                            <button onclick="runScript('adicionarCorProdutos')" class="btn btn-primary text-xs">Adicionar cor</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b">
+                    <div class="rounded-lg border border-gray-100 bg-white p-4">
+                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-magnifying-glass text-gray-600 mr-2"></i>Busca avançada</h3>
+                        <input id="advanced-search-input" type="text" placeholder="Buscar por nome, categoria, coleção, tag..." class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-3">
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="runScript('buscarProdutos')" class="btn btn-secondary text-xs">Buscar</button>
+                            <button onclick="carregarProdutosOperacao()" class="btn btn-secondary text-xs">Recarregar produtos</button>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-100 bg-white p-4">
+                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-shield-halved text-teal-600 mr-2"></i>Auditoria e backups</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="runScript('backupCompleto')" class="btn btn-secondary text-xs">Backup completo</button>
+                            <button onclick="runScript('baixarArquivos')" class="btn btn-secondary text-xs">Arquivos/imagens</button>
+                            <button onclick="runScript('detectarDuplicados')" class="btn btn-secondary text-xs">Duplicados</button>
+                            <button onclick="runScript('logsAlteracoes')" class="btn btn-secondary text-xs">Logs</button>
+                            <button onclick="runScript('historicoPrecos')" class="btn btn-secondary text-xs">Histórico preços</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="operation-results" class="p-4 text-sm text-gray-600">
+                    <p class="text-gray-400">Use a busca ou rode uma operação para ver resultados aqui.</p>
+                </div>
+            </div>
+
+            <!-- Ações de Emergência -->
             <div class="card border-red-200">
                 <div class="p-4 border-b bg-red-50 flex justify-between items-center">
                     <h2 class="font-bold text-red-800">ðŸš¨ AÃ§Ãµes de EmergÃªncia</h2>
@@ -262,6 +322,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
             } else {
                 log("Autenticado como Admin. Sistema pronto.", "success");
                 carregarRascunho(); // Carrega o rascunho salvo ao iniciar
+                carregarProdutosOperacao().catch((error) => log(`Aviso ao carregar produtos: ${error.message}`, "warning"));
             }
         });
 
@@ -298,6 +359,116 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
             line.textContent = '// Console limpo';
             consoleBox.appendChild(line);
         }
+
+        const OPERATION_COLLECTIONS = ['pecas', 'colecoes', 'pedidos', 'usuarios', 'chats', 'site_config', 'notificacoes', 'operacoes_logs', 'historico_precos'];
+        let operationProductsCache = [];
+
+        function sanitizePlainText(value, maxLength = 180) {
+            return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+        }
+
+        function escapeHtml(value, maxLength = 180) {
+            return sanitizePlainText(value, maxLength)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getCurrentAdminEmail() {
+            return auth?.currentUser?.email || auth?.currentUser?.uid || 'admin';
+        }
+
+        function normalizeHexColor(value) {
+            const raw = String(value || '').trim();
+            return /^#[0-9a-f]{6}$/i.test(raw) ? raw : '#000000';
+        }
+
+        function getSelectedProductIds() {
+            const select = document.getElementById('bulk-product-select');
+            return Array.from(select?.selectedOptions || []).map((option) => option.value).filter(Boolean);
+        }
+
+        function renderOperationResults(rows, emptyMessage = 'Nenhum resultado encontrado.') {
+            const container = document.getElementById('operation-results');
+            if (!container) return;
+
+            if (!Array.isArray(rows) || rows.length === 0) {
+                container.innerHTML = `<p class="text-gray-400">${emptyMessage}</p>`;
+                return;
+            }
+
+            container.innerHTML = rows.map((row) => `
+                <div class="rounded-lg border border-gray-100 bg-white p-3 mb-2">
+                    <div class="font-semibold text-gray-800">${escapeHtml(row.title || row.nome || row.id, 120)}</div>
+                    <div class="text-xs text-gray-500 mt-1">${escapeHtml(row.description || row.categoria || row.status || '', 240)}</div>
+                </div>
+            `).join('');
+        }
+
+        function downloadJson(filename, payload) {
+            const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(payload, null, 2))}`;
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute('href', dataStr);
+            downloadAnchor.setAttribute('download', filename);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        async function recordOperationLog(action, details = {}) {
+            await addDoc(collection(db, 'operacoes_logs'), {
+                action: sanitizePlainText(action, 120),
+                details,
+                admin: getCurrentAdminEmail(),
+                createdAt: new Date()
+            }).catch((error) => console.warn('[executor.log.skipped]', error));
+        }
+
+        async function recordPriceHistory(productDoc, before = {}, after = {}) {
+            await addDoc(collection(db, 'historico_precos'), {
+                produtoId: productDoc.id,
+                produtoNome: sanitizePlainText(before?.nome || productDoc.id, 160),
+                precoAnterior: Number(before?.preco || 0),
+                precoNovo: Number(after?.preco ?? before?.preco ?? 0),
+                descontoAnterior: Number(before?.desconto || 0),
+                descontoNovo: Number(after?.desconto ?? before?.desconto ?? 0),
+                admin: getCurrentAdminEmail(),
+                createdAt: new Date()
+            }).catch((error) => console.warn('[executor.priceHistory.skipped]', error));
+        }
+
+        async function carregarProdutosOperacao() {
+            const snap = await getDocs(collection(db, 'pecas'));
+            operationProductsCache = snap.docs
+                .map((productDoc) => ({ id: productDoc.id, ...productDoc.data() }))
+                .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+
+            const select = document.getElementById('bulk-product-select');
+            if (select) {
+                select.innerHTML = operationProductsCache.map((product) => (
+                    `<option value="${escapeHtml(product.id, 120)}">${escapeHtml(product.nome || product.id, 90)} • ${escapeHtml(product.categoria || 'sem categoria', 40)}</option>`
+                )).join('');
+            }
+
+            log(`${operationProductsCache.length} produto(s) carregado(s) na Central de Operações.`, 'success');
+            return operationProductsCache;
+        }
+
+        window.carregarProdutosOperacao = carregarProdutosOperacao;
+
+        window.selecionarProdutosFiltrados = () => {
+            const term = sanitizePlainText(document.getElementById('advanced-search-input')?.value, 120).toLowerCase();
+            const select = document.getElementById('bulk-product-select');
+            if (!select || !term) return log('Digite uma busca para selecionar produtos filtrados.', 'warning');
+
+            Array.from(select.options).forEach((option) => {
+                option.selected = option.textContent.toLowerCase().includes(term);
+            });
+
+            log(`${Array.from(select.selectedOptions).length} produto(s) selecionado(s) pela busca.`, 'info');
+        };
 
         // --- Executores de Scripts ---
 
@@ -341,6 +512,85 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                         }
                         break;
 
+                    case 'aplicarDescontoGlobal': {
+                        const percent = Number(document.getElementById('bulk-discount-percent')?.value || 0);
+                        if (!Number.isFinite(percent) || percent < 0 || percent > 90) {
+                            log('Informe um desconto entre 0 e 90%.', 'error');
+                            break;
+                        }
+
+                        if (!confirm(`Aplicar ${percent}% de desconto em TODAS as peças?`)) {
+                            log('Operação cancelada pelo usuário.', 'info');
+                            break;
+                        }
+
+                        const snap = await getDocs(collection(db, 'pecas'));
+                        let batch = writeBatch(db);
+                        let ops = 0;
+                        let changed = 0;
+
+                        for (const productDoc of snap.docs) {
+                            const before = productDoc.data() || {};
+                            batch.update(productDoc.ref, { desconto: percent, updatedAt: new Date() });
+                            recordPriceHistory(productDoc, before, { desconto: percent });
+                            ops++;
+                            changed++;
+
+                            if (ops >= 400) {
+                                await batch.commit();
+                                log(`Parcial: ${changed}/${snap.size} desconto(s) aplicado(s).`, 'info');
+                                batch = writeBatch(db);
+                                ops = 0;
+                            }
+                        }
+
+                        if (ops > 0) await batch.commit();
+                        await recordOperationLog('aplicar_desconto_global', { percent, total: changed });
+                        log(`Desconto de ${percent}% aplicado em ${changed} peça(s).`, 'success');
+                        break;
+                    }
+
+                    case 'adicionarCorProdutos': {
+                        const selectedIds = getSelectedProductIds();
+                        const colorName = sanitizePlainText(document.getElementById('bulk-color-name')?.value, 60);
+                        const colorHex = normalizeHexColor(document.getElementById('bulk-color-hex-text')?.value || document.getElementById('bulk-color-hex')?.value);
+
+                        if (!selectedIds.length) {
+                            log('Selecione ao menos uma peça para adicionar cor.', 'warning');
+                            break;
+                        }
+                        if (!colorName) {
+                            log('Digite o nome da cor.', 'warning');
+                            break;
+                        }
+
+                        let updated = 0;
+                        for (const productId of selectedIds) {
+                            const productRef = doc(db, 'pecas', productId);
+                            const productSnap = await getDoc(productRef);
+                            if (!productSnap.exists()) continue;
+
+                            const data = productSnap.data() || {};
+                            const currentColors = Array.isArray(data.cores) ? data.cores : [];
+                            const alreadyExists = currentColors.some((color) => sanitizePlainText(color?.nome, 60).toLowerCase() === colorName.toLowerCase());
+                            if (alreadyExists) {
+                                log(`Cor já existia em ${data.nome || productId}.`, 'info');
+                                continue;
+                            }
+
+                            await updateDoc(productRef, {
+                                cores: [...currentColors, { nome: colorName, hex: colorHex }],
+                                updatedAt: new Date()
+                            });
+                            updated++;
+                        }
+
+                        await recordOperationLog('adicionar_cor_produtos', { selectedIds, colorName, colorHex, updated });
+                        await carregarProdutosOperacao();
+                        log(`Cor ${colorName} (${colorHex}) adicionada em ${updated} peça(s).`, 'success');
+                        break;
+                    }
+
                     case 'removerDescontosProdutos':
                         log("Buscando produtos com desconto ativo...", "info");
                         const snapDescontos = await getDocs(collection(db, "pecas"));
@@ -356,7 +606,8 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                                 continue;
                             }
 
-                            batchDescontos.update(produtoDoc.ref, { desconto: 0 });
+                            batchDescontos.update(produtoDoc.ref, { desconto: 0, updatedAt: new Date() });
+                            recordPriceHistory(produtoDoc, produto, { desconto: 0 });
                             descontosRemovidos++;
                             operacoesDesconto++;
                             log(`Removendo desconto de ${produto?.nome || produtoDoc.id} (${descontoAtual}%).`, "warning");
@@ -373,6 +624,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                         }
 
                         if (descontosRemovidos > 0) {
+                            await recordOperationLog('remover_descontos_produtos', { total: descontosRemovidos });
                             log(`${descontosRemovidos} produto(s) tiveram o desconto zerado.`, "success");
                         } else {
                             log("Nenhum produto com desconto ativo foi encontrado.", "success");
@@ -399,6 +651,110 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                         
                         log("Backup baixado com sucesso.", "success");
                         break;
+
+                    case 'backupCompleto': {
+                        log('Gerando backup completo...', 'info');
+                        const payload = {
+                            generatedAt: new Date().toISOString(),
+                            generatedBy: getCurrentAdminEmail(),
+                            collections: {}
+                        };
+
+                        for (const colName of OPERATION_COLLECTIONS) {
+                            const snap = await getDocs(collection(db, colName)).catch(() => null);
+                            if (!snap) continue;
+                            payload.collections[colName] = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+                            log(`Backup: ${colName} (${snap.size} docs).`, 'info');
+                        }
+
+                        downloadJson(`backup_completo_lamed_${new Date().toISOString().slice(0, 10)}.json`, payload);
+                        await recordOperationLog('backup_completo', { collections: Object.keys(payload.collections) });
+                        log('Backup completo baixado com sucesso.', 'success');
+                        break;
+                    }
+
+                    case 'baixarArquivos': {
+                        log('Gerando manifesto de arquivos/imagens...', 'info');
+                        const snap = await getDocs(collection(db, 'pecas'));
+                        const files = [];
+
+                        snap.docs.forEach((productDoc) => {
+                            const data = productDoc.data() || {};
+                            const images = Array.isArray(data.imagens) ? data.imagens : [];
+                            images.forEach((url, index) => {
+                                if (url) files.push({ produtoId: productDoc.id, produtoNome: data.nome || productDoc.id, index, url });
+                            });
+                            if (data.imagem) files.push({ produtoId: productDoc.id, produtoNome: data.nome || productDoc.id, index: 'principal', url: data.imagem });
+                        });
+
+                        downloadJson(`arquivos_imagens_lamed_${new Date().toISOString().slice(0, 10)}.json`, { generatedAt: new Date().toISOString(), total: files.length, files });
+                        await recordOperationLog('baixar_manifesto_arquivos', { total: files.length });
+                        log(`${files.length} arquivo(s)/imagem(ns) encontrados no manifesto.`, 'success');
+                        break;
+                    }
+
+                    case 'detectarDuplicados': {
+                        const snap = await getDocs(collection(db, 'pecas'));
+                        const byName = new Map();
+
+                        snap.docs.forEach((productDoc) => {
+                            const data = productDoc.data() || {};
+                            const key = sanitizePlainText(data.nome, 160).toLowerCase();
+                            if (!key) return;
+                            if (!byName.has(key)) byName.set(key, []);
+                            byName.get(key).push({ id: productDoc.id, ...data });
+                        });
+
+                        const duplicates = Array.from(byName.values()).filter((items) => items.length > 1);
+                        renderOperationResults(
+                            duplicates.flatMap((items) => items.map((item) => ({ title: item.nome, description: `Possível duplicado • ID: ${item.id} • Categoria: ${item.categoria || '-'}` }))),
+                            'Nenhum duplicado por nome encontrado.'
+                        );
+                        await recordOperationLog('detectar_duplicados', { grupos: duplicates.length });
+                        log(`${duplicates.length} grupo(s) de duplicados detectado(s).`, duplicates.length ? 'warning' : 'success');
+                        break;
+                    }
+
+                    case 'buscarProdutos': {
+                        const term = sanitizePlainText(document.getElementById('advanced-search-input')?.value, 120).toLowerCase();
+                        if (!operationProductsCache.length) await carregarProdutosOperacao();
+                        const results = operationProductsCache.filter((product) => {
+                            const haystack = [product.nome, product.categoria, product.segmento, product.tags, product.colecaoId, product.status]
+                                .join(' ')
+                                .toLowerCase();
+                            return !term || haystack.includes(term);
+                        });
+                        renderOperationResults(results.map((product) => ({ title: product.nome || product.id, description: `${product.categoria || 'sem categoria'} • ${product.status || 'sem status'} • desconto ${Number(product.desconto || 0)}%` })));
+                        log(`${results.length} produto(s) encontrado(s).`, 'success');
+                        break;
+                    }
+
+                    case 'logsAlteracoes': {
+                        const snap = await getDocs(collection(db, 'operacoes_logs'));
+                        const rows = snap.docs
+                            .map((logDoc) => ({ id: logDoc.id, ...logDoc.data() }))
+                            .sort((a, b) => Number(b.createdAt?.seconds || 0) - Number(a.createdAt?.seconds || 0))
+                            .slice(0, 20)
+                            .map((entry) => ({ title: entry.action || entry.id, description: `${entry.admin || '-'} • ${entry.createdAt?.seconds ? new Date(entry.createdAt.seconds * 1000).toLocaleString('pt-BR') : 'sem data'}` }));
+                        renderOperationResults(rows, 'Nenhum log de alteração encontrado.');
+                        log(`${rows.length} log(s) exibido(s).`, 'success');
+                        break;
+                    }
+
+                    case 'historicoPrecos': {
+                        const snap = await getDocs(collection(db, 'historico_precos'));
+                        const rows = snap.docs
+                            .map((historyDoc) => ({ id: historyDoc.id, ...historyDoc.data() }))
+                            .sort((a, b) => Number(b.createdAt?.seconds || 0) - Number(a.createdAt?.seconds || 0))
+                            .slice(0, 30)
+                            .map((entry) => ({
+                                title: entry.produtoNome || entry.produtoId,
+                                description: `Preço ${entry.precoAnterior} → ${entry.precoNovo} • Desconto ${entry.descontoAnterior}% → ${entry.descontoNovo}%`
+                            }));
+                        renderOperationResults(rows, 'Nenhum histórico de preço encontrado.');
+                        log(`${rows.length} registro(s) de histórico exibido(s).`, 'success');
+                        break;
+                    }
 
                     case 'zerarEstoque':
                         if (!params) { log("ID do produto nÃ£o fornecido.", "error"); return; }
@@ -539,6 +895,17 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                 if (id) window.runScript('zerarEstoque', id);
             }
         };
+
+        document.getElementById('bulk-color-hex')?.addEventListener('input', (event) => {
+            const textInput = document.getElementById('bulk-color-hex-text');
+            if (textInput) textInput.value = event.target.value;
+        });
+
+        document.getElementById('bulk-color-hex-text')?.addEventListener('input', (event) => {
+            const colorInput = document.getElementById('bulk-color-hex');
+            const nextHex = normalizeHexColor(event.target.value);
+            if (colorInput && nextHex === event.target.value) colorInput.value = nextHex;
+        });
 
     </script>
 </body>
