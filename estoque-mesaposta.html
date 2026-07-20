@@ -72,6 +72,34 @@
             <p id="auth-feedback" class="auth-feedback"></p>
         </section>
 
+
+        <section class="stock-operation-panel" id="stock-operation-panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Movimentação por cor</p>
+                    <h2>Adicionar peça ao estoque</h2>
+                </div>
+                <span>Escolha produto + cor</span>
+            </div>
+            <div class="operation-grid">
+                <label><span>Produto</span><select id="movement-product"><option value="">Selecione uma peça</option></select></label>
+                <label><span>Cor</span><select id="movement-color"><option value="">Selecione uma cor</option></select></label>
+                <label><span>Quantidade</span><input id="movement-quantity" type="number" min="1" value="1"></label>
+                <label><span>Destino</span><select id="movement-type"><option value="stock">Entrou no estoque</option><option value="production">Precisa produzir</option></select></label>
+                <button type="button" id="apply-movement-btn" data-save-product class="primary-button small"><i class="fa-solid fa-plus"></i>Aplicar</button>
+            </div>
+            <div class="color-bank-panel">
+                <div>
+                    <strong>Banco de cores</strong>
+                    <p>Cores criadas aqui ficam disponíveis para todas as peças.</p>
+                </div>
+                <input id="bank-color-name" type="text" placeholder="Nome da nova cor">
+                <input id="bank-color-hex" type="color" value="#000000">
+                <button type="button" id="create-bank-color" data-save-product class="secondary-button small">Criar cor</button>
+                <button type="button" id="delete-bank-color" data-save-product class="secondary-button danger-action small">Apagar cor selecionada</button>
+            </div>
+        </section>
+
         <section class="stats-grid" aria-label="Indicadores do estoque">
             <article class="stat-card"><i class="fa-solid fa-box"></i><span>Total de Produtos</span><strong id="stat-total-products">0</strong></article>
             <article class="stat-card"><i class="fa-solid fa-circle-check"></i><span>Produtos em estoque</span><strong id="stat-in-stock">0</strong></article>

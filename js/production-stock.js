@@ -39,6 +39,7 @@ const state = {
     products: [],
     collections: [],
     orders: [],
+    colorBank: [],
     filtered: [],
     selectedCategory: 'all',
     view: localStorage.getItem('lamed_stock_view') || 'grid',
@@ -109,8 +110,9 @@ function colorProduce(color) {
 
 function totalStock(product) {
     const colors = productColors(product);
-    if (colors.length) return colors.reduce((sum, color) => sum + colorStock(color), 0);
-    return toNumber(product.estoque ?? product.quantidade ?? product.stock, 0);
+    const colorTotal = colors.reduce((sum, color) => sum + colorStock(color), 0);
+    const productTotal = toNumber(product.estoque ?? product.quantidade ?? product.stock, 0);
+    return Math.max(colorTotal, productTotal);
 }
 
 function getMinStock(product) {
@@ -192,22 +194,142 @@ async function signInWithGoogle() {
 
 async function loadData() {
     setSyncStatus('online', 'Carregando');
-    const [productsSnap, collectionsSnap, ordersSnap] = await Promise.all([
+    const [productsSnap, collectionsSnap, ordersSnap, colorsSnap] = await Promise.all([
         state.db.collection('pecas').get(),
         state.db.collection('colecoes').get().catch(() => ({ docs: [] })),
-        state.db.collection('pedidos').get().catch(() => ({ docs: [] }))
+        state.db.collection('pedidos').get().catch(() => ({ docs: [] })),
+        state.db.collection('cores_estoque').get().catch(() => ({ docs: [] }))
     ]);
 
     state.collections = collectionsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     state.orders = ordersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    state.colorBank = colorsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     state.products = productsSnap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((product) => String(product.status || 'active').toLowerCase() !== 'inactive')
         .filter(isMesaProduct);
 
+    hydrateColorBankFromProducts();
     hydrateFilters();
+    hydrateMovementControls();
     applyFilters();
     setSyncStatus('online', 'Sincronizado');
+}
+
+function hydrateColorBankFromProducts() {
+    const byName = new Map(state.colorBank.map((color) => [normalize(color.nome || color.name), color]));
+    state.products.flatMap(productColors).forEach((color) => {
+        const key = normalize(color?.nome);
+        if (!key || byName.has(key)) return;
+        byName.set(key, { id: key, nome: color.nome, hex: color.hex || '#000000', fromProduct: true });
+    });
+    state.colorBank = Array.from(byName.values()).sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+}
+
+function allColorsForProduct(product) {
+    const byName = new Map();
+    state.colorBank.forEach((color) => {
+        if (color?.nome) byName.set(normalize(color.nome), { nome: color.nome, hex: color.hex || '#000000' });
+    });
+    productColors(product).forEach((color) => {
+        if (color?.nome) byName.set(normalize(color.nome), { nome: color.nome, hex: color.hex || '#000000', quantidade: colorStock(color), produzir: colorProduce(color) });
+    });
+    return Array.from(byName.values()).sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+}
+
+function hydrateMovementControls() {
+    const productSelect = $('#movement-product');
+    if (productSelect) {
+        productSelect.innerHTML = '<option value="">Selecione uma peça</option>' + state.products
+            .slice()
+            .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
+            .map((product) => `<option value="${escapeHtml(product.id)}">${escapeHtml(product.nome || product.id)}</option>`)
+            .join('');
+    }
+    hydrateMovementColors();
+}
+
+function hydrateMovementColors() {
+    const colorSelect = $('#movement-color');
+    if (!colorSelect) return;
+    const product = state.products.find((item) => item.id === $('#movement-product')?.value);
+    const colors = product ? allColorsForProduct(product) : state.colorBank;
+    colorSelect.innerHTML = '<option value="">Selecione uma cor</option>' + colors.map((color) => `<option value="${escapeHtml(color.nome)}" data-hex="${escapeHtml(color.hex || '#000000')}">${escapeHtml(color.nome)}</option>`).join('');
+}
+
+async function createBankColor() {
+    if (!requireEditorLogin()) return;
+    const nome = $('#bank-color-name')?.value.trim();
+    const hex = $('#bank-color-hex')?.value || '#000000';
+    if (!nome) return setAuthFeedback('Digite o nome da cor para cadastrar.', 'error');
+    const exists = state.colorBank.some((color) => normalize(color.nome) === normalize(nome));
+    if (exists) return setAuthFeedback('Essa cor já existe no banco de cores.', 'error');
+    try {
+        const docRef = await state.db.collection('cores_estoque').add({ nome, hex, createdAt: new Date(), updatedAt: new Date() });
+        state.colorBank.push({ id: docRef.id, nome, hex });
+        hydrateColorBankFromProducts();
+        hydrateFilters();
+        hydrateMovementColors();
+        $('#bank-color-name').value = '';
+        setAuthFeedback(`Cor ${nome} criada no banco de cores.`, 'success');
+    } catch (error) {
+        console.error('[estoque.colors.create]', error);
+        setAuthFeedback(`Não consegui criar a cor: ${error.message}`, 'error');
+    }
+}
+
+async function deleteSelectedBankColor() {
+    if (!requireEditorLogin()) return;
+    const colorName = $('#movement-color')?.value;
+    const color = state.colorBank.find((item) => normalize(item.nome) === normalize(colorName));
+    if (!color || color.fromProduct) return setAuthFeedback('Selecione uma cor cadastrada no banco para apagar.', 'error');
+    if (!confirm(`Apagar a cor "${color.nome}" do banco de cores? Ela não será removida das peças que já usam essa cor.`)) return;
+    try {
+        await state.db.collection('cores_estoque').doc(color.id).delete();
+        state.colorBank = state.colorBank.filter((item) => item.id !== color.id);
+        hydrateMovementColors();
+        setAuthFeedback(`Cor ${color.nome} apagada do banco.`, 'success');
+    } catch (error) {
+        console.error('[estoque.colors.delete]', error);
+        setAuthFeedback(`Não consegui apagar a cor: ${error.message}`, 'error');
+    }
+}
+
+async function applyStockMovement() {
+    if (!requireEditorLogin()) return;
+    const productId = $('#movement-product')?.value;
+    const colorName = $('#movement-color')?.value;
+    const quantity = Math.max(1, toNumber($('#movement-quantity')?.value, 1));
+    const type = $('#movement-type')?.value || 'stock';
+    const product = state.products.find((item) => item.id === productId);
+    if (!product) return setAuthFeedback('Selecione a peça que vai receber estoque.', 'error');
+    if (!colorName) return setAuthFeedback('Selecione a cor da peça.', 'error');
+
+    const selectedOption = $('#movement-color')?.selectedOptions?.[0];
+    const hex = selectedOption?.dataset?.hex || '#000000';
+    const cores = productColors(product).map((color) => ({ ...color }));
+    let target = cores.find((color) => normalize(color.nome) === normalize(colorName));
+    if (!target) {
+        target = { nome: colorName, hex, quantidade: 0, estoque: 0, produzir: 0 };
+        cores.push(target);
+    }
+    if (type === 'production') target.produzir = colorProduce(target) + quantity;
+    else {
+        const nextStock = colorStock(target) + quantity;
+        target.quantidade = nextStock;
+        target.estoque = nextStock;
+    }
+
+    const nextStockTotal = cores.reduce((sum, color) => sum + colorStock(color), 0);
+    const nextProductionTotal = cores.reduce((sum, color) => sum + colorProduce(color), 0);
+    await updateProduct(productId, {
+        cores,
+        estoque: nextStockTotal,
+        produzir: nextProductionTotal,
+        updatedAt: new Date()
+    }, `${type === 'production' ? 'Produção adicionada' : 'Estoque adicionado'}: ${quantity} un. na cor ${colorName}`);
+    hydrateMovementControls();
+    setAuthFeedback(`${quantity} un. adicionada(s) em ${product.nome} / ${colorName}.`, 'success');
 }
 
 function setSyncStatus(type, label) {
@@ -226,7 +348,10 @@ function hydrateFilters() {
     collectionSelect.innerHTML = '<option value="all">Todas</option>' + usedCollections.map((id) => `<option value="${escapeHtml(id)}">${escapeHtml(getCollectionName(id))}</option>`).join('');
 
     const colorSelect = $('#filter-color');
-    const colors = [...new Set(state.products.flatMap((product) => productColors(product).map((color) => color?.nome).filter(Boolean)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const colors = [...new Set([
+        ...state.colorBank.map((color) => color?.nome).filter(Boolean),
+        ...state.products.flatMap((product) => productColors(product).map((color) => color?.nome).filter(Boolean))
+    ])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     colorSelect.innerHTML = '<option value="all">Todas</option>' + colors.map((color) => `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`).join('');
 }
 
@@ -559,6 +684,9 @@ async function updateProduct(productId, payload, description) {
     try {
         await state.db.collection('pecas').doc(productId).update(finalPayload);
         Object.assign(product, finalPayload);
+        hydrateColorBankFromProducts();
+        hydrateFilters();
+        hydrateMovementControls();
         applyFilters();
         openProduct(productId);
         setSyncStatus('online', 'Salvo');
@@ -610,6 +738,7 @@ async function resetAllStockNumbers() {
             }
         }
         if (ops > 0) await batch.commit();
+        hydrateMovementControls();
         applyFilters();
         setSyncStatus('online', 'Zerado');
         alert(`${changed} peça(s) foram zeradas para edição do zero.`);
@@ -694,6 +823,10 @@ function bindEvents() {
     $('#stock-login-form').addEventListener('submit', signInWithEmailPassword);
     $('#stock-google-login').addEventListener('click', signInWithGoogle);
     $('#stock-logout').addEventListener('click', () => state.auth.signOut());
+    $('#movement-product').addEventListener('change', hydrateMovementColors);
+    $('#apply-movement-btn').addEventListener('click', applyStockMovement);
+    $('#create-bank-color').addEventListener('click', createBankColor);
+    $('#delete-bank-color').addEventListener('click', deleteSelectedBankColor);
     $('#reset-stock-btn').addEventListener('click', resetAllStockNumbers);
     $('#export-stock-btn').addEventListener('click', exportStockCsv);
     $('#print-production-btn').addEventListener('click', printProduction);
