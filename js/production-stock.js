@@ -43,7 +43,9 @@ const state = {
     selectedCategory: 'all',
     view: localStorage.getItem('lamed_stock_view') || 'grid',
     deferredPrompt: null,
-    db: null
+    db: null,
+    auth: null,
+    user: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -101,8 +103,8 @@ function colorStock(color) {
     return toNumber(color?.estoque ?? color?.quantidade ?? color?.stock, 0);
 }
 
-function colorProduce(color, product) {
-    return toNumber(color?.produzir ?? color?.producao ?? color?.production, 0) || Math.max(0, getMinStock(product) - colorStock(color));
+function colorProduce(color) {
+    return toNumber(color?.produzir ?? color?.producao ?? color?.production, 0);
 }
 
 function totalStock(product) {
@@ -112,26 +114,80 @@ function totalStock(product) {
 }
 
 function getMinStock(product) {
-    return toNumber(product.estoqueMinimo ?? product.minimo ?? product.minStock, 0) || 5;
+    return toNumber(product.estoqueMinimo ?? product.minimo ?? product.minStock, 0);
 }
 
 function totalProduction(product) {
     const explicit = toNumber(product.produzir ?? product.producao ?? product.production, NaN);
-    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    if (Number.isFinite(explicit)) return Math.max(0, explicit);
     const colors = productColors(product);
-    if (colors.length) return colors.reduce((sum, color) => sum + Math.max(0, colorProduce(color, product)), 0);
-    return Math.max(0, getMinStock(product) - totalStock(product));
+    if (colors.length) return colors.reduce((sum, color) => sum + Math.max(0, colorProduce(color)), 0);
+    return 0;
 }
 
 function statusFor(product) {
     if (totalStock(product) <= 0) return { key: 'out', label: 'Sem estoque', className: 'status-out' };
-    if (totalStock(product) <= getMinStock(product)) return { key: 'low', label: 'Estoque baixo', className: 'status-low' };
+    if (getMinStock(product) > 0 && totalStock(product) <= getMinStock(product)) return { key: 'low', label: 'Estoque baixo', className: 'status-low' };
     if (totalProduction(product) <= 0) return { key: 'done', label: 'Concluído', className: 'status-ok' };
     return { key: 'production', label: 'Em produção', className: 'status-low' };
 }
 
 function imageFor(product) {
     return (Array.isArray(product.imagens) && product.imagens[0]) || product.imagem || 'https://i.ibb.co/mr93jDHT/JM.png';
+}
+
+function isEditorLoggedIn() {
+    return Boolean(state.user);
+}
+
+function requireEditorLogin() {
+    if (isEditorLoggedIn()) return true;
+    setAuthFeedback('Entre com e-mail/senha ou Google antes de salvar no Firebase.', 'error');
+    document.getElementById('stock-login-email')?.focus();
+    return false;
+}
+
+function setAuthFeedback(message, type = 'info') {
+    const feedback = $('#auth-feedback');
+    if (!feedback) return;
+    feedback.textContent = message || '';
+    feedback.style.color = type === 'error' ? 'var(--stock-red)' : type === 'success' ? 'var(--stock-green)' : 'var(--stock-muted)';
+}
+
+function updateAuthUi(user) {
+    const status = $('#auth-status');
+    const logout = $('#stock-logout');
+    if (status) {
+        status.className = `sync-pill ${user ? 'online' : 'offline'}`;
+        status.innerHTML = `<i class="fa-solid ${user ? 'fa-unlock' : 'fa-lock'}"></i>${user ? escapeHtml(user.email || 'Logado') : 'Sem login'}`;
+    }
+    logout?.classList.toggle('hidden', !user);
+    document.body.classList.toggle('edit-locked', !user);
+}
+
+async function signInWithEmailPassword(event) {
+    event.preventDefault();
+    const email = $('#stock-login-email')?.value.trim();
+    const password = $('#stock-login-password')?.value;
+    if (!email || !password) return setAuthFeedback('Informe e-mail e senha.', 'error');
+    try {
+        await state.auth.signInWithEmailAndPassword(email, password);
+        setAuthFeedback('Login realizado. Edição liberada.', 'success');
+    } catch (error) {
+        console.error('[estoque.auth.email]', error);
+        setAuthFeedback(`Não foi possível entrar: ${error.message}`, 'error');
+    }
+}
+
+async function signInWithGoogle() {
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await state.auth.signInWithPopup(provider);
+        setAuthFeedback('Login Google realizado. Edição liberada.', 'success');
+    } catch (error) {
+        console.error('[estoque.auth.google]', error);
+        setAuthFeedback(`Google não entrou aqui: ${error.message}`, 'error');
+    }
 }
 
 async function loadData() {
@@ -232,7 +288,7 @@ function renderStats() {
     const total = state.products.length;
     const inStock = state.products.filter((product) => totalStock(product) > 0).length;
     const out = state.products.filter((product) => totalStock(product) <= 0).length;
-    const low = state.products.filter((product) => totalStock(product) > 0 && totalStock(product) <= getMinStock(product)).length;
+    const low = state.products.filter((product) => getMinStock(product) > 0 && totalStock(product) > 0 && totalStock(product) <= getMinStock(product)).length;
     const production = state.products.reduce((sum, product) => sum + totalProduction(product), 0);
     const materials = aggregateMaterials(state.products).reduce((sum, item) => sum + item.qty, 0);
     const colors = state.products.reduce((sum, product) => sum + productColors(product).length, 0);
@@ -342,14 +398,14 @@ function renderAlerts() {
     const alerts = [];
     state.products.forEach((product) => {
         if (totalStock(product) <= 0) alerts.push({ type: '🔴', text: `${product.nome} sem estoque` });
-        else if (totalStock(product) <= getMinStock(product)) alerts.push({ type: '🟡', text: `${product.nome} abaixo do mínimo` });
+        else if (getMinStock(product) > 0 && totalStock(product) <= getMinStock(product)) alerts.push({ type: '🟡', text: `${product.nome} abaixo do mínimo` });
         materialsForProduct(product).filter((item) => item.missing > 0).forEach((item) => alerts.push({ type: '🔴', text: `${item.item} insuficiente para ${product.nome}` }));
     });
     $('#alerts-list').innerHTML = alerts.length ? alerts.slice(0, 18).map((alert) => `<div class="alert-row"><span>${alert.type} ${escapeHtml(alert.text)}</span></div>`).join('') : '<p class="muted">Nenhum alerta crítico agora.</p>';
 }
 
 function renderReports() {
-    const stopped = state.products.filter((product) => totalStock(product) > getMinStock(product) && totalProduction(product) === 0).length;
+    const stopped = state.products.filter((product) => getMinStock(product) > 0 && totalStock(product) > getMinStock(product) && totalProduction(product) === 0).length;
     const out = state.products.filter((product) => totalStock(product) <= 0).length;
     const avgProduction = state.products.length ? state.products.reduce((sum, product) => sum + totalProduction(product), 0) / state.products.length : 0;
     const rows = [
@@ -417,17 +473,41 @@ function openProduct(productId) {
             <h2>${escapeHtml(product.nome)}</h2>
             <p>${escapeHtml(product.descricao || 'Sem descrição cadastrada.')}</p>
             <div class="detail-section"><h3>Estoque</h3><div class="detail-form-grid">
-                <label>Estoque atual<input class="detail-input" id="detail-stock" type="number" value="${totalStock(product)}"></label>
-                <label>Produzir<input class="detail-input" id="detail-production" type="number" value="${totalProduction(product)}"></label>
-                <label>Estoque mínimo<input class="detail-input" id="detail-min" type="number" value="${getMinStock(product)}"></label>
+                <label>Estoque atual<input class="detail-input" id="detail-stock" type="number" min="0" value="${totalStock(product)}"></label>
+                <label>Produzir<input class="detail-input" id="detail-production" type="number" min="0" value="${totalProduction(product)}"></label>
+                <label>Estoque mínimo<input class="detail-input" id="detail-min" type="number" min="0" value="${getMinStock(product)}"></label>
             </div><button type="button" class="primary-button small" data-save-product="${escapeHtml(product.id)}">Salvar estoque</button></div>
-            <div class="detail-section"><h3>Cores</h3>${colors.length ? colors.map((color, index) => `<div class="color-stock-row"><strong>${colorChipHtml(color)}</strong><input class="detail-input" data-color-stock="${index}" type="number" value="${colorStock(color)}"><input class="detail-input" data-color-production="${index}" type="number" value="${colorProduce(color, product)}"></div>`).join('') : '<p class="muted">Sem cores cadastradas.</p>'}<button type="button" class="secondary-button small" data-save-colors="${escapeHtml(product.id)}">Salvar cores</button></div>
-            <div class="detail-section"><h3>Ficha técnica</h3>${materialsForProduct(product).map((item) => `<div class="material-row"><span>${escapeHtml(item.item)}</span><strong>${formatQty(item.qty)} ${escapeHtml(item.unit)}</strong></div>`).join('') || '<p class="muted">Sem produção pendente.</p>'}</div>
+            <div class="detail-section"><h3>Cores</h3><div class="inline-editor" id="color-editor">${colorEditorRows(colors)}</div><button type="button" class="secondary-button small" data-add-color>Adicionar cor</button> <button type="button" class="primary-button small" data-save-colors="${escapeHtml(product.id)}">Salvar cores</button></div>
+            <div class="detail-section"><h3>Ficha técnica</h3><div class="inline-editor" id="tech-editor">${techEditorRows(product)}</div><button type="button" class="secondary-button small" data-add-tech>Adicionar linha</button> <button type="button" class="primary-button small" data-save-tech="${escapeHtml(product.id)}">Salvar ficha técnica</button></div>
             <div class="detail-section"><h3>Histórico</h3>${historyHtml(product)}</div>
         </div>
     </div>`;
     const dialog = $('#product-dialog');
     if (!dialog.open) dialog.showModal();
+}
+
+function colorEditorRows(colors = []) {
+    const rows = colors.length ? colors : [{ nome: '', hex: '#000000', quantidade: 0, produzir: 0 }];
+    return rows.map((color, index) => `<div class="color-editor-row" data-color-row>
+        <input data-color-name type="text" placeholder="Nome da cor" value="${escapeHtml(color?.nome || '')}">
+        <input data-color-hex type="color" value="${escapeHtml(color?.hex || '#000000')}">
+        <input data-color-stock type="number" min="0" placeholder="Estoque" value="${colorStock(color)}">
+        <input data-color-production type="number" min="0" placeholder="Produzir" value="${colorProduce(color)}">
+        <button type="button" class="icon-button" data-remove-row aria-label="Excluir cor"><i class="fa-solid fa-trash"></i></button>
+    </div>`).join('');
+}
+
+function techEditorRows(product) {
+    const sheet = Array.isArray(product.fichaTecnica) && product.fichaTecnica.length ? product.fichaTecnica : [];
+    const rows = sheet.length ? sheet : [{ tipo: 'tecido', nome: '', numeracaoLinha: '', metragem: 0, unidade: 'm', estoque: 0 }];
+    return rows.map((item) => `<div class="tech-editor-row" data-tech-row>
+        <select data-tech-type><option value="tecido" ${item.tipo === 'tecido' ? 'selected' : ''}>Tecido</option><option value="linha" ${item.tipo === 'linha' ? 'selected' : ''}>Linha</option><option value="aviamento" ${item.tipo === 'aviamento' ? 'selected' : ''}>Aviamento</option><option value="embalagem" ${item.tipo === 'embalagem' ? 'selected' : ''}>Embalagem</option></select>
+        <input data-tech-name type="text" placeholder="Nome do tecido/material" value="${escapeHtml(item.nome || item.item || '')}">
+        <input data-tech-line type="text" placeholder="Numeração da linha" value="${escapeHtml(item.numeracaoLinha || item.numeroLinha || '')}">
+        <input data-tech-meter type="number" step="0.01" min="0" placeholder="Qtd por peça" value="${toNumber(item.metragem ?? item.qty ?? item.quantidade, 0)}">
+        <input data-tech-stock type="number" step="0.01" min="0" placeholder="Metragem atual" value="${toNumber(item.estoque ?? item.disponivel, 0)}">
+        <button type="button" class="icon-button" data-remove-row aria-label="Excluir linha"><i class="fa-solid fa-trash"></i></button>
+    </div>`).join('');
 }
 
 function historyHtml(product) {
@@ -445,17 +525,33 @@ async function saveProductStock(productId) {
 }
 
 async function saveProductColors(productId) {
-    const product = state.products.find((item) => item.id === productId);
-    if (!product) return;
-    const cores = productColors(product).map((color, index) => ({
-        ...color,
-        quantidade: toNumber(document.querySelector(`[data-color-stock="${index}"]`)?.value, colorStock(color)),
-        produzir: toNumber(document.querySelector(`[data-color-production="${index}"]`)?.value, colorProduce(color, product))
-    }));
-    await updateProduct(productId, { cores, updatedAt: new Date() }, 'Cores/estoque por cor atualizados');
+    const cores = Array.from(document.querySelectorAll('[data-color-row]')).map((row) => ({
+        nome: row.querySelector('[data-color-name]')?.value.trim() || '',
+        hex: row.querySelector('[data-color-hex]')?.value || '#000000',
+        quantidade: toNumber(row.querySelector('[data-color-stock]')?.value, 0),
+        produzir: toNumber(row.querySelector('[data-color-production]')?.value, 0)
+    })).filter((color) => color.nome);
+    await updateProduct(productId, { cores, updatedAt: new Date() }, 'Cores editadas');
+}
+
+async function saveTechSheet(productId) {
+    const fichaTecnica = Array.from(document.querySelectorAll('[data-tech-row]')).map((row) => ({
+        tipo: row.querySelector('[data-tech-type]')?.value || 'tecido',
+        nome: row.querySelector('[data-tech-name]')?.value.trim() || '',
+        item: row.querySelector('[data-tech-name]')?.value.trim() || '',
+        numeracaoLinha: row.querySelector('[data-tech-line]')?.value.trim() || '',
+        metragem: toNumber(row.querySelector('[data-tech-meter]')?.value, 0),
+        qty: toNumber(row.querySelector('[data-tech-meter]')?.value, 0),
+        unidade: 'm',
+        unit: 'm',
+        estoque: toNumber(row.querySelector('[data-tech-stock]')?.value, 0),
+        disponivel: toNumber(row.querySelector('[data-tech-stock]')?.value, 0)
+    })).filter((item) => item.nome);
+    await updateProduct(productId, { fichaTecnica, updatedAt: new Date() }, 'Ficha técnica editada');
 }
 
 async function updateProduct(productId, payload, description) {
+    if (!requireEditorLogin()) return;
     const product = state.products.find((item) => item.id === productId);
     const history = Array.isArray(product?.historicoEstoque) ? product.historicoEstoque.slice(-80) : [];
     history.push({ data: new Date().toLocaleDateString('pt-BR'), descricao: description, createdAt: new Date().toISOString() });
@@ -488,6 +584,40 @@ async function flushOfflineQueue() {
         catch { pending.push(item); }
     }
     localStorage.setItem('lamed_stock_offline_queue', JSON.stringify(pending));
+}
+
+async function resetAllStockNumbers() {
+    if (!requireEditorLogin()) return;
+    if (!confirm('Zerar estoque, produzir e estoque mínimo de TODAS as peças de mesa posta?')) return;
+    setSyncStatus('online', 'Zerando');
+    try {
+        const batchLimit = 400;
+        let batch = state.db.batch();
+        let ops = 0;
+        let changed = 0;
+        for (const product of state.products) {
+            const ref = state.db.collection('pecas').doc(product.id);
+            const cores = productColors(product).map((color) => ({ ...color, quantidade: 0, estoque: 0, produzir: 0 }));
+            const payload = { estoque: 0, produzir: 0, estoqueMinimo: 0, cores, updatedAt: new Date() };
+            batch.update(ref, payload);
+            Object.assign(product, payload);
+            changed++;
+            ops++;
+            if (ops >= batchLimit) {
+                await batch.commit();
+                batch = state.db.batch();
+                ops = 0;
+            }
+        }
+        if (ops > 0) await batch.commit();
+        applyFilters();
+        setSyncStatus('online', 'Zerado');
+        alert(`${changed} peça(s) foram zeradas para edição do zero.`);
+    } catch (error) {
+        console.error('[estoque.reset]', error);
+        setSyncStatus('offline', 'Erro ao zerar');
+        setAuthFeedback(`Não consegui zerar no Firebase: ${error.message}`, 'error');
+    }
 }
 
 function exportStockCsv() {
@@ -552,7 +682,19 @@ function bindEvents() {
         if (saveProduct) saveProductStock(saveProduct.dataset.saveProduct);
         const saveColors = event.target.closest('[data-save-colors]');
         if (saveColors) saveProductColors(saveColors.dataset.saveColors);
+        const saveTech = event.target.closest('[data-save-tech]');
+        if (saveTech) saveTechSheet(saveTech.dataset.saveTech);
+        const addColor = event.target.closest('[data-add-color]');
+        if (addColor) document.getElementById('color-editor')?.insertAdjacentHTML('beforeend', colorEditorRows([{ nome: '', hex: '#000000', quantidade: 0, produzir: 0 }]));
+        const addTech = event.target.closest('[data-add-tech]');
+        if (addTech) document.getElementById('tech-editor')?.insertAdjacentHTML('beforeend', techEditorRows({ fichaTecnica: [{ tipo: 'tecido', nome: '', numeracaoLinha: '', metragem: 0, estoque: 0 }] }));
+        const removeRow = event.target.closest('[data-remove-row]');
+        if (removeRow) removeRow.closest('[data-color-row], [data-tech-row]')?.remove();
     });
+    $('#stock-login-form').addEventListener('submit', signInWithEmailPassword);
+    $('#stock-google-login').addEventListener('click', signInWithGoogle);
+    $('#stock-logout').addEventListener('click', () => state.auth.signOut());
+    $('#reset-stock-btn').addEventListener('click', resetAllStockNumbers);
     $('#export-stock-btn').addEventListener('click', exportStockCsv);
     $('#print-production-btn').addEventListener('click', printProduction);
     $('#print-labels-btn').addEventListener('click', printLabels);
@@ -575,6 +717,13 @@ function init() {
     if (!window.firebase?.apps?.length) firebase.initializeApp(firebaseConfig);
     else firebase.app();
     state.db = firebase.firestore();
+    state.auth = firebase.auth();
+    state.auth.onAuthStateChanged((user) => {
+        state.user = user;
+        updateAuthUi(user);
+        if (user) setAuthFeedback(`Logado como ${user.email || user.uid}.`, 'success');
+    });
+    updateAuthUi(null);
     bindEvents();
     loadData().then(() => {
         flushOfflineQueue();

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="css/production-stock.css">
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script defer src="js/production-stock.js"></script>
 </head>
@@ -31,6 +32,7 @@
         </nav>
         <div class="stock-topbar__actions">
             <span id="sync-status" class="sync-pill"><i class="fa-solid fa-cloud"></i>Conectando</span>
+            <span id="auth-status" class="sync-pill offline"><i class="fa-solid fa-lock"></i>Sem login</span>
             <button type="button" id="install-pwa-btn" class="ghost-button hidden"><i class="fa-solid fa-mobile-screen"></i>Instalar</button>
         </div>
     </header>
@@ -51,6 +53,23 @@
                 <strong id="hero-production-total">0 peças</strong>
                 <small>pendentes para produção</small>
             </div>
+        </section>
+
+
+        <section class="auth-panel" id="auth-panel">
+            <div>
+                <p class="eyebrow">Acesso de edição</p>
+                <h2>Entrar para editar o Firebase</h2>
+                <p>O estoque pode ser consultado aberto, mas salvar alterações, zerar números, editar cores e ficha técnica exige login.</p>
+            </div>
+            <form id="stock-login-form" class="auth-form">
+                <input id="stock-login-email" type="email" placeholder="E-mail" autocomplete="email" required>
+                <input id="stock-login-password" type="password" placeholder="Senha" autocomplete="current-password" required>
+                <button type="submit" class="primary-button small"><i class="fa-solid fa-right-to-bracket"></i>Entrar</button>
+                <button type="button" id="stock-google-login" class="secondary-button small"><i class="fa-brands fa-google"></i>Google</button>
+                <button type="button" id="stock-logout" class="ghost-button small hidden"><i class="fa-solid fa-arrow-right-from-bracket"></i>Sair</button>
+            </form>
+            <p id="auth-feedback" class="auth-feedback"></p>
         </section>
 
         <section class="stats-grid" aria-label="Indicadores do estoque">
@@ -108,6 +127,7 @@
             <div class="toolbar-row">
                 <span id="results-count">0 peças encontradas</span>
                 <div>
+                    <button type="button" id="reset-stock-btn" data-reset-stock class="secondary-button danger-action small"><i class="fa-solid fa-eraser"></i>Zerar números</button>
                     <button type="button" id="export-stock-btn" class="secondary-button small"><i class="fa-solid fa-file-excel"></i>Exportar Estoque</button>
                     <button type="button" id="print-labels-btn" class="secondary-button small"><i class="fa-solid fa-qrcode"></i>Etiquetas</button>
                 </div>
