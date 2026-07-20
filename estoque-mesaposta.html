@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Produção e Estoque | Laméd Mesa Posta</title>
+    <meta name="description" content="Sistema interno aberto da Laméd para controle de produção, estoque, cores, matéria-prima e relatórios de mesa posta.">
+    <meta name="theme-color" content="#FDFBF6">
+    <link rel="icon" type="image/png" href="https://i.ibb.co/mr93jDHT/JM.png">
+    <link rel="apple-touch-icon" href="https://i.ibb.co/mr93jDHT/JM.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="css/production-stock.css">
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script defer src="js/production-stock.js"></script>
+</head>
+<body>
+    <header class="stock-topbar">
+        <a href="index.html" class="stock-brand" aria-label="Voltar ao site Laméd">
+            <span class="stock-brand__script">Laméd</span>
+            <span class="stock-brand__mark">vs</span>
+        </a>
+        <nav class="stock-nav" aria-label="Atalhos do sistema">
+            <a href="#dashboard">Dashboard</a>
+            <a href="#producao">Produção</a>
+            <a href="#alertas">Alertas</a>
+            <a href="#relatorios">Relatórios</a>
+        </nav>
+        <div class="stock-topbar__actions">
+            <span id="sync-status" class="sync-pill"><i class="fa-solid fa-cloud"></i>Conectando</span>
+            <button type="button" id="install-pwa-btn" class="ghost-button hidden"><i class="fa-solid fa-mobile-screen"></i>Instalar</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="dashboard" class="stock-hero">
+            <div>
+                <p class="eyebrow">Sistema de Produção e Estoque</p>
+                <h1>Controle de Produção e Estoque</h1>
+                <p class="hero-copy">Uma central aberta para acompanhar estoque de mesa posta, produção do ateliê, cores, matéria-prima, alertas e impressão de ordens.</p>
+                <div class="hero-actions">
+                    <a href="#catalogo" class="primary-button"><i class="fa-solid fa-boxes-stacked"></i>Ver estoque</a>
+                    <a href="#producao" class="secondary-button"><i class="fa-solid fa-scissors"></i>Produzir hoje</a>
+                </div>
+            </div>
+            <div class="hero-panel">
+                <span>Resumo rápido</span>
+                <strong id="hero-production-total">0 peças</strong>
+                <small>pendentes para produção</small>
+            </div>
+        </section>
+
+        <section class="stats-grid" aria-label="Indicadores do estoque">
+            <article class="stat-card"><i class="fa-solid fa-box"></i><span>Total de Produtos</span><strong id="stat-total-products">0</strong></article>
+            <article class="stat-card"><i class="fa-solid fa-circle-check"></i><span>Produtos em estoque</span><strong id="stat-in-stock">0</strong></article>
+            <article class="stat-card danger"><i class="fa-solid fa-circle-xmark"></i><span>Produtos sem estoque</span><strong id="stat-out-stock">0</strong></article>
+            <article class="stat-card warning"><i class="fa-solid fa-triangle-exclamation"></i><span>Estoque baixo</span><strong id="stat-low-stock">0</strong></article>
+            <article class="stat-card"><i class="fa-solid fa-scissors"></i><span>Produzir hoje</span><strong id="stat-produce-today">0</strong></article>
+            <article class="stat-card"><i class="fa-solid fa-ruler"></i><span>Matéria-prima necessária</span><strong id="stat-materials">0</strong></article>
+            <article class="stat-card"><i class="fa-solid fa-palette"></i><span>Total de cores</span><strong id="stat-colors">0</strong></article>
+            <article class="stat-card"><i class="fa-solid fa-chart-line"></i><span>Produção da semana</span><strong id="stat-week-production">0</strong></article>
+        </section>
+
+        <section class="charts-grid">
+            <article class="panel-card">
+                <div class="panel-heading"><h2>Estoque por categoria</h2><span>Distribuição</span></div>
+                <div id="category-chart" class="bar-chart"></div>
+            </article>
+            <article class="panel-card">
+                <div class="panel-heading"><h2>Produção da semana</h2><span>Últimos 7 dias</span></div>
+                <div id="week-chart" class="bar-chart"></div>
+            </article>
+            <article class="panel-card">
+                <div class="panel-heading"><h2>Mais produzidos</h2><span>Ranking</span></div>
+                <div id="most-produced-list" class="mini-list"></div>
+            </article>
+            <article class="panel-card">
+                <div class="panel-heading"><h2>Mais vendidos</h2><span>Pedidos</span></div>
+                <div id="most-sold-list" class="mini-list"></div>
+            </article>
+        </section>
+
+        <section id="catalogo" class="workspace">
+            <div class="workspace-head">
+                <div>
+                    <p class="eyebrow">Catálogo operacional</p>
+                    <h2>Peças de mesa posta</h2>
+                </div>
+                <div class="view-toggle" role="group" aria-label="Alternar visualização">
+                    <button type="button" data-view="grid" class="active"><i class="fa-solid fa-grip"></i>Grade</button>
+                    <button type="button" data-view="table"><i class="fa-solid fa-table-list"></i>Tabela</button>
+                </div>
+            </div>
+
+            <div class="category-scroll" id="category-tabs" aria-label="Categorias de mesa posta"></div>
+
+            <div class="filters-panel">
+                <label><span>Pesquisa instantânea</span><input id="stock-search" type="search" placeholder="americano, verde, linho, hanukkah, LA001..."></label>
+                <label><span>Coleção</span><select id="filter-collection"><option value="all">Todas</option></select></label>
+                <label><span>Cor</span><select id="filter-color"><option value="all">Todas</option></select></label>
+                <label><span>Status</span><select id="filter-status"><option value="all">Todos</option><option value="low">Estoque baixo</option><option value="out">Sem estoque</option><option value="production">Em produção</option><option value="done">Produção concluída</option><option value="missing">Matéria-prima faltando</option></select></label>
+                <label><span>Ordenar por</span><select id="sort-products"><option value="updated">Data de atualização</option><option value="name">Nome</option><option value="code">Código</option><option value="stock">Estoque</option><option value="production">Produção</option><option value="category">Categoria</option><option value="collection">Coleção</option><option value="color">Cor</option></select></label>
+            </div>
+
+            <div class="toolbar-row">
+                <span id="results-count">0 peças encontradas</span>
+                <div>
+                    <button type="button" id="export-stock-btn" class="secondary-button small"><i class="fa-solid fa-file-excel"></i>Exportar Estoque</button>
+                    <button type="button" id="print-labels-btn" class="secondary-button small"><i class="fa-solid fa-qrcode"></i>Etiquetas</button>
+                </div>
+            </div>
+
+            <div id="products-grid" class="products-grid"></div>
+            <div class="table-wrap hidden" id="products-table-wrap">
+                <table class="stock-table">
+                    <thead><tr><th>Código</th><th>Produto</th><th>Estoque</th><th>Produzir</th><th>Coleção</th><th>Categoria</th><th>Status</th></tr></thead>
+                    <tbody id="products-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="producao" class="two-column">
+            <article class="panel-card">
+                <div class="panel-heading"><h2>Lista de Produção</h2><span>Produzir hoje</span></div>
+                <div id="production-list" class="production-list"></div>
+                <button type="button" id="print-production-btn" class="primary-button full"><i class="fa-solid fa-print"></i>Imprimir Ordem de Produção</button>
+            </article>
+            <article class="panel-card">
+                <div class="panel-heading"><h2>Matéria-prima</h2><span>Necessidade calculada</span></div>
+                <div id="materials-list" class="materials-list"></div>
+            </article>
+        </section>
+
+        <section id="alertas" class="two-column">
+            <article class="panel-card">
+                <div class="panel-heading"><h2>Alertas</h2><span>Prioridade</span></div>
+                <div id="alerts-list" class="alerts-list"></div>
+            </article>
+            <article id="relatorios" class="panel-card">
+                <div class="panel-heading"><h2>Relatórios</h2><span>Resumo operacional</span></div>
+                <div id="reports-list" class="reports-list"></div>
+            </article>
+        </section>
+    </main>
+
+    <dialog id="product-dialog" class="product-dialog">
+        <form method="dialog" class="dialog-shell">
+            <button class="dialog-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            <div id="product-detail-content"></div>
+        </form>
+    </dialog>
+
+    <template id="print-template">
+        <section class="print-sheet">
+            <h1>Ordem de Produção</h1>
+            <p id="print-date"></p>
+            <div id="print-items"></div>
+        </section>
+    </template>
+</body>
+</html>
