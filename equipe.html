@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equipe e acessos | Laméd</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team">
+  <link rel="stylesheet" href="css/admin-team.css?v=20260818-team">
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="js/admin-native-shell.js?v=20260818-team"></script>
+  <script defer src="js/admin-team.js?v=20260818-team"></script>
+</head>
+<body class="team-auth-pending">
+  <main class="team-page">
+    <header class="team-hero">
+      <div>
+        <p class="eyebrow">Segurança da equipe</p>
+        <h1>Equipe e acessos</h1>
+        <p>Crie acessos individuais para a produção sem compartilhar sua senha administrativa.</p>
+      </div>
+      <div class="team-count"><strong id="team-total">0</strong><span>pessoas</span></div>
+    </header>
+
+    <section class="team-card create-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">Nova conta</p><h2>Adicionar uma pessoa</h2></div>
+        <span>A senha fica protegida no Firebase</span>
+      </div>
+      <form id="team-create-form" class="team-form">
+        <label><span>Nome</span><input id="team-name" required maxlength="100" placeholder="Ex.: Maria"></label>
+        <label><span>Usuário para entrar</span><input id="team-username" required maxlength="30" autocomplete="off" placeholder="Ex.: maria"></label>
+        <label><span>Senha temporária</span><div class="password-field"><input id="team-password" required minlength="8" type="password" autocomplete="new-password" placeholder="Mínimo de 8 caracteres"><button type="button" data-toggle-password="team-password" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></label>
+        <label><span>Permissão</span><select id="team-role"><option value="production">Somente produção</option><option value="admin">Administrador completo</option></select></label>
+        <button class="primary-action" type="submit"><i class="fa-solid fa-user-plus"></i> Criar acesso</button>
+      </form>
+      <p id="team-feedback" class="team-feedback" role="status"></p>
+    </section>
+
+    <section class="team-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">Contas cadastradas</p><h2>Quem pode entrar</h2></div>
+        <button id="team-refresh" class="secondary-action" type="button"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+      </div>
+      <div id="team-list" class="team-list"><p class="empty-state">Carregando equipe…</p></div>
+    </section>
+  </main>
+
+  <dialog id="password-dialog" class="password-dialog">
+    <form id="password-form" method="dialog">
+      <button type="button" id="password-close" class="dialog-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+      <p class="eyebrow">Redefinir senha</p>
+      <h2>Nova senha temporária</h2>
+      <p id="password-person"></p>
+      <label><span>Nova senha</span><div class="password-field"><input id="new-team-password" required minlength="8" type="password" autocomplete="new-password"><button type="button" data-toggle-password="new-team-password" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></label>
+      <button class="primary-action" type="submit">Salvar nova senha</button>
+    </form>
+  </dialog>
+</body>
+</html>

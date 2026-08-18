@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar na produção | Laméd</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="css/login-production.css?v=20260818-team">
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="js/login-production.js?v=20260818-team"></script>
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-card">
+      <div class="brand"><strong>Laméd</strong><span>Produção</span></div>
+      <div class="login-copy"><p>ACESSO DA EQUIPE</p><h1>Entrar na produção</h1><span>Use o usuário e a senha entregues pela administração.</span></div>
+      <form id="production-login-form">
+        <label><span>Usuário</span><div class="field"><i class="fa-regular fa-user"></i><input id="production-username" required autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Ex.: maria"></div></label>
+        <label><span>Senha</span><div class="field"><i class="fa-solid fa-lock"></i><input id="production-password" required type="password" autocomplete="current-password" placeholder="Sua senha"><button id="production-password-toggle" type="button" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></label>
+        <button id="production-login-button" class="login-button" type="submit">Entrar</button>
+        <p id="production-login-feedback" role="alert"></p>
+      </form>
+      <div class="help-box"><i class="fa-solid fa-circle-info"></i><span>Esqueceu a senha? Peça para a administradora criar uma nova senha temporária.</span></div>
+      <a href="login-admin.html" class="admin-link">Entrar como administradora principal</a>
+    </section>
+  </main>
+</body>
+</html>

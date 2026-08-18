@@ -49,6 +49,7 @@ const state = {
     db: null,
     auth: null,
     user: null,
+    productionOnly: false,
     loaded: false
 };
 
@@ -150,7 +151,7 @@ async function isAuthorizedAdmin(user) {
     if (ADMIN_UIDS.includes(user.uid)) return true;
     try {
         const token = await user.getIdTokenResult();
-        return token?.claims?.admin === true;
+        return token?.claims?.admin === true || token?.claims?.production === true;
     } catch (error) {
         console.error('[estoque.auth.claims]', error);
         return false;
@@ -697,7 +698,8 @@ async function updateProduct(productId, payload, description) {
     history.push({ data: new Date().toLocaleDateString('pt-BR'), descricao: description, createdAt: new Date().toISOString() });
     const finalPayload = { ...payload, historicoEstoque: history };
     try {
-        await state.db.collection('pecas').doc(productId).update(finalPayload);
+        if (state.productionOnly) await updateProductThroughApi(productId, payload, description);
+        else await state.db.collection('pecas').doc(productId).update(finalPayload);
         Object.assign(product, finalPayload);
         hydrateColorBankFromProducts();
         hydrateFilters();
@@ -706,16 +708,27 @@ async function updateProduct(productId, payload, description) {
         openProduct(productId);
         setSyncStatus('online', 'Salvo');
     } catch (error) {
-        queueOfflineChange(productId, finalPayload);
+        queueOfflineChange(productId, state.productionOnly ? payload : finalPayload, description);
         setSyncStatus('offline', 'Salvo offline');
         alert(`Não consegui gravar no Firestore agora. Salvei uma fila local para sincronizar depois. Erro: ${error.message}`);
     }
 }
 
-function queueOfflineChange(productId, payload) {
+function queueOfflineChange(productId, payload, description = 'Alteração sincronizada') {
     const queue = JSON.parse(localStorage.getItem('lamed_stock_offline_queue') || '[]');
-    queue.push({ productId, payload, createdAt: new Date().toISOString() });
+    queue.push({ productId, payload, description, productionApi: state.productionOnly, createdAt: new Date().toISOString() });
     localStorage.setItem('lamed_stock_offline_queue', JSON.stringify(queue));
+}
+
+async function updateProductThroughApi(productId, payload, description) {
+    const token = await state.user.getIdToken();
+    const response = await fetch('/api/production/stock/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId, payload, description })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.error || 'Não foi possível salvar a movimentação.');
 }
 
 async function flushOfflineQueue() {
@@ -723,7 +736,10 @@ async function flushOfflineQueue() {
     if (!queue.length || !navigator.onLine) return;
     const pending = [];
     for (const item of queue) {
-        try { await state.db.collection('pecas').doc(item.productId).update(item.payload); }
+        try {
+            if (item.productionApi || state.productionOnly) await updateProductThroughApi(item.productId, item.payload, item.description || 'Alteração sincronizada');
+            else await state.db.collection('pecas').doc(item.productId).update(item.payload);
+        }
         catch { pending.push(item); }
     }
     localStorage.setItem('lamed_stock_offline_queue', JSON.stringify(pending));
@@ -882,14 +898,23 @@ function init() {
             state.user = null;
             updateAuthUi(null);
             if (user) await state.auth.signOut().catch(() => {});
-            window.location.replace('login-admin.html');
+            const next = `${location.pathname.split('/').pop() || 'estoque-mesaposta.html'}${location.search || ''}`;
+            window.location.replace(`login-producao.html?next=${encodeURIComponent(next)}`);
             return;
         }
 
+        const token = await user.getIdTokenResult().catch(() => null);
+        const isProductionOnly = token?.claims?.production === true && token?.claims?.admin !== true && !ADMIN_UIDS.includes(user.uid);
         state.user = user;
+        state.productionOnly = isProductionOnly;
         updateAuthUi(user);
+        document.body.classList.toggle('production-role', isProductionOnly);
+        if (isProductionOnly) {
+            const home = document.querySelector('.admin-native-home');
+            if (home) home.href = 'estoque-mesaposta.html';
+        }
         document.body.classList.remove('admin-auth-pending');
-        setAuthFeedback(`Acesso administrativo confirmado para ${user.email || user.uid}.`, 'success');
+        setAuthFeedback(`Acesso à produção confirmado para ${user.displayName || user.email || user.uid}.`, 'success');
         if (state.loaded) return;
         state.loaded = true;
 

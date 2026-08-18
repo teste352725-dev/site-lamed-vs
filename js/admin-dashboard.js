@@ -20,6 +20,7 @@ const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 const WORKSPACE_VIEWS = {
     products: "produtos.html?embedded=1",
     stock: "estoque-mesaposta.html",
+    team: "equipe.html",
     orders: "pedidos.html?embedded=1",
     collections: "colecoes.html?embedded=1",
     gallery: "galeria.html?embedded=1",

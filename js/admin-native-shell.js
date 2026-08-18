@@ -7,6 +7,7 @@
         { id: "overview", href: "dashboard.html", label: "Visão geral", icon: "fa-chart-pie" },
         { id: "products", href: "produtos.html", label: "Produtos", icon: "fa-box-open" },
         { id: "stock", href: "estoque-mesaposta.html", label: "Estoque e produção", icon: "fa-boxes-stacked" },
+        { id: "team", href: "equipe.html", label: "Equipe e acessos", icon: "fa-users-gear" },
         { id: "orders", href: "pedidos.html", label: "Pedidos", icon: "fa-cart-shopping" },
         { id: "collections", href: "colecoes.html", label: "Coleções", icon: "fa-layer-group" },
         { id: "gallery", href: "galeria.html", label: "Galeria", icon: "fa-images" },
@@ -25,7 +26,7 @@
         Array.from(document.body.childNodes).forEach((node) => content.appendChild(node));
 
         const navHtml = pages.map((page) => `
-            <a href="${page.href}" class="admin-native-link${page.id === currentPage.id ? " is-active" : ""}"${page.id === currentPage.id ? ' aria-current="page"' : ""}>
+            <a href="${page.href}" data-admin-page-id="${page.id}" class="admin-native-link${page.id === currentPage.id ? " is-active" : ""}"${page.id === currentPage.id ? ' aria-current="page"' : ""}>
                 <i class="fa-solid ${page.icon}" aria-hidden="true"></i>
                 <span>${page.label}</span>
             </a>
@@ -67,10 +68,11 @@
         overlay.addEventListener("click", closeMenu);
         sidebar.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMenu));
         sidebar.querySelector("[data-admin-native-logout]")?.addEventListener("click", async () => {
+            const loginPage = document.body.classList.contains("production-role") ? "login-producao.html" : "login-admin.html";
             try {
                 if (window.firebase?.auth) await window.firebase.auth().signOut();
             } catch (error) {}
-            window.location.href = "login-admin.html";
+            window.location.href = loginPage;
         });
     };
 

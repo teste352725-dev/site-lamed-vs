@@ -119,6 +119,10 @@ body.admin-native-page[data-admin-page="stock"] .stock-topbar {
     display: none !important;
 }
 
+body.production-role .admin-native-link:not([data-admin-page-id="stock"]):not(.admin-native-logout) {
+    display: none !important;
+}
+
 @media (max-width: 767px) {
     .admin-native-content {
         min-height: calc(100dvh - 4.25rem);
