@@ -8,6 +8,13 @@ function handleRouting() {
         if (typeof closeCart === 'function') closeCart();
         showPage('page-store-status');
     }
+    else if (hash === '#finalizar-pedido') {
+        showPage('page-home');
+        window.history.replaceState(null, '', '#home');
+        window.setTimeout(() => {
+            if (typeof openCheckoutModal === 'function') openCheckoutModal();
+        }, 0);
+    }
     else if (hash === '#sacola') {
         showPage('page-home');
         if (typeof openCart === 'function') openCart();
