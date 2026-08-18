@@ -1051,7 +1051,7 @@ function setShippingStatus(message, extraClass = 'text-gray-500') {
 
 function renderShippingOptions() {
     const container = elements.shippingOptions;
-    const disabledMessage = 'Nossa equipe confirma o valor e o prazo da entrega pelo WhatsApp depois que o pedido for enviado.';
+    const disabledMessage = 'Usaremos o CEP informado para combinar valor e prazo da entrega.';
 
     if (container) {
         container.replaceChildren();
@@ -1739,7 +1739,7 @@ function updateCheckoutSummary() {
         appendRow('Frete', 'A combinar', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-amber-700');
         setShippingMessage(
             'fa-solid fa-box text-[--cor-marrom-cta]',
-            'Nossa equipe confirma o valor e o prazo da entrega pelo WhatsApp depois que o pedido for enviado.'
+            'Valor e prazo da entrega serão combinados pelo WhatsApp.'
         );
     } else if (shipping) {
         const shippingLabel = `${shipping.company} - ${shipping.name}`;

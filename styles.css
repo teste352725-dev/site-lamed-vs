@@ -864,3 +864,134 @@ body {
 .mobile-bottom-nav {
     box-shadow: none;
 }
+
+/* Checkout compacto e delicado em telas pequenas */
+.checkout-saved-addresses-head {
+    min-width: 0;
+}
+
+.checkout-saved-addresses-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+@media (max-width: 767px) {
+    #checkout-modal {
+        align-items: flex-end;
+        padding: 0.45rem 0.45rem 0;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    #checkout-modal .modal-content {
+        max-height: 94dvh;
+        border-radius: 1.5rem 1.5rem 0 0;
+        box-shadow: 0 -18px 55px rgba(35, 25, 18, 0.18);
+        scrollbar-width: thin;
+    }
+
+    #checkout-modal .modal-content > div:first-child {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 0.9rem 1rem;
+        background: rgba(253, 251, 246, 0.96);
+        backdrop-filter: blur(14px);
+    }
+
+    #checkout-modal .modal-content > div:first-child h2 {
+        font-size: 1rem;
+    }
+
+    #checkout-form {
+        padding: 1rem;
+    }
+
+    #checkout-form > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 0.9rem;
+    }
+
+    #checkout-form p,
+    #checkout-form label,
+    #checkout-form span,
+    #checkout-form input,
+    #checkout-form select {
+        line-height: 1.45;
+    }
+
+    #checkout-form p,
+    #checkout-form label,
+    #checkout-form input,
+    #checkout-form select {
+        font-size: 0.82rem;
+    }
+
+    #checkout-form h3,
+    #checkout-form .text-xs.font-bold.uppercase {
+        font-size: 0.66rem;
+        letter-spacing: 0.13em;
+    }
+
+    #checkout-account-assist,
+    #checkout-saved-addresses-panel,
+    #checkout-form > .rounded-2xl {
+        border-radius: 1.15rem;
+        padding: 0.9rem;
+        box-shadow: 0 5px 16px rgba(69, 48, 31, 0.045);
+    }
+
+    .checkout-saved-addresses-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.65rem;
+    }
+
+    #checkout-add-address-btn {
+        padding: 0.55rem 0.8rem;
+        font-size: 0.64rem;
+        letter-spacing: 0.1em;
+        white-space: nowrap;
+    }
+
+    .checkout-saved-addresses-copy {
+        max-width: none;
+        font-size: 0.76rem !important;
+    }
+
+    #checkout-address-cards {
+        margin-top: 0.75rem;
+    }
+
+    #checkout-address-cards > label,
+    #checkout-address-cards > button,
+    #checkout-address-cards > div {
+        padding: 0.85rem;
+        border-radius: 1rem;
+    }
+
+    #shipping-options {
+        margin-top: 0.65rem;
+    }
+
+    #shipping-options > div {
+        padding: 0.8rem;
+        border-radius: 0.95rem;
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    #checkout-summary {
+        font-size: 0.8rem;
+    }
+
+    #checkout-submit-btn {
+        min-height: 3.15rem;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        box-shadow: 0 10px 24px rgba(22, 101, 52, 0.16);
+    }
+}

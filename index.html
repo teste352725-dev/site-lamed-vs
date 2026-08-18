@@ -75,7 +75,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260818-clean">
 </head>
 
 <body class="antialiased">
@@ -641,14 +641,14 @@
                 <input type="text" id="checkout-documento" name="documento" aria-label="CPF ou CNPJ do recebedor" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF ou CNPJ do recebedor" autocomplete="off" inputmode="numeric" required>
 
                 <div id="checkout-saved-addresses-panel" class="hidden rounded-2xl border border-[#E5E0D8] bg-[#FCFAF6] p-4 shadow-sm">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Enderecos salvos</p>
-                            <p class="mt-1 text-sm text-gray-500">Escolha o endereco principal ou adicione outro sem preencher tudo de novo.</p>
-                        </div>
+                    <div class="checkout-saved-addresses-head">
+                        <div class="checkout-saved-addresses-title-row">
+                            <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Endereços salvos</p>
                         <button type="button" id="checkout-add-address-btn" class="shrink-0 rounded-full border border-[#D8C8B3] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[--cor-marrom-cta] transition hover:bg-[#F5EBDD]">
                             Adicionar outro
                         </button>
+                        </div>
+                        <p class="checkout-saved-addresses-copy mt-1 text-sm text-gray-500">Escolha o endereço principal ou adicione outro.</p>
                     </div>
                     <div id="checkout-address-cards" class="mt-4 space-y-3"></div>
                 </div>
@@ -673,7 +673,7 @@
                     <div class="flex flex-col gap-3">
                         <div>
                                 <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Frete e entrega</p>
-                                <p id="shipping-quote-status" class="mt-1 text-sm text-gray-500">O valor e o prazo do frete serão combinados pelo WhatsApp depois do envio do pedido.</p>
+                                <p id="shipping-quote-status" class="mt-1 text-sm text-gray-500">Frete combinado pelo WhatsApp após o pedido.</p>
                         </div>
                     </div>
                     <div id="shipping-options" class="mt-4 space-y-2">
