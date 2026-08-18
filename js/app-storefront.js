@@ -841,7 +841,6 @@ function renderSidebarCategoryLinks() {
     ).join('');
 
     submenu.innerHTML =         `<a href="#loja" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Loja Completa</a>
-        <a href="#colecoes" class="sidebar-link block px-8 py-3 text-xs font-bold text-[--cor-ouro-acento] hover:bg-gray-50 border-b border-gray-50">Ver Todas as Coleções</a>
         <a href="#/categoria/combo" class="sidebar-link block px-8 py-2.5 text-xs text-gray-600 hover:text-[--cor-marrom-cta] hover:bg-gray-50 flex items-center gap-2"><i class="fa-solid fa-star text-[10px] text-purple-400"></i> Combos / Kits</a>
         ${categoryLinks}`;
 
