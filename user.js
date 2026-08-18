@@ -624,6 +624,26 @@ function getOrderPaymentMeta(order) {
         };
     }
 
+    const gateway = sanitizePlainText(order?.paymentGateway || order?.payment?.gateway, 40).toLowerCase();
+    const paymentStatus = sanitizePlainText(order?.paymentStatus || order?.payment?.status, 40).toLowerCase();
+    if (gateway === 'infinitepay' && paymentStatus === 'paid') {
+        const captureMethod = sanitizePlainText(order?.payment?.captureMethod, 40).toLowerCase();
+        const methodLabel = captureMethod === 'pix'
+            ? 'Pix'
+            : (captureMethod === 'credit_card' ? 'Cartão' : 'InfinitePay');
+        return {
+            label: methodLabel,
+            detail: 'Pagamento confirmado pela InfinitePay.'
+        };
+    }
+
+    if (gateway === 'manual') {
+        return {
+            label: 'WhatsApp',
+            detail: 'Pedido enviado; pagamento e entrega combinados com a equipe.'
+        };
+    }
+
     const parcelas = Number(order?.parcelas || 1);
     return {
         label: sanitizePlainText(order?.pagamento, 60) || 'A combinar',

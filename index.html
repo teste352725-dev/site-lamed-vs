@@ -75,7 +75,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="styles.css?v=20260818-clean">
+    <link rel="stylesheet" href="styles.css?v=20260818-payment">
 </head>
 
 <body class="antialiased">
@@ -565,7 +565,7 @@
                 <button class="close-modal text-gray-400 hover:text-red-500 text-2xl">&times;</button>
             </div>
 
-            <form id="checkout-form" class="p-6 space-y-6">
+            <form id="checkout-form" class="p-6 space-y-6" novalidate>
                 
                 <!-- AVISO DE PRODUÃ‡ÃƒO E FRETE -->
                 <div id="shipping-message-box" class="bg-orange-50 border border-orange-100 p-4 rounded text-sm text-[#643f21] mb-4">
@@ -702,6 +702,8 @@
                         <span>Total</span><span id="checkout-total">R$ 0,00</span>
                     </div>
                 </div>
+
+                <div id="checkout-submit-feedback" class="hidden rounded-xl border px-4 py-3 text-sm leading-relaxed" role="alert" aria-live="assertive"></div>
 
                 <button type="submit" id="checkout-submit-btn" class="w-full bg-green-600 text-white py-4 rounded text-sm font-bold uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
                     Finalizar pedido
@@ -1092,7 +1094,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
     <script defer src="js/app-core.js"></script>
     <script defer src="js/app-storefront.js"></script>
-    <script defer src="js/app-cart-checkout.js"></script>
+    <script defer src="js/app-cart-checkout.js?v=20260818-payment"></script>
     <script defer src="js/app-account-cart.js"></script>
     <script defer src="js/app-operations.js"></script>
     

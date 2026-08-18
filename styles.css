@@ -994,4 +994,15 @@ body {
         letter-spacing: 0.12em;
         box-shadow: 0 10px 24px rgba(22, 101, 52, 0.16);
     }
+
+    #checkout-submit-feedback {
+        font-size: 0.76rem;
+        line-height: 1.45;
+    }
+}
+
+#checkout-form .checkout-field-invalid {
+    border-color: #dc2626 !important;
+    background: rgba(254, 242, 242, 0.72) !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
 }

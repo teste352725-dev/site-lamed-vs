@@ -539,6 +539,56 @@ function isCheckoutCustomerReady(cliente) {
     );
 }
 
+function getCheckoutValidationIssue(cliente) {
+    const form = elements.checkoutForm;
+    const issue = (message, selector) => ({ message, field: form?.querySelector(selector) || null });
+
+    if (!cliente?.nome) return issue('Informe o nome completo para continuar.', '[name="nome"]');
+    if (!cliente?.telefone) return issue('Informe o número do WhatsApp para continuar.', '[name="telefone"]');
+    if (!cliente?.email || form?.querySelector('[name="email"]')?.validity?.typeMismatch) {
+        return issue('Informe um e-mail válido para continuar.', '[name="email"]');
+    }
+
+    const documentLength = String(cliente?.documento || '').length;
+    if (documentLength !== 11 && documentLength !== 14) {
+        return issue('Informe um CPF com 11 dígitos ou CNPJ com 14 dígitos.', '#checkout-documento');
+    }
+
+    if (cliente?.endereco?.cep?.length !== 8) return issue('Informe um CEP válido com 8 dígitos.', '#checkout-cep');
+    if (!cliente?.endereco?.rua) return issue('Informe a rua ou avenida da entrega.', '#checkout-rua');
+    if (!cliente?.endereco?.numero) return issue('Informe o número do endereço.', '#checkout-numero');
+    if (!cliente?.endereco?.bairro) return issue('Informe o bairro da entrega.', '#checkout-bairro');
+    if (!cliente?.endereco?.cidade) return issue('Informe a cidade da entrega.', '#checkout-cidade');
+    if (!cliente?.endereco?.estado) return issue('Informe a UF da entrega.', '#checkout-estado');
+
+    return null;
+}
+
+function setCheckoutSubmitFeedback(message = '', type = 'error', field = null) {
+    const feedback = document.getElementById('checkout-submit-feedback');
+    if (!feedback) return;
+
+    document.querySelectorAll('#checkout-form .checkout-field-invalid').forEach((element) => {
+        element.classList.remove('checkout-field-invalid');
+        element.removeAttribute('aria-invalid');
+    });
+
+    const safeMessage = sanitizePlainText(message, 240);
+    feedback.textContent = safeMessage;
+    feedback.className = safeMessage
+        ? `rounded-xl border px-4 py-3 text-sm leading-relaxed ${type === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`
+        : 'hidden rounded-xl border px-4 py-3 text-sm leading-relaxed';
+
+    if (!safeMessage || !field) return;
+
+    field.classList.add('checkout-field-invalid');
+    field.setAttribute('aria-invalid', 'true');
+    window.setTimeout(() => {
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field.focus({ preventScroll: true });
+    }, 60);
+}
+
 async function autofillCheckoutAddressFromPostalCode(rawPostalCode) {
     const cep = normalizePostalCode(rawPostalCode);
     if (cep.length !== 8 || !elements.checkoutForm) return null;
@@ -1633,6 +1683,7 @@ async function checkFavoriteStatus(productId) {
 }
 
 function closeCheckoutModal() {
+    setCheckoutSubmitFeedback();
     elements.checkoutModal.classList.add('hidden');
     elements.checkoutModal.classList.remove('flex');
     closeCheckoutPushModal(false);
@@ -1645,6 +1696,7 @@ async function openCheckoutModal() {
         return alert('A loja esta temporariamente indisponivel para novos pedidos.');
     }
 
+    setCheckoutSubmitFeedback();
     updateCheckoutSummary();
 
     const authenticatedUser = currentUser || auth.currentUser;
@@ -1828,13 +1880,17 @@ async function finalizarPedido(formData) {
 
     try {
         setCheckoutSubmitState(true);
+        setCheckoutSubmitFeedback();
 
         if (!cart.length) {
             throw new Error('Sua sacola esta vazia.');
         }
 
-        if (!isCheckoutCustomerReady(cliente)) {
-            throw new Error('Preencha nome, WhatsApp, e-mail, CPF ou CNPJ, CEP, rua, numero, bairro, cidade e UF antes de finalizar.');
+        const validationIssue = getCheckoutValidationIssue(cliente);
+        if (validationIssue || !isCheckoutCustomerReady(cliente)) {
+            const validationError = new Error(validationIssue?.message || 'Revise os dados de contato e entrega antes de finalizar.');
+            validationError.checkoutField = validationIssue?.field || null;
+            throw validationError;
         }
 
         const expectedTotal = parseCurrencyText(elements.checkoutTotal.textContent);
@@ -1942,7 +1998,11 @@ async function finalizarPedido(formData) {
         }
     } catch (error) {
         console.error(error);
-        alert(`Erro ao enviar pedido: ${sanitizePlainText(error?.message || 'Erro inesperado', 220)}`);
+        setCheckoutSubmitFeedback(
+            sanitizePlainText(error?.message || 'Não foi possível continuar agora.', 220),
+            'error',
+            error?.checkoutField || null
+        );
     } finally {
         setCheckoutSubmitState(false);
     }
