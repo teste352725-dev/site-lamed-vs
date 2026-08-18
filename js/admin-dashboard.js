@@ -29,6 +29,75 @@ const WORKSPACE_VIEWS = {
 
 let currentAdminView = "overview";
 const workspaceFrameObservers = new WeakMap();
+const workspaceScrollBridgeDocuments = new WeakSet();
+
+function getNestedScrollTarget(target, deltaY, frameDocument) {
+    let element = target?.nodeType === 1 ? target : target?.parentElement;
+
+    while (element && element !== frameDocument.body && element !== frameDocument.documentElement) {
+        const style = frameDocument.defaultView.getComputedStyle(element);
+        const isScrollable = /(auto|scroll)/.test(style.overflowY)
+            && element.scrollHeight > element.clientHeight + 2;
+
+        if (isScrollable) {
+            const canScrollDown = deltaY > 0 && element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+            const canScrollUp = deltaY < 0 && element.scrollTop > 1;
+            if (canScrollDown || canScrollUp) return element;
+        }
+
+        element = element.parentElement;
+    }
+
+    return null;
+}
+
+function bridgeWorkspaceScroll(frame, frameDocument) {
+    if (workspaceScrollBridgeDocuments.has(frameDocument)) return;
+    workspaceScrollBridgeDocuments.add(frameDocument);
+
+    let lastTouchY = null;
+
+    frameDocument.addEventListener("touchstart", (event) => {
+        lastTouchY = event.touches.length === 1 ? event.touches[0].clientY : null;
+    }, { passive: true });
+
+    frameDocument.addEventListener("touchend", () => {
+        lastTouchY = null;
+    }, { passive: true });
+
+    frameDocument.addEventListener("touchcancel", () => {
+        lastTouchY = null;
+    }, { passive: true });
+
+    frameDocument.addEventListener("touchmove", (event) => {
+        if (window.innerWidth >= 768 || lastTouchY === null || event.touches.length !== 1) return;
+
+        const currentY = event.touches[0].clientY;
+        const deltaY = lastTouchY - currentY;
+        lastTouchY = currentY;
+
+        if (Math.abs(deltaY) < 1) return;
+
+        event.preventDefault();
+        const nestedScrollTarget = getNestedScrollTarget(event.target, deltaY, frameDocument);
+        if (nestedScrollTarget) {
+            nestedScrollTarget.scrollTop += deltaY;
+            return;
+        }
+        window.scrollBy(0, deltaY);
+    }, { passive: false });
+
+    frameDocument.addEventListener("wheel", (event) => {
+        if (window.innerWidth >= 768) return;
+        event.preventDefault();
+        const nestedScrollTarget = getNestedScrollTarget(event.target, event.deltaY, frameDocument);
+        if (nestedScrollTarget) {
+            nestedScrollTarget.scrollTop += event.deltaY;
+            return;
+        }
+        window.scrollBy(0, event.deltaY);
+    }, { passive: false });
+}
 
 function fitWorkspaceFrame(frame) {
     if (!frame) return;
@@ -50,6 +119,9 @@ function fitWorkspaceFrame(frame) {
         frameDocument.body.style.setProperty("min-height", "0", "important");
         frameDocument.documentElement.style.setProperty("overflow-y", "visible", "important");
         frameDocument.body.style.setProperty("overflow-y", "visible", "important");
+        frameDocument.documentElement.style.setProperty("touch-action", "pan-x", "important");
+        frameDocument.body.style.setProperty("touch-action", "pan-x", "important");
+        bridgeWorkspaceScroll(frame, frameDocument);
 
         let resizeFrameId = 0;
         const updateHeight = () => {
