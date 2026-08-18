@@ -6,6 +6,7 @@
     const pages = [
         { id: "overview", href: "dashboard.html", label: "Visão geral", icon: "fa-chart-pie" },
         { id: "products", href: "produtos.html", label: "Produtos", icon: "fa-box-open" },
+        { id: "stock", href: "estoque-mesaposta.html", label: "Estoque e produção", icon: "fa-boxes-stacked" },
         { id: "orders", href: "pedidos.html", label: "Pedidos", icon: "fa-cart-shopping" },
         { id: "collections", href: "colecoes.html", label: "Coleções", icon: "fa-layer-group" },
         { id: "gallery", href: "galeria.html", label: "Galeria", icon: "fa-images" },

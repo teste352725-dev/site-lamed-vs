@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Produção e Estoque | Laméd Mesa Posta</title>
-    <meta name="description" content="Sistema interno aberto da Laméd para controle de produção, estoque, cores, matéria-prima e relatórios de mesa posta.">
+    <meta name="description" content="Sistema administrativo da Laméd para controle interno de produção, estoque, cores, matéria-prima e relatórios.">
     <meta name="theme-color" content="#FDFBF6">
     <link rel="icon" type="image/png" href="https://i.ibb.co/mr93jDHT/JM.png">
     <link rel="apple-touch-icon" href="https://i.ibb.co/mr93jDHT/JM.png">
@@ -12,15 +12,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/production-stock.css">
+    <link rel="stylesheet" href="css/production-stock.css?v=20260818-admin-stock">
+    <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-admin-stock">
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script defer src="js/production-stock.js"></script>
+    <script defer src="js/admin-native-shell.js?v=20260818-admin-stock"></script>
+    <script defer src="js/production-stock.js?v=20260818-admin-stock"></script>
 </head>
-<body>
+<body class="admin-auth-pending">
     <header class="stock-topbar">
-        <a href="index.html" class="stock-brand" aria-label="Voltar ao site Laméd">
+        <a href="dashboard.html" class="stock-brand" aria-label="Voltar ao dashboard Laméd">
             <span class="stock-brand__script">Laméd</span>
             <span class="stock-brand__mark">vs</span>
         </a>
@@ -42,7 +44,7 @@
             <div>
                 <p class="eyebrow">Sistema de Produção e Estoque</p>
                 <h1>Controle de Produção e Estoque</h1>
-                <p class="hero-copy">Uma central aberta para acompanhar estoque de mesa posta, produção do ateliê, cores, matéria-prima, alertas e impressão de ordens.</p>
+                <p class="hero-copy">Uma central administrativa para acompanhar estoque de produção, etapas do ateliê, cores, matéria-prima, alertas e impressão de ordens.</p>
                 <div class="hero-actions">
                     <a href="#catalogo" class="primary-button"><i class="fa-solid fa-boxes-stacked"></i>Ver estoque</a>
                     <a href="#producao" class="secondary-button"><i class="fa-solid fa-scissors"></i>Produzir hoje</a>
@@ -56,11 +58,11 @@
         </section>
 
 
-        <section class="auth-panel" id="auth-panel">
+        <section class="auth-panel hidden" id="auth-panel">
             <div>
                 <p class="eyebrow">Acesso de edição</p>
                 <h2>Entrar para editar o Firebase</h2>
-                <p>O estoque pode ser consultado aberto, mas salvar alterações, zerar números, editar cores e ficha técnica exige login.</p>
+                <p>Esta ferramenta é exclusiva da administração e só carrega os dados depois da confirmação da conta administradora.</p>
             </div>
             <form id="stock-login-form" class="auth-form">
                 <input id="stock-login-email" type="email" placeholder="E-mail" autocomplete="email" required>

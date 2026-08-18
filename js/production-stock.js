@@ -9,6 +9,8 @@ const firebaseConfig = {
     measurementId: "G-BL1G961PGT"
 };
 
+const ADMIN_UIDS = ['NoGsCqiKc0VJwWb6rppk7QVLV1B2'];
+
 const MESA_CATEGORIES = [
     { id: 'all', label: 'Todas' },
     { id: 'lugar_americano', label: 'Lugar Americano' },
@@ -46,7 +48,8 @@ const state = {
     deferredPrompt: null,
     db: null,
     auth: null,
-    user: null
+    user: null,
+    loaded: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -140,6 +143,18 @@ function imageFor(product) {
 
 function isEditorLoggedIn() {
     return Boolean(state.user);
+}
+
+async function isAuthorizedAdmin(user) {
+    if (!user) return false;
+    if (ADMIN_UIDS.includes(user.uid)) return true;
+    try {
+        const token = await user.getIdTokenResult();
+        return token?.claims?.admin === true;
+    } catch (error) {
+        console.error('[estoque.auth.claims]', error);
+        return false;
+    }
 }
 
 function requireEditorLogin() {
@@ -851,21 +866,35 @@ function init() {
     else firebase.app();
     state.db = firebase.firestore();
     state.auth = firebase.auth();
-    state.auth.onAuthStateChanged((user) => {
-        state.user = user;
-        updateAuthUi(user);
-        if (user) setAuthFeedback(`Logado como ${user.email || user.uid}.`, 'success');
-    });
     updateAuthUi(null);
     bindEvents();
-    loadData().then(() => {
-        flushOfflineQueue();
-        const target = new URLSearchParams(location.search).get('produto');
-        if (target) openProduct(target);
-    }).catch((error) => {
-        setSyncStatus('offline', 'Erro ao carregar');
-        console.error('[estoque-mesaposta]', error);
-        $('#products-grid').innerHTML = `<p class="muted">Não consegui carregar os dados. Confira as regras de leitura do Firestore ou a conexão. ${escapeHtml(error.message)}</p>`;
+    state.auth.onAuthStateChanged(async (user) => {
+        const authorized = await isAuthorizedAdmin(user);
+        if (!authorized) {
+            state.user = null;
+            updateAuthUi(null);
+            if (user) await state.auth.signOut().catch(() => {});
+            window.location.replace('login-admin.html');
+            return;
+        }
+
+        state.user = user;
+        updateAuthUi(user);
+        document.body.classList.remove('admin-auth-pending');
+        setAuthFeedback(`Acesso administrativo confirmado para ${user.email || user.uid}.`, 'success');
+        if (state.loaded) return;
+        state.loaded = true;
+
+        loadData().then(() => {
+            flushOfflineQueue();
+            const target = new URLSearchParams(location.search).get('produto');
+            if (target) openProduct(target);
+        }).catch((error) => {
+            state.loaded = false;
+            setSyncStatus('offline', 'Erro ao carregar');
+            console.error('[estoque-mesaposta]', error);
+            $('#products-grid').innerHTML = `<p class="muted">Não consegui carregar os dados. Confira a conexão e tente novamente. ${escapeHtml(error.message)}</p>`;
+        });
     });
 }
 

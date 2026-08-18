@@ -12,6 +12,25 @@
     --stock-yellow: #b97819;
     --shadow-soft: 0 18px 50px rgba(69, 48, 31, 0.1);
 }
+
+body.admin-auth-pending > * {
+    visibility: hidden;
+}
+
+body.admin-auth-pending::before {
+    content: "Confirmando acesso administrativo…";
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    color: #6b3f21;
+    background: #fdfbf6;
+    font: 600 0.9rem/1.5 Inter, sans-serif;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--stock-bg); color: var(--stock-ink); font-family: Inter, sans-serif; }

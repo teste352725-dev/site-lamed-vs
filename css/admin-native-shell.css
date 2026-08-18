@@ -115,6 +115,10 @@ body.admin-native-page[data-admin-page="chat"] .admin-native-content {
     flex-direction: column;
 }
 
+body.admin-native-page[data-admin-page="stock"] .stock-topbar {
+    display: none !important;
+}
+
 @media (max-width: 767px) {
     .admin-native-content {
         min-height: calc(100dvh - 4.25rem);
