@@ -859,6 +859,14 @@ function bindEvents() {
         state.deferredPrompt = null;
         $('#install-pwa-btn').classList.add('hidden');
     });
+
+    const mobileLayout = window.matchMedia('(max-width: 640px)');
+    const syncColorBankDetails = (event) => {
+        const details = $('#color-bank-details');
+        if (details) details.open = !event.matches;
+    };
+    syncColorBankDetails(mobileLayout);
+    mobileLayout.addEventListener?.('change', syncColorBankDetails);
 }
 
 function init() {

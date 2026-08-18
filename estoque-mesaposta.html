@@ -12,13 +12,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/production-stock.css?v=20260818-admin-stock">
+    <link rel="stylesheet" href="css/production-stock.css?v=20260818-stock-mobile">
     <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-admin-stock">
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script defer src="js/admin-native-shell.js?v=20260818-admin-stock"></script>
-    <script defer src="js/production-stock.js?v=20260818-admin-stock"></script>
+    <script defer src="js/production-stock.js?v=20260818-stock-mobile"></script>
 </head>
 <body class="admin-auth-pending">
     <header class="stock-topbar">
@@ -90,16 +90,19 @@
                 <label><span>Destino</span><select id="movement-type"><option value="stock">Entrou no estoque</option><option value="production">Precisa produzir</option></select></label>
                 <button type="button" id="apply-movement-btn" data-save-product class="primary-button small"><i class="fa-solid fa-plus"></i>Aplicar</button>
             </div>
-            <div class="color-bank-panel">
-                <div>
-                    <strong>Banco de cores</strong>
-                    <p>Cores criadas aqui ficam disponíveis para todas as peças.</p>
+            <details id="color-bank-details" class="color-bank-details" open>
+                <summary><span><i class="fa-solid fa-palette"></i> Banco de cores</span><i class="fa-solid fa-chevron-down"></i></summary>
+                <div class="color-bank-panel">
+                    <div>
+                        <strong>Banco de cores</strong>
+                        <p>Cores criadas aqui ficam disponíveis para todas as peças.</p>
+                    </div>
+                    <input id="bank-color-name" type="text" placeholder="Nome da nova cor">
+                    <input id="bank-color-hex" type="color" value="#000000">
+                    <button type="button" id="create-bank-color" data-save-product class="secondary-button small">Criar cor</button>
+                    <button type="button" id="delete-bank-color" data-save-product class="secondary-button danger-action small">Apagar cor selecionada</button>
                 </div>
-                <input id="bank-color-name" type="text" placeholder="Nome da nova cor">
-                <input id="bank-color-hex" type="color" value="#000000">
-                <button type="button" id="create-bank-color" data-save-product class="secondary-button small">Criar cor</button>
-                <button type="button" id="delete-bank-color" data-save-product class="secondary-button danger-action small">Apagar cor selecionada</button>
-            </div>
+            </details>
         </section>
 
         <section class="stats-grid" aria-label="Indicadores do estoque">
