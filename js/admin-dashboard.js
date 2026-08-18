@@ -363,6 +363,11 @@ window.changeView = function changeView(view) {
     const nextView = view in WORKSPACE_VIEWS || view === "overview" ? view : "overview";
     currentAdminView = nextView;
 
+    if (nextView !== "overview") {
+        window.location.href = WORKSPACE_VIEWS[nextView].replace("?embedded=1", "");
+        return;
+    }
+
     document.querySelectorAll(".admin-view").forEach((section) => {
         section.classList.toggle("hidden", section.id !== `view-${nextView}`);
     });

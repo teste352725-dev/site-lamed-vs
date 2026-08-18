@@ -1,0 +1,201 @@
+:root {
+    --admin-shell-brown: #643f21;
+    --admin-shell-gold: #a58a5c;
+    --admin-shell-line: #e8dfd1;
+}
+
+body.admin-native-page {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    padding-bottom: 0 !important;
+    overflow-x: hidden !important;
+}
+
+.admin-native-content {
+    min-width: 0;
+    min-height: 100vh;
+    margin-left: 18rem;
+}
+
+.admin-native-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 120;
+    display: flex;
+    width: 18rem;
+    flex-direction: column;
+    padding: 1.25rem;
+    border-right: 1px solid var(--admin-shell-line);
+    background: rgba(255, 253, 249, 0.98);
+    box-shadow: 18px 0 45px rgba(37, 27, 20, 0.08);
+    font-family: Inter, sans-serif;
+    overflow-y: auto;
+}
+
+.admin-native-brand {
+    padding: 0.35rem 0.65rem 1.15rem;
+}
+
+.admin-native-brand strong {
+    display: block;
+    color: var(--admin-shell-brown);
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.admin-native-brand span {
+    display: block;
+    margin-top: 0.45rem;
+    color: #64748b;
+    font-size: 0.66rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+}
+
+.admin-native-nav {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.admin-native-link {
+    display: flex;
+    min-height: 2.9rem;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.72rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    color: #475569;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.admin-native-link i {
+    width: 1.25rem;
+    text-align: center;
+}
+
+.admin-native-link:hover,
+.admin-native-link.is-active {
+    border-color: #d9c8b0;
+    background: #f6efe5;
+    color: var(--admin-shell-brown);
+}
+
+.admin-native-sidebar-footer {
+    display: grid;
+    gap: 0.55rem;
+    margin-top: auto;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--admin-shell-line);
+}
+
+.admin-native-logout {
+    color: #b91c1c;
+    background: transparent;
+    cursor: pointer;
+}
+
+.admin-native-topbar,
+.admin-native-overlay {
+    display: none;
+}
+
+body.admin-native-page .admin-native-content a[href="dashboard.html"].ghost-button,
+body.admin-native-page .admin-native-content > header:first-child a[href="dashboard.html"] {
+    display: none !important;
+}
+
+body.admin-native-page[data-admin-page="chat"] .admin-native-content {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+@media (max-width: 767px) {
+    .admin-native-content {
+        min-height: calc(100dvh - 4.25rem);
+        margin-left: 0;
+    }
+
+    .admin-native-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 110;
+        display: flex;
+        min-height: 4.25rem;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 0.8rem;
+        border-bottom: 1px solid var(--admin-shell-line);
+        background: rgba(255, 255, 255, 0.96);
+        font-family: Inter, sans-serif;
+        backdrop-filter: blur(12px);
+    }
+
+    .admin-native-topbar button,
+    .admin-native-home {
+        display: inline-grid;
+        width: 2.8rem;
+        height: 2.8rem;
+        place-items: center;
+        border: 1px solid var(--admin-shell-line);
+        border-radius: 14px;
+        background: white;
+        color: #334155;
+        text-decoration: none;
+    }
+
+    .admin-native-topbar-title {
+        text-align: center;
+    }
+
+    .admin-native-topbar-title strong {
+        display: block;
+        color: var(--admin-shell-brown);
+        font-size: 1.25rem;
+        line-height: 1.1;
+    }
+
+    .admin-native-topbar-title span {
+        display: block;
+        margin-top: 0.2rem;
+        color: #64748b;
+        font-size: 0.58rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+    }
+
+    .admin-native-sidebar {
+        width: min(19rem, 88vw);
+        transform: translateX(-105%);
+        transition: transform 0.22s ease;
+    }
+
+    body.admin-native-menu-open .admin-native-sidebar {
+        transform: translateX(0);
+    }
+
+    .admin-native-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 115;
+        background: rgba(15, 23, 42, 0.42);
+    }
+
+    body.admin-native-menu-open .admin-native-overlay {
+        display: block;
+    }
+
+    body.admin-native-menu-open {
+        overflow: hidden !important;
+    }
+
+    body.admin-native-page[data-admin-page="chat"] .admin-native-content {
+        height: calc(100dvh - 4.25rem);
+        min-height: 0;
+    }
+}
