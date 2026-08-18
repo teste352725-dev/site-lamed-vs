@@ -1379,6 +1379,12 @@ body.account-body {
     background: #fff;
 }
 
+.account-soft-btn.account-highlight-btn {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--account-brown), #4d2f18);
+    color: #fff;
+}
+
 .account-chat-send {
     box-shadow: none;
 }
