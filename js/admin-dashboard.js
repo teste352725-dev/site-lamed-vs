@@ -28,6 +28,61 @@ const WORKSPACE_VIEWS = {
 };
 
 let currentAdminView = "overview";
+const workspaceFrameObservers = new WeakMap();
+
+function fitWorkspaceFrame(frame) {
+    if (!frame) return;
+
+    const previousObserver = workspaceFrameObservers.get(frame);
+    if (previousObserver) previousObserver.disconnect();
+    workspaceFrameObservers.delete(frame);
+
+    if (window.innerWidth >= 768) {
+        frame.style.removeProperty("height");
+        return;
+    }
+
+    try {
+        const frameDocument = frame.contentDocument;
+        if (!frameDocument?.documentElement || !frameDocument.body) return;
+
+        frameDocument.documentElement.style.setProperty("min-height", "0", "important");
+        frameDocument.body.style.setProperty("min-height", "0", "important");
+        frameDocument.documentElement.style.setProperty("overflow-y", "visible", "important");
+        frameDocument.body.style.setProperty("overflow-y", "visible", "important");
+
+        let resizeFrameId = 0;
+        const updateHeight = () => {
+            cancelAnimationFrame(resizeFrameId);
+            resizeFrameId = requestAnimationFrame(() => {
+                const contentHeight = Math.max(
+                    frameDocument.body.scrollHeight,
+                    frameDocument.documentElement.scrollHeight
+                );
+                frame.style.height = `${Math.max(560, contentHeight + 2)}px`;
+            });
+        };
+
+        updateHeight();
+        const observer = new ResizeObserver(updateHeight);
+        observer.observe(frameDocument.documentElement);
+        observer.observe(frameDocument.body);
+        workspaceFrameObservers.set(frame, observer);
+        frameDocument.fonts?.ready?.then(updateHeight).catch(() => {});
+        Array.from(frameDocument.images || []).forEach((image) => {
+            if (!image.complete) image.addEventListener("load", updateHeight, { once: true });
+        });
+    } catch (error) {
+        frame.style.height = "calc(100dvh - 180px)";
+    }
+}
+
+function bindWorkspaceFrame(frame) {
+    if (!frame || frame.dataset.autoHeightBound === "true") return;
+    frame.dataset.autoHeightBound = "true";
+    frame.setAttribute("scrolling", "no");
+    frame.addEventListener("load", () => fitWorkspaceFrame(frame));
+}
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -104,6 +159,7 @@ function ensureWorkspaceLoaded(view) {
     const frame = document.getElementById(`frame-${view}`);
     if (!frame || frame.dataset.loaded === "true") return;
 
+    bindWorkspaceFrame(frame);
     frame.style.removeProperty("height");
     frame.src = frame.dataset.src;
     frame.dataset.loaded = "true";
@@ -279,4 +335,8 @@ window.addEventListener("hashchange", () => {
     if (nextView !== currentAdminView) {
         changeView(nextView);
     }
+});
+
+window.addEventListener("resize", () => {
+    document.querySelectorAll(".workspace-frame[data-loaded='true']").forEach(fitWorkspaceFrame);
 });
