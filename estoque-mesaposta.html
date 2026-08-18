@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Produção e Estoque | Laméd Mesa Posta</title>
+    <title>Central de Produção | Laméd</title>
     <meta name="description" content="Sistema administrativo da Laméd para controle interno de produção, estoque, cores, matéria-prima e relatórios.">
     <meta name="theme-color" content="#FDFBF6">
     <link rel="icon" type="image/png" href="https://i.ibb.co/mr93jDHT/JM.png">
@@ -12,13 +12,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/production-stock.css?v=20260818-stock-mobile">
+    <link rel="stylesheet" href="css/production-stock.css?v=20260818-production-flow">
     <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script defer src="js/admin-native-shell.js?v=20260818-team-access"></script>
-    <script defer src="js/production-stock.js?v=20260818-team-access"></script>
+    <script defer src="js/production-stock.js?v=20260818-production-flow"></script>
 </head>
 <body class="admin-auth-pending">
     <header class="stock-topbar">
@@ -43,7 +43,7 @@
         <section id="dashboard" class="stock-hero">
             <div>
                 <p class="eyebrow">Sistema de Produção e Estoque</p>
-                <h1>Controle de Produção e Estoque</h1>
+                <h1>Central de Produção</h1>
                 <p class="hero-copy">Uma central administrativa para acompanhar estoque de produção, etapas do ateliê, cores, matéria-prima, alertas e impressão de ordens.</p>
                 <div class="hero-actions">
                     <a href="#catalogo" class="primary-button"><i class="fa-solid fa-boxes-stacked"></i>Ver estoque</a>
@@ -55,6 +55,21 @@
                 <strong id="hero-production-total">0 peças</strong>
                 <small>pendentes para produção</small>
             </div>
+        </section>
+
+        <section class="production-command" id="production-command">
+            <div class="command-intro">
+                <p class="eyebrow">Produção rápida</p>
+                <h2>Qual peça vamos movimentar?</h2>
+                <p>Leia o QR Code ou busque pelo nome e faça a atualização em poucos toques.</p>
+            </div>
+            <div class="command-actions">
+                <button type="button" id="open-qr-scanner" class="scan-primary"><i class="fa-solid fa-camera"></i><span><strong>Ler QR Code</strong><small>Usar a câmera deste celular</small></span></button>
+                <label class="production-search"><i class="fa-solid fa-magnifying-glass"></i><input id="production-quick-search" type="search" autocomplete="off" placeholder="Buscar peça ou código"><span>Buscar</span></label>
+            </div>
+            <div id="production-search-results" class="production-search-results hidden"></div>
+            <div class="recent-heading"><h3>Últimas movimentações</h3><button type="button" id="refresh-production"><i class="fa-solid fa-rotate"></i> Atualizar</button></div>
+            <div id="production-recent" class="production-recent"><p class="muted">Carregando movimentações…</p></div>
         </section>
 
 
@@ -139,7 +154,7 @@
             <div class="workspace-head">
                 <div>
                     <p class="eyebrow">Catálogo operacional</p>
-                    <h2>Peças de mesa posta</h2>
+                    <h2>Peças do catálogo</h2>
                 </div>
                 <div class="view-toggle" role="group" aria-label="Alternar visualização">
                     <button type="button" data-view="grid" class="active"><i class="fa-solid fa-grip"></i>Grade</button>
@@ -204,6 +219,23 @@
             <button class="dialog-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
             <div id="product-detail-content"></div>
         </form>
+    </dialog>
+
+    <dialog id="production-piece-dialog" class="production-piece-dialog">
+        <form method="dialog" class="production-piece-shell">
+            <button type="button" id="production-piece-close" class="dialog-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            <div id="production-piece-content"></div>
+        </form>
+    </dialog>
+
+    <dialog id="qr-scanner-dialog" class="qr-scanner-dialog">
+        <div class="scanner-shell">
+            <div class="scanner-head"><div><p class="eyebrow">Leitor de peças</p><h2>Aponte para o QR Code</h2></div><button type="button" id="close-qr-scanner" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="scanner-video-wrap"><video id="qr-scanner-video" playsinline muted></video><div class="scanner-frame"></div></div>
+            <p id="qr-scanner-feedback">Solicitando acesso à câmera…</p>
+            <label class="scanner-manual"><span>Leitor físico ou código manual</span><input id="scanner-manual-code" type="text" autocomplete="off" placeholder="Leia ou digite o código da peça"></label>
+            <button type="button" id="scanner-manual-open" class="primary-button full">Abrir peça</button>
+        </div>
     </dialog>
 
     <template id="print-template">

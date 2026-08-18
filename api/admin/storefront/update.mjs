@@ -2,7 +2,7 @@ import { applyStorefrontAdminAction, isStorefrontAdminError } from "../../../ser
 import { requireAdminUser, isSessionRequestError } from "../../../server/_session.mjs";
 import { getRequestBody, setNoStore } from "../../../server/_shipping.mjs";
 import { applyTeamAdminAction } from "../../../server/_team-admin.mjs";
-import { applyProductionStockUpdate } from "../../../server/_production-stock-admin.mjs";
+import { applyProductionStockAction } from "../../../server/_production-stock-admin.mjs";
 import { resolveAuthenticatedUser } from "../../../server/_session.mjs";
 
 export default async function handler(req, res) {
@@ -16,9 +16,9 @@ export default async function handler(req, res) {
   try {
     const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
     const body = getRequestBody(req);
-    if (body?.action === "production.stock.update") {
+    if (String(body?.action || "").startsWith("production.")) {
       const user = await resolveAuthenticatedUser(authorizationHeader);
-      const result = await applyProductionStockUpdate({ payload: body?.payload, user });
+      const result = await applyProductionStockAction({ action: String(body.action).slice(11), payload: body?.payload, user });
       return res.status(200).json({ ok: true, result });
     }
 

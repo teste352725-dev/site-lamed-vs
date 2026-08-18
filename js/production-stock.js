@@ -10,6 +10,14 @@ const firebaseConfig = {
 };
 
 const ADMIN_UIDS = ['NoGsCqiKc0VJwWb6rppk7QVLV1B2'];
+const PRODUCTION_STAGES = [
+    { id: 'cut', label: 'Cortada', icon: 'fa-scissors' },
+    { id: 'embroidering', label: 'Bordando', icon: 'fa-pen-nib' },
+    { id: 'sewing', label: 'Costurando', icon: 'fa-shirt' },
+    { id: 'ironing', label: 'Passando', icon: 'fa-temperature-high' },
+    { id: 'folding', label: 'Dobrando', icon: 'fa-layer-group' },
+    { id: 'ready', label: 'Pronta', icon: 'fa-circle-check' }
+];
 
 const MESA_CATEGORIES = [
     { id: 'all', label: 'Todas' },
@@ -42,6 +50,8 @@ const state = {
     collections: [],
     orders: [],
     colorBank: [],
+    productionRecords: new Map(),
+    productionMovements: [],
     filtered: [],
     selectedCategory: 'all',
     view: localStorage.getItem('lamed_stock_view') || 'grid',
@@ -50,6 +60,8 @@ const state = {
     auth: null,
     user: null,
     productionOnly: false,
+    scannerStream: null,
+    scannerFrame: 0,
     loaded: false
 };
 
@@ -142,6 +154,91 @@ function imageFor(product) {
     return (Array.isArray(product.imagens) && product.imagens[0]) || product.imagem || 'https://i.ibb.co/mr93jDHT/JM.png';
 }
 
+function stageMeta(stageId) {
+    return PRODUCTION_STAGES.find((stage) => stage.id === stageId) || PRODUCTION_STAGES[0];
+}
+
+async function productionApi(action, payload = {}) {
+    const token = await state.user.getIdToken();
+    const response = await fetch('/api/admin/storefront/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: `production.${action}`, payload })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.error || 'Não foi possível acessar a produção.');
+    return data.result || {};
+}
+
+async function loadProductionSnapshot() {
+    try {
+        const result = await productionApi('snapshot');
+        state.productionRecords = new Map((result.records || []).map((record) => [record.productId || record.id, record]));
+        state.productionMovements = result.movements || [];
+        renderProductionRecent();
+    } catch (error) {
+        console.error('[production.snapshot]', error);
+        const recent = $('#production-recent');
+        if (recent) recent.innerHTML = `<p class="muted">Não consegui carregar o histórico agora. ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+function renderProductionRecent() {
+    const container = $('#production-recent');
+    if (!container) return;
+    if (!state.productionMovements.length) {
+        container.innerHTML = '<p class="muted">Nenhuma movimentação registrada ainda.</p>';
+        return;
+    }
+    container.innerHTML = state.productionMovements.slice(0, 8).map((movement) => {
+        const stage = stageMeta(movement.stage);
+        const time = movement.createdAt ? new Date(movement.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Agora';
+        return `<button type="button" class="recent-movement" data-production-product="${escapeHtml(movement.productId)}">
+            <img src="${escapeHtml(movement.image || 'https://i.ibb.co/mr93jDHT/JM.png')}" alt="" loading="lazy">
+            <span><strong>${escapeHtml(movement.productName || 'Peça')}</strong><small>${escapeHtml(movement.userName || 'Equipe')} • ${escapeHtml(time)}</small></span>
+            <b><i class="fa-solid ${stage.icon}"></i> ${movement.quantity} → ${escapeHtml(stage.label)}</b>
+        </button>`;
+    }).join('');
+}
+
+function productionQrUrl(productId) {
+    return `${location.origin}${location.pathname}?produto=${encodeURIComponent(productId)}&modo=producao`;
+}
+
+function openProductionPiece(productId) {
+    const product = state.products.find((item) => item.id === productId || normalize(productCode(item)) === normalize(productId));
+    if (!product) {
+        setAuthFeedback('Não encontrei essa peça no catálogo.', 'error');
+        return false;
+    }
+    const record = state.productionRecords.get(product.id) || {};
+    const currentStage = stageMeta(record.currentStage || 'cut');
+    const qrImage = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(productionQrUrl(product.id))}`;
+    $('#production-piece-content').innerHTML = `<div class="production-piece-head">
+        <img src="${escapeHtml(imageFor(product))}" alt="${escapeHtml(product.nome)}">
+        <div><p class="eyebrow">${escapeHtml(productCode(product))}</p><h2>${escapeHtml(product.nome)}</h2><span>Etapa atual: <strong>${escapeHtml(currentStage.label)}</strong></span></div>
+    </div>
+    <section class="movement-priority">
+        <p class="eyebrow">Movimentar produção</p>
+        <h3>Para qual etapa essa peça foi?</h3>
+        <div class="stage-options">${PRODUCTION_STAGES.map((stage) => `<button type="button" data-production-stage="${stage.id}" class="${stage.id === currentStage.id ? 'selected' : ''}"><i class="fa-solid ${stage.icon}"></i><span>${stage.label}</span><small>${Number(record.stageCounts?.[stage.id] || 0)} un.</small></button>`).join('')}</div>
+        <div class="movement-confirm-row"><div class="quantity-stepper"><button type="button" data-production-quantity="minus" aria-label="Diminuir">−</button><strong id="production-move-quantity">1</strong><button type="button" data-production-quantity="plus" aria-label="Aumentar">+</button></div><button type="button" id="confirm-production-move" data-product-id="${escapeHtml(product.id)}" data-stage="${currentStage.id}" class="confirm-movement"><i class="fa-solid fa-check"></i> Confirmar movimentação</button></div>
+    </section>
+    <details class="piece-secondary-actions"><summary>Outras opções da peça <i class="fa-solid fa-chevron-down"></i></summary><div><button type="button" data-open-general-edit="${escapeHtml(product.id)}"><i class="fa-solid fa-sliders"></i> Edição completa</button><button type="button" data-print-piece-qr="${escapeHtml(product.id)}"><i class="fa-solid fa-qrcode"></i> Imprimir QR Code</button><a href="${qrImage}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir QR para salvar</a></div></details>`;
+    const dialog = $('#production-piece-dialog');
+    if (!dialog.open) dialog.showModal();
+    return true;
+}
+
+function renderProductionQuickSearch() {
+    const term = normalize($('#production-quick-search')?.value || '');
+    const results = $('#production-search-results');
+    if (!term) { results.classList.add('hidden'); results.innerHTML = ''; return; }
+    const matches = state.products.filter((product) => normalize(`${product.nome} ${productCode(product)}`).includes(term)).slice(0, 8);
+    results.classList.remove('hidden');
+    results.innerHTML = matches.length ? matches.map((product) => `<button type="button" data-production-product="${escapeHtml(product.id)}"><img src="${escapeHtml(imageFor(product))}" alt="" loading="lazy"><span><strong>${escapeHtml(product.nome)}</strong><small>${escapeHtml(productCode(product))}</small></span><i class="fa-solid fa-chevron-right"></i></button>`).join('') : '<p class="muted">Nenhuma peça encontrada.</p>';
+}
+
 function isEditorLoggedIn() {
     return Boolean(state.user);
 }
@@ -222,9 +319,9 @@ async function loadData() {
     state.colorBank = colorsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     state.products = productsSnap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((product) => String(product.status || 'active').toLowerCase() !== 'inactive')
-        .filter(isMesaProduct);
+        .filter((product) => String(product.status || 'active').toLowerCase() !== 'inactive');
 
+    await loadProductionSnapshot();
     hydrateColorBankFromProducts();
     hydrateFilters();
     hydrateMovementControls();
@@ -357,7 +454,10 @@ function setSyncStatus(type, label) {
 
 function hydrateFilters() {
     const tabs = $('#category-tabs');
-    tabs.innerHTML = MESA_CATEGORIES.map((category) => `<button type="button" data-category="${category.id}" class="${state.selectedCategory === category.id ? 'active' : ''}">${escapeHtml(category.label)}</button>`).join('');
+    const knownIds = new Set(MESA_CATEGORIES.map((category) => category.id));
+    const extraCategories = [...new Set(state.products.map((product) => product.categoria).filter((category) => category && !knownIds.has(category)))].map((id) => ({ id, label: formatCategory(id) }));
+    const categories = [...MESA_CATEGORIES, ...extraCategories];
+    tabs.innerHTML = categories.map((category) => `<button type="button" data-category="${category.id}" class="${state.selectedCategory === category.id ? 'active' : ''}">${escapeHtml(category.label)}</button>`).join('');
 
     const collectionSelect = $('#filter-collection');
     const usedCollections = [...new Set(state.products.map((product) => product.colecaoId).filter(Boolean))];
@@ -607,7 +707,7 @@ function openProduct(productId) {
     detail.innerHTML = `<div class="detail-grid">
         <div>
             <img src="${escapeHtml(imageFor(product))}" alt="${escapeHtml(product.nome)}">
-            <div class="qr-box"><img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(`${location.origin}${location.pathname}?produto=${product.id}`)}" alt="QR Code"><p>Etiqueta QR Code</p></div>
+            <div class="qr-box"><img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(productionQrUrl(product.id))}" alt="QR Code"><p>QR da produção</p></div>
         </div>
         <div>
             <p class="eyebrow">${escapeHtml(productCode(product))} • ${escapeHtml(formatCategory(product.categoria))}</p>
@@ -801,13 +901,114 @@ function printProduction() {
 }
 
 function printLabels() {
-    const html = `<section class="print-active print-sheet"><h1>Etiquetas Laméd</h1>${state.filtered.map((product) => `<div class="print-item"><strong>${escapeHtml(product.nome)}</strong><p>${escapeHtml(productCode(product))} • ${escapeHtml(formatCategory(product.categoria))}</p><img width="96" height="96" src="https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(`${location.origin}${location.pathname}?produto=${product.id}`)}"></div>`).join('')}</section>`;
+    const html = `<section class="print-active print-sheet"><h1>Etiquetas Laméd</h1>${state.filtered.map((product) => `<div class="print-item"><strong>${escapeHtml(product.nome)}</strong><p>${escapeHtml(productCode(product))} • ${escapeHtml(formatCategory(product.categoria))}</p><img width="96" height="96" src="https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(productionQrUrl(product.id))}"></div>`).join('')}</section>`;
     const printNode = document.createElement('div');
     printNode.className = 'print-active';
     printNode.innerHTML = html;
     document.body.appendChild(printNode);
     window.print();
     printNode.remove();
+}
+
+function printPieceQr(productId) {
+    const product = state.products.find((item) => item.id === productId);
+    if (!product) return;
+    const qrImage = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=${encodeURIComponent(productionQrUrl(product.id))}`;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return alert('Permita a abertura da janela para imprimir o QR Code.');
+    printWindow.document.write(`<!doctype html><html><head><title>QR ${escapeHtml(product.nome)}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:32px;color:#2d2018}img{width:300px;height:300px}h1{font-size:28px;margin:16px 0 8px}p{font-size:18px;margin:0}@media print{button{display:none}}</style></head><body><img src="${qrImage}" alt="QR Code"><h1>${escapeHtml(product.nome)}</h1><p>${escapeHtml(productCode(product))}</p><button onclick="window.print()">Imprimir</button><script>document.querySelector('img').onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+    printWindow.document.close();
+}
+
+async function confirmProductionMovement(button) {
+    const quantity = Math.max(1, toNumber($('#production-move-quantity')?.textContent, 1));
+    const productId = button.dataset.productId;
+    const stage = button.dataset.stage;
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando…';
+    try {
+        const result = await productionApi('move', { productId, stage, quantity });
+        if (result.record) state.productionRecords.set(productId, result.record);
+        await loadProductionSnapshot();
+        $('#production-piece-dialog').close();
+        setAuthFeedback(`${quantity} peça(s) registrada(s) em ${stageMeta(stage).label}.`, 'success');
+        window.scrollTo({ top: $('#production-command')?.offsetTop || 0, behavior: 'smooth' });
+    } catch (error) {
+        button.disabled = false;
+        button.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar movimentação';
+        setAuthFeedback(error.message, 'error');
+        alert(error.message);
+    }
+}
+
+function resolveScannedProduct(rawValue) {
+    const raw = String(rawValue || '').trim();
+    if (!raw) return null;
+    let candidate = raw;
+    try {
+        const url = new URL(raw);
+        candidate = url.searchParams.get('produto') || raw;
+    } catch (error) {}
+    const normalized = normalize(candidate);
+    return state.products.find((product) => product.id === candidate || normalize(productCode(product)) === normalized || normalize(product.nome) === normalized) || null;
+}
+
+function stopQrScanner() {
+    cancelAnimationFrame(state.scannerFrame);
+    state.scannerFrame = 0;
+    state.scannerStream?.getTracks?.().forEach((track) => track.stop());
+    state.scannerStream = null;
+    const video = $('#qr-scanner-video');
+    if (video) video.srcObject = null;
+}
+
+function useScannedValue(value) {
+    const product = resolveScannedProduct(value);
+    if (!product) {
+        $('#qr-scanner-feedback').textContent = 'QR Code lido, mas a peça não foi encontrada. Tente buscar pelo código.';
+        return false;
+    }
+    stopQrScanner();
+    $('#qr-scanner-dialog').close();
+    openProductionPiece(product.id);
+    return true;
+}
+
+async function openQrScanner() {
+    const dialog = $('#qr-scanner-dialog');
+    if (!dialog.open) dialog.showModal();
+    $('#scanner-manual-code').value = '';
+    $('#qr-scanner-feedback').textContent = 'Solicitando acesso à câmera…';
+    if (!navigator.mediaDevices?.getUserMedia) {
+        $('#qr-scanner-feedback').textContent = 'A câmera não está disponível neste navegador. Use o campo de código abaixo.';
+        $('#scanner-manual-code').focus();
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        state.scannerStream = stream;
+        const video = $('#qr-scanner-video');
+        video.srcObject = stream;
+        await video.play();
+        if (!('BarcodeDetector' in window)) {
+            $('#qr-scanner-feedback').textContent = 'A câmera abriu, mas este navegador não lê QR automaticamente. Use um leitor físico ou digite o código abaixo.';
+            return;
+        }
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        $('#qr-scanner-feedback').textContent = 'Centralize o QR Code dentro do quadrado.';
+        const scan = async () => {
+            if (!state.scannerStream || !dialog.open) return;
+            try {
+                const codes = await detector.detect(video);
+                if (codes[0]?.rawValue && useScannedValue(codes[0].rawValue)) return;
+            } catch (error) {}
+            state.scannerFrame = requestAnimationFrame(scan);
+        };
+        scan();
+    } catch (error) {
+        $('#qr-scanner-feedback').textContent = 'Não consegui abrir a câmera. Autorize o acesso ou use o código manual.';
+        $('#scanner-manual-code').focus();
+    }
 }
 
 function downloadFile(filename, content, type) {
@@ -836,8 +1037,37 @@ function bindEvents() {
         renderProducts();
     }));
     document.body.addEventListener('click', (event) => {
+        const productionProduct = event.target.closest('[data-production-product]');
+        if (productionProduct) {
+            openProductionPiece(productionProduct.dataset.productionProduct);
+            $('#production-search-results')?.classList.add('hidden');
+            return;
+        }
+        const productionStage = event.target.closest('[data-production-stage]');
+        if (productionStage) {
+            $$('.stage-options [data-production-stage]').forEach((button) => button.classList.toggle('selected', button === productionStage));
+            $('#confirm-production-move').dataset.stage = productionStage.dataset.productionStage;
+            return;
+        }
+        const quantityButton = event.target.closest('[data-production-quantity]');
+        if (quantityButton) {
+            const quantity = $('#production-move-quantity');
+            const next = Math.max(1, Math.min(1000, toNumber(quantity.textContent, 1) + (quantityButton.dataset.productionQuantity === 'plus' ? 1 : -1)));
+            quantity.textContent = next;
+            return;
+        }
+        const confirmMovement = event.target.closest('#confirm-production-move');
+        if (confirmMovement) { confirmProductionMovement(confirmMovement); return; }
+        const generalEdit = event.target.closest('[data-open-general-edit]');
+        if (generalEdit) {
+            $('#production-piece-dialog').close();
+            openProduct(generalEdit.dataset.openGeneralEdit);
+            return;
+        }
+        const printQr = event.target.closest('[data-print-piece-qr]');
+        if (printQr) { printPieceQr(printQr.dataset.printPieceQr); return; }
         const card = event.target.closest('[data-product-id]');
-        if (card) openProduct(card.dataset.productId);
+        if (card) openProductionPiece(card.dataset.productId);
         const saveProduct = event.target.closest('[data-save-product]');
         if (saveProduct) saveProductStock(saveProduct.dataset.saveProduct);
         const saveColors = event.target.closest('[data-save-colors]');
@@ -862,6 +1092,14 @@ function bindEvents() {
     $('#export-stock-btn').addEventListener('click', exportStockCsv);
     $('#print-production-btn').addEventListener('click', printProduction);
     $('#print-labels-btn').addEventListener('click', printLabels);
+    $('#open-qr-scanner').addEventListener('click', openQrScanner);
+    $('#close-qr-scanner').addEventListener('click', () => { stopQrScanner(); $('#qr-scanner-dialog').close(); });
+    $('#qr-scanner-dialog').addEventListener('close', stopQrScanner);
+    $('#production-piece-close').addEventListener('click', () => $('#production-piece-dialog').close());
+    $('#production-quick-search').addEventListener('input', renderProductionQuickSearch);
+    $('#refresh-production').addEventListener('click', loadProductionSnapshot);
+    $('#scanner-manual-open').addEventListener('click', () => useScannedValue($('#scanner-manual-code').value));
+    $('#scanner-manual-code').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); useScannedValue(event.currentTarget.value); } });
     window.addEventListener('online', () => { setSyncStatus('online', 'Online'); flushOfflineQueue(); });
     window.addEventListener('offline', () => setSyncStatus('offline', 'Offline'));
     window.addEventListener('beforeinstallprompt', (event) => {
@@ -921,7 +1159,7 @@ function init() {
         loadData().then(() => {
             flushOfflineQueue();
             const target = new URLSearchParams(location.search).get('produto');
-            if (target) openProduct(target);
+            if (target) openProductionPiece(target);
         }).catch((error) => {
             state.loaded = false;
             setSyncStatus('offline', 'Erro ao carregar');
