@@ -1444,13 +1444,18 @@ function updateCartUI() {
     container.innerHTML = '';
 
     if (cart.length === 0) {
-        elements.cartEmptyMsg.classList.remove('hidden');
+        container.innerHTML = `
+            <div id="cart-empty-msg" class="cart-empty-state">
+                <span class="cart-empty-icon"><i class="fa-solid fa-basket-shopping"></i></span>
+                <h3>Sua sacola está vazia</h3>
+                <p>Escolha uma peça especial para começar sua encomenda.</p>
+                <button type="button" class="cart-empty-shop-link" onclick="closeCart(); window.location.hash='#loja'">Explorar a loja</button>
+            </div>
+        `;
         elements.cartCountBadge.style.display = 'none';
         elements.cartSubtotalEl.textContent = 'R$ 0,00';
         return;
     }
-
-    elements.cartEmptyMsg.classList.add('hidden');
 
     cart.forEach((item) => {
         total += item.preco * item.quantity;
@@ -1473,7 +1478,7 @@ function updateCartUI() {
         }
 
         itemMarkup.push(`
-            <div class="mb-4 flex gap-4 border-b border-[#E5E0D8] pb-4 last:border-0">
+            <div class="cart-drawer-item mb-4 flex gap-4 border-b border-[#E5E0D8] pb-4 last:border-0">
                 <img src="${item.imagem}" class="h-20 w-16 rounded-sm border border-[#E5E0D8] object-cover" loading="lazy" decoding="async">
                 <div class="flex-grow">
                     <h4 class="text-sm font-medium text-[--cor-texto]">${item.nome}</h4>

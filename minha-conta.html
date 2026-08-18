@@ -143,6 +143,10 @@
                             <input type="tel" id="reg-phone" class="input-chic" placeholder="DDD + numero" autocomplete="tel" required>
                         </div>
                         <div>
+                            <label for="reg-documento" class="account-field-label">CPF ou CNPJ</label>
+                            <input type="text" id="reg-documento" class="input-chic" placeholder="Somente números" inputmode="numeric" autocomplete="off">
+                        </div>
+                        <div>
                             <label for="reg-pass" class="account-field-label">Senha</label>
                             <input type="password" id="reg-pass" class="input-chic" placeholder="Minimo de 6 caracteres" autocomplete="new-password" required>
                         </div>
@@ -151,10 +155,17 @@
                             <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco inicial</p>
                             <div class="grid grid-cols-3 gap-3 mt-4">
                                 <input type="text" id="reg-cep" aria-label="CEP" placeholder="CEP" class="input-chic col-span-1" autocomplete="postal-code" onblur="buscarEndereco(this.value)">
-                                <input type="text" id="reg-cidade" aria-label="Cidade e estado" placeholder="Cidade / UF" class="input-chic col-span-2" autocomplete="address-level2">
+                                <input type="text" id="reg-cidade" aria-label="Cidade" placeholder="Cidade" class="input-chic col-span-2" autocomplete="address-level2">
                             </div>
                             <input type="text" id="reg-rua" aria-label="Rua" placeholder="Rua" class="input-chic mt-2" autocomplete="street-address">
-                            <input type="text" id="reg-numero" aria-label="Número e complemento" placeholder="Numero / Complemento" class="input-chic mt-2" autocomplete="address-line2">
+                            <div class="grid grid-cols-3 gap-3 mt-2">
+                                <input type="text" id="reg-numero" aria-label="Número" placeholder="Número" class="input-chic col-span-1" autocomplete="address-line2">
+                                <input type="text" id="reg-complemento" aria-label="Complemento" placeholder="Complemento" class="input-chic col-span-2" autocomplete="address-line3">
+                            </div>
+                            <div class="grid grid-cols-3 gap-3 mt-2">
+                                <input type="text" id="reg-bairro" aria-label="Bairro" placeholder="Bairro" class="input-chic col-span-2" autocomplete="address-level3">
+                                <input type="text" id="reg-estado" aria-label="UF" placeholder="UF" maxlength="2" class="input-chic col-span-1 uppercase" autocomplete="address-level1">
+                            </div>
                         </div>
 
                         <button type="submit" class="btn-chic mt-3">Finalizar cadastro</button>
@@ -306,15 +317,26 @@
                                             <input type="text" id="profile-phone" class="input-chic">
                                         </div>
                                     </div>
+                                    <div>
+                                        <label for="profile-documento" class="account-field-label">CPF ou CNPJ</label>
+                                        <input type="text" id="profile-documento" class="input-chic" placeholder="Somente números" inputmode="numeric">
+                                    </div>
 
                                     <div class="rounded-[24px] border border-[#eadfce] bg-white/85 p-5">
                                         <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco de entrega</p>
                                         <div class="grid grid-cols-3 gap-4 mt-4">
                                             <input type="text" id="profile-cep" aria-label="CEP" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
-                                            <input type="text" id="profile-cidade" aria-label="Cidade e estado" placeholder="Cidade / UF" class="input-chic col-span-2">
+                                            <input type="text" id="profile-cidade" aria-label="Cidade" placeholder="Cidade" class="input-chic col-span-2">
                                         </div>
                                         <input type="text" id="profile-rua" aria-label="Rua" placeholder="Rua" class="input-chic mt-2">
-                                        <input type="text" id="profile-numero" aria-label="Número e complemento" placeholder="Numero e complemento" class="input-chic mt-2">
+                                        <div class="grid grid-cols-3 gap-4 mt-2">
+                                            <input type="text" id="profile-numero" aria-label="Número" placeholder="Número" class="input-chic col-span-1">
+                                            <input type="text" id="profile-complemento" aria-label="Complemento" placeholder="Complemento" class="input-chic col-span-2">
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-4 mt-2">
+                                            <input type="text" id="profile-bairro" aria-label="Bairro" placeholder="Bairro" class="input-chic col-span-2">
+                                            <input type="text" id="profile-estado" aria-label="UF" placeholder="UF" maxlength="2" class="input-chic col-span-1 uppercase">
+                                        </div>
                                     </div>
                                 </div>
 
@@ -430,7 +452,7 @@
         </button>
     </nav>
 
-    <script src="user.js?v=20260818-payment"></script>
+    <script src="user.js?v=20260818-cart-profile"></script>
     <script>
         function buscarEndereco(cep) {
             cep = String(cep || '').replace(/\D/g, '');
@@ -443,8 +465,12 @@
                     if (data.erro) return;
                     const ruaEl = document.getElementById(`${prefix}-rua`);
                     const cidEl = document.getElementById(`${prefix}-cidade`);
+                    const bairroEl = document.getElementById(`${prefix}-bairro`);
+                    const estadoEl = document.getElementById(`${prefix}-estado`);
                     if (ruaEl) ruaEl.value = data.logradouro || '';
-                    if (cidEl) cidEl.value = `${data.localidade || ''}/${data.uf || ''}`.replace(/^\/|\/$/g, '');
+                    if (cidEl) cidEl.value = data.localidade || '';
+                    if (bairroEl) bairroEl.value = data.bairro || '';
+                    if (estadoEl) estadoEl.value = data.uf || '';
                 })
                 .catch(() => {});
         }

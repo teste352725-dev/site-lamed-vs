@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lamed-v13';
+const CACHE_NAME = 'lamed-v14';
 const APP_SHELL = [
   '/',
   '/index.html',

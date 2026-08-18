@@ -75,7 +75,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="styles.css?v=20260818-payment">
+    <link rel="stylesheet" href="styles.css?v=20260818-cart-profile">
 </head>
 
 <body class="antialiased">
@@ -534,19 +534,22 @@
     <!-- GAVETA DO CARRINHO (Minha Encomenda) -->
     <div id="cart-overlay" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[95] transition-opacity"></div>
     <div id="cart-drawer" class="fixed top-0 right-0 h-[100dvh] max-h-[100dvh] w-full max-w-md bg-[#FDFBF6] shadow-2xl z-[100] flex flex-col transform transition-transform translate-x-full duration-300">
-        <div class="flex justify-between items-center p-5 border-b border-[#E5E0D8]">
-            <h2 class="text-lg font-serif text-[--cor-texto]">Minha Encomenda</h2>
-            <button id="close-cart-btn" class="text-gray-400 hover:text-gray-800 text-xl px-2">&times;</button>
+        <div class="cart-drawer-head flex justify-between items-center p-5 border-b border-[#E5E0D8]">
+            <div>
+                <p class="cart-drawer-kicker">Sua seleção</p>
+                <h2 class="cart-drawer-title text-lg font-serif text-[--cor-texto]">Minha sacola</h2>
+            </div>
+            <button id="close-cart-btn" class="cart-close-btn text-gray-400 hover:text-gray-800 text-xl px-2" aria-label="Fechar sacola">&times;</button>
         </div>
         
-        <div id="cart-items-container" class="flex-grow p-5 overflow-y-auto">
+        <div id="cart-items-container" class="cart-drawer-body flex-grow p-5 overflow-y-auto">
             <div id="cart-empty-msg" class="text-center mt-12">
                 <i class="fa-solid fa-basket-shopping text-4xl text-gray-200 mb-3"></i>
                 <p class="text-gray-500 text-sm">Sua sacola está vazia.</p>
             </div>
         </div>
         
-        <div class="p-5 border-t border-[#E5E0D8] bg-[#F8F6F0] pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-5">
+        <div class="cart-drawer-footer p-5 border-t border-[#E5E0D8] bg-[#F8F6F0] pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-5">
             <div class="flex justify-between items-end mb-4">
                 <span class="text-sm text-gray-500">Subtotal</span>
                 <span id="cart-subtotal" class="text-xl font-serif text-[--cor-texto]">R$ 0,00</span>
@@ -1094,7 +1097,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
     <script defer src="js/app-core.js"></script>
     <script defer src="js/app-storefront.js"></script>
-    <script defer src="js/app-cart-checkout.js?v=20260818-payment"></script>
+    <script defer src="js/app-cart-checkout.js?v=20260818-cart-profile"></script>
     <script defer src="js/app-account-cart.js"></script>
     <script defer src="js/app-operations.js"></script>
     

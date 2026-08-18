@@ -1459,7 +1459,10 @@ if(regForm) {
             cep: sanitizePlainText(document.getElementById('reg-cep').value, 12),
             cidade: sanitizePlainText(document.getElementById('reg-cidade').value, 80),
             rua: sanitizePlainText(document.getElementById('reg-rua').value, 120),
-            numero: sanitizePlainText(document.getElementById('reg-numero').value, 40)
+            numero: sanitizePlainText(document.getElementById('reg-numero').value, 40),
+            complemento: sanitizePlainText(document.getElementById('reg-complemento').value, 120),
+            bairro: sanitizePlainText(document.getElementById('reg-bairro').value, 80),
+            estado: sanitizePlainText(document.getElementById('reg-estado').value, 2).toUpperCase()
         };
 
         try {
@@ -1547,12 +1550,16 @@ async function carregarPerfilUsuario() {
         document.getElementById('profile-photo-url').value = data.fotoUrl || '';
         document.getElementById('profile-nome').value = data.nome || safeDisplayName || '';
         document.getElementById('profile-phone').value = data.telefone || '';
+        document.getElementById('profile-documento').value = data.documento || '';
         
         if(data.endereco) {
             document.getElementById('profile-cep').value = data.endereco.cep || '';
             document.getElementById('profile-cidade').value = data.endereco.cidade || '';
             document.getElementById('profile-rua').value = data.endereco.rua || '';
             document.getElementById('profile-numero').value = data.endereco.numero || '';
+            document.getElementById('profile-complemento').value = data.endereco.complemento || '';
+            document.getElementById('profile-bairro').value = data.endereco.bairro || '';
+            document.getElementById('profile-estado').value = data.endereco.estado || '';
         }
 
         if (heroTitle) {
@@ -1620,12 +1627,16 @@ if(profileForm) {
 
         const nome = sanitizePlainText(document.getElementById('profile-nome').value, 80);
         const phone = sanitizePhone(document.getElementById('profile-phone').value);
+        const documento = normalizeProfileDocument(document.getElementById('profile-documento').value);
         const fotoUrl = normalizeImageUrl(document.getElementById('profile-photo-url').value);
         const endereco = {
             cep: sanitizePlainText(document.getElementById('profile-cep').value, 12),
             cidade: sanitizePlainText(document.getElementById('profile-cidade').value, 80),
             rua: sanitizePlainText(document.getElementById('profile-rua').value, 120),
-            numero: sanitizePlainText(document.getElementById('profile-numero').value, 40)
+            numero: sanitizePlainText(document.getElementById('profile-numero').value, 40),
+            complemento: sanitizePlainText(document.getElementById('profile-complemento').value, 120),
+            bairro: sanitizePlainText(document.getElementById('profile-bairro').value, 80),
+            estado: sanitizePlainText(document.getElementById('profile-estado').value, 2).toUpperCase()
         };
 
         try {
@@ -1638,6 +1649,7 @@ if(profileForm) {
             await sendProfileSyncToBackend({
                 nome,
                 telefone: phone,
+                documento,
                 fotoUrl,
                 endereco
             });
