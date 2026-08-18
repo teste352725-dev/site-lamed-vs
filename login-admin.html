@@ -14,7 +14,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     
-        <link rel="stylesheet" href="css/login-admin.css">
+        <link rel="stylesheet" href="css/login-admin.css?v=20260818-unified-access">
 </head>
 
 <body>
@@ -59,8 +59,8 @@
                 <h2 class="text-xl font-semibold text-center text-gray-700">Acesso Restrito</h2>
 
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="email" name="email" required
+                    <label for="email" class="block text-sm font-medium text-gray-700">E-mail ou usuário</label>
+                    <input type="text" id="email" name="email" required autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Seu e-mail ou usuário da produção"
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[--cor-ouro-acento] focus:border-[--cor-ouro-acento] sm:text-sm">
                 </div>
 
@@ -118,20 +118,34 @@
             const db = getFirestore(app);
             const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 
-            async function isAuthorizedAdmin(user) {
-                if (!user) return { ok: false, reason: 'NO_USER' };
-                if (ADMIN_UIDS.includes(user.uid)) return { ok: true, reason: 'ALLOWLIST_UID' };
+            async function resolveAccess(user) {
+                if (!user) return { ok: false, role: null, reason: 'NO_USER' };
+                if (ADMIN_UIDS.includes(user.uid)) return { ok: true, role: 'admin', reason: 'ALLOWLIST_UID' };
 
                 try {
                     const tokenResult = await user.getIdTokenResult(true);
                     if (tokenResult?.claims?.admin === true) {
-                        return { ok: true, reason: 'CUSTOM_CLAIM_ADMIN' };
+                        return { ok: true, role: 'admin', reason: 'CUSTOM_CLAIM_ADMIN' };
                     }
-                    return { ok: false, reason: 'MISSING_ADMIN_CLAIM' };
+                    if (tokenResult?.claims?.production === true) {
+                        return { ok: true, role: 'production', reason: 'CUSTOM_CLAIM_PRODUCTION' };
+                    }
+                    return { ok: false, role: null, reason: 'MISSING_ACCESS_CLAIM' };
                 } catch (error) {
-                    console.error("Falha ao ler claims administrativas:", error);
-                    return { ok: false, reason: 'CLAIM_READ_ERROR' };
+                    console.error("Falha ao ler permissões:", error);
+                    return { ok: false, role: null, reason: 'CLAIM_READ_ERROR' };
                 }
+            }
+
+            function loginIdentifier(value) {
+                const raw = String(value || '').trim();
+                if (raw.includes('@')) return raw;
+                const username = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/^[._-]+|[._-]+$/g, '');
+                return `${username}@producao.lamedvs.com.br`;
+            }
+
+            function redirectForAccess(access) {
+                window.location.href = access.role === 'production' ? './estoque-mesaposta.html' : './dashboard.html';
             }
 
             // Lógica da página
@@ -162,7 +176,7 @@
                     // Define a persistência da sessão
                     await setPersistence(auth, browserSessionPersistence);
                     
-                    const userCredential = await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                    const userCredential = await signInWithEmailAndPassword(auth, loginIdentifier(emailInput.value), passwordInput.value);
                     const idToken = await userCredential.user.getIdToken();
 
                     // Persistencia minima de diagnostico (sem salvar token bruto)
@@ -181,17 +195,17 @@
                         console.error("Falha ao acessar backend /api/status (possivel CORS/rede):", probeError);
                     }
 
-                    const adminAuth = await isAuthorizedAdmin(userCredential.user);
-                    if (!adminAuth.ok) {
+                    const access = await resolveAccess(userCredential.user);
+                    if (!access.ok) {
                         await signOut(auth);
-                        throw new Error(`AUTH_NOT_ADMIN:${adminAuth.reason}`);
+                        throw new Error(`AUTH_NO_ACCESS:${access.reason}`);
                     }
                     
                     console.log("Login com sucesso! Redirecionando...");
                     
                     // SUCESSO! REDIRECIONA PARA O PAINEL DE ADMIN
                     // Usa URL relativa válida para o redirecionamento
-                    window.location.href = './dashboard.html';
+                    redirectForAccess(access);
 
                 } catch (error) {
                     console.error("Erro no login:", error);
@@ -199,14 +213,14 @@
                     errorMessage.classList.remove('text-green-500');
                     
                     if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                        errorMessage.textContent = 'E-mail ou senha inválidos.';
-                    } else if (String(error.message || '').startsWith('AUTH_NOT_ADMIN')) {
+                        errorMessage.textContent = 'E-mail, usuário ou senha inválidos.';
+                    } else if (String(error.message || '').startsWith('AUTH_NO_ACCESS')) {
                         if (String(error.message).includes('CLAIM_READ_ERROR')) {
                             errorMessage.textContent = 'Nao foi possivel validar permissao admin agora. Verifique sua conexao e tente novamente.';
-                        } else if (String(error.message).includes('MISSING_ADMIN_CLAIM')) {
-                            errorMessage.textContent = 'Conta autenticada, mas sem claim admin. Cadastre o UID na lista ADMIN_UIDS ou aplique a claim admin=true no Firebase.';
+                        } else if (String(error.message).includes('MISSING_ACCESS_CLAIM')) {
+                            errorMessage.textContent = 'Esta conta não possui acesso administrativo nem acesso à produção.';
                         } else {
-                            errorMessage.textContent = 'Sua conta nao tem acesso administrativo.';
+                            errorMessage.textContent = 'Sua conta não tem acesso a esta área.';
                         }
                     } else if (error.code === 'auth/invalid-email') {
                          errorMessage.textContent = 'O formato do e-mail é inválido.';
@@ -227,12 +241,12 @@
             // --- Verificação de sessão ---
             // Redireciona quando o usuário já está autenticado
             onAuthStateChanged(auth, async (user) => {
-                const adminAuth = await isAuthorizedAdmin(user);
-                if (adminAuth.ok) {
+                const access = await resolveAccess(user);
+                if (access.ok) {
                     console.log("Usuario ja esta logado. Redirecionando...");
-                    window.location.href = './dashboard.html';
+                    redirectForAccess(access);
                 } else if (user) {
-                    console.warn("Usuario autenticado sem acesso admin:", adminAuth.reason, user.uid);
+                    console.warn("Usuario autenticado sem acesso:", access.reason, user.uid);
                 } else {
                     console.log("Nenhum usuário autenticado.");
                 }
