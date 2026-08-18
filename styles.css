@@ -243,7 +243,8 @@ body.no-scroll {
     align-items: center;
     justify-content: center;
 }
-.modal.active { display: flex; }
+.modal.active,
+.modal.flex { display: flex; }
 
 .modal-content {
     background: var(--cor-fundo);
