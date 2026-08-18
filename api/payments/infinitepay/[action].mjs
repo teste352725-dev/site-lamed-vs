@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     if (action === "webhook") {
       assertInfinitePayWebhookAccess(req);
       const result = await applyInfinitePayWebhook(payload);
-      return res.status(200).json(result);
+      return res.status(200).json({ success: true, message: null, ...result });
     }
 
     const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";

@@ -108,7 +108,11 @@ export function getInfinitePayHealth() {
 }
 
 function getInfinitePayApiBaseUrl() {
-  return String(process.env.INFINITEPAY_API_BASE_URL || "https://api.infinitepay.io").replace(/\/+$/, "");
+  const configuredUrl = String(process.env.INFINITEPAY_API_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (!configuredUrl || /api\.infinitepay\.io(?:\/invoices\/public\/checkout)?$/i.test(configuredUrl)) {
+    return "https://api.checkout.infinitepay.io";
+  }
+  return configuredUrl;
 }
 
 function getInfinitePayWebhookSecret() {
@@ -313,7 +317,7 @@ export async function createInfinitePayCheckoutLink({ orderId, pedido, requestMe
   const address = buildInfinitePayAddress(pedido?.cliente);
   if (address) payload.address = address;
 
-  const response = await fetch(`${getInfinitePayApiBaseUrl()}/invoices/public/checkout/links`, {
+  const response = await fetch(`${getInfinitePayApiBaseUrl()}/links`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -452,7 +456,7 @@ export function isInfinitePayRequestError(error) {
 }
 
 async function requestInfinitePayPaymentCheck({ orderId, slug, transactionNsu }) {
-  const response = await fetch(`${getInfinitePayApiBaseUrl()}/invoices/public/checkout/payment_check`, {
+  const response = await fetch(`${getInfinitePayApiBaseUrl()}/payment_check`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

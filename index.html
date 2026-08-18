@@ -75,7 +75,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="styles.css?v=20260818-cart-profile">
+    <link rel="stylesheet" href="styles.css?v=20260818-simple-checkout">
 </head>
 
 <body class="antialiased">
@@ -641,7 +641,7 @@
                 <!-- Campos de Entrega -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Entrega</h3>
                 <p class="text-xs leading-relaxed text-gray-500">Pedimos documento e endereco completo para gerar sua etiqueta sem retrabalho quando formos postar o pedido.</p>
-                <input type="text" id="checkout-documento" name="documento" aria-label="CPF ou CNPJ do recebedor" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF ou CNPJ do recebedor" autocomplete="off" inputmode="numeric" required>
+                <input type="text" id="checkout-documento" name="documento" aria-label="CPF ou CNPJ do recebedor" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF ou CNPJ (obrigatório)" autocomplete="off" inputmode="numeric" required>
 
                 <div id="checkout-saved-addresses-panel" class="hidden rounded-2xl border border-[#E5E0D8] bg-[#FCFAF6] p-4 shadow-sm">
                     <div class="checkout-saved-addresses-head">
@@ -657,6 +657,7 @@
                 </div>
 
                 <div id="checkout-address-form-section" class="space-y-4">
+                    <div id="checkout-address-completion-note" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-800" role="status"></div>
                     <div class="grid gap-4 md:grid-cols-2">
                         <input type="text" id="checkout-cep" name="cep" aria-label="CEP" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CEP" autocomplete="postal-code" inputmode="numeric" required>
                         <input type="text" id="checkout-rua" name="rua" aria-label="Rua ou avenida" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Rua / Avenida" autocomplete="address-line1" required>
@@ -692,7 +693,7 @@
                     <label class="block p-4 border border-[#dcdcdc] rounded bg-[#F8F6F0] cursor-pointer">
                         <input type="radio" name="pagamento" value="InfinitePay" required checked class="mr-2">
                         <span class="text-sm font-semibold">InfinitePay</span>
-                        <span class="mt-1 block text-xs text-gray-500">Pix ou cartão no checkout seguro, com parcelamento direto no pagamento.</span>
+                        <span class="mt-1 block text-xs text-gray-500">Na próxima tela, escolha Pix ou cartão e confirme o pagamento.</span>
                     </label>
                 </div>
                 <div id="parcelamento-container" class="hidden mt-2 bg-[#F8F6F0] p-2 rounded">
@@ -1097,7 +1098,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
     <script defer src="js/app-core.js"></script>
     <script defer src="js/app-storefront.js"></script>
-    <script defer src="js/app-cart-checkout.js?v=20260818-cart-profile"></script>
+    <script defer src="js/app-cart-checkout.js?v=20260818-simple-checkout"></script>
     <script defer src="js/app-account-cart.js"></script>
     <script defer src="js/app-operations.js"></script>
     

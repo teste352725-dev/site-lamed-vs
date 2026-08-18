@@ -389,6 +389,48 @@ function getSelectedCheckoutSavedAddress() {
     return checkoutSavedAddressesState.addresses.find((item) => item.id === checkoutSavedAddressesState.selectedId) || null;
 }
 
+function getCheckoutAddressMissingLabels(address) {
+    const normalized = normalizeCheckoutProfileAddress(address) || {};
+    const missing = [];
+    if (normalizePostalCode(normalized.cep).length !== 8) missing.push('CEP');
+    if (!normalized.rua) missing.push('rua');
+    if (!normalized.numero) missing.push('número');
+    if (!normalized.bairro) missing.push('bairro');
+    if (!normalized.cidade) missing.push('cidade');
+    if (!sanitizeCheckoutState(normalized.estado)) missing.push('UF');
+    return missing;
+}
+
+function syncCheckoutAddressCompletionNote() {
+    const note = document.getElementById('checkout-address-completion-note');
+    if (!note) return;
+
+    const form = elements.checkoutForm;
+    const address = checkoutSavedAddressesState.mode === 'complete' && form
+        ? {
+            cep: getCheckoutFormInput(form, 'cep')?.value,
+            rua: getCheckoutFormInput(form, 'rua')?.value,
+            numero: getCheckoutFormInput(form, 'numero')?.value,
+            complemento: getCheckoutFormInput(form, 'complemento')?.value,
+            bairro: getCheckoutFormInput(form, 'bairro')?.value,
+            cidade: getCheckoutFormInput(form, 'cidade')?.value,
+            estado: getCheckoutFormInput(form, 'estado')?.value
+        }
+        : getSelectedCheckoutSavedAddress();
+    const missing = checkoutSavedAddressesState.mode === 'complete'
+        ? getCheckoutAddressMissingLabels(address)
+        : [];
+
+    if (!missing.length) {
+        note.classList.add('hidden');
+        note.textContent = '';
+        return;
+    }
+
+    note.textContent = `Falta só completar: ${missing.join(', ')}. Preencha abaixo para continuar.`;
+    note.classList.remove('hidden');
+}
+
 function formatCheckoutAddressSummary(address) {
     const normalized = normalizeCheckoutProfileAddress(address);
     if (!normalized) return '';
@@ -415,8 +457,9 @@ function syncCheckoutAddressVisibility() {
         elements.checkoutSavedAddressesPanel.classList.toggle('hidden', !hasSavedAddresses);
     }
     if (elements.checkoutAddressFormSection) {
-        elements.checkoutAddressFormSection.classList.toggle('hidden', hasSavedAddresses && checkoutSavedAddressesState.mode !== 'manual');
+        elements.checkoutAddressFormSection.classList.toggle('hidden', hasSavedAddresses && checkoutSavedAddressesState.mode === 'saved');
     }
+    syncCheckoutAddressCompletionNote();
     if (elements.checkoutAddAddressBtn) {
         elements.checkoutAddAddressBtn.textContent = hasSavedAddresses && checkoutSavedAddressesState.mode === 'manual'
             ? 'Usar salvo'
@@ -459,7 +502,7 @@ function renderCheckoutSavedAddressCards() {
         `;
         button.addEventListener('click', () => {
             checkoutSavedAddressesState.selectedId = address.id;
-            checkoutSavedAddressesState.mode = 'saved';
+            checkoutSavedAddressesState.mode = getCheckoutAddressMissingLabels(address).length ? 'complete' : 'saved';
             applyCheckoutSelectedAddress(address);
             renderCheckoutSavedAddressCards();
             syncCheckoutAddressVisibility();
@@ -490,7 +533,9 @@ function syncCheckoutSavedAddressesFromProfile(data = {}) {
     checkoutSavedAddressesState = {
         addresses: normalized.addresses,
         selectedId: normalized.selectedId,
-        mode: normalized.addresses.length ? 'saved' : 'manual'
+        mode: normalized.addresses.length
+            ? (getCheckoutAddressMissingLabels(normalized.endereco).length ? 'complete' : 'saved')
+            : 'manual'
     };
 
     if (normalized.endereco) {
@@ -1348,10 +1393,10 @@ function setupShippingQuoteInteractions() {
             if (!hasSavedAddresses) return;
 
             if (checkoutSavedAddressesState.mode === 'manual') {
-                checkoutSavedAddressesState.mode = 'saved';
                 const selected = getSelectedCheckoutSavedAddress() || checkoutSavedAddressesState.addresses[0] || null;
                 if (selected) {
                     checkoutSavedAddressesState.selectedId = selected.id;
+                    checkoutSavedAddressesState.mode = getCheckoutAddressMissingLabels(selected).length ? 'complete' : 'saved';
                     applyCheckoutSelectedAddress(selected);
                 }
             } else {
@@ -1380,6 +1425,10 @@ function setupShippingQuoteInteractions() {
         checkoutStateInput.addEventListener('input', (event) => {
             event.target.value = sanitizeCheckoutState(event.target.value);
         });
+    }
+
+    if (elements.checkoutAddressFormSection) {
+        elements.checkoutAddressFormSection.addEventListener('input', syncCheckoutAddressCompletionNote);
     }
 }
 
