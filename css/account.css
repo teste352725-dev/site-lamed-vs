@@ -1109,42 +1109,59 @@ body.account-body {
 
     .account-mobile-nav {
         position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        left: 50%;
+        right: auto;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
         z-index: 60;
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        padding: 0.55rem 0.4rem calc(0.55rem + env(safe-area-inset-bottom));
-        border-top: 1px solid #e5e0d8;
-        background: rgba(253, 251, 246, 0.97);
-        backdrop-filter: blur(12px);
-        box-shadow: 0 -10px 26px rgba(69, 48, 31, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        transform: translateX(-50%);
     }
 
     .account-mobile-link {
+        position: relative;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.3rem;
-        min-height: 3.4rem;
-        color: #45301f;
+        width: clamp(3.35rem, 17vw, 3.85rem);
+        height: clamp(3.35rem, 17vw, 3.85rem);
+        color: rgba(255, 255, 255, 0.92);
         text-decoration: none;
-        font-size: 0.62rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        background: rgba(22, 24, 22, 0.74);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 1.1rem;
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+    }
+
+    .account-mobile-link span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 
     .account-mobile-link i {
-        color: var(--account-gold);
-        font-size: 1rem;
+        color: currentColor;
+        font-size: clamp(1.35rem, 6vw, 1.75rem);
     }
 
-    .account-mobile-link.is-active,
-    .account-mobile-link.is-active i {
-        color: var(--account-brown);
+    .account-mobile-link.is-active {
+        background: rgba(93, 61, 47, 0.86);
+        transform: translateY(-0.15rem);
+        box-shadow: 0 18px 36px rgba(95, 61, 47, 0.28);
     }
 }
 
@@ -1267,13 +1284,6 @@ body.account-body {
     }
 
     .account-mobile-nav {
-        backdrop-filter: none;
-        box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.08);
-    }
-
-    .account-mobile-link {
-        font-size: 0.7rem;
-        letter-spacing: 0.02em;
-        text-transform: none;
+        box-shadow: none;
     }
 }

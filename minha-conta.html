@@ -86,6 +86,8 @@
             </section>
 
             <section class="account-auth-card">
+                <div id="account-auth-feedback" class="hidden mb-4 rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-4 text-sm leading-6 text-[#6d5a49]"></div>
+
                 <div id="view-login" class="auth-view active">
                     <h2 class="account-auth-title">Entre na sua conta</h2>
                     <p class="account-auth-subtitle">Entre para ver pedidos, favoritos e mensagens com o suporte.</p>
@@ -390,25 +392,17 @@
     <script src="user.js"></script>
 
     <nav class="account-mobile-nav" aria-label="Navegacao rapida">
-        <a href="index.html#home" class="account-mobile-link">
+        <a href="index.html#home" class="account-mobile-link" aria-label="Inicio">
             <i class="fa-solid fa-house"></i>
-            <span>Inicio</span>
+            <span>Home</span>
         </a>
-        <a href="index.html#colecoes" class="account-mobile-link">
-            <i class="fa-solid fa-layer-group"></i>
-            <span>Colecoes</span>
+        <a href="index.html#loja" class="account-mobile-link" aria-label="Todas as pecas">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>Todas as pecas</span>
         </a>
-        <a href="index.html#loja" class="account-mobile-link">
-            <i class="fa-solid fa-store"></i>
-            <span>Loja</span>
-        </a>
-        <a href="minha-conta.html" class="account-mobile-link is-active" aria-current="page">
+        <a href="minha-conta.html" class="account-mobile-link is-active" aria-current="page" aria-label="Conta">
             <i class="fa-regular fa-user"></i>
             <span>Conta</span>
-        </a>
-        <a href="index.html#sacola" class="account-mobile-link">
-            <i class="fa-solid fa-bag-shopping"></i>
-            <span>Sacola</span>
         </a>
     </nav>
 

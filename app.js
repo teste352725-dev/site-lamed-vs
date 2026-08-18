@@ -551,6 +551,25 @@ function checkIsMesaPosta(categoria) {
     return catsMesa.includes(categoria);
 }
 
+function timestampToMillis(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getProductLaunchMillis(product) {
+    return timestampToMillis(product?.createdAt || product?.dataLancamento || product?.lancadoEm || product?.updatedAt);
+}
+
+function sortProductsByNewest(a, b) {
+    return getProductLaunchMillis(b) - getProductLaunchMillis(a)
+        || (b.ordem || 0) - (a.ordem || 0)
+        || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+}
+
 function checkAuthPrompt(user) {
     if (user) {
         if (elements.authPromptModal) elements.authPromptModal.classList.add('hidden');
@@ -726,7 +745,18 @@ async function carregarDadosLoja() {
         activeCollections = colecoesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (a.ordem||0) - (b.ordem||0));
         
         const produtosSnap = await db.collection("pecas").where("status", "==", "active").get();
-        products = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
+        let productDocs = produtosSnap.docs;
+
+        if (productDocs.length === 0) {
+            console.warn("Nenhum produto retornado por status=active. Aplicando fallback para compatibilidade de dados.");
+            const fallbackSnap = await db.collection("pecas").get();
+            productDocs = fallbackSnap.docs.filter((productDoc) => {
+                const status = String(productDoc.data()?.status || "").trim().toLowerCase();
+                return status !== "inactive";
+            });
+        }
+
+        products = productDocs.map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
         
         renderizarSecoesColecoes(); 
         popularPreviewColecao();
@@ -745,7 +775,7 @@ function renderizarSecoesColecoes() {
     if (activeCollections.length === 0) return;
 
     activeCollections.forEach((colecao, index) => {
-        const prods = products.filter(p => p.colecaoId === colecao.id);
+        const prods = products.filter(p => p.colecaoId === colecao.id).sort(sortProductsByNewest);
         if (prods.length === 0) return; 
 
         const section = document.createElement('section');
@@ -784,7 +814,7 @@ function popularPreviewColecao() {
 
     const destaques = products
         .filter(p => checkIsMesaPosta(p.categoria))
-        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        .sort(sortProductsByNewest)
         .slice(0, 4);
     grid.innerHTML = '';
 
@@ -838,7 +868,7 @@ function setupHomeShopFilters() {
 function getHomeShopProducts() {
     const mesaProducts = products
         .filter(p => checkIsMesaPosta(p.categoria))
-        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+        .sort(sortProductsByNewest);
     if (currentHomeFilter === 'all') return mesaProducts;
     if (currentHomeFilter === 'anel_guardanapo') {
         return mesaProducts.filter(p => p.categoria === 'anel_guardanapo' || p.categoria === 'porta_guardanapo');
@@ -912,7 +942,7 @@ function renderizarGridColecao(collectionId) {
     grid.innerHTML = '';
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
-    const prods = products.filter(p => p.colecaoId === collectionId);
+    const prods = products.filter(p => p.colecaoId === collectionId).sort(sortProductsByNewest);
     if (prods.length === 0) { grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>'; return; }
     prods.forEach(peca => grid.appendChild(criarCardProduto(peca)));
 }
@@ -942,7 +972,7 @@ function renderizarGridCategoria(catSlug) {
             return p.tipo === 'combo' && checkIsMesaPosta(p.categoria);
         }
         return p.categoria === catSlug;
-    });
+    }).sort(sortProductsByNewest);
 
     if (prods.length === 0) { 
         grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça encontrada nesta categoria.</p>'; 

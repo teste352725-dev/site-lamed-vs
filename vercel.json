@@ -38,5 +38,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/estoque-mesaposta",
+      "destination": "/estoque-mesaposta.html"
+    }
   ]
 }

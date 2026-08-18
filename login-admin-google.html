@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login Admin Google | Lamed</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f5f5f5; }
+    .card { width:min(420px, 92vw); background:#fff; border:1px solid #ddd; border-radius:10px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.08); }
+    h1 { margin:0 0 10px; font-size:20px; }
+    p { color:#444; font-size:14px; }
+    button { width:100%; margin-top:12px; padding:12px; border:0; border-radius:8px; background:#111; color:#fff; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.65; cursor:wait; }
+    .muted { color:#666; font-size:12px; margin-top:8px; word-break:break-word; }
+    .err { color:#a60000; font-weight:600; min-height:20px; }
+    .ok { color:#0a5c2d; font-weight:600; }
+    .logs { margin-top:12px; max-height:180px; overflow:auto; background:#fafafa; border:1px solid #eee; padding:8px; border-radius:6px; font-size:12px; }
+    .line { margin:0 0 4px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Login Admin (Google)</h1>
+    <p>Página simples para entrar no painel administrativo usando sua conta Google.</p>
+
+    <button id="google-login-btn" type="button">Entrar com Google</button>
+    <div id="status" class="muted">Aguardando autenticação...</div>
+    <div id="error-message" class="err"></div>
+    <div id="inline-logs" class="logs" aria-live="polite"></div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      setPersistence,
+      browserSessionPersistence,
+      onAuthStateChanged,
+      signInWithPopup,
+      signInWithRedirect,
+      getRedirectResult,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
+      authDomain: "site-lamed.firebaseapp.com",
+      databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
+      projectId: "site-lamed",
+      storageBucket: "site-lamed.firebasestorage.app",
+      messagingSenderId: "862756160215",
+      appId: "1:862756160215:web:d0fded233682bf93eaa692",
+      measurementId: "G-BL1G961PGT"
+    };
+
+    const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error-message');
+    const logsEl = document.getElementById('inline-logs');
+    const loginBtn = document.getElementById('google-login-btn');
+
+    function log(type, message, extra = null) {
+      const line = document.createElement('div');
+      line.className = 'line';
+      const ts = new Date().toISOString();
+      line.textContent = `[${ts}] [${type}] ${message}${extra ? ` | ${JSON.stringify(extra)}` : ''}`;
+      logsEl.prepend(line);
+
+      if (type === 'ERROR') {
+        console.error(message, extra || '');
+      } else if (type === 'WARN') {
+        console.warn(message, extra || '');
+      } else {
+        console.log(message, extra || '');
+      }
+    }
+
+    async function isAuthorizedAdmin(user) {
+      if (!user) return { ok: false, reason: 'NO_USER' };
+      if (ADMIN_UIDS.includes(user.uid)) return { ok: true, reason: 'ALLOWLIST_UID' };
+
+      try {
+        const tokenResult = await user.getIdTokenResult(true);
+        if (tokenResult?.claims?.admin === true) {
+          return { ok: true, reason: 'CUSTOM_CLAIM_ADMIN' };
+        }
+        return { ok: false, reason: 'MISSING_ADMIN_CLAIM' };
+      } catch (error) {
+        log('ERROR', 'Falha ao ler claims de admin', { code: error?.code, message: error?.message });
+        return { ok: false, reason: 'CLAIM_READ_ERROR' };
+      }
+    }
+
+    async function probeBackend(idToken) {
+      try {
+        const res = await fetch('/api/status', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${idToken}` }
+        });
+        log('INFO', 'Probe /api/status executado', { status: res.status });
+      } catch (error) {
+        log('ERROR', 'Falha no probe /api/status (CORS/rede/backend)', { message: error?.message });
+      }
+    }
+
+    function setBusy(isBusy) {
+      loginBtn.disabled = isBusy;
+      loginBtn.textContent = isBusy ? 'Entrando...' : 'Entrar com Google';
+    }
+
+    async function continueWithAdminValidation(user, flow = 'unknown') {
+      if (!user) return;
+      errorEl.textContent = '';
+      statusEl.textContent = 'Validando permissões de admin...';
+
+      log('INFO', 'Usuário autenticado no Firebase', { uid: user.uid, email: user.email, flow });
+
+      const idToken = await user.getIdToken();
+      sessionStorage.setItem('lamed_admin_last_login_uid', user.uid);
+      sessionStorage.setItem('lamed_admin_last_login_at', new Date().toISOString());
+      await probeBackend(idToken);
+
+      const adminCheck = await isAuthorizedAdmin(user);
+      log('INFO', 'Resultado da validação admin', adminCheck);
+
+      if (!adminCheck.ok) {
+        statusEl.textContent = 'Acesso negado para área admin.';
+        errorEl.textContent = `Sem permissão admin (${adminCheck.reason}).`;
+        await signOut(auth);
+        return;
+      }
+
+      statusEl.innerHTML = '<span class="ok">Login OK. Redirecionando...</span>';
+      window.location.href = './dashboard.html';
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    const blockedInAppBrowser = /(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|twitter|linkedin|pinterest|snapchat|gsa|googleapp|wv)/i.test(browserFingerprint);
+
+    window.addEventListener('error', (evt) => {
+      log('ERROR', 'Erro global de JS', { message: evt.message, source: evt.filename, line: evt.lineno });
+    });
+    window.addEventListener('unhandledrejection', (evt) => {
+      log('ERROR', 'Promise rejeitada sem catch', { reason: String(evt.reason?.message || evt.reason) });
+    });
+
+    loginBtn.addEventListener('click', async () => {
+      setBusy(true);
+      statusEl.textContent = 'Iniciando login com Google...';
+      errorEl.textContent = '';
+      try {
+        if (blockedInAppBrowser) {
+          throw Object.assign(new Error('GOOGLE_BLOCKED_INAPP_BROWSER'), { code: 'auth/disallowed-useragent' });
+        }
+        await setPersistence(auth, browserSessionPersistence);
+
+        try {
+          const result = await signInWithPopup(auth, provider);
+          log('INFO', 'Login via popup concluído');
+          await continueWithAdminValidation(result.user, 'popup');
+        } catch (popupError) {
+          log('WARN', 'Popup falhou, tentando redirect', { code: popupError?.code, message: popupError?.message });
+          await signInWithRedirect(auth, provider);
+        }
+      } catch (error) {
+        log('ERROR', 'Erro no fluxo de login Google', { code: error?.code, message: error?.message });
+        if (String(error?.code || '') === 'auth/disallowed-useragent' || String(error?.message || '') === 'GOOGLE_BLOCKED_INAPP_BROWSER') {
+          errorEl.textContent = 'Google bloqueia login no navegador interno do app. Abra no Chrome/Safari e tente novamente.';
+        } else {
+          errorEl.textContent = 'Erro no login com Google. Veja os logs abaixo.';
+        }
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    (async function bootstrap() {
+      setBusy(true);
+      try {
+        const redirectResult = await getRedirectResult(auth);
+        if (redirectResult?.user) {
+          log('INFO', 'Retorno de login via redirect detectado');
+          await continueWithAdminValidation(redirectResult.user, 'redirect');
+          return;
+        }
+      } catch (error) {
+        log('ERROR', 'Erro ao processar redirect de login', { code: error?.code, message: error?.message });
+      }
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          statusEl.textContent = 'Nenhum usuário logado.';
+          return;
+        }
+        await continueWithAdminValidation(user, 'auth_state');
+      });
+      setBusy(false);
+    })();
+  </script>
+</body>
+</html>

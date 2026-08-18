@@ -119,15 +119,18 @@
             const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 
             async function isAuthorizedAdmin(user) {
-                if (!user) return false;
-                if (ADMIN_UIDS.includes(user.uid)) return true;
+                if (!user) return { ok: false, reason: 'NO_USER' };
+                if (ADMIN_UIDS.includes(user.uid)) return { ok: true, reason: 'ALLOWLIST_UID' };
 
                 try {
-                    const tokenResult = await user.getIdTokenResult();
-                    return tokenResult?.claims?.admin === true;
+                    const tokenResult = await user.getIdTokenResult(true);
+                    if (tokenResult?.claims?.admin === true) {
+                        return { ok: true, reason: 'CUSTOM_CLAIM_ADMIN' };
+                    }
+                    return { ok: false, reason: 'MISSING_ADMIN_CLAIM' };
                 } catch (error) {
                     console.error("Falha ao ler claims administrativas:", error);
-                    return false;
+                    return { ok: false, reason: 'CLAIM_READ_ERROR' };
                 }
             }
 
@@ -162,9 +165,9 @@
                     const userCredential = await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
                     const idToken = await userCredential.user.getIdToken();
 
-                    // Persistencia de diagnostico para validar sessao e envio de Authorization no backend
+                    // Persistencia minima de diagnostico (sem salvar token bruto)
                     sessionStorage.setItem("lamed_admin_last_login_uid", userCredential.user.uid);
-                    sessionStorage.setItem("lamed_admin_last_token", idToken);
+                    sessionStorage.setItem("lamed_admin_last_login_at", new Date().toISOString());
 
                     try {
                         const backendProbe = await fetch("/api/status", {
@@ -178,10 +181,10 @@
                         console.error("Falha ao acessar backend /api/status (possivel CORS/rede):", probeError);
                     }
 
-                    const isAdmin = await isAuthorizedAdmin(userCredential.user);
-                    if (!isAdmin) {
+                    const adminAuth = await isAuthorizedAdmin(userCredential.user);
+                    if (!adminAuth.ok) {
                         await signOut(auth);
-                        throw new Error('AUTH_NOT_ADMIN');
+                        throw new Error(`AUTH_NOT_ADMIN:${adminAuth.reason}`);
                     }
                     
                     console.log("Login com sucesso! Redirecionando...");
@@ -197,8 +200,14 @@
                     
                     if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
                         errorMessage.textContent = 'Email ou senha invÃ¡lidos.';
-                    } else if (error.message === 'AUTH_NOT_ADMIN') {
-                        errorMessage.textContent = 'Sua conta nÃ£o tem acesso administrativo.';
+                    } else if (String(error.message || '').startsWith('AUTH_NOT_ADMIN')) {
+                        if (String(error.message).includes('CLAIM_READ_ERROR')) {
+                            errorMessage.textContent = 'Nao foi possivel validar permissao admin agora. Verifique sua conexao e tente novamente.';
+                        } else if (String(error.message).includes('MISSING_ADMIN_CLAIM')) {
+                            errorMessage.textContent = 'Conta autenticada, mas sem claim admin. Cadastre o UID na lista ADMIN_UIDS ou aplique a claim admin=true no Firebase.';
+                        } else {
+                            errorMessage.textContent = 'Sua conta nao tem acesso administrativo.';
+                        }
                     } else if (error.code === 'auth/invalid-email') {
                          errorMessage.textContent = 'O formato do email Ã© invÃ¡lido.';
                     // CORRIGIDO: Convertido error.code para String() para evitar o TypeError
@@ -209,9 +218,6 @@
                         errorMessage.textContent = 'Ocorreu um erro. Tente novamente.';
                     }
 
-                    if (error.message === 'AUTH_NOT_ADMIN') {
-                        errorMessage.textContent = 'Sua conta nÃ£o tem acesso administrativo.';
-                    }
                 } finally {
                     submitButton.disabled = false;
                     submitButton.textContent = 'Entrar';
@@ -221,12 +227,12 @@
             // --- VerificaÃ§Ã£o de SessÃ£o ---
             // Se o usuÃ¡rio jÃ¡ estiver logado, redireciona
             onAuthStateChanged(auth, async (user) => {
-                if (await isAuthorizedAdmin(user)) {
-                    console.log("UsuÃ¡rio jÃ¡ estÃ¡ logado. Redirecionando...");
-                    // CORRIGIDO: Adicionado "./" para formar um URL relativo vÃ¡lido
+                const adminAuth = await isAuthorizedAdmin(user);
+                if (adminAuth.ok) {
+                    console.log("Usuario ja esta logado. Redirecionando...");
                     window.location.href = './dashboard.html';
                 } else if (user) {
-                    await signOut(auth);
+                    console.warn("Usuario autenticado sem acesso admin:", adminAuth.reason, user.uid);
                 } else {
                     console.log("Nenhum usuÃ¡rio logado.");
                 }
