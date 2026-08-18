@@ -722,10 +722,10 @@ function queueOfflineChange(productId, payload, description = 'Alteração sincr
 
 async function updateProductThroughApi(productId, payload, description) {
     const token = await state.user.getIdToken();
-    const response = await fetch('/api/production/stock/update', {
+    const response = await fetch('/api/admin/storefront/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ productId, payload, description })
+        body: JSON.stringify({ action: 'production.stock.update', payload: { productId, payload, description } })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok) throw new Error(data.error || 'Não foi possível salvar a movimentação.');
