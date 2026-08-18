@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galeria | Painel Administrativo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
@@ -101,40 +101,79 @@
             db.collection('galeria').orderBy('dataUpload', 'desc').onSnapshot(snap => {
                 const grid = document.getElementById('gallery-grid');
                 grid.innerHTML = '';
+                const fragment = document.createDocumentFragment();
                 snap.forEach(doc => {
                     const img = doc.data();
-                    grid.innerHTML += `
-                        <div class="gallery-item">
-                            <img src="${img.url}" loading="lazy">
-                            <button class="del-btn" onclick="deletar('${doc.id}', '${img.path}')">
-                                <i class="fa-solid fa-times text-xs"></i>
-                            </button>
-                        </div>
-                    `;
+                    if (!img.url) return;
+                    const item = document.createElement('div');
+                    item.className = 'gallery-item';
+                    const image = document.createElement('img');
+                    image.src = img.url;
+                    image.alt = img.nome || 'Imagem da galeria';
+                    image.loading = 'lazy';
+                    image.decoding = 'async';
+                    const button = document.createElement('button');
+                    button.className = 'del-btn';
+                    button.type = 'button';
+                    button.setAttribute('aria-label', `Apagar ${img.nome || 'imagem'}`);
+                    button.innerHTML = '<i class="fa-solid fa-times text-xs"></i>';
+                    button.onclick = () => deletar(doc.id, img.path);
+                    item.append(image, button);
+                    fragment.appendChild(item);
                 });
+                grid.appendChild(fragment);
+            }, error => {
+                console.error(error);
+                document.getElementById('upload-status').textContent = 'Não foi possível carregar a galeria.';
             });
         }
 
         async function uploadImages(e) {
-            const files = e.target.files;
+            const files = Array.from(e.target.files || []);
             const status = document.getElementById('upload-status');
-            
-            for (let file of files) {
-                status.textContent = `Enviando ${file.name}...`;
-                const path = `galeria/${Date.now()}_${file.name}`;
-                const ref = storage.ref().child(path);
-                
-                await ref.put(file);
-                const url = await ref.getDownloadURL();
-                
-                await db.collection('galeria').add({
-                    url, path, 
-                    dataUpload: new Date(),
-                    nome: file.name
-                });
+            if (!files.length) return;
+            try {
+                for (let index = 0; index < files.length; index += 1) {
+                    const file = files[index];
+                    status.textContent = `Otimizando e enviando ${index + 1} de ${files.length}: ${file.name}`;
+                    const optimizedFile = await optimizeImageForUpload(file);
+                    const safeName = optimizedFile.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
+                    const path = `galeria/${Date.now()}_${safeName}`;
+                    const ref = storage.ref().child(path);
+                    await ref.put(optimizedFile, { contentType: optimizedFile.type });
+                    const url = await ref.getDownloadURL();
+                    await db.collection('galeria').add({
+                        url, path, nome: optimizedFile.name,
+                        dataUpload: firebase.firestore.FieldValue.serverTimestamp(),
+                        tamanhoOriginal: file.size, tamanhoOtimizado: optimizedFile.size
+                    });
+                }
+                status.textContent = `${files.length} imagem(ns) enviada(s) com sucesso!`;
+            } catch (error) {
+                console.error(error);
+                status.textContent = `Falha no envio: ${error.message}`;
+            } finally {
+                e.target.value = '';
+                setTimeout(() => status.textContent = '', 4000);
             }
-            status.textContent = 'ConcluÃ­do!';
-            setTimeout(() => status.textContent = '', 2000);
+        }
+
+        async function optimizeImageForUpload(file) {
+            if (!String(file.type || '').startsWith('image/')) throw new Error('Selecione apenas imagens.');
+            if (!/^image\/(jpeg|webp)$/i.test(file.type) || file.size < 650000) return file;
+            if (!("createImageBitmap" in window)) return file;
+            const bitmap = await createImageBitmap(file);
+            const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+            canvas.getContext('2d', { alpha: false }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            bitmap.close();
+            const blob = await new Promise((resolve, reject) => canvas.toBlob(
+                result => result ? resolve(result) : reject(new Error('Não foi possível otimizar a imagem.')),
+                'image/webp', 0.84
+            ));
+            return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'imagem'}.webp`, { type: 'image/webp', lastModified: Date.now() });
         }
 
         window.deletar = async (id, path) => {
@@ -145,4 +184,3 @@
     </script>
 </body>
 </html>
-

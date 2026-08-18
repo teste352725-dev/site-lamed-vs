@@ -2,8 +2,15 @@
   "name": "lamed-site",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i css/tailwind-source.css -o css/tailwind.generated.css --minify",
+    "build": "npm run build:css"
+  },
   "dependencies": {
-    "firebase-admin": "^12.7.0",
-    "protobufjs": "^8.0.0"
+    "firebase-admin": "^14.2.0",
+    "protobufjs": "^8.7.2"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
   }
 }

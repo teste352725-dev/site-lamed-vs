@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora de Precos | Painel Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-pricing.css">
@@ -26,7 +26,7 @@
                 <a href="dashboard.html" class="text-gray-500 hover:text-[--pricing-brown]"><i class="fa-solid fa-arrow-left"></i></a>
                 <div>
                     <p class="section-title">Precificacao</p>
-                    <h1 class="text-xl font-bold text-gray-900">Calculadora geral de pecas</h1>
+                    <h1 class="text-xl font-bold text-gray-900">Calculadora geral de peças</h1>
                 </div>
             </div>
             <button type="button" id="clear-simulation-btn" class="pricing-btn pricing-btn-secondary text-sm">
@@ -80,7 +80,7 @@
                             <select id="select-produto-site" class="pricing-select">
                                 <option value="">Carregando produtos...</option>
                             </select>
-                            <p id="site-product-summary" class="mt-2 text-xs text-gray-500">Carregando catalogo...</p>
+                            <p id="site-product-summary" class="mt-2 text-xs text-gray-500">Carregando catálogo...</p>
                         </div>
                         <button type="button" id="load-site-product-btn" class="pricing-btn pricing-btn-primary self-end">
                             <i class="fa-solid fa-download"></i>Usar
@@ -92,11 +92,11 @@
                             <div>
                                 <p class="text-xs uppercase tracking-[0.2em] font-semibold">Produto carregado</p>
                                 <p class="mt-2 text-sm text-blue-900">
-                                    Categoria: <strong id="produto-site-categoria">-</strong> â€¢ preset sugerido: <strong id="produto-site-preset">-</strong>
+                                    Categoria: <strong id="produto-site-categoria">-</strong> • preset sugerido: <strong id="produto-site-preset">-</strong>
                                 </p>
                             </div>
                             <div class="text-left md:text-right">
-                                <p class="text-xs uppercase tracking-[0.2em] font-semibold">Preco atual</p>
+                                <p class="text-xs uppercase tracking-[0.2em] font-semibold">Preço atual</p>
                                 <p id="preco-venda-atual" class="mt-2 text-lg font-bold text-blue-900">R$ 0,00</p>
                             </div>
                         </div>
@@ -132,7 +132,7 @@
                             </select>
                         </div>
                         <div id="div-preco-custom" class="hidden">
-                            <label for="precoTecidoCustom" class="mb-2 block text-sm font-medium text-gray-700">Preco por metro personalizado</label>
+                            <label for="precoTecidoCustom" class="mb-2 block text-sm font-medium text-gray-700">Preço por metro personalizado</label>
                             <input type="number" id="precoTecidoCustom" class="pricing-input" placeholder="0,00" step="0.01">
                         </div>
                         <div class="grid gap-4 sm:grid-cols-2">
@@ -270,13 +270,13 @@
                 <div class="my-5 border-t border-dashed border-gray-300"></div>
 
                 <div>
-                    <p class="section-title">Preco sugerido (cartao)</p>
+                    <p class="section-title">Preço sugerido (cartão)</p>
                     <p id="res-preco-final" class="result-value mt-2">R$ 0,00</p>
                 </div>
 
                 <div class="mini-stat mt-4 flex items-center justify-between gap-3">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Preco a vista</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Preço à vista</p>
                         <p class="mt-1 text-sm text-emerald-900">Com desconto PIX aplicado</p>
                     </div>
                     <strong id="res-preco-pix" class="text-xl font-bold text-emerald-700">R$ 0,00</strong>
@@ -289,7 +289,7 @@
 
             <div class="pricing-card p-5">
                 <p class="section-title">Calculo reverso</p>
-                <h2 class="mt-1 text-base font-semibold text-gray-900">Parta do preco de venda</h2>
+                <h2 class="mt-1 text-base font-semibold text-gray-900">Parta do preço de venda</h2>
                 <div class="mt-4 flex gap-3">
                     <input type="number" id="rev-preco-venda" class="pricing-input" placeholder="R$ 200,00" step="0.01">
                     <button type="button" id="reverse-calc-btn" class="pricing-btn pricing-btn-primary px-4">
@@ -322,4 +322,3 @@
     <script type="module" src="js/admin-pricing.js"></script>
 </body>
 </html>
-

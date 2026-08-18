@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard | Central Admin Lamed</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/tailwind.generated.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -232,7 +232,7 @@
                   <i class="fa-solid fa-box-open"></i>
                 </span>
                 <p class="text-sm font-semibold text-slate-900">Produtos e combos</p>
-              <p class="mt-1 text-xs leading-5 text-slate-500">Catalogo, cores, imagens e peca personalizavel.</p>
+              <p class="mt-1 text-xs leading-5 text-slate-500">Catálogo, cores, imagens e peça personalizável.</p>
               </button>
 
               <button onclick="changeView('collections')" class="quick-action rounded-[22px] p-4 text-left">
@@ -248,7 +248,7 @@
                   <i class="fa-solid fa-images"></i>
                 </span>
                 <p class="text-sm font-semibold text-slate-900">Banco de imagens</p>
-                <p class="mt-1 text-xs leading-5 text-slate-500">Suba fotos novas e reaproveite rapido no catalogo.</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Envie fotos novas e reaproveite-as rapidamente no catálogo.</p>
               </button>
 
               <button onclick="changeView('pricing')" class="quick-action rounded-[22px] p-4 text-left">
@@ -256,7 +256,7 @@
                   <i class="fa-solid fa-ruler-combined"></i>
                 </span>
                 <p class="text-sm font-semibold text-slate-900">Precificacao e sob medida</p>
-                <p class="mt-1 text-xs leading-5 text-slate-500">Calcule custo real e alinhe com pecas do site.</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Calcule o custo real e alinhe-o com as peças do site.</p>
               </button>
 
               <button onclick="changeView('chat')" class="quick-action rounded-[22px] p-4 text-left">
@@ -272,7 +272,7 @@
                   <i class="fa-solid fa-terminal"></i>
                 </span>
                 <p class="text-sm font-semibold text-slate-900">Scripts internos</p>
-                <p class="mt-1 text-xs leading-5 text-slate-500">Backups, manutencao e tarefas operacionais num clique.</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Backups, manutenção e tarefas operacionais em um clique.</p>
               </button>
             </div>
           </div>
@@ -285,7 +285,7 @@
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
               <h2 class="mt-2 text-2xl font-semibold text-slate-900">Produtos e combos</h2>
-              <p class="mt-2 text-sm text-slate-500">Gerencie cores, imagens, combos e pecas personalizaveis sem sair do dashboard.</p>
+              <p class="mt-2 text-sm text-slate-500">Gerencie cores, imagens, combos e peças personalizáveis sem sair do dashboard.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button onclick="reloadWorkspace('products')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
@@ -304,7 +304,7 @@
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
               <h2 class="mt-2 text-2xl font-semibold text-slate-900">Pedidos e operacao</h2>
-              <p class="mt-2 text-sm text-slate-500">Acompanhe status, detalhes do cliente e observacoes de personalizacao no mesmo fluxo.</p>
+              <p class="mt-2 text-sm text-slate-500">Acompanhe status, detalhes do cliente e observações de personalização no mesmo fluxo.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button onclick="reloadWorkspace('orders')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
@@ -331,7 +331,7 @@
             </div>
           </div>
           <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
-            <iframe id="frame-collections" class="workspace-frame" title="Colecoes" loading="lazy" data-src="colecoes.html?embedded=1"></iframe>
+            <iframe id="frame-collections" class="workspace-frame" title="Coleções" loading="lazy" data-src="colecoes.html?embedded=1"></iframe>
           </div>
         </div>
       </section>
@@ -342,7 +342,7 @@
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
               <h2 class="mt-2 text-2xl font-semibold text-slate-900">Galeria</h2>
-              <p class="mt-2 text-sm text-slate-500">Suba imagens novas, limpe arquivos antigos e alimente o catalogo com rapidez.</p>
+              <p class="mt-2 text-sm text-slate-500">Envie imagens novas, limpe arquivos antigos e atualize o catálogo com rapidez.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button onclick="reloadWorkspace('gallery')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
@@ -369,7 +369,7 @@
             </div>
           </div>
           <div class="mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
-            <iframe id="frame-pricing" class="workspace-frame" title="Precificacao" loading="lazy" data-src="calculadora.html?embedded=1"></iframe>
+            <iframe id="frame-pricing" class="workspace-frame" title="Precificação" loading="lazy" data-src="calculadora.html?embedded=1"></iframe>
           </div>
         </div>
       </section>
@@ -398,8 +398,8 @@
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
-              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Scripts e manutencao</h2>
-              <p class="mt-2 text-sm text-slate-500">Backup, limpeza, correcoes em lote e manutencao operacional sem sair do dashboard.</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Scripts e manutenção</h2>
+              <p class="mt-2 text-sm text-slate-500">Backup, limpeza, correções em lote e manutenção operacional sem sair do dashboard.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button onclick="reloadWorkspace('scripts')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
@@ -417,4 +417,3 @@
   <script src="js/admin-dashboard.js" defer></script>
 </body>
 </html>
-

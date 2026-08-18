@@ -1274,7 +1274,35 @@ async function carregarDadosLoja() {
             renderizarSecoesColecoes();
             popularPreviewColecao();
         });
-    } catch (err) { console.error("Erro dados:", err); }
+    } catch (err) {
+        console.error("Erro dados:", err);
+        renderStorefrontLoadError();
+    }
+}
+
+function renderStorefrontLoadError() {
+    const retryMarkup = `
+        <div class="col-span-full rounded-2xl border border-[#E5E0D8] bg-white px-5 py-8 text-center" role="alert">
+            <p class="text-sm font-semibold text-[--cor-texto]">Não foi possível carregar as peças agora.</p>
+            <p class="mt-2 text-xs text-gray-500">Verifique sua conexão e tente novamente.</p>
+            <button type="button" class="storefront-retry-button mt-4 rounded-full bg-[--cor-marrom-cta] px-5 py-3 text-xs font-bold uppercase tracking-widest text-white">Tentar novamente</button>
+        </div>`;
+
+    ['home-featured-grid', 'home-shop-grid', 'collection-grid'].forEach((id) => {
+        const container = document.getElementById(id);
+        if (container) container.innerHTML = retryMarkup;
+    });
+
+    const filters = document.getElementById('home-shop-filters');
+    if (filters) filters.innerHTML = '<span class="text-xs text-red-700" role="status">Categorias indisponíveis no momento.</span>';
+
+    document.querySelectorAll('.storefront-retry-button').forEach((button) => {
+        button.addEventListener('click', () => {
+            button.disabled = true;
+            button.textContent = 'Carregando...';
+            carregarDadosLoja();
+        }, { once: true });
+    });
 }
 
 function renderizarSecoesColecoes() {
@@ -1440,19 +1468,31 @@ function renderizarListaDeColecoes() {
     segmentCollections.forEach(col => {
         const count = getSegmentedProducts().filter(p => p.colecaoId === col.id).length;
         const img = col.imagemDestaque || 'https://placehold.co/600x400/eee/ccc?text=Sem+Imagem';
+        const safeCollectionName = escapeHtml(sanitizePlainText(col.nome, 120) || 'Coleção');
+        const safeCollectionImage = escapeHtmlAttr(img);
         const card = document.createElement('div');
         card.className = "group cursor-pointer";
+        card.setAttribute('role', 'link');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `Ver coleção ${sanitizePlainText(col.nome, 120) || ''}`.trim());
         card.innerHTML = `
             <div class="relative overflow-hidden aspect-[4/3] mb-4 bg-gray-100">
-                <img src="${img}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async" fetchpriority="low">
+                <img src="${safeCollectionImage}" alt="${safeCollectionName}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async" fetchpriority="low">
                 <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
                 <div class="absolute bottom-6 left-6 text-white">
-                    <h3 class="serif text-3xl mb-1">${col.nome}</h3>
+                    <h3 class="serif text-3xl mb-1">${safeCollectionName}</h3>
                     <p class="text-xs uppercase tracking-widest opacity-90">${count} Peças</p>
                 </div>
             </div>
         `;
-        card.onclick = () => window.location.hash = `#/colecao/${col.id}`;
+        const openCollection = () => { window.location.hash = `#/colecao/${col.id}`; };
+        card.addEventListener('click', openCollection);
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openCollection();
+            }
+        });
         grid.appendChild(card);
     });
 }
@@ -1550,8 +1590,8 @@ function criarCardProduto(peca) {
 
     card.innerHTML = `
         <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">
-             <img src="${safeMainImage}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">
-             ${shouldRenderHoverImage ? `<img src="${safeHoverImage}" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">` : ''}
+             <img src="${safeMainImage}" alt="${safeName}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">
+             ${shouldRenderHoverImage ? `<img src="${safeHoverImage}" alt="" aria-hidden="true" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">` : ''}
              ${badge}
              ${customBadge}
              <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
@@ -1569,7 +1609,17 @@ function criarCardProduto(peca) {
         imageWrapper.appendChild(quickEditButton);
     }
 
-    card.addEventListener('click', () => window.location.hash = `#/produto/${peca.id}`);
+    card.setAttribute('role', 'link');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', `Ver detalhes de ${sanitizePlainText(peca.nome, 120) || 'peça'}`);
+    const openProduct = () => { window.location.hash = `#/produto/${peca.id}`; };
+    card.addEventListener('click', openProduct);
+    card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openProduct();
+        }
+    });
     return card;
 }
 
@@ -1654,7 +1704,7 @@ function showProductDetail(id) {
 
     renderPersonalizationSection();
     
-// --- LÃ“GICA DO GUIA DE MEDIDAS (DINÃ‚MICO) ---
+// --- LÓGICA DO GUIA DE MEDIDAS (DINÂMICO) ---
 const buttons = document.querySelectorAll('.accordion-button');
 let sizeGuideContainer = null;
 
@@ -1883,7 +1933,7 @@ if (sizeGuideContainer) {
     document.getElementById('product-detail-view').classList.remove('hidden');
 }
 
-// --- LÃ“GICA DE INTERFACE RICA PARA COMBO ---
+// --- LÓGICA DE INTERFACE PARA COMBOS ---
 function renderComboSelectors() {
     if (!currentProduct.componentes || currentProduct.componentes.length === 0) return;
 
@@ -2143,8 +2193,9 @@ function setupSplideCarousel() {
     images.forEach((img, index) => {
         const loadingMode = index === 0 ? 'eager' : 'lazy';
         const fetchPriority = index === 0 ? 'high' : 'low';
-        mainSlides.push(`<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" class="h-full w-auto object-contain" loading="${loadingMode}" decoding="async" fetchpriority="${fetchPriority}"></li>`);
-        thumbSlides.push(`<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" class="w-full h-full object-cover rounded cursor-pointer" loading="lazy" decoding="async" fetchpriority="low"></li>`);
+        const safeProductName = escapeHtml(sanitizePlainText(currentProduct?.nome, 120) || 'Peça Laméd');
+        mainSlides.push(`<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" alt="${safeProductName}${images.length > 1 ? ` — imagem ${index + 1}` : ''}" class="h-full w-auto object-contain" loading="${loadingMode}" decoding="async" fetchpriority="${fetchPriority}"></li>`);
+        thumbSlides.push(`<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" alt="" aria-hidden="true" class="w-full h-full object-cover rounded cursor-pointer" loading="lazy" decoding="async" fetchpriority="low"></li>`);
     });
 
     mainList.innerHTML = mainSlides.join('');
@@ -2159,8 +2210,12 @@ function setupSplideCarousel() {
 }
 
 function selectSize(el) {
-    document.querySelectorAll('.size-option').forEach(o => o.classList.remove('selected'));
+    document.querySelectorAll('.size-option').forEach((option) => {
+        option.classList.remove('selected');
+        option.setAttribute('aria-pressed', 'false');
+    });
     el.classList.add('selected');
+    el.setAttribute('aria-pressed', 'true');
     selectedSize = el.dataset.size;
     updateAddToCartButton();
 }

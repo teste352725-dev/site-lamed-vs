@@ -20,7 +20,7 @@
             background-color: #fffbeb;
         }
 
-        /* BotÃµes */
+        /* Botões */
         .btn {
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
@@ -78,4 +78,3 @@
             max-height: 90vh;
             display: flex; flex-direction: column;
         }
-

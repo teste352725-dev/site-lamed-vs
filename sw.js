@@ -1,9 +1,10 @@
-const CACHE_NAME = 'lamed-v8';
+const CACHE_NAME = 'lamed-v12';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/offline.html',
   '/styles.css',
+  '/css/tailwind.generated.css',
   '/manifest.json',
   '/favicon.ico',
   '/js/app-core.js',

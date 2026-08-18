@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Admin | Lamed vs</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -46,7 +46,7 @@
                         <p id="stat-total-chats" class="mt-2 text-2xl font-bold text-gray-900">0</p>
                     </div>
                     <div class="surface-card p-3">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Nao lidas</p>
+                        <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Não lidas</p>
                         <p id="stat-unread-chats" class="mt-2 text-2xl font-bold text-emerald-700">0</p>
                     </div>
                 </div>
@@ -317,7 +317,7 @@
 
             const result = await response.json().catch(() => null);
             if (!response.ok || result?.ok === false) {
-                throw new Error(sanitizePlainText(result?.error || 'Nao foi possivel enviar a mensagem agora.', 220));
+                throw new Error(sanitizePlainText(result?.error || 'Não foi possível enviar a mensagem agora.', 220));
             }
 
             return result;
@@ -423,10 +423,10 @@
 
             document.getElementById('chat-avatar').textContent = buildInitial(name);
             document.getElementById('chat-username').textContent = name;
-            document.getElementById('chat-user-phone').textContent = phone || 'Nao informado';
-            document.getElementById('chat-user-email').textContent = email || 'Nao informado';
+            document.getElementById('chat-user-phone').textContent = phone || 'Não informado';
+            document.getElementById('chat-user-email').textContent = email || 'Não informado';
             document.getElementById('chat-user-orders').textContent = orderCount ? `${orderCount} pedido(s)` : 'Nenhum pedido com login';
-            document.getElementById('chat-subtitle').textContent = `Chat ID: ${sanitizePlainText(chatId, 40)} â€¢ ${orderCount} pedido(s) vinculados`;
+            document.getElementById('chat-subtitle').textContent = `Chat ID: ${sanitizePlainText(chatId, 40)} • ${orderCount} pedido(s) vinculados`;
 
             if (phone) {
                 whatsappLink.href = `https://wa.me/55${phone.replace(/\D/g, '')}`;
@@ -608,7 +608,7 @@
                     input.focus();
                 } catch (error) {
                     console.error('[chat.admin.send]', error);
-                    alert(sanitizePlainText(error?.message || 'Nao foi possivel enviar a mensagem agora.', 220));
+                    alert(sanitizePlainText(error?.message || 'Não foi possível enviar a mensagem agora.', 220));
                 } finally {
                     input.disabled = false;
                 }
@@ -627,7 +627,7 @@
                         input.value = '';
                     } catch (error) {
                         console.error('[chat.admin.send]', error);
-                        alert(sanitizePlainText(error?.message || 'Nao foi possivel enviar a mensagem agora.', 220));
+                        alert(sanitizePlainText(error?.message || 'Não foi possível enviar a mensagem agora.', 220));
                     } finally {
                         input.disabled = false;
                     }
@@ -637,4 +637,3 @@
     </script>
 </body>
 </html>
-

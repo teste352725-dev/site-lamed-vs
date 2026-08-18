@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Produtos | Painel Administrativo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
@@ -43,11 +43,11 @@
                 <div class="hero-copy">
                     <div class="hero-kicker">
                         <i class="fa-solid fa-layer-group"></i>
-                        Catalogo
+                        Catálogo
                     </div>
                     <h1 class="hero-title font-display">Gerenciar produtos</h1>
                     <p class="hero-subtitle">
-                        Cadastre, edite e organize as pecas da loja em uma tela simples.
+                        Cadastre, edite e organize as peças da loja em uma tela simples.
                     </p>
                 </div>
 
@@ -65,9 +65,9 @@
 
             <div class="summary-strip">
                 <div class="metric-card">
-                    <div class="metric-label">Catalogo</div>
+                    <div class="metric-label">Catálogo</div>
                     <div id="products-total-count" class="metric-value">0</div>
-                    <div class="metric-caption">Pecas e combos cadastrados</div>
+                    <div class="metric-caption">Peças e combos cadastrados</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Ativos</div>
@@ -77,7 +77,7 @@
                 <div class="metric-card">
                     <div class="metric-label">Personalizaveis</div>
                     <div id="products-custom-count" class="metric-value">0</div>
-                    <div class="metric-caption">Com campo de personalizacao</div>
+                    <div class="metric-caption">Com campo de personalização</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Combos</div>
@@ -87,7 +87,7 @@
                 <div class="metric-card">
                     <div class="metric-label">Sob demanda</div>
                     <div id="products-made-to-order-count" class="metric-value">0</div>
-                    <div class="metric-caption">Pecas feitas apos o pedido</div>
+                    <div class="metric-caption">Peças feitas após o pedido</div>
                 </div>
             </div>
         </header>
@@ -100,7 +100,7 @@
                 </span>
                 <h2 class="section-title font-display">Buscar e editar produtos</h2>
                 <p class="section-subtitle">
-                    Use a busca para localizar pecas, filtrar por categoria e editar a vitrine com rapidez.
+                    Use a busca para localizar peças, filtrar por categoria e editar a vitrine com rapidez.
                 </p>
 
                 <div class="filters-grid">
@@ -140,7 +140,7 @@
 
                 <div class="results-line">
                     <div id="products-results-copy" class="text-sm text-[rgba(32,24,20,0.66)]">
-                        <strong class="text-[var(--mocha-deep)]">0</strong> itens prontos para edicao.
+                        <strong class="text-[var(--mocha-deep)]">0</strong> itens prontos para edição.
                     </div>
                     <div class="chip-row">
                         <button type="button" class="chip-button" onclick="document.getElementById('filter-category').value='combo'; filtrarProdutos();">
@@ -158,7 +158,7 @@
                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h3 class="panel-title">Categorias do site</h3>
-                            <p class="panel-copy mb-0">Crie novas categorias aqui e elas passam a aparecer no admin, nos filtros e na pagina da loja.</p>
+                            <p class="panel-copy mb-0">Crie novas categorias aqui e elas aparecerão no painel, nos filtros e na página da loja.</p>
                         </div>
                         <div class="pill pill-light"><i class="fa-solid fa-tags"></i><span id="categories-count-label">0 categoria(s)</span></div>
                     </div>
@@ -186,8 +186,8 @@
                 <div id="loading-state" class="loading-shell">
                     <div>
                         <div class="loading-orbit"></div>
-                        <div class="text-lg font-semibold text-[var(--mocha-deep)]">Carregando o catalogo</div>
-                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Buscando pecas, combos e colecoes para montar a vitrine.</p>
+                        <div class="text-lg font-semibold text-[var(--mocha-deep)]">Carregando o catálogo</div>
+                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Buscando peças, combos e coleções para montar a vitrine.</p>
                     </div>
                 </div>
 
@@ -197,7 +197,7 @@
                     <div>
                         <i class="fa-solid fa-box-open text-5xl text-[rgba(95,61,47,0.22)]"></i>
                         <h3 class="mt-5 text-xl font-bold text-[var(--mocha-deep)]">Nada encontrado por aqui.</h3>
-                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Ajuste os filtros ou crie um novo produto para alimentar o catalogo.</p>
+                        <p class="mt-2 text-sm text-[rgba(32,24,20,0.58)]">Ajuste os filtros ou crie um novo produto para atualizar o catálogo.</p>
                     </div>
                 </div>
             </section>
@@ -215,7 +215,7 @@
                         </div>
                         <h2 id="modal-title" class="modal-title font-display">Novo produto</h2>
                         <p id="modal-subtitle" class="modal-subtitle">
-                    Edite as informacoes principais, as cores, o combo e as imagens antes de publicar.
+                    Edite as informações principais, as cores, o combo e as imagens antes de publicar.
                         </p>
                     </div>
                     <button type="button" onclick="fecharModalProduto()" class="modal-close" aria-label="Fechar">
@@ -263,7 +263,7 @@
                                         <input type="text" id="product-name" required placeholder="Ex: Vestido de linho Areia">
                                     </label>
                                     <label class="stack-field">
-                                        <span class="field-label">Descricao</span>
+                                        <span class="field-label">Descrição</span>
                                         <textarea id="product-description" placeholder="Conte materiais, caimento, proposta da peca e destaque o que vende."></textarea>
                                     </label>
                                     <div class="modal-grid two-up">
@@ -298,8 +298,8 @@
                                             </select>
                                         </label>
                                         <label class="stack-field">
-                                            <span class="field-label">Colecao</span>
-                                            <select id="product-collection"><option value="">Sem colecao</option></select>
+                                            <span class="field-label">Coleção</span>
+                                            <select id="product-collection"><option value="">Sem coleção</option></select>
                                         </label>
                                     </div>
                                 </div>
@@ -311,7 +311,7 @@
                                 <div class="modal-grid">
                                     <div class="modal-grid two-up">
                                         <label class="stack-field">
-                                            <span class="field-label">Preco (R$)</span>
+                                            <span class="field-label">Preço (R$)</span>
                                             <input type="number" step="0.01" id="product-price" required placeholder="0.00">
                                         </label>
                                         <label class="stack-field">
@@ -710,7 +710,7 @@
 
         function formatCollectionLabel(product) {
             if (!product?.colecaoId) return "Atelier";
-            return collectionsMap[product.colecaoId] || "Colecao";
+            return collectionsMap[product.colecaoId] || "Coleção";
         }
 
         function updateProductSummary(visibleList) {
@@ -780,7 +780,7 @@
                             <div class="mt-1 text-xs uppercase tracking-[0.16em] text-[rgba(95,61,47,0.54)]">${escapeHtml(category.slug)}</div>
                         </div>
                         <div class="flex flex-wrap items-center gap-3">
-                            <span class="pill ${category.ativa !== false ? "pill-emerald" : "pill-slate"}">${category.ativa !== false ? "Visivel" : "Oculta"}</span>
+                            <span class="pill ${category.ativa !== false ? "pill-emerald" : "pill-slate"}">${category.ativa !== false ? "Visível" : "Oculta"}</span>
                             <button type="button" class="secondary-button" onclick="alternarCategoriaCatalogo(${index})">${category.ativa !== false ? "Ocultar" : "Exibir"}</button>
                             <button type="button" class="danger-button" onclick="removerCategoriaCatalogo(${index})"><i class="fa-solid fa-trash"></i>Remover</button>
                         </div>
@@ -868,7 +868,7 @@
         async function carregarColecoes() {
             const snap = await db.collection("colecoes").get();
             const select = document.getElementById("product-collection");
-            select.innerHTML = '<option value="">Sem colecao</option>';
+            select.innerHTML = '<option value="">Sem coleção</option>';
 
             snap.forEach((doc) => {
                 const collection = doc.data();
@@ -880,11 +880,13 @@
 
         function carregarDados() {
             db.collection("pecas").orderBy("createdAt", "desc").onSnapshot(async (snap) => {
+                const previousScrollTop = document.scrollingElement?.scrollTop || 0;
                 produtos = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
                 await carregarConfiguracoesCategorias();
                 document.getElementById("loading-state").classList.add("hidden");
                 document.getElementById("products-grid").classList.remove("hidden");
-                renderizarGrid(produtos);
+                filtrarProdutos();
+                requestAnimationFrame(() => window.scrollTo({ top: previousScrollTop, behavior: "auto" }));
             });
         }
 
@@ -922,7 +924,7 @@
             nameInput.value = "";
             slugInput.value = "";
             delete slugInput.dataset.touched;
-                    mostrarToast("Categoria adicionada ao catalogo.");
+                    mostrarToast("Categoria adicionada ao catálogo.");
         };
 
         window.alternarCategoriaCatalogo = async function alternarCategoriaCatalogo(index) {
@@ -941,7 +943,7 @@
 
             const productsUsingCategory = produtos.filter((product) => product.categoria === category.slug).length;
             const warning = productsUsingCategory > 0
-                ? ` Essa categoria ainda aparece em ${productsUsingCategory} produto(s) e sera apenas ocultada para nao quebrar o catalogo.`
+                ? ` Essa categoria ainda aparece em ${productsUsingCategory} produto(s) e será apenas ocultada para não quebrar o catálogo.`
                 : "";
 
             if (!window.confirm(`Remover a categoria "${category.nome}"?${warning}`)) return;
@@ -966,13 +968,13 @@
 
             const collectionLabel = formatCollectionLabel(product);
             const categoryLabel = formatCategoryLabel(product.categoria);
-            const description = String(product.descricao || "Sem descricao cadastrada ainda.").trim();
+            const description = String(product.descricao || "Sem descrição cadastrada ainda.").trim();
             const shortDescription = description.length > 92 ? `${description.slice(0, 89)}...` : description;
             const statusClass = product.status === "active" ? "pill-emerald" : "pill-slate";
             const statusLabel = product.status === "active" ? "Ativo" : "Inativo";
             const stockLabel = product.tipo === "combo" ? "Combo" : "Sob demanda";
             const colorCount = getProductColorCount(product);
-            const extraBadge = product.personalizavel ? '<span class="pill pill-gold"><i class="fa-solid fa-wand-magic-sparkles"></i>Personalizavel</span>' : "";
+            const extraBadge = product.personalizavel ? '<span class="pill pill-gold"><i class="fa-solid fa-wand-magic-sparkles"></i>Personalizável</span>' : "";
 
             return `
                 <article class="product-card" onclick="abrirModalProduto('${escapeHtmlAttr(product.id)}')">
@@ -997,7 +999,7 @@
                         <p class="product-card-copy">${escapeHtml(shortDescription)}</p>
                         <div class="product-card-footer">
                             <div class="product-price">
-                                <span>${product.tipo === "combo" ? "Preco do combo" : "Preco da peca"}</span>
+                                <span>${product.tipo === "combo" ? "Preço do combo" : "Preço da peça"}</span>
                                 <strong>R$ ${Number(product.preco || 0).toFixed(2)}</strong>
                             </div>
                             <div class="action-button"><i class="fa-solid fa-pen-to-square"></i>Editar</div>
@@ -1072,8 +1074,8 @@
             card.classList.toggle("opacity-60", isCombo);
             checkbox.disabled = isCombo;
             note.textContent = isCombo
-                ? "Combos aproveitam a personalizacao de cada peca vinculada. Para liberar um campo proprio, mantenha como produto padrao."
-                : "Ative para liberar o campo de personalizacao no site e levar essa informacao ate o pedido no admin.";
+                ? "Combos aproveitam a personalização de cada peça vinculada. Para liberar um campo próprio, mantenha como produto padrão."
+                : "Ative para liberar o campo de personalização no site e levar essa informação até o pedido no painel.";
         }
 
         window.toggleProductType = function() {
@@ -1240,12 +1242,12 @@
                 if (!product) return;
                 preencherFormularioProduto(product);
                 document.getElementById("modal-title").textContent = "Editar produto";
-                document.getElementById("modal-subtitle").textContent = "Atualize preco, cores, combo e imagens sem sair desta tela.";
+                document.getElementById("modal-subtitle").textContent = "Atualize preço, cores, combo e imagens sem sair desta tela.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Editando produto';
                 document.getElementById("delete-product-btn").classList.remove("hidden");
             } else {
                 document.getElementById("modal-title").textContent = "Novo produto";
-                document.getElementById("modal-subtitle").textContent = "Preencha as informacoes da peca e publique quando estiver pronta.";
+                document.getElementById("modal-subtitle").textContent = "Preencha as informações da peça e publique quando estiver pronta.";
                 document.getElementById("modal-mode-badge").innerHTML = '<i class="fa-solid fa-pencil-ruler"></i> Novo produto';
                 document.getElementById("delete-product-btn").classList.add("hidden");
             }
@@ -1328,7 +1330,7 @@
             const segmento = document.getElementById("product-segment").value || (isMesaPostaCategory(categoria) ? "mesa" : "moda");
             const tipo = document.getElementById("product-type").value;
             if (!nome || Number.isNaN(preco)) {
-                alert("Preencha nome e preco.");
+                alert("Preencha nome e preço.");
                 return;
             }
 
@@ -1471,13 +1473,19 @@
                         throw new Error("Selecione apenas arquivos de imagem.");
                     }
                     if (Number(file.size || 0) > MAX_PRODUCT_IMAGE_BYTES) {
-                        throw new Error("Cada imagem precisa ter no maximo 10 MB.");
+                        throw new Error("Cada imagem pode ter no máximo 10 MB.");
                     }
-                    const safeName = file.name.replace(/\s+/g, "_");
-                    const ref = storage.ref(`produtos/${Date.now()}_${safeName}`);
-                    await ref.put(file);
+                    const optimizedFile = await optimizeImageForUpload(file);
+                    const safeName = optimizedFile.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
+                    const path = `produtos/${Date.now()}_${safeName}`;
+                    const ref = storage.ref(path);
+                    await ref.put(optimizedFile, { contentType: optimizedFile.type });
                     const url = await ref.getDownloadURL();
                     addImageToSelection(url);
+                    await db.collection("galeria").add({
+                        url, path, nome: optimizedFile.name, origem: "editor-produtos",
+                        dataUpload: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 }
                 atualizarPreviewImagensSelecionadas();
                 mostrarToast("Imagens adicionadas ao produto.");
@@ -1496,29 +1504,33 @@
             grid.innerHTML = '<div class="empty-inline"><div><i class="fa-solid fa-spinner fa-spin text-2xl text-[rgba(95,61,47,0.36)]"></i><p class="mt-4 mb-0 text-sm">Carregando galeria...</p></div></div>';
 
             try {
-                const snap = await db.collection("galeria").orderBy("dataUpload", "desc").limit(30).get();
+                const snap = await db.collection("galeria").orderBy("dataUpload", "desc").get();
                 if (snap.empty) {
                     grid.innerHTML = '<div class="empty-inline"><div><i class="fa-solid fa-images text-3xl text-[rgba(95,61,47,0.18)]"></i><p class="mt-4 mb-0 text-sm">Galeria vazia.</p></div></div>';
                     return;
                 }
 
                 grid.innerHTML = "";
+                const fragment = document.createDocumentFragment();
                 snap.forEach((doc) => {
                     const image = doc.data();
+                    const safeUrl = normalizeImageUrl(image.url);
+                    if (!safeUrl) return;
                     const item = document.createElement("button");
                     item.type = "button";
                     item.className = "gallery-picker-item";
-                    item.innerHTML = `<img src="${escapeHtmlAttr(image.url)}" alt="Imagem da galeria" loading="lazy" decoding="async" fetchpriority="low">`;
+                    item.innerHTML = `<img src="${escapeHtmlAttr(safeUrl)}" alt="Imagem da galeria" loading="lazy" decoding="async" fetchpriority="low">`;
                     item.onclick = () => {
-                        addImageToSelection(image.url);
+                        addImageToSelection(safeUrl);
                         atualizarPreviewImagensSelecionadas();
                         fecharSeletorGaleria();
                     };
-                    grid.appendChild(item);
+                    fragment.appendChild(item);
                 });
+                grid.appendChild(fragment);
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = '<div class="empty-inline"><div><i class="fa-solid fa-triangle-exclamation text-3xl text-[rgba(95,61,47,0.28)]"></i><p class="mt-4 mb-0 text-sm">Nao foi possivel carregar a galeria.</p></div></div>';
+                grid.innerHTML = '<div class="empty-inline"><div><i class="fa-solid fa-triangle-exclamation text-3xl text-[rgba(95,61,47,0.28)]"></i><p class="mt-4 mb-0 text-sm">Não foi possível carregar a galeria.</p></div></div>';
             }
         };
 
@@ -1555,14 +1567,32 @@
 
         window.removerImagem = function(index) { selectedProductImages.splice(index, 1); atualizarPreviewImagensSelecionadas(); };
 
+        async function optimizeImageForUpload(file) {
+            if (!/^image\/(jpeg|webp)$/i.test(file.type) || file.size < 650000) return file;
+            if (!("createImageBitmap" in window)) return file;
+            const bitmap = await createImageBitmap(file);
+            const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+            if (scale === 1 && file.size < 1500000) { bitmap.close(); return file; }
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+            canvas.getContext("2d", { alpha: false }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            bitmap.close();
+            const blob = await new Promise((resolve, reject) => canvas.toBlob(
+                result => result ? resolve(result) : reject(new Error("Não foi possível otimizar a imagem.")),
+                "image/webp", 0.84
+            ));
+            return new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "imagem"}.webp`, { type: "image/webp", lastModified: Date.now() });
+        }
+
         function atualizarPreviewPreco() {
             const preco = parseFloat(document.getElementById("product-price").value) || 0;
             const desconto = parseInt(document.getElementById("product-discount").value, 10) || 0;
             const preview = document.getElementById("price-preview");
             if (desconto > 0) {
-                preview.textContent = `Pre?o final com desconto: R$ ${(preco * (1 - desconto / 100)).toFixed(2)}`;
+                preview.textContent = `Preço final com desconto: R$ ${(preco * (1 - desconto / 100)).toFixed(2)}`;
             } else if (preco > 0) {
-                preview.textContent = `Pre?o base atual: R$ ${preco.toFixed(2)}`;
+                preview.textContent = `Preço base atual: R$ ${preco.toFixed(2)}`;
             } else {
                 preview.textContent = "Sem desconto aplicado.";
             }
@@ -1588,6 +1618,3 @@
     </script>
 </body>
 </html>
-
-
-

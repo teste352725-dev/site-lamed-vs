@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Admin | LamÃ©d vs</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Login Admin | Laméd vs</title>
+    <link rel="stylesheet" href="css/tailwind.generated.css">
     <!-- Fontes do Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Importa a Allura (para o logo), Inter (principal), e Playfair (para tÃ­tulos) -->
+    <!-- Fontes usadas no logotipo e na interface -->
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -28,18 +28,18 @@
     -->
 
 
-    <!-- CabeÃ§alho Fixo Branco -->
+    <!-- Cabeçalho fixo branco -->
     <header class="fixed top-0 left-0 right-0 z-10 bg-white shadow-md">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 relative">
                 <!-- Logo Centralizado -->
                 <div class="flex-1 flex justify-center items-center absolute inset-0">
                     <a href="index.html" class="font-allura text-4xl text-[--cor-texto]">
-                        LamÃ©d vs
+                        Laméd vs
                     </a>
                 </div>
                 
-                <!-- BotÃ£o 'X' Ã  Direita (com z-index para ficar clicÃ¡vel) -->
+                <!-- Botão de fechar -->
                 <div class="absolute right-4 top-1/2 -translate-y-1/2 z-20">
                     <a href="index.html" class="text-gray-600 hover:text-gray-900 text-2xl p-2" aria-label="Fechar">
                         <i class="fa-solid fa-times"></i>
@@ -49,7 +49,7 @@
         </div>
     </header>
 
-    <!-- ConteÃºdo Principal -->
+    <!-- Conteúdo principal -->
     <div class="min-h-screen flex items-center justify-center pt-16">
         <!-- Bloco de Login Menor -->
         <div class="bg-white shadow-2xl rounded-lg w-full max-w-xs overflow-hidden mx-4">
@@ -70,10 +70,10 @@
                         <input type="password" id="password" name="password" required
                                class="block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[--cor-ouro-acento] focus:border-[--cor-ouro-acento] sm:text-sm pr-10">
                         
-                        <!-- Ãcone do Olho (Centralizado Horizontalmente) -->
-                        <div id="toggle-password" class="password-icon-container">
+                        <!-- Ícone para mostrar ou ocultar a senha -->
+                        <button type="button" id="toggle-password" class="password-icon-container" aria-label="Mostrar ou ocultar senha">
                             <i class="fa-solid fa-eye"></i>
-                        </div>
+                        </button>
                     </div>
                 </div>
 
@@ -92,7 +92,7 @@
         </div>
     </div>
 
-    <!-- Script do Firebase e LÃ³gica -->
+    <!-- Firebase e lógica de autenticação -->
     <script type="module">
         // IMPORTANTE: Cole sua firebaseConfig aqui!
         const firebaseConfig = {
@@ -106,12 +106,12 @@
           measurementId: "G-BL1G961PGT"
         };
 
-        // ImportaÃ§Ãµes do Firebase
+        // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, setPersistence, browserSessionPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // InicializaÃ§Ã£o
+        // Inicialização
         try {
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
@@ -134,7 +134,7 @@
                 }
             }
 
-            // LÃ³gica da PÃ¡gina
+            // Lógica da página
             const loginForm = document.getElementById('login-form');
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
@@ -143,7 +143,7 @@
             const passwordIcon = togglePassword.querySelector('i');
             const submitButton = loginForm.querySelector('button[type="submit"]');
 
-            // --- LÃ³gica de Mostrar/Esconder Senha ---
+            // --- Mostrar ou ocultar senha ---
             togglePassword.addEventListener('click', () => {
                 const isPassword = passwordInput.type === 'password';
                 passwordInput.type = isPassword ? 'text' : 'password';
@@ -151,7 +151,7 @@
                 passwordIcon.classList.toggle('fa-eye-slash', isPassword);
             });
 
-            // --- LÃ³gica de Login ---
+            // --- Login ---
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 errorMessage.textContent = '';
@@ -159,7 +159,7 @@
                 submitButton.textContent = 'Verificando...';
 
                 try {
-                    // Define a persistÃªncia da sessÃ£o
+                    // Define a persistência da sessão
                     await setPersistence(auth, browserSessionPersistence);
                     
                     const userCredential = await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
@@ -190,7 +190,7 @@
                     console.log("Login com sucesso! Redirecionando...");
                     
                     // SUCESSO! REDIRECIONA PARA O PAINEL DE ADMIN
-                    // CORRIGIDO: Adicionado "./" para formar um URL relativo vÃ¡lido
+                    // Usa URL relativa válida para o redirecionamento
                     window.location.href = './dashboard.html';
 
                 } catch (error) {
@@ -199,7 +199,7 @@
                     errorMessage.classList.remove('text-green-500');
                     
                     if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                        errorMessage.textContent = 'Email ou senha invÃ¡lidos.';
+                        errorMessage.textContent = 'E-mail ou senha inválidos.';
                     } else if (String(error.message || '').startsWith('AUTH_NOT_ADMIN')) {
                         if (String(error.message).includes('CLAIM_READ_ERROR')) {
                             errorMessage.textContent = 'Nao foi possivel validar permissao admin agora. Verifique sua conexao e tente novamente.';
@@ -209,7 +209,7 @@
                             errorMessage.textContent = 'Sua conta nao tem acesso administrativo.';
                         }
                     } else if (error.code === 'auth/invalid-email') {
-                         errorMessage.textContent = 'O formato do email Ã© invÃ¡lido.';
+                         errorMessage.textContent = 'O formato do e-mail é inválido.';
                     // CORRIGIDO: Convertido error.code para String() para evitar o TypeError
                     } else if (String(error.code).includes('api-key')) {
                         errorMessage.textContent = 'Erro: Verifique sua firebaseConfig.';
@@ -224,8 +224,8 @@
                 }
             });
 
-            // --- VerificaÃ§Ã£o de SessÃ£o ---
-            // Se o usuÃ¡rio jÃ¡ estiver logado, redireciona
+            // --- Verificação de sessão ---
+            // Redireciona quando o usuário já está autenticado
             onAuthStateChanged(auth, async (user) => {
                 const adminAuth = await isAuthorizedAdmin(user);
                 if (adminAuth.ok) {
@@ -234,7 +234,7 @@
                 } else if (user) {
                     console.warn("Usuario autenticado sem acesso admin:", adminAuth.reason, user.uid);
                 } else {
-                    console.log("Nenhum usuÃ¡rio logado.");
+                    console.log("Nenhum usuário autenticado.");
                 }
             });
 
@@ -243,11 +243,11 @@
             const errorDiv = document.getElementById('error-message');
             errorDiv.classList.add('text-red-500');
             if (e.message.includes("firebaseConfig")) {
-                 errorDiv.textContent = "Erro: 'firebaseConfig' nÃ£o foi definida.";
+                 errorDiv.textContent = "Erro: 'firebaseConfig' não foi definida.";
             } else if (e.message.includes("API key")) {
-                 errorDiv.textContent = "Erro: API Key invÃ¡lida na 'firebaseConfig'.";
+                 errorDiv.textContent = "Erro: API Key inválida na 'firebaseConfig'.";
             } else {
-                errorDiv.textContent = "Erro crÃ­tico na inicializaÃ§Ã£o. Verifique o console.";
+                errorDiv.textContent = "Erro crítico na inicialização. Verifique o console.";
             }
         }
 

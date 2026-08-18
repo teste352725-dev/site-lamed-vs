@@ -104,7 +104,7 @@ function ensureWorkspaceLoaded(view) {
     const frame = document.getElementById(`frame-${view}`);
     if (!frame || frame.dataset.loaded === "true") return;
 
-    frame.style.height = "1100px";
+    frame.style.removeProperty("height");
     frame.src = frame.dataset.src;
     frame.dataset.loaded = "true";
 }
@@ -115,7 +115,7 @@ window.reloadWorkspace = function reloadWorkspace(view) {
     if (!frame) return;
 
     const baseSrc = frame.dataset.src || WORKSPACE_VIEWS[view];
-    frame.style.height = "1100px";
+    frame.style.removeProperty("height");
     frame.src = `${baseSrc}${baseSrc.includes("?") ? "&" : "?"}ts=${Date.now()}`;
     frame.dataset.loaded = "true";
 };
@@ -125,15 +125,6 @@ window.openWorkspaceInNewTab = function openWorkspaceInNewTab(view) {
     const cleanUrl = WORKSPACE_VIEWS[view].replace("?embedded=1", "");
     window.open(cleanUrl, "_blank");
 };
-
-function syncWorkspaceFrameHeight(sourceWindow, nextHeight) {
-    if (!sourceWindow || !Number.isFinite(nextHeight) || nextHeight < 100) return;
-
-    document.querySelectorAll(".workspace-frame").forEach((frame) => {
-        if (frame.contentWindow !== sourceWindow) return;
-        frame.style.height = `${Math.max(920, Math.ceil(nextHeight) + 16)}px`;
-    });
-}
 
 function renderRecentOrders(orders) {
     const container = document.getElementById("recent-orders-list");
@@ -288,11 +279,4 @@ window.addEventListener("hashchange", () => {
     if (nextView !== currentAdminView) {
         changeView(nextView);
     }
-});
-
-window.addEventListener("message", (event) => {
-    if (event.origin !== window.location.origin) return;
-    if (event.data?.type !== "admin-embedded-size") return;
-
-    syncWorkspaceFrameHeight(event.source, Number(event.data.height));
 });

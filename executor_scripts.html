@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scripts de ManutenÃ§Ã£o | Painel Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Scripts de manutenção | Painel administrativo</title>
+    <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
@@ -27,7 +27,7 @@
     -->
 
 
-    <!-- CabeÃ§alho -->
+    <!-- Cabeçalho -->
     <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-3">
             <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
@@ -35,7 +35,7 @@
         </div>
         <div class="flex gap-2">
             <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-bold border border-red-200">
-                <i class="fa-solid fa-lock mr-1"></i>Ãrea SensÃ­vel
+                <i class="fa-solid fa-lock mr-1"></i>Área sensível
             </span>
         </div>
     </header>
@@ -45,10 +45,10 @@
         <!-- Coluna Esquerda: Scripts Prontos -->
         <div class="lg:col-span-2 space-y-6">
             
-            <!-- ManutenÃ§Ã£o de Rotina -->
+            <!-- Manutenção de rotina -->
             <div class="card">
                 <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h2 class="font-bold text-gray-700">ðŸ› ï¸ ManutenÃ§Ã£o de Rotina</h2>
+                    <h2 class="font-bold text-gray-700"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>Manutenção de rotina</h2>
                     <span class="text-xs text-gray-500">Uso seguro</span>
                 </div>
                 
@@ -68,7 +68,7 @@
                         <div class="script-icon bg-purple-100 text-purple-600"><i class="fa-solid fa-sync"></i></div>
                         <div>
                             <h3 class="font-medium text-gray-800">Sincronizar Contadores</h3>
-                            <p class="text-xs text-gray-500">Recalcula total de produtos e coleÃ§Ãµes ativas.</p>
+                            <p class="text-xs text-gray-500">Recalcula o total de produtos e coleções ativas.</p>
                         </div>
                     </div>
                     <button onclick="runScript('syncContadores')" class="btn btn-secondary text-xs">Executar</button>
@@ -78,8 +78,8 @@
                     <div class="flex items-center gap-3">
                         <div class="script-icon bg-green-100 text-green-600"><i class="fa-solid fa-tags"></i></div>
                         <div>
-                            <h3 class="font-medium text-gray-800">Corrigir PreÃ§os InvÃ¡lidos</h3>
-                            <p class="text-xs text-gray-500">Define preÃ§o 0.00 para produtos com preÃ§o nulo/negativo.</p>
+                            <h3 class="font-medium text-gray-800">Corrigir preços inválidos</h3>
+                            <p class="text-xs text-gray-500">Define preço 0,00 para produtos com preço nulo ou negativo.</p>
                         </div>
                     </div>
                     <button onclick="runScript('corrigirPrecos')" class="btn btn-secondary text-xs">Executar</button>
@@ -90,7 +90,7 @@
                         <div class="script-icon bg-amber-100 text-amber-700"><i class="fa-solid fa-percent"></i></div>
                         <div>
                             <h3 class="font-medium text-gray-800">Remover Todos os Descontos</h3>
-                            <p class="text-xs text-gray-500">Zera o campo <code>desconto</code> de todos os produtos com promoÃƒÂ§ÃƒÂ£o ativa.</p>
+                            <p class="text-xs text-gray-500">Zera o campo <code>desconto</code> de todos os produtos com promoção ativa.</p>
                         </div>
                     </div>
                     <button onclick="runScript('removerDescontosProdutos')" class="btn btn-secondary text-xs">Executar</button>
@@ -100,7 +100,7 @@
                     <div class="flex items-center gap-3">
                         <div class="script-icon bg-teal-100 text-teal-600"><i class="fa-solid fa-download"></i></div>
                         <div>
-                            <h3 class="font-medium text-gray-800">Backup de SeguranÃ§a</h3>
+                            <h3 class="font-medium text-gray-800">Backup de segurança</h3>
                             <p class="text-xs text-gray-500">Baixa um arquivo JSON com todos os produtos e pedidos.</p>
                         </div>
                     </div>
@@ -171,7 +171,7 @@
             <!-- Ações de Emergência -->
             <div class="card border-red-200">
                 <div class="p-4 border-b bg-red-50 flex justify-between items-center">
-                    <h2 class="font-bold text-red-800">ðŸš¨ AÃ§Ãµes de EmergÃªncia</h2>
+                    <h2 class="font-bold text-red-800"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Ações de emergência</h2>
                     <span class="text-xs text-red-600 font-bold">Cuidado!</span>
                 </div>
 
@@ -180,7 +180,7 @@
                         <div class="script-icon bg-red-100 text-red-600"><i class="fa-solid fa-box-open"></i></div>
                         <div>
                             <h3 class="font-medium text-gray-800">Zerar Estoque de Produto</h3>
-                            <p class="text-xs text-gray-500">Define estoque = 0 para um produto especÃ­fico.</p>
+                            <p class="text-xs text-gray-500">Define estoque = 0 para um produto específico.</p>
                         </div>
                     </div>
                     <button onclick="abrirModalPrompt('zerarEstoque')" class="btn btn-warning text-xs">Configurar</button>
@@ -190,7 +190,7 @@
                     <div class="flex items-center gap-3">
                         <div class="script-icon bg-red-600 text-white"><i class="fa-solid fa-bomb"></i></div>
                         <div>
-                            <h3 class="font-medium text-red-700">Reset de FÃ¡brica (Limpar Tudo)</h3>
+                            <h3 class="font-medium text-red-700">Restauração de fábrica (limpar tudo)</h3>
                             <p class="text-xs text-red-500">Apaga TODOS os produtos, pedidos e clientes.</p>
                         </div>
                     </div>
@@ -210,9 +210,9 @@
                     </div>
                 </div>
                 <div class="p-0">
-                    <textarea id="custom-script-input" class="code-editor border-0 focus:ring-0" spellcheck="false" 
-placeholder="// Escreva seu cÃ³digo JavaScript aqui.
-// VariÃ¡veis disponÃ­veis: db, auth, log(msg, type)
+                    <textarea id="custom-script-input" class="code-editor border-0 focus:ring-0" spellcheck="false" readonly aria-disabled="true"
+placeholder="// O executor personalizado está desativado por segurança.
+// Use apenas as rotinas administrativas prontas desta página.
 
 // Exemplo: Listar todos os produtos
 // (async () => {
@@ -223,8 +223,8 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                 </div>
                 <div class="p-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
                     <button onclick="limparEditor()" class="btn btn-secondary text-xs">Limpar</button>
-                    <button onclick="executarScriptPersonalizado()" class="btn btn-primary text-xs">
-                        <i class="fa-solid fa-play mr-2"></i>Executar CÃ³digo
+                    <button onclick="executarScriptPersonalizado()" class="btn btn-primary text-xs opacity-60 cursor-not-allowed" disabled>
+                        <i class="fa-solid fa-shield-halved mr-2"></i>Execução desativada
                     </button>
                 </div>
             </div>
@@ -235,7 +235,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
         <div class="lg:col-span-1">
             <div class="card p-4 sticky top-20">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-gray-700"><i class="fa-solid fa-terminal mr-2"></i>Console de SaÃ­da</h3>
+                    <h3 class="font-bold text-gray-700"><i class="fa-solid fa-terminal mr-2"></i>Console de saída</h3>
                     <button onclick="limparConsole()" class="text-xs text-gray-400 hover:text-gray-600">Limpar</button>
                 </div>
                 
@@ -245,7 +245,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
 
                 <div class="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100">
                     <i class="fa-solid fa-info-circle mr-1"></i>
-                    Os scripts rodam com suas permissÃµes de admin. Use <code>await</code> para operaÃ§Ãµes assÃ­ncronas.
+                    Somente rotinas administrativas previamente revisadas podem ser executadas nesta página.
                 </div>
             </div>
         </div>
@@ -254,7 +254,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
 
     <!-- Scripts Firebase -->
     <script type="module">
-        // ConfiguraÃ§Ã£o Firebase
+        // Configuração Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
             authDomain: "site-lamed.firebaseapp.com",
@@ -299,7 +299,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
             })
         };
 
-        // --- AutenticaÃ§Ã£o ---
+        // --- Autenticação ---
         // ATUALIZADO COM SEU NOVO ID
         const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 
@@ -326,7 +326,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
             }
         });
 
-        // --- FunÃ§Ãµes de Log ---
+        // --- Funções de log ---
         function log(msg, type="info") {
             const consoleBox = document.getElementById('console-output');
             const div = document.createElement('div');
@@ -479,7 +479,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                 switch(scriptName) {
                     
                     case 'limparCarrinhos':
-                        log("Carrinhos sÃ£o locais. Limpando localStorage deste navegador...", "warning");
+                        log("Carrinhos são locais. Limpando o armazenamento deste navegador...", "warning");
                         localStorage.removeItem('lamedCart');
                         log("Carrinho local limpo.", "success");
                         break;
@@ -487,7 +487,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                     case 'syncContadores':
                         const produtos = await getDocs(collection(db, "pecas"));
                         const colecoes = await getDocs(collection(db, "colecoes"));
-                        log(`SincronizaÃ§Ã£o: ${produtos.size} produtos, ${colecoes.size} coleÃ§Ãµes encontradas.`, "success");
+                        log(`Sincronização: ${produtos.size} produtos, ${colecoes.size} coleções encontradas.`, "success");
                         break;
 
                     case 'corrigirPrecos':
@@ -500,15 +500,15 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                             if (!p.preco || p.preco < 0 || isNaN(p.preco)) {
                                 batchPrecos.update(doc.ref, { preco: 0 });
                                 corrigidos++;
-                                log(`Corrigindo preÃ§o do produto ID: ${doc.id}`, "warning");
+                                log(`Corrigindo preço do produto ID: ${doc.id}`, "warning");
                             }
                         });
                         
                         if (corrigidos > 0) {
                             await batchPrecos.commit();
-                            log(`${corrigidos} preÃ§os corrigidos.`, "success");
+                            log(`${corrigidos} preços corrigidos.`, "success");
                         } else {
-                            log("Nenhum preÃ§o invÃ¡lido encontrado.", "success");
+                            log("Nenhum preço inválido encontrado.", "success");
                         }
                         break;
 
@@ -757,7 +757,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                     }
 
                     case 'zerarEstoque':
-                        if (!params) { log("ID do produto nÃ£o fornecido.", "error"); return; }
+                        if (!params) { log("ID do produto não fornecido.", "error"); return; }
                         
                         const prodRef = doc(db, "pecas", params);
                         await updateDoc(prodRef, { 
@@ -769,11 +769,11 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
 
                     case 'modoManutencao':
                         // Exemplo de flag global
-                        log("Modo manutenÃ§Ã£o ativado (SimulaÃ§Ã£o).", "warning");
+                        log("Modo de manutenção ativado (simulação).", "warning");
                         break;
                         
                     default:
-                        log("Script nÃ£o reconhecido.", "error");
+                        log("Script não reconhecido.", "error");
                 }
             } catch (e) {
                 log(`Erro: ${e.message}`, "error");
@@ -783,57 +783,20 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
 
         // --- EXECUTOR DE SCRIPT PERSONALIZADO ---
 
-        const CUSTOM_SCRIPT_EXECUTOR_ENABLED = true;
+        const CUSTOM_SCRIPT_EXECUTOR_ENABLED = false;
 
-        window.executarScriptPersonalizado = async () => {
-            if (!CUSTOM_SCRIPT_EXECUTOR_ENABLED) {
-                log("Editor de script personalizado pausado por seguranca neste ambiente.", "warning");
-                return;
-            }
-
-            const code = document.getElementById('custom-script-input').value;
-            
-            if (!code.trim()) {
-                log("Digite algum cÃ³digo para executar.", "warning");
-                return;
-            }
-
-            log("Executando script personalizado...", "info");
-
-            try {
-                // Criamos uma funÃ§Ã£o assÃ­ncrona dinÃ¢mica
-                // Passamos as variÃ¡veis de contexto: db, auth, log, etc.
-                // Usamos collection, getDocs, etc para facilitar o uso
-                
-                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-                
-                const func = new AsyncFunction(
-                    'db', 'auth', 'log', 
-                    'collection', 'getDocs', 'doc', 'updateDoc', 'deleteDoc', 'addDoc', 'query', 'where', 'writeBatch',
-                    code
-                );
-
-                await func(
-                    dbCompat, auth, log, 
-                    collection, getDocs, doc, updateDoc, deleteDoc, addDoc, query, where, writeBatch
-                );
-                
-                log("Script finalizado.", "success");
-
-            } catch (e) {
-                log(`Erro de execuÃ§Ã£o: ${e.message}`, "error");
-                console.error(e);
-            }
+        window.executarScriptPersonalizado = () => {
+            log("O executor personalizado está desativado por segurança. Use somente as rotinas revisadas.", "warning");
         };
 
-        // --- PersistÃªncia do Editor ---
+        // --- Persistência do editor ---
 
         if (!CUSTOM_SCRIPT_EXECUTOR_ENABLED) {
             const editor = document.getElementById('custom-script-input');
             const button = document.querySelector('button[onclick="executarScriptPersonalizado()"]');
 
             if (editor) {
-                editor.value = '// Editor personalizado pausado por seguranca.\n// Use os scripts prontos ou mova manutencoes sensiveis para o backend.';
+                editor.value = '// Editor personalizado pausado por segurança.\n// Use os scripts prontos ou mova manutenções sensíveis para o backend.';
                 editor.readOnly = true;
             }
 
@@ -864,11 +827,11 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
             }
         };
 
-        // --- FunÃ§Ãµes Auxiliares de ConfirmaÃ§Ã£o ---
+        // --- Funções auxiliares de confirmação ---
 
         window.confirmarPerigo = async (acao) => {
             const codigo = Math.floor(1000 + Math.random() * 9000);
-            const resposta = prompt(`PERIGO: Esta aÃ§Ã£o Ã© destrutiva!\nDigite o cÃ³digo ${codigo} para confirmar:`);
+            const resposta = prompt(`PERIGO: Esta ação é destrutiva!\nDigite o código ${codigo} para confirmar:`);
             
             if (resposta == codigo) {
                 if (acao === 'limparTudo') {
@@ -885,7 +848,7 @@ placeholder="// Escreva seu cÃ³digo JavaScript aqui.
                     log("Banco de dados limpo com sucesso.", "success");
                 }
             } else {
-                log("AÃ§Ã£o cancelada. CÃ³digo incorreto.", "info");
+                log("Ação cancelada. Código incorreto.", "info");
             }
         };
 

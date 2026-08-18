@@ -1,7 +1,7 @@
 ﻿:root {
             --cor-fundo: #FDFBF6;
             --cor-texto: #45301F;
-            --cor-marrom-cta: #643f21; /* Cor do fundo da pÃ¡gina */
+            --cor-marrom-cta: #643f21; /* Cor do fundo da página */
             --cor-ouro-acento: #A58A5C;
         }
 
@@ -16,13 +16,13 @@
         .font-playfair { font-family: 'Playfair Display', serif; }
         .font-allura { font-family: 'Allura', cursive; }
 
-        /* CorreÃ§Ã£o do Ã­cone do olho */
+        /* Posicionamento do ícone do campo de senha */
         .password-icon-container {
             position: absolute;
             top: 0;
             bottom: 0;
             right: 0;
-            /* Centraliza o Ã­cone no padding-right (pr-10 -> 2.5rem) */
+            /* Centraliza o ícone no espaço à direita do campo */
             width: 2.5rem; 
             display: flex;
             align-items: center;
@@ -30,4 +30,3 @@
             cursor: pointer;
             color: #9ca3af; /* cinza-400 */
         }
-

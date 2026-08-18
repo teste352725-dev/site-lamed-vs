@@ -6,12 +6,16 @@
     const style = document.createElement("style");
     style.textContent = `
         html, body {
-            height: 100%;
+            height: auto !important;
+            min-height: 100% !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain;
         }
 
         body.admin-embedded {
             padding-bottom: 0 !important;
-            min-height: 100vh !important;
+            min-height: 100% !important;
             background-color: #f8fafc !important;
         }
 
@@ -42,6 +46,24 @@
             margin-bottom: 1rem !important;
         }
 
+        body.admin-embedded .hero-panel .hero-subtitle,
+        body.admin-embedded .hero-panel .summary-strip,
+        body.admin-embedded .control-panel > .section-kicker,
+        body.admin-embedded .control-panel > .section-title,
+        body.admin-embedded .control-panel > .section-subtitle,
+        body.admin-embedded .control-panel > .modal-panel {
+            display: none !important;
+        }
+
+        body.admin-embedded .hero-panel,
+        body.admin-embedded .control-panel {
+            padding: 1rem !important;
+        }
+
+        body.admin-embedded .filters-grid {
+            margin-top: 0 !important;
+        }
+
         body.admin-embedded .ghost-button {
             display: none !important;
         }
@@ -53,63 +75,16 @@
         body.admin-embedded .modal-shell,
         body.admin-embedded .gallery-shell {
             width: 100% !important;
-            max-height: 100vh !important;
-            min-height: 100vh !important;
+            max-height: 100dvh !important;
+            min-height: 100dvh !important;
             border-radius: 0 !important;
         }
     `;
     document.head.appendChild(style);
 
-    let resizeFrameRequest = null;
-    let resizeDebounceTimer = null;
-    let lastPostedHeight = 0;
-
-    const sendHeightToParent = () => {
-        resizeFrameRequest = null;
-        if (window.parent === window) return;
-
-        const height = Math.max(
-            document.documentElement.scrollHeight,
-            document.body?.scrollHeight || 0,
-            document.documentElement.offsetHeight,
-            document.body?.offsetHeight || 0
-        );
-
-        if (Math.abs(height - lastPostedHeight) < 6) return;
-        lastPostedHeight = height;
-
-        window.parent.postMessage({
-            type: "admin-embedded-size",
-            page: window.location.pathname.split("/").pop(),
-            height
-        }, window.location.origin);
-    };
-
-    const scheduleResizeMessage = (immediate = false) => {
-        if (resizeFrameRequest !== null) {
-            cancelAnimationFrame(resizeFrameRequest);
-        }
-        if (resizeDebounceTimer !== null) {
-            clearTimeout(resizeDebounceTimer);
-        }
-
-        const queue = () => {
-            resizeDebounceTimer = null;
-            resizeFrameRequest = requestAnimationFrame(sendHeightToParent);
-        };
-
-        if (immediate) {
-            queue();
-            return;
-        }
-
-        resizeDebounceTimer = window.setTimeout(queue, 90);
-    };
-
     const activate = () => {
         if (!document.body) return;
         document.body.classList.add("admin-embedded");
-        scheduleResizeMessage();
     };
 
     if (document.body) {
@@ -118,29 +93,4 @@
         document.addEventListener("DOMContentLoaded", activate, { once: true });
     }
 
-    window.addEventListener("load", () => scheduleResizeMessage(true));
-    window.addEventListener("resize", scheduleResizeMessage);
-    window.addEventListener("orientationchange", () => scheduleResizeMessage(true));
-
-    const startObservers = () => {
-        if (!document.body) return;
-
-        if ("ResizeObserver" in window) {
-            const resizeObserver = new ResizeObserver(() => scheduleResizeMessage());
-            resizeObserver.observe(document.body);
-            resizeObserver.observe(document.documentElement);
-        }
-
-        const mutationObserver = new MutationObserver(() => scheduleResizeMessage());
-        mutationObserver.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    };
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", startObservers, { once: true });
-    } else {
-        startObservers();
-    }
 })();

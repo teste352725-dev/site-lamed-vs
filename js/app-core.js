@@ -471,16 +471,6 @@ async function signInWithGoogleSafe() {
         error.code = 'auth/disallowed-useragent';
         throw error;
     }
-    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
-        `${navigator.userAgent || ''} ${navigator.platform || ''}`
-    );
-
-    if (isMobileDevice) {
-        console.info('[storefront.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
-        await auth.signInWithRedirect(provider);
-        return null;
-    }
-
     try {
         const result = await auth.signInWithPopup(provider);
         return result?.user || null;
@@ -488,8 +478,7 @@ async function signInWithGoogleSafe() {
         const popupCode = String(popupError?.code || '');
         const shouldFallbackToRedirect = [
             'auth/popup-blocked',
-            'auth/popup-closed-by-user',
-            'auth/cancelled-popup-request'
+            'auth/operation-not-supported-in-this-environment'
         ].includes(popupCode);
 
         if (!shouldFallbackToRedirect) {
@@ -760,6 +749,10 @@ function bindStorefrontForegroundNotifications() {
 function init() {
     console.log('Inicializando...');
 
+    document.querySelectorAll('[data-current-year]').forEach((element) => {
+        element.textContent = String(new Date().getFullYear());
+    });
+
     scheduleDeliveryPopupCheck();
     updateMobileBottomNavState();
     updateOfflineBannerState();
@@ -887,7 +880,8 @@ function setupEventListeners() {
     
     // Delega??o de eventos para op??es din?micas
     document.body.addEventListener('click', (e) => {
-        if(e.target.classList.contains('size-option')) selectSize(e.target);
+        const sizeOption = e.target.closest('.size-option');
+        if (sizeOption) selectSize(sizeOption);
     });
 
     if (elements.addToCartBtn) elements.addToCartBtn.addEventListener('click', addToCart);
@@ -1661,7 +1655,7 @@ function closeEntryAssistPrompt(markSeen = true) {
     if (markSeen) {
         const promptType = sanitizePlainText(elements.authPromptModal.dataset.promptType || 'generic', 30) || 'generic';
         try {
-            sessionStorage.setItem(`lamed_entry_prompt_${promptType}`, 'true');
+            localStorage.setItem(`lamed_entry_prompt_${promptType}`, String(Date.now()));
         } catch (error) {}
     }
 }
@@ -1718,7 +1712,9 @@ function checkAuthPrompt(user) {
 
     const promptType = shouldPromptPush ? 'push' : 'login';
     try {
-        if (sessionStorage.getItem(`lamed_entry_prompt_${promptType}`) === 'true') {
+        const promptSeenAt = Number(localStorage.getItem(`lamed_entry_prompt_${promptType}`) || 0);
+        const promptCooldown = 30 * 24 * 60 * 60 * 1000;
+        if (promptSeenAt > 0 && Date.now() - promptSeenAt < promptCooldown) {
             return;
         }
     } catch (error) {}
@@ -1759,6 +1755,7 @@ function toggleSidebar() {
         elements.sidebarMenu.classList.add('-translate-x-full'); 
         elements.sidebarMenu.classList.remove('translate-x-0'); 
         unlockBodyScroll('sidebar');
+        elements.sidebarToggle?.setAttribute('aria-expanded', 'false');
         
         // Remove classe visual para fade out e espera transi??o para esconder
         if(overlay) {
@@ -1771,6 +1768,7 @@ function toggleSidebar() {
         elements.sidebarMenu.classList.remove('-translate-x-full');
         elements.sidebarMenu.classList.add('translate-x-0');
         lockBodyScroll('sidebar');
+        elements.sidebarToggle?.setAttribute('aria-expanded', 'true');
         
         // Remove hidden para renderizar, depois adiciona visivel para fade in
         if(overlay) {
@@ -1781,11 +1779,12 @@ function toggleSidebar() {
 }
 
 function toggleSidebarCollections() {
-    elements.sidebarSubmenu.classList.toggle('hidden');
+    const isHidden = elements.sidebarSubmenu.classList.toggle('hidden');
     elements.sidebarArrow.classList.toggle('rotate-180');
+    elements.sidebarCollectionsToggle?.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
 }
 
-// --- ATUALIZAÃ‡ÃƒO DO USU?RIO ---
+// --- ATUALIZAÇÃO DO USUÁRIO ---
 async function atualizarInterfaceUsuario(user, isAdmin = false) {
     const sidebarUserArea = elements.sidebarUserArea;
     if (!sidebarUserArea) return;

@@ -409,16 +409,6 @@ async function signInWithGoogleSafe() {
         throw error;
     }
 
-    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
-        `${navigator.userAgent || ''} ${navigator.platform || ''}`
-    );
-
-    if (isMobileDevice) {
-        console.info('[account.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
-        await auth.signInWithRedirect(provider);
-        return null;
-    }
-
     try {
         const result = await auth.signInWithPopup(provider);
         return result?.user || null;
@@ -426,8 +416,7 @@ async function signInWithGoogleSafe() {
         const popupCode = String(popupError?.code || '');
         const shouldFallbackToRedirect = [
             'auth/popup-blocked',
-            'auth/popup-closed-by-user',
-            'auth/cancelled-popup-request'
+            'auth/operation-not-supported-in-this-environment'
         ].includes(popupCode);
 
         if (!shouldFallbackToRedirect) {

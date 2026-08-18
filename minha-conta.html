@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="lamed-api-base-url" content="">
     <title>Minha Conta | Lamed vs</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/account.css">
@@ -94,11 +94,11 @@
 
                     <form id="login-form" class="account-form-grid mt-8">
                         <div>
-                            <label class="account-field-label">E-mail</label>
+                            <label for="login-email" class="account-field-label">E-mail</label>
                             <input type="email" id="login-email" class="input-chic" placeholder="voce@exemplo.com" autocomplete="email" required>
                         </div>
                         <div>
-                            <label class="account-field-label">Senha</label>
+                            <label for="login-pass" class="account-field-label">Senha</label>
                             <input type="password" id="login-pass" class="input-chic" placeholder="Sua senha" autocomplete="current-password" required>
                         </div>
                         <button type="submit" class="btn-chic">Entrar</button>
@@ -126,35 +126,35 @@
                     <form id="register-form" class="account-form-grid mt-8">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="account-field-label">Nome</label>
+                                <label for="reg-nome" class="account-field-label">Nome</label>
                                 <input type="text" id="reg-nome" class="input-chic" placeholder="Nome" autocomplete="given-name" required>
                             </div>
                             <div>
-                                <label class="account-field-label">Sobrenome</label>
+                                <label for="reg-sobrenome" class="account-field-label">Sobrenome</label>
                                 <input type="text" id="reg-sobrenome" class="input-chic" placeholder="Sobrenome" autocomplete="family-name" required>
                             </div>
                         </div>
                         <div>
-                            <label class="account-field-label">E-mail</label>
+                            <label for="reg-email" class="account-field-label">E-mail</label>
                             <input type="email" id="reg-email" class="input-chic" placeholder="voce@exemplo.com" autocomplete="email" required>
                         </div>
                         <div>
-                            <label class="account-field-label">WhatsApp</label>
+                            <label for="reg-phone" class="account-field-label">WhatsApp</label>
                             <input type="tel" id="reg-phone" class="input-chic" placeholder="DDD + numero" autocomplete="tel" required>
                         </div>
                         <div>
-                            <label class="account-field-label">Senha</label>
+                            <label for="reg-pass" class="account-field-label">Senha</label>
                             <input type="password" id="reg-pass" class="input-chic" placeholder="Minimo de 6 caracteres" autocomplete="new-password" required>
                         </div>
 
                         <div class="rounded-[22px] border border-[#eadfce] bg-white/80 p-5 mt-2">
                             <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco inicial</p>
                             <div class="grid grid-cols-3 gap-3 mt-4">
-                                <input type="text" id="reg-cep" placeholder="CEP" class="input-chic col-span-1" autocomplete="postal-code" onblur="buscarEndereco(this.value)">
-                                <input type="text" id="reg-cidade" placeholder="Cidade / UF" class="input-chic col-span-2" autocomplete="address-level2">
+                                <input type="text" id="reg-cep" aria-label="CEP" placeholder="CEP" class="input-chic col-span-1" autocomplete="postal-code" onblur="buscarEndereco(this.value)">
+                                <input type="text" id="reg-cidade" aria-label="Cidade e estado" placeholder="Cidade / UF" class="input-chic col-span-2" autocomplete="address-level2">
                             </div>
-                            <input type="text" id="reg-rua" placeholder="Rua" class="input-chic mt-2" autocomplete="street-address">
-                            <input type="text" id="reg-numero" placeholder="Numero / Complemento" class="input-chic mt-2" autocomplete="address-line2">
+                            <input type="text" id="reg-rua" aria-label="Rua" placeholder="Rua" class="input-chic mt-2" autocomplete="street-address">
+                            <input type="text" id="reg-numero" aria-label="Número e complemento" placeholder="Numero / Complemento" class="input-chic mt-2" autocomplete="address-line2">
                         </div>
 
                         <button type="submit" class="btn-chic mt-3">Finalizar cadastro</button>
@@ -191,7 +191,7 @@
                             <p id="user-name-display" class="text-sm font-semibold text-[#2d2017]">Cliente</p>
                         </div>
                         <img id="user-avatar-display" src="https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff" class="account-avatar" alt="Avatar da conta" onerror="this.src='https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff'">
-                        <button type="button" onclick="fazerLogout()" class="account-power-btn" title="Sair">
+                        <button type="button" onclick="fazerLogout()" class="account-power-btn" title="Sair" aria-label="Sair da conta">
                             <i class="fa-solid fa-power-off"></i>
                         </button>
                     </div>
@@ -283,14 +283,14 @@
                                 <div class="account-avatar-editor">
                                     <div class="relative w-28 h-28 avatar-container cursor-pointer">
                                         <img id="profile-edit-avatar" src="https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff" class="w-full h-full rounded-full object-cover border-4 border-white shadow-md" alt="Foto de perfil" onerror="this.src='https://ui-avatars.com/api/?name=Cliente&background=A58A5C&color=fff'">
-                                        <div class="absolute inset-0 rounded-full avatar-overlay flex items-center justify-center text-white" onclick="document.getElementById('file-upload-profile').click()">
+                                        <button type="button" class="absolute inset-0 rounded-full avatar-overlay flex items-center justify-center text-white" aria-label="Escolher nova foto de perfil" onclick="document.getElementById('file-upload-profile').click()">
                                             <i class="fa-solid fa-camera text-xl"></i>
-                                        </div>
-                                        <input type="file" id="file-upload-profile" class="hidden" accept="image/*" onchange="uploadFotoPerfil(this)">
+                                        </button>
+                                        <input type="file" id="file-upload-profile" class="hidden" accept="image/*" aria-label="Arquivo da foto de perfil" onchange="uploadFotoPerfil(this)">
                                     </div>
 
                                     <div class="w-full">
-                                        <label class="account-field-label">URL da foto</label>
+                                        <label for="profile-photo-url" class="account-field-label">URL da foto</label>
                                         <input type="url" id="profile-photo-url" class="input-chic" placeholder="Cole o link da sua foto aqui">
                                     </div>
                                 </div>
@@ -298,11 +298,11 @@
                                 <div class="account-profile-grid">
                                     <div class="account-profile-two">
                                         <div>
-                                            <label class="account-field-label">Nome completo</label>
+                                            <label for="profile-nome" class="account-field-label">Nome completo</label>
                                             <input type="text" id="profile-nome" class="input-chic">
                                         </div>
                                         <div>
-                                            <label class="account-field-label">Telefone / WhatsApp</label>
+                                            <label for="profile-phone" class="account-field-label">Telefone / WhatsApp</label>
                                             <input type="text" id="profile-phone" class="input-chic">
                                         </div>
                                     </div>
@@ -310,11 +310,11 @@
                                     <div class="rounded-[24px] border border-[#eadfce] bg-white/85 p-5">
                                         <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco de entrega</p>
                                         <div class="grid grid-cols-3 gap-4 mt-4">
-                                            <input type="text" id="profile-cep" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
-                                            <input type="text" id="profile-cidade" placeholder="Cidade / UF" class="input-chic col-span-2">
+                                            <input type="text" id="profile-cep" aria-label="CEP" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
+                                            <input type="text" id="profile-cidade" aria-label="Cidade e estado" placeholder="Cidade / UF" class="input-chic col-span-2">
                                         </div>
-                                        <input type="text" id="profile-rua" placeholder="Rua" class="input-chic mt-2">
-                                        <input type="text" id="profile-numero" placeholder="Numero e complemento" class="input-chic mt-2">
+                                        <input type="text" id="profile-rua" aria-label="Rua" placeholder="Rua" class="input-chic mt-2">
+                                        <input type="text" id="profile-numero" aria-label="Número e complemento" placeholder="Numero e complemento" class="input-chic mt-2">
                                     </div>
                                 </div>
 
@@ -378,7 +378,7 @@
                         <div id="chat-messages"></div>
 
                         <form id="chat-form" class="account-chat-form">
-                            <input type="text" id="message-input" class="account-chat-input" placeholder="Digite sua duvida sobre pedido, medidas, personalizacao ou entrega...">
+                            <input type="text" id="message-input" aria-label="Mensagem para o suporte" class="account-chat-input" placeholder="Digite sua duvida sobre pedido, medidas, personalizacao ou entrega...">
                             <button type="submit" class="account-chat-send" aria-label="Enviar mensagem">
                                 <i class="fa-solid fa-paper-plane"></i>
                             </button>
@@ -426,5 +426,3 @@
     </script>
 </body>
 </html>
-
-

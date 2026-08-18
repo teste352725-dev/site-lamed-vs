@@ -83,16 +83,6 @@ async function signInWithGoogleSafeForCheckout() {
         error.code = 'auth/disallowed-useragent';
         throw error;
     }
-    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(
-        `${navigator.userAgent || ''} ${navigator.platform || ''}`
-    );
-
-    if (isMobileDevice) {
-        console.info('[checkout.google.mobileRedirect]', 'Dispositivo movel detectado, usando redirect.');
-        await auth.signInWithRedirect(provider);
-        return null;
-    }
-
     try {
         const result = await auth.signInWithPopup(provider);
         return result?.user || null;
@@ -100,8 +90,7 @@ async function signInWithGoogleSafeForCheckout() {
         const popupCode = String(popupError?.code || '');
         const shouldFallbackToRedirect = [
             'auth/popup-blocked',
-            'auth/popup-closed-by-user',
-            'auth/cancelled-popup-request'
+            'auth/operation-not-supported-in-this-environment'
         ].includes(popupCode);
 
         if (!shouldFallbackToRedirect) {
@@ -1603,13 +1592,18 @@ async function toggleFavorite() {
     const isFavorite = icon.classList.contains('fa-solid');
     const nextFavoriteState = !isFavorite;
     icon.className = nextFavoriteState ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
+    elements.favoriteBtn?.setAttribute('aria-pressed', String(nextFavoriteState));
+    elements.favoriteBtn?.setAttribute('aria-label', nextFavoriteState ? 'Remover dos favoritos' : 'Adicionar aos favoritos');
 
     try {
         const result = await sendFavoriteToggleToBackend(currentProduct.id, nextFavoriteState, authenticatedUser);
         icon.className = result?.favorite ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
+        elements.favoriteBtn?.setAttribute('aria-pressed', String(Boolean(result?.favorite)));
+        elements.favoriteBtn?.setAttribute('aria-label', result?.favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos');
     } catch (error) {
         console.error(error);
         icon.className = isFavorite ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
+        elements.favoriteBtn?.setAttribute('aria-pressed', String(isFavorite));
         alert('Nao foi possivel salvar este favorito agora.');
     }
 }
@@ -1622,10 +1616,14 @@ async function checkFavoriteStatus(productId) {
     if (!icon) return;
 
     icon.className = 'fa-regular fa-heart';
+    elements.favoriteBtn?.setAttribute('aria-pressed', 'false');
+    elements.favoriteBtn?.setAttribute('aria-label', 'Adicionar aos favoritos');
     try {
         const doc = await db.collection('usuarios').doc(authenticatedUser.uid).get();
         if (doc.data()?.favoritos?.includes(productId)) {
             icon.className = 'fa-solid fa-heart text-red-500';
+            elements.favoriteBtn?.setAttribute('aria-pressed', 'true');
+            elements.favoriteBtn?.setAttribute('aria-label', 'Remover dos favoritos');
         }
     } catch (error) {}
 }

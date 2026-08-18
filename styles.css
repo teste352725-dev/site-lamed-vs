@@ -20,6 +20,53 @@ body {
     position: relative;
 }
 
+.skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 200;
+    transform: translateY(-180%);
+    border-radius: 999px;
+    background: #45301f;
+    color: #fff;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
+#sidebar-toggle,
+#cart-btn,
+#close-sidebar,
+#close-cart-btn,
+#close-auth-prompt,
+#btn-favorite,
+#back-to-gallery,
+.splide__arrow,
+.delivery-popup-actions button,
+footer a[aria-label] {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+footer a[aria-label] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#entry-assist-link,
+#entry-assist-action-btn,
+#auth-prompt-dismiss {
+    min-height: 44px;
+}
+
 body.no-scroll {
     overflow: hidden;
     touch-action: none;
