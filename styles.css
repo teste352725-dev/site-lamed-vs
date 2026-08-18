@@ -621,6 +621,12 @@ body.no-scroll {
     margin-bottom: 1rem;
 }
 
+/* Mantem os atalhos administrativos invisiveis ate a autorizacao ser confirmada. */
+.admin-inline-tools.hidden,
+.admin-fab-panel.hidden {
+    display: none;
+}
+
 .admin-inline-tools-center {
     justify-content: center;
     margin-bottom: 1.5rem;
@@ -770,6 +776,12 @@ body.no-scroll {
         transform: translate(-50%, 140%);
         opacity: 0;
         pointer-events: none;
+    }
+
+    body:not(.no-scroll) .mobile-bottom-nav {
+        transform: translateX(-50%);
+        opacity: 1;
+        pointer-events: auto;
     }
 }
 
