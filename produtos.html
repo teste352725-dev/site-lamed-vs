@@ -19,7 +19,7 @@
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260818-native-admin" defer></script>
 
-        <link rel="stylesheet" href="css/produtos.css">
+        <link rel="stylesheet" href="css/produtos.css?v=20260818-mobile-catalog">
         <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-native-admin">
 </head>
 <body>
@@ -156,7 +156,11 @@
                     </div>
                 </div>
 
-                <div class="modal-panel mt-6">
+                <details id="categories-manager" class="modal-panel mt-6" open>
+                    <summary class="mobile-categories-summary">
+                        <span><i class="fa-solid fa-tags"></i> Gerenciar categorias</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </summary>
                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h3 class="panel-title">Categorias do site</h3>
@@ -181,7 +185,7 @@
                     </div>
 
                     <div id="categories-admin-list" class="mt-5 grid gap-3"></div>
-                </div>
+                </details>
             </section>
 
             <section class="products-layout">
@@ -870,6 +874,15 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+            const categoriesManager = document.getElementById('categories-manager');
+            const mobileCategoriesMedia = window.matchMedia('(max-width: 720px)');
+            const syncCategoriesManager = (event) => {
+                if (!categoriesManager) return;
+                categoriesManager.open = !event.matches;
+            };
+            syncCategoriesManager(mobileCategoriesMedia);
+            mobileCategoriesMedia.addEventListener?.('change', syncCategoriesManager);
+
             auth.onAuthStateChanged(async (user) => {
                 if (!(await isAuthorizedAdmin(user))) {
                     auth.signOut().catch(() => {});
