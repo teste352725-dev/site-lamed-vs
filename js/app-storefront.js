@@ -19,7 +19,10 @@ function handleRouting() {
     else if (hash.startsWith('#/colecao/')) showPage('page-single-collection', null, hash.split('/')[2]);
     else if (hash.startsWith('#/categoria/')) showPage('page-shop', null, hash.split('/')[2]);
     else if (hash === '#loja') showPage('page-shop');
-    else if (hash === '#colecoes') showPage('page-collections-list');
+    else if (hash === '#colecoes') {
+        window.history.replaceState(null, '', '#loja');
+        showPage('page-shop');
+    }
     else showPage('page-home');
 }
 
@@ -53,10 +56,6 @@ function showPage(pageId, param1 = null, param2 = null) {
             showProductDetail(param1);
         }
     } 
-    else if (pageId === 'page-collections-list') {
-        document.getElementById('page-collections-list').classList.add('active');
-        renderizarListaDeColecoes(); 
-    }
     else if (pageId === 'page-store-status') {
         document.getElementById('page-store-status').classList.add('active');
     }

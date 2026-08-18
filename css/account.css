@@ -39,6 +39,10 @@ body.account-body {
     padding: 2rem 0;
 }
 
+.account-auth-shell.hidden {
+    display: none;
+}
+
 .account-auth-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -974,6 +978,20 @@ body.account-body {
     .account-shell,
     .account-auth-grid {
         width: min(100% - 1rem, 100%);
+    }
+
+    .account-auth-shell {
+        min-height: auto;
+        align-items: flex-start;
+        padding: 0.5rem 0 calc(6.5rem + env(safe-area-inset-bottom));
+    }
+
+    .account-auth-grid {
+        display: block;
+    }
+
+    .account-brand-panel {
+        display: none;
     }
 
     .account-layout {
