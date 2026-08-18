@@ -14,7 +14,7 @@
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260818-native-admin" defer></script>
 
-        <link rel="stylesheet" href="css/chat-admin.css">
+        <link rel="stylesheet" href="css/chat-admin.css?v=20260818-whatsapp-flow">
         <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-native-admin">
 </head>
 <body class="h-screen flex flex-col">
@@ -39,8 +39,8 @@
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
-        <aside class="w-full max-w-sm border-r bg-white flex flex-col">
+    <div class="chat-admin-layout flex flex-1 overflow-hidden">
+        <aside id="chat-list-panel" class="w-full max-w-sm border-r bg-white flex flex-col">
             <div class="p-4 border-b space-y-3">
                 <div class="grid grid-cols-2 gap-3">
                     <div class="surface-card p-3">
@@ -65,7 +65,7 @@
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col bg-[var(--chat-bg)]">
+        <main id="chat-conversation-panel" class="flex-1 flex flex-col bg-[var(--chat-bg)]">
             <div id="chat-empty-state" class="flex-1 flex flex-col items-center justify-center px-6 text-center text-gray-500">
                 <i class="fa-regular fa-comments text-5xl mb-4 text-gray-300"></i>
                 <h2 class="text-xl font-semibold text-gray-700">Selecione uma conversa</h2>
@@ -73,26 +73,32 @@
             </div>
 
             <div id="chat-workspace" class="hidden flex-1 flex flex-col min-h-0">
-                <div class="bg-white border-b px-4 py-4">
-                    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                <div class="chat-conversation-head bg-white border-b px-4 py-3">
+                    <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-3 min-w-0">
+                            <button type="button" onclick="voltarParaListaChats()" class="chat-mobile-back" aria-label="Voltar para as conversas">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
                             <div id="chat-avatar" class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-lg">C</div>
                             <div class="min-w-0">
                                 <h3 id="chat-username" class="font-semibold text-gray-900 truncate">Cliente</h3>
                                 <p id="chat-subtitle" class="text-xs text-gray-500">Carregando contexto...</p>
                             </div>
                         </div>
-                        <div class="flex flex-wrap gap-2">
-                            <a id="chat-whatsapp-link" href="#" target="_blank" class="hidden px-4 py-2 rounded-xl bg-green-500 text-white text-sm font-semibold">
-                                <i class="fa-brands fa-whatsapp mr-2"></i>WhatsApp
+                        <div class="chat-head-actions flex gap-2">
+                            <a id="chat-whatsapp-link" href="#" target="_blank" class="hidden chat-head-button chat-head-whatsapp" aria-label="Abrir conversa no WhatsApp">
+                                <i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span>
                             </a>
-                            <button onclick="reabrirChatAtual()" class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700">
-                                <i class="fa-solid fa-rotate-right mr-2"></i>Atualizar
+                            <button type="button" onclick="toggleChatCustomerDetails()" class="chat-head-button" aria-label="Ver dados da cliente">
+                                <i class="fa-solid fa-circle-info"></i><span>Dados</span>
+                            </button>
+                            <button type="button" onclick="reabrirChatAtual()" class="chat-head-button" aria-label="Atualizar conversa">
+                                <i class="fa-solid fa-rotate-right"></i><span>Atualizar</span>
                             </button>
                         </div>
                     </div>
 
-                    <div class="grid md:grid-cols-3 gap-3 mt-4">
+                    <div id="chat-customer-details" class="chat-customer-details grid md:grid-cols-3 gap-3 mt-3">
                         <div class="surface-card p-3">
                             <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Telefone</p>
                             <p id="chat-user-phone" class="mt-2 text-sm font-medium text-gray-800">-</p>
@@ -107,22 +113,22 @@
                         </div>
                     </div>
 
-                    <div id="admin-thread-list" class="flex flex-wrap gap-2 mt-4"></div>
+                    <div id="admin-thread-list" class="chat-thread-list flex gap-2 mt-3"></div>
                 </div>
 
                 <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col"></div>
 
-                <div class="bg-white border-t px-4 py-3 space-y-3">
-                    <div class="flex flex-wrap gap-2">
+                <div class="chat-composer bg-white border-t px-3 py-3 space-y-2">
+                    <div class="chat-quick-replies flex gap-2">
                         <button type="button" class="quick-reply px-3 py-2 rounded-full bg-gray-100 text-xs font-semibold text-gray-700" data-reply="Ola! Ja vi sua mensagem e vou te ajudar agora.">Ola e suporte</button>
                         <button type="button" class="quick-reply px-3 py-2 rounded-full bg-gray-100 text-xs font-semibold text-gray-700" data-reply="Posso te orientar sobre cores, tamanhos e personalizacao para esse pedido sob demanda.">Cores e tamanhos</button>
                         <button type="button" class="quick-reply px-3 py-2 rounded-full bg-gray-100 text-xs font-semibold text-gray-700" data-reply="Se quiser, eu tambem posso te orientar pelo WhatsApp.">Migrar para WhatsApp</button>
                     </div>
 
-                    <form id="admin-chat-form" class="flex gap-3 items-end">
-                        <textarea id="admin-message-input" rows="2" class="flex-1 rounded-2xl border border-gray-200 px-4 py-3 focus:outline-none focus:border-[--chat-brown] resize-none" placeholder="Digite sua resposta... Enter envia, Shift+Enter quebra linha."></textarea>
-                        <button type="submit" class="h-12 px-5 rounded-2xl bg-[--chat-brown] text-white font-semibold hover:opacity-90 transition">
-                            <i class="fa-solid fa-paper-plane mr-2"></i>Enviar
+                    <form id="admin-chat-form" class="chat-message-form flex gap-2 items-end">
+                        <textarea id="admin-message-input" rows="1" class="flex-1 rounded-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-[--chat-brown] resize-none" placeholder="Mensagem"></textarea>
+                        <button type="submit" class="chat-send-button" aria-label="Enviar mensagem">
+                            <i class="fa-solid fa-paper-plane"></i><span>Enviar</span>
                         </button>
                     </form>
                 </div>
@@ -380,7 +386,7 @@
                                 </div>
                                 <p class="mt-1 text-xs text-gray-500 line-clamp-2">${safeLastMessage}</p>
                                 <div class="mt-2 flex items-center justify-between gap-2">
-                                    <span class="text-[11px] text-gray-400">${sanitizePlainText(chat.id, 20)}</span>
+                                    <span class="chat-id text-[11px] text-gray-400">${sanitizePlainText(chat.id, 20)}</span>
                                     ${chat.unread ? '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>novo</span>' : ''}
                                 </div>
                             </div>
@@ -496,6 +502,7 @@
 
         function abrirChat(chatId, userName) {
             currentChatId = chatId;
+            document.body.classList.add('chat-conversation-open');
             document.getElementById('chat-empty-state').classList.add('hidden');
             document.getElementById('chat-workspace').classList.remove('hidden');
             const currentChatMeta = chatsMeta.find((item) => item.id === chatId) || {};
@@ -523,6 +530,18 @@
                     renderizarMensagensAtuaisAdmin();
                 });
         }
+
+        function voltarParaListaChats() {
+            document.body.classList.remove('chat-conversation-open');
+            document.getElementById('chat-customer-details')?.classList.remove('is-open');
+        }
+
+        function toggleChatCustomerDetails() {
+            document.getElementById('chat-customer-details')?.classList.toggle('is-open');
+        }
+
+        window.voltarParaListaChats = voltarParaListaChats;
+        window.toggleChatCustomerDetails = toggleChatCustomerDetails;
 
         function reabrirChatAtual() {
             if (!currentChatId) return;
@@ -555,6 +574,7 @@
                         if (unsubscribeMessages) unsubscribeMessages();
                         document.getElementById('chat-workspace').classList.add('hidden');
                         document.getElementById('chat-empty-state').classList.remove('hidden');
+                        document.body.classList.remove('chat-conversation-open');
                     }
                 });
         }
