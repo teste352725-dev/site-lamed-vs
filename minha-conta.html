@@ -389,7 +389,26 @@
         </div>
     </div>
 
-    <script src="user.js"></script>
+    <div id="account-cart-overlay" class="account-cart-overlay" aria-hidden="true"></div>
+    <aside id="account-cart-drawer" class="account-cart-drawer" aria-hidden="true" aria-labelledby="account-cart-title">
+        <div class="account-cart-head">
+            <div>
+                <p class="account-field-label mb-1">Sua seleção</p>
+                <h2 id="account-cart-title" class="account-serif text-3xl text-[#2d2017]">Minha sacola</h2>
+            </div>
+            <button type="button" id="account-cart-close" class="account-power-btn" aria-label="Fechar sacola">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="account-cart-items" class="account-cart-items"></div>
+        <div class="account-cart-footer">
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-sm text-[#7d7166]">Subtotal</span>
+                <strong id="account-cart-subtotal" class="account-serif text-2xl text-[#2d2017]">R$ 0,00</strong>
+            </div>
+            <a href="index.html#sacola" class="btn-chic mt-4 inline-flex items-center justify-center">Revisar e finalizar pedido</a>
+        </div>
+    </aside>
 
     <nav class="account-mobile-nav" aria-label="Navegacao rapida">
         <a href="index.html#home" class="account-mobile-link" aria-label="Inicio">
@@ -404,12 +423,14 @@
             <i class="fa-regular fa-user"></i>
             <span>Conta</span>
         </a>
-        <a href="index.html#sacola" class="account-mobile-link" aria-label="Sacola">
+        <button type="button" id="account-mobile-cart" class="account-mobile-link" aria-label="Abrir sacola" aria-controls="account-cart-drawer" aria-expanded="false">
             <i class="fa-solid fa-bag-shopping"></i>
             <span>Sacola</span>
-        </a>
+            <span id="account-cart-count" class="account-cart-count hidden">0</span>
+        </button>
     </nav>
 
+    <script src="user.js"></script>
     <script>
         function buscarEndereco(cep) {
             cep = String(cep || '').replace(/\D/g, '');

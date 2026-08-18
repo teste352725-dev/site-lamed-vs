@@ -2045,3 +2045,121 @@ function rolarChatParaBaixo() {
     const d = document.getElementById('chat-messages');
     if(d) setTimeout(() => d.scrollTop = d.scrollHeight, 100);
 }
+
+// --- SACOLA DENTRO DA AREA DO USUARIO ---
+function readAccountCartItems() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem('lamedCart') || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function mergeAccountCartPreviewItems(localItems, remoteItems) {
+    const merged = new Map();
+    [...(Array.isArray(remoteItems) ? remoteItems : []), ...(Array.isArray(localItems) ? localItems : [])].forEach((item) => {
+        const cartId = sanitizePlainText(item?.cartId, 240);
+        if (cartId) merged.set(cartId, item);
+    });
+    return [...merged.values()];
+}
+
+function formatAccountCartCurrency(value) {
+    return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function renderAccountCartPreview(items = readAccountCartItems()) {
+    const container = document.getElementById('account-cart-items');
+    const subtotalEl = document.getElementById('account-cart-subtotal');
+    const countEl = document.getElementById('account-cart-count');
+    if (!container || !subtotalEl || !countEl) return;
+
+    container.replaceChildren();
+    let subtotal = 0;
+    let count = 0;
+
+    items.forEach((item) => {
+        const quantity = Math.max(1, Number.parseInt(item?.quantity, 10) || 1);
+        const price = Math.max(0, Number(item?.preco) || 0);
+        subtotal += price * quantity;
+        count += quantity;
+
+        const row = document.createElement('article');
+        row.className = 'account-cart-item';
+
+        const image = document.createElement('img');
+        image.src = normalizeImageUrl(item?.imagem) || buildAvatarUrl('Lamed');
+        image.alt = sanitizePlainText(item?.nome || 'Peça da sacola', 100);
+        image.loading = 'lazy';
+
+        const content = document.createElement('div');
+        const title = document.createElement('strong');
+        title.className = 'block text-sm text-[#2d2017]';
+        title.textContent = sanitizePlainText(item?.nome || 'Peça', 120) || 'Peça';
+        const details = document.createElement('p');
+        details.className = 'mt-1 text-xs leading-5 text-[#7d7166]';
+        const colorName = sanitizePlainText(item?.cor?.nome, 40);
+        details.textContent = [sanitizePlainText(item?.tamanho, 30), colorName].filter(Boolean).join(' · ') || 'Detalhes no checkout';
+        const priceLine = document.createElement('p');
+        priceLine.className = 'mt-2 text-sm font-semibold text-[#643f21]';
+        priceLine.textContent = `${quantity} × ${formatAccountCartCurrency(price)}`;
+        content.append(title, details, priceLine);
+        row.append(image, content);
+        container.appendChild(row);
+    });
+
+    if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'flex h-full min-h-64 flex-col items-center justify-center text-center text-[#7d7166]';
+        empty.innerHTML = '<i class="fa-solid fa-basket-shopping mb-4 text-4xl text-[#d8cbb8]"></i><p class="text-sm">Sua sacola está vazia.</p><a href="index.html#loja" class="account-soft-btn mt-5">Explorar a loja</a>';
+        container.appendChild(empty);
+    }
+
+    subtotalEl.textContent = formatAccountCartCurrency(subtotal);
+    countEl.textContent = String(count);
+    countEl.classList.toggle('hidden', count === 0);
+}
+
+async function loadAccountCartPreview() {
+    let items = readAccountCartItems();
+    renderAccountCartPreview(items);
+    const user = currentUser || auth.currentUser;
+    if (!user) return;
+
+    try {
+        const token = await user.getIdToken();
+        const response = await fetch(buildBackendUrl('/api/cart/get'), {
+            headers: { Accept: 'application/json', Authorization: `Bearer ${token}` }
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || payload?.ok === false) return;
+        items = mergeAccountCartPreviewItems(items, payload?.items);
+        localStorage.setItem('lamedCart', JSON.stringify(items));
+        renderAccountCartPreview(items);
+    } catch (error) {
+        console.error('[account.cart.preview]', error);
+    }
+}
+
+function toggleAccountCart(open) {
+    const drawer = document.getElementById('account-cart-drawer');
+    const overlay = document.getElementById('account-cart-overlay');
+    const trigger = document.getElementById('account-mobile-cart');
+    if (!drawer || !overlay || !trigger) return;
+    drawer.classList.toggle('is-open', open);
+    overlay.classList.toggle('is-open', open);
+    drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+    overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.body.classList.toggle('account-cart-open', open);
+    if (open) loadAccountCartPreview();
+}
+
+document.getElementById('account-mobile-cart')?.addEventListener('click', () => toggleAccountCart(true));
+document.getElementById('account-cart-close')?.addEventListener('click', () => toggleAccountCart(false));
+document.getElementById('account-cart-overlay')?.addEventListener('click', () => toggleAccountCart(false));
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') toggleAccountCart(false);
+});
+renderAccountCartPreview();
