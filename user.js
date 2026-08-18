@@ -1154,10 +1154,11 @@ async function ativarPushNotifications() {
             throw new Error('Nao foi possivel gerar o token de notificacao deste aparelho.');
         }
 
-        currentPushToken = token;
         await sendPushSubscriptionToBackend('/api/notifications/register', token);
+        currentPushToken = token;
         setPushStatus('Notificacoes ativas neste aparelho. Vamos avisar voce sobre pedidos e suporte.');
     } catch (error) {
+        currentPushToken = '';
         console.error('[push.enable]', error);
         setPushStatus(error?.message || 'Nao foi possivel ativar as notificacoes agora.');
     } finally {
@@ -1240,6 +1241,15 @@ async function iniciarNotificacoesWeb() {
                 vapidKey: config.vapidPublicKey,
                 serviceWorkerRegistration: registration
             }).catch(() => '');
+
+            if (currentPushToken) {
+                try {
+                    await sendPushSubscriptionToBackend('/api/notifications/register', currentPushToken);
+                } catch (error) {
+                    currentPushToken = '';
+                    throw error;
+                }
+            }
 
             setPushStatus(
                 currentPushToken
