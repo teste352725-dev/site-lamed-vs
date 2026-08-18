@@ -1051,14 +1051,14 @@ function setShippingStatus(message, extraClass = 'text-gray-500') {
 
 function renderShippingOptions() {
     const container = elements.shippingOptions;
-    const disabledMessage = 'Frete automatico pausado temporariamente. Nossa equipe confirma o valor e o prazo apos o pedido.';
+    const disabledMessage = 'Nossa equipe confirma o valor e o prazo da entrega pelo WhatsApp depois que o pedido for enviado.';
 
     if (container) {
         container.replaceChildren();
     }
 
     if (!SHIPPING_QUOTE_ENABLED) {
-        setShippingStatus('Frete manual temporario ativo.', 'text-amber-700');
+        setShippingStatus('Frete combinado pelo WhatsApp.', 'text-amber-700');
 
         if (container) {
             const note = document.createElement('div');
@@ -1739,7 +1739,7 @@ function updateCheckoutSummary() {
         appendRow('Frete', 'A combinar', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-amber-700');
         setShippingMessage(
             'fa-solid fa-box text-[--cor-marrom-cta]',
-            'Frete temporariamente definido apos o pedido. Nossa equipe confirma o valor e o prazo pelo WhatsApp.'
+            'Nossa equipe confirma o valor e o prazo da entrega pelo WhatsApp depois que o pedido for enviado.'
         );
     } else if (shipping) {
         const shippingLabel = `${shipping.company} - ${shipping.name}`;
@@ -1953,5 +1953,5 @@ document.addEventListener('DOMContentLoaded', setupPaymentOptions);
 document.addEventListener('DOMContentLoaded', setupCheckoutExperience);
 window.enablePushNotificationsFromCheckout = enablePushNotificationsFromCheckout;
 
-const SHIPPING_QUOTE_ENABLED = true;
+const SHIPPING_QUOTE_ENABLED = false;
 const MANUAL_SHIPPING_ORIGIN_POSTAL_CODE = '29056015';

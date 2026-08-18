@@ -2147,13 +2147,32 @@ function toggleAccountCart(open) {
     const overlay = document.getElementById('account-cart-overlay');
     const trigger = document.getElementById('account-mobile-cart');
     if (!drawer || !overlay || !trigger) return;
+
+    if (open) {
+        drawer.hidden = false;
+        overlay.hidden = false;
+        // Forca o estado inicial antes da animacao e evita que a sacola apareca
+        // no fluxo da pagina enquanto o CSS ainda esta carregando no celular.
+        void drawer.offsetWidth;
+    }
+
     drawer.classList.toggle('is-open', open);
     overlay.classList.toggle('is-open', open);
     drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
     overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
     trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
     document.body.classList.toggle('account-cart-open', open);
-    if (open) loadAccountCartPreview();
+
+    if (open) {
+        loadAccountCartPreview();
+        return;
+    }
+
+    window.setTimeout(() => {
+        if (drawer.classList.contains('is-open')) return;
+        drawer.hidden = true;
+        overlay.hidden = true;
+    }, 240);
 }
 
 document.getElementById('account-mobile-cart')?.addEventListener('click', () => toggleAccountCart(true));

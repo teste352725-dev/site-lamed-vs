@@ -2,7 +2,6 @@
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 import { clearUserCart } from "./_cart.mjs";
 import { createInfinitePayCheckoutLink, isInfinitePayConfigured } from "./_infinitepay.mjs";
-import { isShippingApiEnabled, isShippingProviderCredentialError, requestShippingQuote } from "./_shipping.mjs";
 import { getStoreOperations, isPublicStorefrontBlocked } from "./_store-operations.mjs";
 
 const TAXA_JUROS = 0.0549;
@@ -493,56 +492,8 @@ function buildManualShippingSelection(destinationCep = "") {
   };
 }
 
-async function resolveOrderShippingSelection(cliente, canonicalCart, submittedShipping) {
-  if (!isShippingApiEnabled()) {
-    return buildManualShippingSelection(cliente?.endereco?.cep);
-  }
-
-  const normalizedSelection = normalizeShippingSelection(submittedShipping);
-  if (!normalizedSelection) {
-    throw new RequestError(400, "Escolha uma opcao de frete antes de continuar.");
-  }
-
-  const requestedManualFallback =
-    normalizedSelection.id === "manual-pendente" ||
-    normalizedSelection.serviceId === "manual-pendente" ||
-    normalizedSelection.serviceCode === "manual-pendente";
-
-  let quote;
-  try {
-    quote = await requestShippingQuote({
-      destinationPostalCode: cliente?.endereco?.cep,
-      items: canonicalCart
-    });
-  } catch (error) {
-    if (requestedManualFallback || isShippingProviderCredentialError(error)) {
-      return buildManualShippingSelection(cliente?.endereco?.cep);
-    }
-
-    throw new RequestError(502, String(error?.message || "Nao foi possivel validar o frete agora."));
-  }
-
-  const options = Array.isArray(quote?.options)
-    ? quote.options.map((option) => normalizeShippingSelection(option)).filter(Boolean)
-    : [];
-
-  const matchedOption = options.find((option) =>
-    option.id === normalizedSelection.id ||
-    (
-      option.serviceId === normalizedSelection.serviceId &&
-      option.serviceCode === normalizedSelection.serviceCode
-    )
-  );
-
-  if (!matchedOption) {
-    if (requestedManualFallback) {
-      return buildManualShippingSelection(cliente?.endereco?.cep);
-    }
-
-    throw new RequestError(400, "A opcao de frete escolhida nao esta mais disponivel. Revise o CEP e selecione novamente.");
-  }
-
-  return matchedOption;
+function resolveOrderShippingSelection(cliente) {
+  return buildManualShippingSelection(cliente?.endereco?.cep);
 }
 
 async function getProductMapByIds(db, ids) {
@@ -888,7 +839,7 @@ function buildWhatsAppOrderMessage(orderId, pedido) {
   lines.push(paymentLine);
 
   if (pedido.frete?.serviceId === "manual-pendente") {
-    lines.push("Frete: a combinar apos confirmacao");
+    lines.push("Frete: valor e prazo a combinar pelo WhatsApp");
   } else {
     const freightCompany = sanitizePlainText(pedido?.frete?.company, 60);
     const freightName = sanitizePlainText(pedido?.frete?.name, 80);
@@ -1234,4 +1185,3 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
 export function isOrderRequestError(error) {
   return error instanceof RequestError;
 }
-

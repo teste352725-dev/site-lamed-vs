@@ -203,7 +203,9 @@ function buildPaidOrderWhatsAppMessage(orderId, order) {
   lines.push(`Cliente: ${customerName}`);
   lines.push(`Pagamento confirmado: ${getCaptureMethodLabel(order)}`);
 
-  if (Number(order?.frete?.price || 0) > 0) {
+  if (order?.frete?.serviceId === "manual-pendente") {
+    lines.push("Frete: valor e prazo a combinar pelo WhatsApp");
+  } else if (Number(order?.frete?.price || 0) > 0) {
     lines.push(`Frete: ${freteLabel}`);
     lines.push(`Valor do frete: ${formatCurrency(order?.frete?.price)}`);
   } else {
