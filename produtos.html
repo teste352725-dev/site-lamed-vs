@@ -370,9 +370,28 @@
                                 Ative para liberar o campo de personalizacao no site e levar essa informacao ate o pedido no admin.
                             </p>
                             <label class="inline-flex items-center gap-3 text-sm font-semibold text-[var(--mocha-deep)]">
-                                <input type="checkbox" id="product-personalizable" class="h-5 w-5 rounded border-gray-300 text-[var(--gold)]">
+                                <input type="checkbox" id="product-personalizable" class="h-5 w-5 rounded border-gray-300 text-[var(--gold)]" onchange="atualizarDisponibilidadePersonalizacao()">
                                 Liberar personalizacao para esta peca
                             </label>
+                            <div id="personalization-options-fields" class="modal-grid two-up mt-5 hidden">
+                                <label class="stack-field">
+                                    <span class="field-label">Conjunto de opcoes</span>
+                                    <select id="product-personalization-type" onchange="atualizarCamposOpcoesPersonalizacao()">
+                                        <option value="alfabeto">Letras de A a Z</option>
+                                        <option value="hebraico">Letras hebraicas — Alef a Tav</option>
+                                        <option value="custom">Lista personalizada</option>
+                                    </select>
+                                </label>
+                                <label class="stack-field">
+                                    <span class="field-label">Titulo do seletor</span>
+                                    <input type="text" id="product-personalization-label" maxlength="80" placeholder="Ex.: Escolha a letra">
+                                </label>
+                                <label id="personalization-custom-options-field" class="stack-field md:col-span-2 hidden">
+                                    <span class="field-label">Opcoes — uma por linha</span>
+                                    <textarea id="product-personalization-options" placeholder="Opcao 1&#10;Opcao 2&#10;Opcao 3"></textarea>
+                                </label>
+                                <p id="personalization-options-preview" class="panel-copy md:col-span-2 mb-0"></p>
+                            </div>
                         </div>
                     </div>
 
@@ -671,6 +690,42 @@
         function isMesaPostaCategory(categoria) {
             return ["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"].includes(String(categoria || ""));
         }
+
+        const PERSONALIZATION_ALPHABET_OPTIONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+        const PERSONALIZATION_HEBREW_OPTIONS = [
+            "א — Alef", "ב — Bet", "ג — Guimel", "ד — Dalet", "ה — He", "ו — Vav",
+            "ז — Zayin", "ח — Chet", "ט — Tet", "י — Yod", "כ — Kaf", "ל — Lamed",
+            "מ — Mem", "נ — Nun", "ס — Samech", "ע — Ayin", "פ — Pe", "צ — Tsadi",
+            "ק — Qof", "ר — Resh", "ש — Shin", "ת — Tav"
+        ];
+
+        function readCustomPersonalizationOptions() {
+            return String(document.getElementById("product-personalization-options")?.value || "")
+                .split(/\r?\n/)
+                .map((item) => item.trim().replace(/\s+/g, " ").slice(0, 80))
+                .filter((item, index, values) => item && values.indexOf(item) === index)
+                .slice(0, 100);
+        }
+
+        function getPersonalizationOptionsFromForm() {
+            const type = document.getElementById("product-personalization-type")?.value || "alfabeto";
+            if (type === "hebraico") return [...PERSONALIZATION_HEBREW_OPTIONS];
+            if (type === "custom") return readCustomPersonalizationOptions();
+            return [...PERSONALIZATION_ALPHABET_OPTIONS];
+        }
+
+        window.atualizarCamposOpcoesPersonalizacao = function() {
+            const type = document.getElementById("product-personalization-type")?.value || "alfabeto";
+            const customField = document.getElementById("personalization-custom-options-field");
+            const preview = document.getElementById("personalization-options-preview");
+            customField?.classList.toggle("hidden", type !== "custom");
+            const options = getPersonalizationOptionsFromForm();
+            if (preview) {
+                preview.textContent = options.length
+                    ? `${options.length} opcao(oes): ${options.slice(0, 8).join(", ")}${options.length > 8 ? "..." : ""}`
+                    : "Adicione pelo menos uma opcao para publicar esta personalizacao.";
+            }
+        };
 
         function formatCategoryLabel(value) {
             const safeValue = String(value || "sem categoria");
@@ -1068,14 +1123,17 @@
             const checkbox = document.getElementById("product-personalizable");
             const note = document.getElementById("personalization-settings-note");
             const isCombo = type === "combo";
+            const fields = document.getElementById("personalization-options-fields");
 
             if (!card || !checkbox || !note) return;
 
             card.classList.toggle("opacity-60", isCombo);
             checkbox.disabled = isCombo;
+            fields?.classList.toggle("hidden", isCombo || !checkbox.checked);
             note.textContent = isCombo
                 ? "Combos aproveitam a personalização de cada peça vinculada. Para liberar um campo próprio, mantenha como produto padrão."
                 : "Ative para liberar o campo de personalização no site e levar essa informação até o pedido no painel.";
+            atualizarCamposOpcoesPersonalizacao();
         }
 
         window.toggleProductType = function() {
@@ -1273,6 +1331,9 @@
             document.getElementById("product-segment").value = "moda";
             document.getElementById("product-order").value = "0";
             document.getElementById("product-personalizable").checked = false;
+            document.getElementById("product-personalization-type").value = "alfabeto";
+            document.getElementById("product-personalization-label").value = "Escolha a letra";
+            document.getElementById("product-personalization-options").value = "";
             document.getElementById("product-shipping-weight").value = "";
             document.getElementById("product-shipping-height").value = "";
             document.getElementById("product-shipping-width").value = "";
@@ -1302,6 +1363,9 @@
             document.getElementById("product-tags").value = produto.tags || "";
             document.getElementById("product-collection").value = produto.colecaoId || "";
             document.getElementById("product-personalizable").checked = !!produto.personalizavel;
+            document.getElementById("product-personalization-type").value = ["alfabeto", "hebraico", "custom"].includes(produto.personalizacaoTipo) ? produto.personalizacaoTipo : "alfabeto";
+            document.getElementById("product-personalization-label").value = produto.personalizacaoRotulo || "Escolha uma opcao";
+            document.getElementById("product-personalization-options").value = Array.isArray(produto.personalizacaoOpcoes) ? produto.personalizacaoOpcoes.join("\n") : "";
             document.getElementById("product-shipping-weight").value = produto.frete?.peso ?? "";
             document.getElementById("product-shipping-height").value = produto.frete?.altura ?? "";
             document.getElementById("product-shipping-width").value = produto.frete?.largura ?? "";
@@ -1319,6 +1383,7 @@
             atualizarListaCores();
             renderizarComponentesCombo();
             atualizarPreviewPreco();
+            atualizarDisponibilidadePersonalizacao();
         }
 
         window.salvarProduto = async function(event) {
@@ -1340,6 +1405,13 @@
                 return;
             }
 
+            const personalizavel = tipo === "standard" && document.getElementById("product-personalizable").checked;
+            const personalizacaoOpcoes = personalizavel ? getPersonalizationOptionsFromForm() : [];
+            if (personalizavel && personalizacaoOpcoes.length === 0) {
+                alert("Adicione pelo menos uma opcao de personalizacao.");
+                return;
+            }
+
             const saveButton = document.getElementById("save-product-btn");
 
             try {
@@ -1358,7 +1430,10 @@
                     colecaoId: document.getElementById("product-collection").value || null,
                     imagens: selectedProductImages,
                     frete,
-                    personalizavel: tipo === "standard" ? document.getElementById("product-personalizable").checked : false,
+                    personalizavel,
+                    personalizacaoTipo: personalizavel ? document.getElementById("product-personalization-type").value : null,
+                    personalizacaoRotulo: personalizavel ? (document.getElementById("product-personalization-label").value.trim() || "Escolha uma opcao") : null,
+                    personalizacaoOpcoes,
                     cores: tipo === "standard"
                         ? productColors
                             .map((cor) => ({

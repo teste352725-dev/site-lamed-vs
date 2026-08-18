@@ -1345,6 +1345,10 @@ function addToCart() {
     const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
     const tamanhoFinal = (isMesaPosta || isCombo) ? (isCombo ? 'Combo' : 'Unico') : selectedSize;
     const personalizacao = currentProduct.personalizavel ? getCurrentPersonalization() : null;
+    if (currentProduct.personalizavel && !personalizacao?.texto) {
+        alert('Escolha uma opcao de personalizacao antes de adicionar a peca.');
+        return;
+    }
 
     const cartId = isCombo
         ? `${currentProduct.id}-combo-${Date.now()}`

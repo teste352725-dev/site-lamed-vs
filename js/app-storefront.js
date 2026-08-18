@@ -1679,11 +1679,7 @@ function showProductDetail(id) {
         if(sizeSection) sizeSection.classList.add('hidden');
         renderComboSelectors(); // Nova Interface de Combo
     } else if (isMesaPosta) {
-        if(sizeSection) {
-            sizeSection.classList.remove('hidden'); 
-            sizeSection.querySelector('.size-selector')?.classList.add('hidden');
-            sizeSection.querySelector('.flex.justify-between')?.classList.add('hidden');
-        }
+        if(sizeSection) sizeSection.classList.add('hidden');
         selectedSize = 'Único';
         renderColors();
         const warningDiv = document.createElement('div');
@@ -2107,27 +2103,47 @@ function renderPersonalizationSection() {
 
     if (!currentProduct?.personalizavel || currentProduct?.tipo === 'combo') return;
 
+    const type = sanitizePlainText(currentProduct.personalizacaoTipo, 30).toLowerCase();
+    const fallbackAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const configuredOptions = Array.isArray(currentProduct.personalizacaoOpcoes)
+        ? currentProduct.personalizacaoOpcoes.map((item) => sanitizePlainText(item, 80)).filter(Boolean)
+        : [];
+    const options = configuredOptions.length ? [...new Set(configuredOptions)] : fallbackAlphabet;
+    if (!options.length) return;
+
     const section = document.createElement('div');
     section.id = 'product-personalization-section';
     section.className = 'rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-3';
     section.innerHTML = `
         <div>
-                <p class="text-xs font-bold uppercase tracking-[0.22em] text-amber-900">Personalização da peça</p>
-            <p class="mt-1 text-xs leading-5 text-amber-800">Digite nome, iniciais ou instrucoes que precisam acompanhar o pedido.</p>
+            <p class="text-xs font-bold uppercase tracking-[0.22em] text-amber-900">Personalização da peça</p>
+            <p class="mt-1 text-xs leading-5 text-amber-800">Selecione uma das opcoes disponiveis para esta peca.</p>
         </div>
-        <div class="space-y-3">
-            <input id="personalization-text-input" type="text" maxlength="120" class="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm outline-none focus:border-[--cor-marrom-cta]" placeholder="Ex.: iniciais, nome curto ou frase">
-            <textarea id="personalization-notes-input" rows="3" maxlength="280" class="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm outline-none focus:border-[--cor-marrom-cta]" placeholder="Observacoes extras, medidas ou referencia do acabamento"></textarea>
-        </div>
+        <label for="personalization-option-select" class="block text-xs font-semibold text-amber-900"></label>
+        <select id="personalization-option-select" class="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm outline-none focus:border-[--cor-marrom-cta]"></select>
     `;
+
+    section.querySelector('label').textContent = sanitizePlainText(currentProduct.personalizacaoRotulo, 80) || (type === 'hebraico' ? 'Escolha a letra hebraica' : 'Escolha uma opcao');
+    const select = section.querySelector('select');
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Selecione';
+    select.appendChild(placeholder);
+    options.forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    });
+    select.addEventListener('change', updateAddToCartButton);
 
     buttonContainer.insertBefore(section, document.getElementById('add-to-cart-button'));
 }
 
 function getCurrentPersonalization() {
     return normalizePersonalization({
-        texto: document.getElementById('personalization-text-input')?.value || '',
-        observacoes: document.getElementById('personalization-notes-input')?.value || ''
+        texto: document.getElementById('personalization-option-select')?.value || '',
+        observacoes: ''
     });
 }
 
@@ -2231,6 +2247,7 @@ function updateAddToCartButton() {
     const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
     const hasSize = selectedSize !== null;
     const hasColor = !hasTrackedColors || selectedColor !== null;
+    const hasPersonalization = !currentProduct.personalizavel || Boolean(document.getElementById('personalization-option-select')?.value);
 
     let canAdd = false;
     if (isCombo) {
@@ -2244,7 +2261,7 @@ function updateAddToCartButton() {
         }
         canAdd = selectedCount === totalComponents;
     } else {
-        canAdd = (isMesaPosta || hasSize) && hasColor;
+        canAdd = (isMesaPosta || hasSize) && hasColor && hasPersonalization;
     }
 
     if (canAdd) {
@@ -2253,7 +2270,7 @@ function updateAddToCartButton() {
     btn.textContent = currentProduct.personalizavel ? "ADICIONAR PEÇA PERSONALIZADA" : "ADICIONAR À SACOLA";
     } else {
         btn.disabled = true; 
-        btn.textContent = isCombo ? "Selecione opções de TODOS os itens" : "Selecione Opções";
+        btn.textContent = isCombo ? "Selecione opções de TODOS os itens" : (currentProduct.personalizavel && !hasPersonalization ? "Escolha a personalização" : "Selecione Opções");
         btn.classList.add('bg-gray-400');
         btn.classList.remove('hover:bg-[#4a2e18]');
     }
