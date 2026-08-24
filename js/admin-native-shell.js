@@ -70,7 +70,8 @@
         sidebar.querySelector("[data-admin-native-logout]")?.addEventListener("click", async () => {
             const loginPage = document.body.classList.contains("production-role") ? "login-producao.html" : "login-admin.html";
             try {
-                if (window.firebase?.auth) await window.firebase.auth().signOut();
+                if (typeof window.adminNativeSignOut === "function") await window.adminNativeSignOut();
+                else if (window.firebase?.auth) await window.firebase.auth().signOut();
             } catch (error) {}
             window.location.href = loginPage;
         });

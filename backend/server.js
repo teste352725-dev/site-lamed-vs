@@ -11,6 +11,7 @@ import { enforceInMemoryRateLimit, getClientAddress } from "../server/_security.
 import { isSessionRequestError, requireAdminUser, resolveAuthenticatedUser } from "../server/_session.mjs";
 import { getShippingHealth, isShippingApiEnabled, requestShippingQuote } from "../server/_shipping.mjs";
 import { applyStorefrontAdminAction, isStorefrontAdminError } from "../server/_storefront-admin.mjs";
+import { applyPricingAction } from "../server/_pricing-admin.mjs";
 
 dotenv.config();
 
@@ -657,6 +658,16 @@ app.post("/api/payments/infinitepay/confirm", async (req, res) => {
 app.post("/api/admin/storefront/update", async (req, res) => {
   try {
     const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
+    if (String(req.body?.action || "").startsWith("pricing.")) {
+      const user = await resolveAuthenticatedUser(authorizationHeader);
+      const result = await applyPricingAction({
+        action: String(req.body.action).slice(8),
+        payload: req.body?.payload,
+        user
+      });
+      return res.status(200).json({ ok: true, result });
+    }
+
     const adminUser = await requireAdminUser(authorizationHeader);
     const result = await applyStorefrontAdminAction({
       action: req.body?.action,
@@ -669,7 +680,7 @@ app.post("/api/admin/storefront/update", async (req, res) => {
       result
     });
   } catch (error) {
-    if (isSessionRequestError(error) || isStorefrontAdminError(error)) {
+    if (isSessionRequestError(error) || isStorefrontAdminError(error) || Number(error?.status)) {
       return res.status(Number(error.status) || 400).json({
         ok: false,
         error: String(error.message || "Nao foi possivel validar sua operacao.")

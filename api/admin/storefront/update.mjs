@@ -3,6 +3,7 @@ import { requireAdminUser, isSessionRequestError } from "../../../server/_sessio
 import { getRequestBody, setNoStore } from "../../../server/_shipping.mjs";
 import { applyTeamAdminAction } from "../../../server/_team-admin.mjs";
 import { applyProductionStockAction } from "../../../server/_production-stock-admin.mjs";
+import { applyPricingAction } from "../../../server/_pricing-admin.mjs";
 import { resolveAuthenticatedUser } from "../../../server/_session.mjs";
 
 export default async function handler(req, res) {
@@ -19,6 +20,12 @@ export default async function handler(req, res) {
     if (String(body?.action || "").startsWith("production.")) {
       const user = await resolveAuthenticatedUser(authorizationHeader);
       const result = await applyProductionStockAction({ action: String(body.action).slice(11), payload: body?.payload, user });
+      return res.status(200).json({ ok: true, result });
+    }
+
+    if (String(body?.action || "").startsWith("pricing.")) {
+      const user = await resolveAuthenticatedUser(authorizationHeader);
+      const result = await applyPricingAction({ action: String(body.action).slice(8), payload: body?.payload, user });
       return res.status(200).json({ ok: true, result });
     }
 

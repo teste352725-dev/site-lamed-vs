@@ -1,326 +1,379 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Precos | Painel Admin</title>
-    <link rel="stylesheet" href="css/tailwind.generated.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <title>Calculadora de produção | Laméd</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/admin-pricing.css">
+    <link rel="stylesheet" href="css/admin-pricing.css?v=20260818-production-flex">
     <script src="js/admin-embedded-mode.js" defer></script>
-    <script src="js/admin-native-shell.js?v=20260818-team-access" defer></script>
-    <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
+    <script src="js/admin-native-shell.js?v=20260818-pricing-access" defer></script>
+    <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-pricing-access">
 </head>
-<body class="pricing-shell pb-20">
-    <!--
-      MAPA DE MANUTENCAO:
-      - CSS desta pagina: css/admin-pricing.css
-      - JS local ligado a esta pagina: js/admin-embedded-mode.js, js/admin-pricing.js
-      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
-      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
-      - Sem ids mapeados automaticamente. Verifique classes e data-* antes de remover algo do layout.
-    -->
-
-    <header class="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur px-4 py-3">
-        <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <a href="dashboard.html" class="text-gray-500 hover:text-[--pricing-brown]"><i class="fa-solid fa-arrow-left"></i></a>
+<body class="pricing-shell admin-auth-pending">
+    <header class="pricing-page-header">
+        <div class="pricing-page-header-inner">
+            <div class="pricing-heading">
+                <a href="dashboard.html" class="pricing-back" aria-label="Voltar ao painel"><i class="fa-solid fa-arrow-left"></i></a>
                 <div>
-                    <p class="section-title">Precificacao</p>
-                    <h1 class="text-xl font-bold text-gray-900">Calculadora geral de peças</h1>
+                    <p class="pricing-kicker">Produção Laméd</p>
+                    <h1>Calculadora de peças</h1>
+                    <p>Roupas, mesa posta e projetos sob medida na mesma ficha.</p>
                 </div>
             </div>
-            <button type="button" id="clear-simulation-btn" class="pricing-btn pricing-btn-secondary text-sm">
-                <i class="fa-solid fa-rotate-left"></i>Limpar
-            </button>
+            <div class="pricing-header-actions">
+                <span id="access-role" class="access-badge"><i class="fa-solid fa-shield-halved"></i> Verificando acesso</span>
+                <button type="button" id="clear-calculator" class="pricing-button pricing-button-light">
+                    <i class="fa-solid fa-plus"></i><span>Nova ficha</span>
+                </button>
+            </div>
         </div>
     </header>
 
-    <main class="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-5 lg:grid-cols-3">
-        <section class="space-y-6 lg:col-span-2">
-            <div class="pricing-card p-5">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div id="auth-status" class="auth-status" role="status" aria-live="polite">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>
+        <span>Confirmando seu acesso à calculadora...</span>
+    </div>
+
+    <main id="pricing-app" class="pricing-layout" aria-busy="true">
+        <section class="pricing-form-column" aria-label="Dados da precificação">
+            <article class="pricing-card pricing-step-card">
+                <div class="step-heading">
+                    <span class="step-number">1</span>
                     <div>
-                        <p class="section-title">Base da simulacao</p>
-                        <h2 class="mt-1 text-lg font-semibold text-gray-900">Monte do zero ou puxe um produto do site</h2>
-                    </div>
-                    <div class="mode-toggle">
-                        <button type="button" id="btn-modo-novo" class="active">Novo</button>
-                        <button type="button" id="btn-modo-existente">Do site</button>
+                        <p class="pricing-kicker">Comece por aqui</p>
+                        <h2>Que tipo de peça vamos calcular?</h2>
+                        <p>Essa escolha organiza os campos. Você pode trocar a qualquer momento.</p>
                     </div>
                 </div>
 
-                <div id="modo-novo" class="mt-5 space-y-4">
-                    <div>
-                        <p class="section-title mb-3">Presets rapidos</p>
-                        <div id="preset-groups"></div>
-                    </div>
-                    <div>
-                        <label for="nomePeca" class="mb-2 block text-sm font-medium text-gray-700">Nome da peca ou referencia</label>
-                        <input type="text" id="nomePeca" class="pricing-input" placeholder="Ex: Caminho de mesa bordado">
-                    </div>
-                </div>
-
-                <div id="modo-existente" class="mt-5 hidden space-y-4">
-                    <div class="grid gap-3 md:grid-cols-2">
-                        <div>
-                            <label for="filtro-categoria-site" class="mb-2 block text-sm font-medium text-gray-700">Filtrar por categoria</label>
-                            <select id="filtro-categoria-site" class="pricing-select">
-                                <option value="all">Todas</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="busca-produto-site" class="mb-2 block text-sm font-medium text-gray-700">Buscar produto</label>
-                            <input type="text" id="busca-produto-site" class="pricing-input" placeholder="Nome, categoria ou tag">
-                        </div>
-                    </div>
-
-                    <div class="grid gap-3 md:grid-cols-[1fr_auto]">
-                        <div>
-                            <label for="select-produto-site" class="mb-2 block text-sm font-medium text-gray-700">Produto cadastrado</label>
-                            <select id="select-produto-site" class="pricing-select">
-                                <option value="">Carregando produtos...</option>
-                            </select>
-                            <p id="site-product-summary" class="mt-2 text-xs text-gray-500">Carregando catálogo...</p>
-                        </div>
-                        <button type="button" id="load-site-product-btn" class="pricing-btn pricing-btn-primary self-end">
-                            <i class="fa-solid fa-download"></i>Usar
-                        </button>
-                    </div>
-
-                    <div id="produto-info-box" class="helper-box hidden">
-                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div>
-                                <p class="text-xs uppercase tracking-[0.2em] font-semibold">Produto carregado</p>
-                                <p class="mt-2 text-sm text-blue-900">
-                                    Categoria: <strong id="produto-site-categoria">-</strong> • preset sugerido: <strong id="produto-site-preset">-</strong>
-                                </p>
-                            </div>
-                            <div class="text-left md:text-right">
-                                <p class="text-xs uppercase tracking-[0.2em] font-semibold">Preço atual</p>
-                                <p id="preco-venda-atual" class="mt-2 text-lg font-bold text-blue-900">R$ 0,00</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="pricing-card p-5">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <p class="section-title">Composicao</p>
-                        <h2 class="mt-1 text-lg font-semibold text-gray-900">Tudo editavel: custo, quantidade, peso e dimensoes</h2>
-                    </div>
-                    <span class="tag-soft">Geral</span>
-                </div>
-
-                <div class="mt-5 grid gap-6 md:grid-cols-2">
-                    <div class="space-y-4">
-                        <div>
-                            <label for="quantidadePecas" class="mb-2 block text-sm font-medium text-gray-700">Quantidade desta simulacao</label>
-                            <input type="number" id="quantidadePecas" class="pricing-input" value="1" min="1">
-                        </div>
-                        <div>
-                            <label for="tecido" class="mb-2 block text-sm font-medium text-gray-700">Tipo de tecido / base</label>
-                            <select id="tecido" class="pricing-select">
-                                <option value="linho" data-price="70">Linho (R$ 70,00/m)</option>
-                                <option value="algodao" data-price="25">Algodao (R$ 25,00/m)</option>
-                                <option value="viscose" data-price="35">Viscose (R$ 35,00/m)</option>
-                                <option value="sarja" data-price="42">Sarja (R$ 42,00/m)</option>
-                                <option value="percal" data-price="32">Percal (R$ 32,00/m)</option>
-                                <option value="seda" data-price="120">Seda (R$ 120,00/m)</option>
-                                <option value="personalizado">Outro personalizado</option>
-                            </select>
-                        </div>
-                        <div id="div-preco-custom" class="hidden">
-                            <label for="precoTecidoCustom" class="mb-2 block text-sm font-medium text-gray-700">Preço por metro personalizado</label>
-                            <input type="number" id="precoTecidoCustom" class="pricing-input" placeholder="0,00" step="0.01">
-                        </div>
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <div>
-                                <label for="metragem" class="mb-2 block text-sm font-medium text-gray-700">Metragem por peca</label>
-                                <input type="number" id="metragem" class="pricing-input" step="0.05">
-                            </div>
-                            <div>
-                                <label for="tempoProducao" class="mb-2 block text-sm font-medium text-gray-700">Horas por peca</label>
-                                <input type="number" id="tempoProducao" class="pricing-input" step="0.25">
-                            </div>
-                        </div>
-                        <div>
-                            <label for="valorHora" class="mb-2 block text-sm font-medium text-gray-700">Valor da hora</label>
-                            <input type="number" id="valorHora" class="pricing-input" value="30" step="0.5">
-                        </div>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <div>
-                                <label for="entretela" class="mb-2 block text-sm font-medium text-gray-700">Entretela (m)</label>
-                                <input type="number" id="entretela" class="pricing-input" step="0.1">
-                            </div>
-                            <div>
-                                <label for="botoes" class="mb-2 block text-sm font-medium text-gray-700">Botoes (un)</label>
-                                <input type="number" id="botoes" class="pricing-input">
-                            </div>
-                            <div>
-                                <label for="ziper" class="mb-2 block text-sm font-medium text-gray-700">Ziper (un)</label>
-                                <input type="number" id="ziper" class="pricing-input">
-                            </div>
-                            <div>
-                                <label for="linha" class="mb-2 block text-sm font-medium text-gray-700">Linha (R$)</label>
-                                <input type="number" id="linha" class="pricing-input" step="0.1">
-                            </div>
-                            <div>
-                                <label for="bordado" class="mb-2 block text-sm font-medium text-gray-700">Bordado (R$)</label>
-                                <input type="number" id="bordado" class="pricing-input" step="0.1">
-                            </div>
-                            <div>
-                                <label for="outros" class="mb-2 block text-sm font-medium text-gray-700">Outros custos (R$)</label>
-                                <input type="number" id="outros" class="pricing-input" step="0.1">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
-                    <div class="rounded-2xl border border-[#ede6da] bg-[#f8f4ee] p-4">
-                        <p class="section-title">Ficha tecnica opcional</p>
-                        <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                            <div>
-                                <label for="pesoEstimado" class="mb-2 block text-sm font-medium text-gray-700">Peso estimado (kg)</label>
-                                <input type="number" id="pesoEstimado" class="pricing-input" step="0.01">
-                            </div>
-                            <div>
-                                <label for="larguraVolume" class="mb-2 block text-sm font-medium text-gray-700">Largura (cm)</label>
-                                <input type="number" id="larguraVolume" class="pricing-input" step="1">
-                            </div>
-                            <div>
-                                <label for="alturaVolume" class="mb-2 block text-sm font-medium text-gray-700">Altura (cm)</label>
-                                <input type="number" id="alturaVolume" class="pricing-input" step="1">
-                            </div>
-                            <div>
-                                <label for="comprimentoVolume" class="mb-2 block text-sm font-medium text-gray-700">Comprimento (cm)</label>
-                                <input type="number" id="comprimentoVolume" class="pricing-input" step="1">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="notasTecnicas" class="mb-2 block text-sm font-medium text-gray-700">Notas tecnicas</label>
-                        <textarea id="notasTecnicas" class="pricing-textarea min-h-[180px]" placeholder="Observacoes de modelagem, acabamento, lote, kit, bordado, embalagem ou qualquer detalhe importante."></textarea>
-                    </div>
-                </div>
-
-                <div class="mt-6 flex justify-end">
-                    <button type="button" id="quote-add-btn" class="pricing-btn pricing-btn-primary w-full sm:w-auto">
-                        <i class="fa-solid fa-calculator"></i>Calcular e adicionar
+                <div class="area-selector" role="radiogroup" aria-label="Área da peça">
+                    <button type="button" class="area-option is-active" data-area="roupa" role="radio" aria-checked="true">
+                        <span class="area-icon"><i class="fa-solid fa-shirt"></i></span>
+                        <span><strong>Roupas</strong><small>Camisas, vestidos, saias e outras peças</small></span>
+                        <i class="fa-solid fa-circle-check area-check"></i>
+                    </button>
+                    <button type="button" class="area-option" data-area="mesa_posta" role="radio" aria-checked="false">
+                        <span class="area-icon"><i class="fa-solid fa-utensils"></i></span>
+                        <span><strong>Mesa posta</strong><small>Guardanapos, caminhos, capas e conjuntos</small></span>
+                        <i class="fa-solid fa-circle-check area-check"></i>
+                    </button>
+                    <button type="button" class="area-option" data-area="sob_medida" role="radio" aria-checked="false">
+                        <span class="area-icon"><i class="fa-solid fa-ruler-combined"></i></span>
+                        <span><strong>Sob medida</strong><small>Projetos especiais de qualquer área da fábrica</small></span>
+                        <i class="fa-solid fa-circle-check area-check"></i>
                     </button>
                 </div>
-            </div>
 
-            <div class="pricing-card p-5">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <p class="section-title">Itens na simulacao</p>
-                        <h2 class="mt-1 text-lg font-semibold text-gray-900">Monte cenarios completos e compare lotes</h2>
-                    </div>
-                    <span id="res-itens-simulacao" class="tag-soft">0 item(ns)</span>
+                <div class="template-block">
+                    <p class="field-label">Atalho de modelo</p>
+                    <div id="template-chips" class="template-chips" aria-label="Modelos rápidos"></div>
                 </div>
-                <div id="lista-simulacao" class="mt-4"></div>
-            </div>
+
+                <button type="button" id="clear-calculator-mobile" class="pricing-button pricing-button-light mobile-new-button">
+                    <i class="fa-solid fa-plus"></i> Começar uma nova ficha
+                </button>
+
+                <details class="pricing-disclosure" id="site-product-disclosure">
+                    <summary>
+                        <span><i class="fa-solid fa-box-open"></i> Usar uma peça já cadastrada no site</span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron"></i>
+                    </summary>
+                    <div class="disclosure-content">
+                        <div class="field-grid field-grid-2">
+                            <label class="field-group">
+                                <span class="field-label">Categoria</span>
+                                <select id="site-category-filter" class="pricing-control">
+                                    <option value="all">Todas as categorias</option>
+                                </select>
+                            </label>
+                            <label class="field-group">
+                                <span class="field-label">Buscar pelo nome</span>
+                                <input id="site-product-search" class="pricing-control" type="search" placeholder="Digite o nome da peça">
+                            </label>
+                        </div>
+                        <div class="product-picker-row">
+                            <label class="field-group">
+                                <span class="field-label">Peça cadastrada</span>
+                                <select id="site-product-select" class="pricing-control">
+                                    <option value="">Carregando peças...</option>
+                                </select>
+                            </label>
+                            <button type="button" id="load-site-product" class="pricing-button pricing-button-secondary">
+                                <i class="fa-solid fa-arrow-down"></i> Usar peça
+                            </button>
+                        </div>
+                        <p id="site-product-feedback" class="field-help">O cadastro será usado apenas como ponto de partida; nenhum preço da loja será alterado.</p>
+                    </div>
+                </details>
+            </article>
+
+            <article class="pricing-card pricing-step-card">
+                <div class="step-heading">
+                    <span class="step-number">2</span>
+                    <div>
+                        <p class="pricing-kicker">Identificação</p>
+                        <h2>Qual peça e qual quantidade?</h2>
+                    </div>
+                </div>
+                <div class="field-grid identity-grid">
+                    <label class="field-group field-span-2">
+                        <span class="field-label">Nome da peça <em>obrigatório</em></span>
+                        <input id="piece-name" class="pricing-control" type="text" maxlength="160" placeholder="Ex.: Caminho de mesa bordado" autocomplete="off" required aria-required="true">
+                    </label>
+                    <label class="field-group">
+                        <span class="field-label">Referência interna <em>opcional</em></span>
+                        <input id="piece-reference" class="pricing-control" type="text" maxlength="100" placeholder="Ex.: Pedido 104">
+                    </label>
+                    <label class="field-group">
+                        <span class="field-label">Quantidade do lote</span>
+                        <input id="piece-quantity" class="pricing-control" type="number" min="1" max="10000" step="1" inputmode="numeric" value="1" required aria-required="true">
+                    </label>
+                </div>
+                <div id="loaded-product-card" class="loaded-product-card hidden" aria-live="polite"></div>
+            </article>
+
+            <article class="pricing-card pricing-step-card">
+                <div class="step-heading step-heading-action">
+                    <span class="step-number">3</span>
+                    <div>
+                        <p class="pricing-kicker">Materiais</p>
+                        <h2>O que esta peça consome?</h2>
+                        <p>Informe o consumo e o custo de compra. A soma é feita automaticamente.</p>
+                    </div>
+                    <button type="button" id="add-material" class="pricing-button pricing-button-light compact-button">
+                        <i class="fa-solid fa-plus"></i> Material
+                    </button>
+                </div>
+                <div class="material-labels" aria-hidden="true">
+                    <span>Material ou serviço</span><span>Consumo</span><span>Unidade</span><span>Custo unitário</span><span>Aplicar</span><span></span>
+                </div>
+                <div id="materials-list" class="dynamic-list"></div>
+                <button type="button" id="add-material-mobile" class="pricing-button pricing-button-light mobile-add-button">
+                    <i class="fa-solid fa-plus"></i> Adicionar material
+                </button>
+                <p class="privacy-note"><i class="fa-solid fa-lock"></i> Estes custos ficam no histórico interno e não são gravados no produto público da loja.</p>
+            </article>
+
+            <article class="pricing-card pricing-step-card">
+                <div class="step-heading">
+                    <span class="step-number">4</span>
+                    <div>
+                        <p class="pricing-kicker">Produção</p>
+                        <h2>Tempo e outros custos</h2>
+                        <p>Use minutos para facilitar: 90 minutos equivalem a 1 hora e meia.</p>
+                    </div>
+                </div>
+                <div class="field-grid field-grid-2">
+                    <label class="field-group">
+                        <span class="field-label">Minutos de trabalho por peça</span>
+                        <input id="labor-minutes" class="pricing-control" type="number" min="0" max="100000" step="5" inputmode="decimal" value="0">
+                    </label>
+                    <label class="field-group money-field">
+                        <span class="field-label">Valor da hora de trabalho</span>
+                        <span class="money-prefix">R$</span>
+                        <input id="hourly-rate" class="pricing-control" type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="0">
+                    </label>
+                    <label class="field-group money-field">
+                        <span class="field-label">Outros custos por peça</span>
+                        <span class="money-prefix">R$</span>
+                        <input id="extra-per-piece" class="pricing-control" type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="0">
+                        <small class="field-help">Ex.: bordado terceirizado ou embalagem.</small>
+                    </label>
+                    <label class="field-group money-field">
+                        <span class="field-label">Custo único deste lote</span>
+                        <span class="money-prefix">R$</span>
+                        <input id="batch-fixed-cost" class="pricing-control" type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="0">
+                        <small class="field-help">Ex.: molde, matriz ou preparação cobrada uma vez.</small>
+                    </label>
+                </div>
+
+                <details class="pricing-disclosure pricing-advanced">
+                    <summary>
+                        <span><i class="fa-solid fa-sliders"></i> Ajustes avançados de custo</span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron"></i>
+                    </summary>
+                    <div class="disclosure-content field-grid field-grid-2">
+                        <label class="field-group percent-field">
+                            <span class="field-label">Perdas e desperdício dos materiais</span>
+                            <input id="waste-percent" class="pricing-control" type="number" min="0" max="100" step="0.1" inputmode="decimal" value="0">
+                            <span class="percent-suffix">%</span>
+                        </label>
+                        <label class="field-group percent-field">
+                            <span class="field-label">Despesas da fábrica</span>
+                            <input id="overhead-percent" class="pricing-control" type="number" min="0" max="500" step="0.1" inputmode="decimal" value="0">
+                            <span class="percent-suffix">%</span>
+                            <small class="field-help">Energia, manutenção e demais custos indiretos.</small>
+                        </label>
+                    </div>
+                </details>
+            </article>
+
+            <article class="pricing-card pricing-step-card">
+                <div class="step-heading">
+                    <span class="step-number">5</span>
+                    <div>
+                        <p class="pricing-kicker">Preço de venda</p>
+                        <h2>Quanto a peça precisa render?</h2>
+                    </div>
+                </div>
+                <div class="field-grid pricing-settings-grid">
+                    <label class="field-group">
+                        <span class="field-label">Forma de calcular</span>
+                        <select id="pricing-method" class="pricing-control">
+                            <option value="acrescimo">Acréscimo sobre o custo</option>
+                            <option value="margem">Margem desejada no preço</option>
+                        </select>
+                    </label>
+                    <label class="field-group percent-field">
+                        <span id="pricing-percentage-label" class="field-label">Acréscimo sobre o custo</span>
+                        <input id="pricing-percentage" class="pricing-control" type="number" min="0" max="1000" step="0.1" inputmode="decimal" value="100">
+                        <span class="percent-suffix">%</span>
+                        <small id="pricing-percentage-help" class="field-help">100% dobra o custo antes das taxas.</small>
+                    </label>
+                    <label class="field-group percent-field">
+                        <span class="field-label">Acréscimo no cartão em 3x ou mais</span>
+                        <input id="card-fee" class="pricing-control" type="number" min="0" max="50" step="0.01" inputmode="decimal" value="5.49" readonly aria-readonly="true">
+                        <span class="percent-suffix">%</span>
+                        <small class="field-help">É o mesmo acréscimo aplicado pelo checkout da loja.</small>
+                    </label>
+                    <label class="field-group percent-field">
+                        <span class="field-label">Desconto no Pix</span>
+                        <input id="pix-discount" class="pricing-control" type="number" min="0" max="50" step="0.01" inputmode="decimal" value="5" readonly aria-readonly="true">
+                        <span class="percent-suffix">%</span>
+                        <small class="field-help">É o mesmo desconto aplicado pelo checkout sobre o preço cadastrado.</small>
+                    </label>
+                </div>
+                <div class="formula-explanation">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <p id="formula-explanation-text"><strong>Acréscimo:</strong> soma todos os custos e aplica o percentual para chegar ao preço de cadastro. O checkout calcula Pix e cartão depois.</p>
+                </div>
+            </article>
+
+            <article class="pricing-card pricing-step-card">
+                <details id="technical-details" class="pricing-disclosure technical-disclosure">
+                    <summary>
+                        <span><i class="fa-solid fa-ruler"></i> Medidas e observações <small>opcional</small></span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron"></i>
+                    </summary>
+                    <div class="disclosure-content">
+                        <div class="technical-heading">
+                            <div>
+                                <h2>Ficha de medidas</h2>
+                                <p>Útil para peças sob medida. Use somente uma referência interna, sem telefone, CPF ou endereço da cliente.</p>
+                            </div>
+                            <button type="button" id="add-measurement" class="pricing-button pricing-button-light compact-button">
+                                <i class="fa-solid fa-plus"></i> Medida
+                            </button>
+                        </div>
+                        <div id="measurements-list" class="measurement-list"></div>
+                        <button type="button" id="add-measurement-mobile" class="pricing-button pricing-button-light mobile-add-button">
+                            <i class="fa-solid fa-plus"></i> Adicionar medida
+                        </button>
+                        <label class="field-group notes-field">
+                            <span class="field-label">Observações de produção</span>
+                            <textarea id="production-notes" class="pricing-control" maxlength="2000" rows="4" placeholder="Acabamento, modelagem, detalhes do bordado ou instruções importantes."></textarea>
+                            <small class="field-help"><span id="notes-count">0</span>/2000 caracteres</small>
+                        </label>
+                    </div>
+                </details>
+            </article>
         </section>
 
-        <aside class="space-y-6 lg:col-span-1">
-            <div class="pricing-card result-panel p-5">
-                <div class="flex items-center justify-between gap-3">
+        <aside class="pricing-result-column" aria-label="Resultado da precificação">
+            <article id="pricing-result" class="pricing-card result-card">
+                <div class="result-heading">
                     <div>
-                        <p class="section-title">Resultado final</p>
-                        <h2 class="mt-1 text-lg font-semibold text-gray-900">Resumo da simulacao</h2>
+                        <p class="pricing-kicker">Resultado ao vivo</p>
+                        <h2>Preço sugerido</h2>
                     </div>
-                    <span class="tag-soft">Em lote</span>
+                    <span id="result-area" class="result-area-badge">Roupas</span>
                 </div>
 
-                <div class="mt-5 space-y-3 rounded-2xl border border-[#ede6da] bg-[#f8f4ee] p-4">
+                <div class="primary-result">
+                    <span>Preço para cadastrar no site • por peça</span>
+                    <strong id="result-base-unit">R$ 0,00</strong>
+                </div>
+
+                <div class="result-pair">
                     <div>
-                        <label for="margem" class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Margem de lucro (%)</label>
-                        <input type="number" id="margem" class="pricing-input" value="100">
+                        <span>Custo por peça</span>
+                        <strong id="result-unit-cost">R$ 0,00</strong>
                     </div>
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label for="taxaCartao" class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Taxa cartao (%)</label>
-                            <input type="number" id="taxaCartao" class="pricing-input" value="5.49" step="0.01">
-                        </div>
-                        <div>
-                            <label for="descPix" class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Desconto PIX (%)</label>
-                            <input type="number" id="descPix" class="pricing-input" value="5" step="0.01">
-                        </div>
+                    <div class="pix-result">
+                        <span>Preço no Pix</span>
+                        <strong id="result-pix-unit">R$ 0,00</strong>
                     </div>
                 </div>
 
-                <div class="mt-5 space-y-3">
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-500">Custo total de producao</span>
-                        <strong id="res-custo">R$ 0,00</strong>
-                    </div>
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-500">Lucro bruto estimado</span>
-                        <strong id="res-lucro" class="text-emerald-700">R$ 0,00</strong>
-                    </div>
-                </div>
-
-                <div class="my-5 border-t border-dashed border-gray-300"></div>
-
-                <div>
-                    <p class="section-title">Preço sugerido (cartão)</p>
-                    <p id="res-preco-final" class="result-value mt-2">R$ 0,00</p>
-                </div>
-
-                <div class="mini-stat mt-4 flex items-center justify-between gap-3">
+                <div class="batch-result">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Preço à vista</p>
-                        <p class="mt-1 text-sm text-emerald-900">Com desconto PIX aplicado</p>
+                        <span id="result-batch-label">Lote de 1 peça no preço cadastrado</span>
+                        <strong id="result-base-batch">R$ 0,00</strong>
                     </div>
-                    <strong id="res-preco-pix" class="text-xl font-bold text-emerald-700">R$ 0,00</strong>
+                    <small id="result-batch-cost">Custo total: R$ 0,00</small>
                 </div>
 
-                <button type="button" id="save-simulation-btn" class="pricing-btn pricing-btn-success mt-6 w-full">
-                    <i class="fa-solid fa-save"></i>Salvar no historico
-                </button>
-            </div>
+                <details class="result-breakdown" open>
+                    <summary>Como chegamos neste valor <i class="fa-solid fa-chevron-down"></i></summary>
+                    <dl>
+                        <div><dt>Materiais</dt><dd id="breakdown-materials">R$ 0,00</dd></div>
+                        <div><dt>Perdas</dt><dd id="breakdown-waste">R$ 0,00</dd></div>
+                        <div><dt>Mão de obra</dt><dd id="breakdown-labor">R$ 0,00</dd></div>
+                        <div><dt>Outros custos</dt><dd id="breakdown-extras">R$ 0,00</dd></div>
+                        <div><dt>Despesas da fábrica</dt><dd id="breakdown-overhead">R$ 0,00</dd></div>
+                        <div class="breakdown-total"><dt>Custo total do lote</dt><dd id="breakdown-total-cost">R$ 0,00</dd></div>
+                        <div><dt>Total no cartão em 3x ou mais</dt><dd id="breakdown-card-total">R$ 0,00</dd></div>
+                        <div><dt>Lucro no preço cadastrado</dt><dd id="breakdown-profit" class="profit-value">R$ 0,00</dd></div>
+                        <div><dt>Lucro estimado no Pix</dt><dd id="breakdown-pix-profit" class="profit-value">R$ 0,00</dd></div>
+                    </dl>
+                </details>
 
-            <div class="pricing-card p-5">
-                <p class="section-title">Calculo reverso</p>
-                <h2 class="mt-1 text-base font-semibold text-gray-900">Parta do preço de venda</h2>
-                <div class="mt-4 flex gap-3">
-                    <input type="number" id="rev-preco-venda" class="pricing-input" placeholder="R$ 200,00" step="0.01">
-                    <button type="button" id="reverse-calc-btn" class="pricing-btn pricing-btn-primary px-4">
-                        <i class="fa-solid fa-arrow-right"></i>
+                <div id="current-price-comparison" class="price-comparison hidden"></div>
+                <div id="calculation-feedback" class="calculation-feedback" role="status" aria-live="polite">
+                    <i class="fa-solid fa-arrow-left"></i> Preencha o nome e os custos para salvar a ficha.
+                </div>
+
+                <label id="share-team-wrapper" class="share-team hidden">
+                    <input id="share-team" type="checkbox">
+                    <span><strong>Disponibilizar para a produção</strong><small>A equipe verá custos e estrutura como modelo, sem referência, medidas ou observações da cliente.</small></span>
+                </label>
+
+                <div class="result-actions">
+                    <button type="button" id="save-pricing" class="pricing-button pricing-button-primary">
+                        <i class="fa-solid fa-floppy-disk"></i><span>Salvar ficha</span>
+                    </button>
+                    <button type="button" id="duplicate-pricing" class="pricing-button pricing-button-light hidden">
+                        <i class="fa-regular fa-copy"></i><span>Salvar como nova</span>
                     </button>
                 </div>
-                <div id="rev-resultado" class="mt-4 hidden rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm">
-                    <p>Lucro: <strong id="rev-lucro" class="text-emerald-700">R$ 0,00</strong></p>
-                    <p class="mt-2">Margem real: <strong id="rev-margem">0%</strong></p>
-                </div>
-            </div>
+            </article>
 
-            <div class="pricing-card p-5">
-                <div class="flex items-center justify-between gap-3">
+            <article class="pricing-card history-card">
+                <div class="history-heading">
                     <div>
-                        <p class="section-title">Historico</p>
-                        <h2 class="mt-1 text-base font-semibold text-gray-900">Ultimos calculos</h2>
+                        <p class="pricing-kicker">Histórico privado</p>
+                        <h2>Fichas recentes</h2>
                     </div>
-                    <span class="tag-soft">Firestore</span>
+                    <button type="button" id="refresh-history" class="icon-button" aria-label="Atualizar histórico"><i class="fa-solid fa-rotate"></i></button>
                 </div>
-                <div id="historico-lista" class="mt-4"></div>
-            </div>
+                <p id="history-context" class="history-context">Carregando fichas...</p>
+                <div id="pricing-history" class="history-list" aria-live="polite"></div>
+            </article>
         </aside>
     </main>
 
-    <div id="toast" class="pricing-toast success hidden">
-        <span id="toast-message"></span>
+    <div id="mobile-result-bar" class="mobile-result-bar">
+        <div><span>Preço para cadastrar</span><strong id="mobile-result-value">R$ 0,00</strong></div>
+        <button type="button" id="show-result"><span>Ver resumo</span><i class="fa-solid fa-arrow-up"></i></button>
     </div>
 
-    <script type="module" src="js/admin-pricing.js"></script>
+    <div id="pricing-toast" class="pricing-toast hidden" role="status" aria-live="polite"></div>
+
+    <script type="module" src="js/admin-pricing.js?v=20260818-production-flex"></script>
 </body>
 </html>

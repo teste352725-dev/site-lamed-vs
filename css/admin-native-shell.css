@@ -119,7 +119,7 @@ body.admin-native-page[data-admin-page="stock"] .stock-topbar {
     display: none !important;
 }
 
-body.production-role .admin-native-link:not([data-admin-page-id="stock"]):not(.admin-native-logout) {
+body.production-role .admin-native-link:not([data-admin-page-id="stock"]):not([data-admin-page-id="pricing"]):not(.admin-native-logout) {
     display: none !important;
 }
 

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i css/tailwind-source.css -o css/tailwind.generated.css --minify",
-    "build": "npm run build:css"
+    "build:public": "node scripts/build-public.mjs",
+    "build": "npm run build:css && npm run build:public"
   },
   "dependencies": {
     "firebase-admin": "14.2.0",

@@ -3,8 +3,10 @@ import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./
 import { clearUserCart } from "./_cart.mjs";
 import { createInfinitePayCheckoutLink, isInfinitePayConfigured } from "./_infinitepay.mjs";
 import { getStoreOperations, isPublicStorefrontBlocked } from "./_store-operations.mjs";
+import { CHECKOUT_CARD_SURCHARGE_PERCENT, CHECKOUT_PIX_DISCOUNT_PERCENT } from "./_commerce-config.mjs";
 
-const TAXA_JUROS = 0.0549;
+const TAXA_JUROS = CHECKOUT_CARD_SURCHARGE_PERCENT / 100;
+const DESCONTO_PIX = CHECKOUT_PIX_DISCOUNT_PERCENT / 100;
 const DEFAULT_ORDER_PHONE = "5527999287657";
 const FALLBACK_ORIGIN_POSTAL_CODE = "29056015";
 
@@ -444,7 +446,7 @@ function calculateCheckoutTotals(cartItems, pagamento, parcelas, cep, shippingSe
 
   const paymentKey = getPaymentKey(pagamento);
   if (paymentKey === "pix") {
-    pixDiscount = roundCurrency(subtotal * 0.05);
+    pixDiscount = roundCurrency(subtotal * DESCONTO_PIX);
     final = roundCurrency(final - pixDiscount);
   } else if (paymentKey.includes("cartao") && parcelas > 2) {
     cardFee = roundCurrency(subtotal * TAXA_JUROS);
