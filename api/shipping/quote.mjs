@@ -1,10 +1,12 @@
 import {
   getRequestBody,
-  isShippingApiEnabled,
+  isShippingProviderCredentialError,
+  isShippingCheckoutEnabled,
   normalizePostalCode,
   requestShippingQuote,
   setNoStore
 } from "../../server/_shipping.mjs";
+import { enforceInMemoryRateLimit, getClientAddress } from "../../server/_security.mjs";
 
 export default async function handler(req, res) {
   setNoStore(res);
@@ -14,17 +16,36 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: "Metodo nao permitido." });
   }
 
-  if (!isShippingApiEnabled()) {
+  if (!isShippingCheckoutEnabled()) {
     return res.status(503).json({
       ok: false,
-      error: "Frete automatico pausado temporariamente. O valor e o prazo sao definidos manualmente apos o pedido."
+      code: "SHIPPING_PREVIEW_ONLY",
+      error: "O frete automatico esta disponivel somente no ambiente seguro de homologacao. Continue pelo WhatsApp neste ambiente."
+    });
+  }
+
+  const clientAddress = getClientAddress(req);
+  const rateLimit = enforceInMemoryRateLimit({
+    key: `shipping:quote:${clientAddress}`,
+    maxRequests: 20,
+    windowMs: 5 * 60 * 1000
+  });
+
+  if (!rateLimit.allowed) {
+    res.setHeader("Retry-After", String(rateLimit.retryAfterSeconds));
+    return res.status(429).json({
+      ok: false,
+      code: "SHIPPING_RATE_LIMIT",
+      error: "Muitas consultas em pouco tempo. Aguarde um instante e tente novamente."
     });
   }
 
   const body = getRequestBody(req);
   const destinationPostalCode = normalizePostalCode(body?.postalCode);
-  const items = Array.isArray(body?.cart) ? body.cart : [];
-  const packageOverride = body?.packageOverride && typeof body.packageOverride === "object"
+  const items = Array.isArray(body?.cart) ? body.cart.slice(0, 30) : [];
+  const testModeEnabled = String(process.env.SHIPPING_TEST_MODE || "").trim().toLowerCase() === "true" ||
+    String(process.env.VERCEL_ENV || "").trim().toLowerCase() === "preview";
+  const packageOverride = testModeEnabled && body?.packageOverride && typeof body.packageOverride === "object"
     ? body.packageOverride
     : null;
 
@@ -65,9 +86,13 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("[vercel.shipping.quote]", error);
-    return res.status(500).json({
+    const credentialError = isShippingProviderCredentialError(error);
+    return res.status(credentialError ? 503 : 502).json({
       ok: false,
-      error: String(error?.message || "Erro ao consultar o Melhor Envio.")
+      code: credentialError ? "SHIPPING_CREDENTIAL_EXPIRED" : "SHIPPING_PROVIDER_ERROR",
+      error: credentialError
+        ? "A conexao de frete precisa ser renovada pelo administrador."
+        : "A transportadora nao respondeu agora. Tente novamente em alguns instantes."
     });
   }
 }

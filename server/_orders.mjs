@@ -1,12 +1,17 @@
 ﻿import { createHash } from "node:crypto";
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 import { clearUserCart } from "./_cart.mjs";
+import {
+  calculateCheckoutAmounts,
+  centsToMoney,
+  getCatalogUnitPriceCents,
+  isSafePixProductDiscountEnabled,
+  moneyToCents
+} from "./_checkout-finance.mjs";
 import { createInfinitePayCheckoutLink, isInfinitePayConfigured } from "./_infinitepay.mjs";
+import { isShippingCheckoutEnabled, requestShippingQuote } from "./_shipping.mjs";
 import { getStoreOperations, isPublicStorefrontBlocked } from "./_store-operations.mjs";
-import { CHECKOUT_CARD_SURCHARGE_PERCENT, CHECKOUT_PIX_DISCOUNT_PERCENT } from "./_commerce-config.mjs";
 
-const TAXA_JUROS = CHECKOUT_CARD_SURCHARGE_PERCENT / 100;
-const DESCONTO_PIX = CHECKOUT_PIX_DISCOUNT_PERCENT / 100;
 const DEFAULT_ORDER_PHONE = "5527999287657";
 const FALLBACK_ORIGIN_POSTAL_CODE = "29056015";
 
@@ -393,9 +398,7 @@ function isHanukahProduct(item) {
 }
 
 function getDiscountedProductPrice(product) {
-  const price = Number(product?.preco || 0);
-  const discount = Number(product?.desconto || 0);
-  return roundCurrency(price * (1 - discount / 100));
+  return centsToMoney(getCatalogUnitPriceCents(product));
 }
 
 function normalizeShippingSelection(selection) {
@@ -406,17 +409,19 @@ function normalizeShippingSelection(selection) {
   const serviceCode = sanitizePlainText(selection.serviceCode || selection.id, 120);
   const name = sanitizePlainText(selection.name, 120);
   const company = sanitizePlainText(selection.company, 80);
-  const price = roundCurrency(Number(selection.price));
-  const originalPrice = roundCurrency(Number(selection.originalPrice ?? selection.price));
+  const numericPrice = Number(selection.price);
+  const numericOriginalPrice = Number(selection.originalPrice ?? selection.price);
+  const priceCents = moneyToCents(numericPrice);
+  const originalPriceCents = moneyToCents(numericOriginalPrice);
   const deliveryTime = Math.max(1, parseInt(selection.deliveryTime, 10) || 0);
   const fromPostalCode = normalizePostalCode(selection.fromPostalCode);
   const toPostalCode = normalizePostalCode(selection.toPostalCode);
 
-  if (!id || !serviceId || !serviceCode || !name || !company || !Number.isFinite(price) || price < 0) {
+  if (!id || !serviceId || !serviceCode || !name || !company || !Number.isFinite(numericPrice) || numericPrice < 0) {
     return null;
   }
 
-  if (!Number.isFinite(originalPrice) || originalPrice < 0 || deliveryTime < 1) {
+  if (!Number.isFinite(numericOriginalPrice) || numericOriginalPrice < 0 || deliveryTime < 1) {
     return null;
   }
 
@@ -426,51 +431,44 @@ function normalizeShippingSelection(selection) {
     serviceCode,
     name,
     company,
-    price,
-    originalPrice,
+    price: centsToMoney(priceCents),
+    priceCents,
+    originalPrice: centsToMoney(originalPriceCents),
+    originalPriceCents,
     deliveryTime,
     fromPostalCode,
     toPostalCode
   };
 }
 
-function calculateCheckoutTotals(cartItems, pagamento, parcelas, cep, shippingSelection = null) {
-  const subtotal = roundCurrency(cartItems.reduce((acc, item) => acc + item.preco * item.quantity, 0));
-  const hanukahSubtotal = roundCurrency(
-    cartItems.reduce((acc, item) => acc + (isHanukahProduct(item) ? item.preco * item.quantity : 0), 0)
-  );
-
-  let final = subtotal;
-  let pixDiscount = 0;
-  let cardFee = 0;
-
-  const paymentKey = getPaymentKey(pagamento);
-  if (paymentKey === "pix") {
-    pixDiscount = roundCurrency(subtotal * DESCONTO_PIX);
-    final = roundCurrency(final - pixDiscount);
-  } else if (paymentKey.includes("cartao") && parcelas > 2) {
-    cardFee = roundCurrency(subtotal * TAXA_JUROS);
-    final = roundCurrency(final + cardFee);
-  }
-
+function calculateCheckoutTotals(cartItems, shippingSelection = null, { applyPixProductDiscount = false } = {}) {
   const safeShipping = normalizeShippingSelection(shippingSelection);
-  const freeShippingEligible = isSudeste(cep) && hanukahSubtotal >= 500;
-  const shippingOriginal = safeShipping ? safeShipping.originalPrice : 0;
-  const shippingCost = safeShipping ? roundCurrency(freeShippingEligible ? 0 : safeShipping.price) : 0;
-  const shippingDiscount = safeShipping && freeShippingEligible ? roundCurrency(shippingOriginal) : 0;
-  final = roundCurrency(final + shippingCost);
+  const finance = calculateCheckoutAmounts({
+    products: cartItems,
+    shippingCents: safeShipping?.priceCents || 0,
+    applyPixProductDiscount
+  });
 
   return {
-    subtotal,
-    hanukahSubtotal,
-    pixDiscount,
-    cardFee,
-    shippingCost,
-    shippingOriginal,
-    shippingDiscount,
-    final,
-    freeShipping: freeShippingEligible && !!safeShipping,
-    freeShippingEligible
+    productLines: finance.productLines,
+    subtotal: centsToMoney(finance.productSubtotalCents),
+    subtotalCents: finance.productSubtotalCents,
+    productCharge: centsToMoney(finance.productChargeCents),
+    productChargeCents: finance.productChargeCents,
+    pixDiscount: centsToMoney(finance.pixDiscountCents),
+    pixDiscountCents: finance.pixDiscountCents,
+    cardFee: 0,
+    cardFeeCents: 0,
+    shippingCost: centsToMoney(finance.shippingCents),
+    shippingCostCents: finance.shippingCents,
+    shippingOriginal: safeShipping?.originalPrice || 0,
+    shippingOriginalCents: safeShipping?.originalPriceCents || 0,
+    shippingDiscount: 0,
+    shippingDiscountCents: 0,
+    final: centsToMoney(finance.totalCents),
+    totalCents: finance.totalCents,
+    freeShipping: false,
+    freeShippingEligible: false
   };
 }
 
@@ -482,10 +480,12 @@ function buildManualShippingSelection(destinationCep = "") {
     id: "manual-pendente",
     serviceId: "manual-pendente",
     serviceCode: "manual-pendente",
-    name: "Frete definido apos o pedido",
+    name: "Frete definido após o pedido",
     company: "A combinar",
     price: 0,
+    priceCents: 0,
     originalPrice: 0,
+    originalPriceCents: 0,
     deliveryTime: 1,
     quotedAt: new Date().toISOString(),
     fromPostalCode: originPostalCode,
@@ -494,8 +494,67 @@ function buildManualShippingSelection(destinationCep = "") {
   };
 }
 
-function resolveOrderShippingSelection(cliente) {
-  return buildManualShippingSelection(cliente?.endereco?.cep);
+async function resolveOrderShippingSelection(cliente, canonicalCart, submittedShipping, { requireQuotedShipping = false } = {}) {
+  if (!isShippingCheckoutEnabled()) {
+    if (requireQuotedShipping) {
+      throw new RequestError(503, "O pagamento integrado com frete esta em homologacao. Continue pelo WhatsApp neste ambiente.", {
+        code: "SHIPPING_PREVIEW_ONLY"
+      });
+    }
+    return buildManualShippingSelection(cliente?.endereco?.cep);
+  }
+
+  const normalizedSelection = normalizeShippingSelection(submittedShipping);
+  if (!normalizedSelection) {
+    if (requireQuotedShipping) {
+      throw new RequestError(400, "Calcule e escolha uma opcao de entrega antes de pagar com a InfinitePay.", {
+        code: "SHIPPING_SELECTION_REQUIRED"
+      });
+    }
+    return buildManualShippingSelection(cliente?.endereco?.cep);
+  }
+
+  let quote;
+  try {
+    quote = await requestShippingQuote({
+      destinationPostalCode: cliente?.endereco?.cep,
+      items: canonicalCart
+    });
+  } catch (error) {
+    if (!requireQuotedShipping) {
+      return buildManualShippingSelection(cliente?.endereco?.cep);
+    }
+    throw new RequestError(502, "Nao foi possivel revalidar o frete agora. Continue pelo WhatsApp ou tente novamente.", {
+      code: "SHIPPING_REVALIDATION_FAILED"
+    });
+  }
+
+  const options = Array.isArray(quote?.options)
+    ? quote.options.map((option) => normalizeShippingSelection(option)).filter(Boolean)
+    : [];
+  const matchedOption = options.find((option) =>
+    option.id === normalizedSelection.id ||
+    (
+      option.serviceId === normalizedSelection.serviceId &&
+      option.serviceCode === normalizedSelection.serviceCode
+    )
+  );
+
+  if (!matchedOption) {
+    if (!requireQuotedShipping) {
+      return buildManualShippingSelection(cliente?.endereco?.cep);
+    }
+    throw new RequestError(409, "A opcao de frete mudou. Recalcule a entrega e confira o resumo antes de pagar.", {
+      code: "SHIPPING_QUOTE_CHANGED"
+    });
+  }
+
+  return {
+    ...matchedOption,
+    provider: sanitizePlainText(quote?.provider, 40),
+    quotedAt: new Date().toISOString(),
+    freeShippingApplied: false
+  };
 }
 
 async function getProductMapByIds(db, ids) {
@@ -549,12 +608,14 @@ async function buildCanonicalCartSnapshot(db, sourceCart) {
     }
 
     const quantity = Math.max(1, Math.min(99, parseInt(sourceItem.quantity, 10) || 0));
+    const unitPriceCents = getCatalogUnitPriceCents(product);
     const canonicalItem = {
       cartId: sourceItem.cartId,
       id: product.id,
       categoria: sanitizePlainText(product.categoria, 40),
       nome: sanitizePlainText(product.nome, 120) || sourceItem.nome,
-      preco: getDiscountedProductPrice(product),
+      preco: centsToMoney(unitPriceCents),
+      precoCentavos: unitPriceCents,
       imagem: normalizeUrl(Array.isArray(product.imagens) ? product.imagens[0] : "") || "https://placehold.co/600x800/eee/ccc?text=Sem+imagem",
       frete: normalizeShippingProfile(product.frete),
       quantity
@@ -720,38 +781,50 @@ function buildCliente(rawCliente) {
     !cliente.endereco.cidade ||
     cliente.endereco.estado.length !== 2
   ) {
-    throw new RequestError(400, "Preencha nome, WhatsApp, e-mail, CPF ou CNPJ, CEP, rua, numero, bairro, cidade e UF antes de finalizar.");
+    throw new RequestError(400, "Preencha nome, WhatsApp, e-mail, CPF ou CNPJ, CEP, rua, número, bairro, cidade e UF antes de finalizar.");
   }
 
   return cliente;
 }
 
-function normalizePagamento(rawPagamento, rawParcelas) {
+function normalizePagamento(rawPagamento, rawPaymentPreference) {
   const paymentKey = getPaymentKey(rawPagamento);
 
-  if (paymentKey === "pix") {
+  if (paymentKey.includes("whatsapp") || paymentKey.includes("combinar") || paymentKey === "manual") {
     return {
-      pagamento: "PIX",
-      parcelas: 1
-    };
-  }
-
-  if (paymentKey.includes("cartao")) {
-    const parcelas = Math.max(1, Math.min(12, parseInt(rawParcelas, 10) || 1));
-    return {
-      pagamento: "Cartao de Credito",
-      parcelas
+      pagamento: "A combinar pelo WhatsApp",
+      parcelas: 1,
+      paymentGateway: "manual",
+      paymentPreference: "manual",
+      applyPixProductDiscount: false
     };
   }
 
   if (paymentKey.includes("infinitepay")) {
+    const preference = getPaymentKey(rawPaymentPreference);
+    const requestedPixDiscount = preference === "pix";
+    const applyPixProductDiscount = requestedPixDiscount && isSafePixProductDiscountEnabled();
+
+    if (requestedPixDiscount && !applyPixProductDiscount) {
+      throw new RequestError(409, "O desconto no Pix ainda nao pode ser usado neste checkout porque a InfinitePay tambem permite trocar para cartao.", {
+        code: "PIX_DISCOUNT_REQUIRES_PIX_ONLY_CHECKOUT"
+      });
+    }
+
     return {
-      pagamento: "InfinitePay",
-      parcelas: 1
+      pagamento: applyPixProductDiscount ? "Pix via InfinitePay" : "InfinitePay",
+      parcelas: 1,
+      paymentGateway: "infinitepay",
+      paymentPreference: applyPixProductDiscount ? "pix" : "mixed",
+      applyPixProductDiscount
     };
   }
 
-  throw new RequestError(400, "Selecione uma forma de pagamento valida.");
+  if (paymentKey === "pix" || paymentKey.includes("cartao")) {
+    throw new RequestError(400, "Escolha o checkout seguro da InfinitePay ou continue pelo WhatsApp.");
+  }
+
+  throw new RequestError(400, "Continue pelo WhatsApp para confirmar o pedido.");
 }
 
 function isAdminDecodedToken(decoded) {
@@ -899,12 +972,21 @@ function buildWhatsAppOrderMessage(orderId, pedido) {
     lines.push("");
   });
 
-  lines.push("*Resumo financeiro*");
-  lines.push(`Subtotal: ${formatCurrency(pedido.subtotal)}`);
-  if (pedido.ajustes.pixDiscount > 0) lines.push(`Desconto PIX: -${formatCurrency(pedido.ajustes.pixDiscount)}`);
-  if (pedido.ajustes.cardFee > 0) lines.push(`Taxa do cartao: +${formatCurrency(pedido.ajustes.cardFee)}`);
-  if (pedido.ajustes.freeShipping) lines.push(`Desconto no frete: -${formatCurrency(pedido.frete.originalPrice)}`);
-  lines.push(`Total final: ${formatCurrency(pedido.total)}`);
+  lines.push("*Resumo do pedido*");
+  lines.push(`Total das peças: ${formatCurrency(pedido.subtotal)}`);
+  if (Number(pedido?.ajustes?.pixDiscountCentavos || 0) > 0) {
+    lines.push(`Desconto Pix nas peças: -${formatCurrency(pedido?.ajustes?.pixDiscount)}`);
+  }
+  if (pedido.frete?.serviceId === "manual-pendente") {
+    lines.push("Frete: ainda não incluído");
+    lines.push("");
+    lines.push("A equipe confirmará aqui no WhatsApp o frete, o valor completo e a forma de pagamento antes de qualquer cobrança.");
+  } else {
+    lines.push(`Frete: ${formatCurrency(pedido?.frete?.price)}`);
+    lines.push(`Total completo: ${formatCurrency(pedido?.total)}`);
+    lines.push("");
+    lines.push("Esta cotação e o resumo foram preservados para você continuar com a equipe pelo WhatsApp.");
+  }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -1019,19 +1101,26 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
   }
 
   const cliente = buildCliente(body?.cliente);
-  const { pagamento, parcelas } = normalizePagamento(body?.pagamento, body?.parcelas);
-  const paymentKey = getPaymentKey(pagamento);
+  const {
+    pagamento,
+    parcelas,
+    paymentGateway,
+    paymentPreference,
+    applyPixProductDiscount
+  } = normalizePagamento(body?.pagamento, body?.paymentPreference);
   const submittedCart = Array.isArray(body?.cart) ? body.cart : [];
   const hasExpectedTotal = body?.expectedTotal !== undefined && body?.expectedTotal !== null && String(body.expectedTotal).trim() !== "";
-  const expectedTotal = hasExpectedTotal ? roundCurrency(Number(body.expectedTotal)) : null;
+  const expectedTotalCents = hasExpectedTotal ? moneyToCents(body.expectedTotal) : null;
 
   if (submittedCart.length === 0) {
     throw new RequestError(400, "Sua sacola esta vazia.");
   }
 
-  if (paymentKey === "infinitepay") {
+  if (paymentGateway === "infinitepay") {
     if (!isInfinitePayConfigured()) {
-      throw new RequestError(503, "A InfinitePay ainda nao esta configurada neste ambiente.");
+      throw new RequestError(503, "A InfinitePay ainda nao esta configurada neste ambiente.", {
+        code: "INFINITEPAY_NOT_CONFIGURED"
+      });
     }
 
     if (!userId) {
@@ -1048,12 +1137,14 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
     throw new RequestError(400, "Os itens do carrinho nao estao mais disponiveis.");
   }
 
-  const frete = await resolveOrderShippingSelection(cliente, canonicalCart, body?.shipping);
-  const totals = calculateCheckoutTotals(canonicalCart, pagamento, parcelas, cliente.endereco.cep, frete);
+  const frete = await resolveOrderShippingSelection(cliente, canonicalCart, body?.shipping, {
+    requireQuotedShipping: paymentGateway === "infinitepay"
+  });
+  const totals = calculateCheckoutTotals(canonicalCart, frete, { applyPixProductDiscount });
   const sourceSignature = buildComparableCartSignature(submittedCart);
   const canonicalSignature = buildComparableCartSignature(canonicalCart);
 
-  if (sourceSignature !== canonicalSignature || (expectedTotal != null && Math.abs(expectedTotal - totals.final) > 0.01)) {
+  if (sourceSignature !== canonicalSignature || (expectedTotalCents != null && expectedTotalCents !== totals.totalCents)) {
     throw new RequestError(409, "Pedido precisa de revisao.", buildReviewResponse(canonicalCart, totals));
   }
 
@@ -1061,7 +1152,7 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
   const duplicatedOrder = await findRecentDuplicateOrder(db, fingerprint);
   if (duplicatedOrder) {
     const existingCheckoutUrl = normalizeUrl(duplicatedOrder?.payment?.checkoutUrl);
-    if (paymentKey === "infinitepay" && existingCheckoutUrl) {
+    if (paymentGateway === "infinitepay" && existingCheckoutUrl) {
       return {
         ok: true,
         reusedOrder: true,
@@ -1073,9 +1164,18 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
       };
     }
 
+    const canRevealDuplicateId = Boolean(
+      userId && sanitizePlainText(duplicatedOrder?.userId, 128) === userId
+    );
+    const orderCode = String(duplicatedOrder.id).slice(0, 6).toUpperCase();
+    const whatsappMessage = canRevealDuplicateId
+      ? `Oi! Quero continuar o pedido #${orderCode} que acabei de enviar pelo site.`
+      : "Oi! Acabei de enviar meu pedido pelo site e quero continuar o atendimento.";
+    const whatsappPhone = sanitizePlainText(process.env.LAMED_WHATSAPP_PHONE, 20) || DEFAULT_ORDER_PHONE;
     throw new RequestError(409, "Ja recebemos um pedido igual ha pouco tempo. Se precisar, fale com a loja antes de tentar novamente.", {
       code: "DUPLICATE_ORDER",
-      duplicatedOrderId: duplicatedOrder.id
+      ...(canRevealDuplicateId ? { duplicatedOrderId: duplicatedOrder.id } : {}),
+      whatsappUrl: `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`
     });
   }
 
@@ -1083,19 +1183,26 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
     cliente,
     pagamento,
     parcelas,
-    produtos: canonicalCart,
+    produtos: totals.productLines,
     subtotal: totals.subtotal,
+    subtotalCentavos: totals.subtotalCents,
+    totalProdutos: totals.productCharge,
+    totalProdutosCentavos: totals.productChargeCents,
     total: totals.final,
+    totalCentavos: totals.totalCents,
     frete,
     ajustes: {
       pixDiscount: totals.pixDiscount,
+      pixDiscountCentavos: totals.pixDiscountCents,
       cardFee: totals.cardFee,
+      cardFeeCentavos: totals.cardFeeCents,
       freeShipping: false
     },
     data: FieldValue.serverTimestamp(),
     status: "pendente",
-    paymentGateway: paymentKey === "infinitepay" ? "infinitepay" : "manual",
+    paymentGateway,
     paymentStatus: "pending",
+    paymentPreference,
     userId,
     estoque_baixado: false,
     fingerprint,
@@ -1111,7 +1218,7 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
   const pedidosCollection = db.collection("pedidos");
   const ref = pedidosCollection.doc();
 
-  if (paymentKey === "infinitepay") {
+  if (paymentGateway === "infinitepay") {
     const publicOrder = {
       ...pedido,
       data: new Date().toISOString()
@@ -1161,8 +1268,39 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
         paymentRedirectUrl: checkout.checkoutUrl
       };
     } catch (error) {
-      await ref.delete().catch(() => {});
-      throw new RequestError(Number(error?.status) || 502, String(error?.message || "Nao foi possivel iniciar o checkout InfinitePay."));
+      const fallbackOrder = {
+        ...publicOrder,
+        pagamento: "A combinar pelo WhatsApp",
+        paymentGateway: "manual",
+        paymentStatus: "checkout_failed"
+      };
+      const whatsappMessage = buildWhatsAppOrderMessage(ref.id, fallbackOrder);
+      const whatsappPhone = sanitizePlainText(process.env.LAMED_WHATSAPP_PHONE, 20) || DEFAULT_ORDER_PHONE;
+
+      await ref.set({
+        pagamento: fallbackOrder.pagamento,
+        paymentGateway: fallbackOrder.paymentGateway,
+        paymentStatus: fallbackOrder.paymentStatus,
+        payment: {
+          gateway: "infinitepay",
+          status: "checkout_failed",
+          updatedAt: new Date().toISOString()
+        },
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      await clearUserCart(userId).catch(() => {});
+
+      return {
+        ok: true,
+        fallback: "whatsapp",
+        fallbackReason: "PAYMENT_LINK_UNAVAILABLE",
+        orderId: ref.id,
+        order: fallbackOrder,
+        paymentGateway: "manual",
+        paymentStatus: "checkout_failed",
+        whatsappMessage,
+        whatsappUrl: `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`
+      };
     }
   }
 

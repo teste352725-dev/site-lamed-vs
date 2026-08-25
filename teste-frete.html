@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>Teste de frete | Laméd</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/shipping-test.css">
+    <script src="js/shipping-test.js" defer></script>
+</head>
+<body>
+    <main class="shipping-test-shell">
+        <header class="shipping-test-header">
+            <p class="shipping-test-brand">Laméd</p>
+            <p class="shipping-test-kicker">Laboratório de frete</p>
+        </header>
+
+        <section class="shipping-test-card" aria-labelledby="shipping-test-title">
+            <span class="shipping-test-badge">Ambiente de teste</span>
+            <h1 id="shipping-test-title">Simular uma embalagem</h1>
+            <p class="shipping-test-intro">
+                Esta tela consulta somente preço e prazo. Ela não cria pedido, etiqueta, cobrança ou pagamento.
+            </p>
+
+            <form id="shipping-test-form" novalidate>
+                <div class="shipping-test-field shipping-test-field-wide">
+                    <label for="shipping-test-postal-code">CEP de entrega</label>
+                    <input id="shipping-test-postal-code" name="postalCode" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000" required>
+                </div>
+
+                <div class="shipping-test-field shipping-test-field-wide">
+                    <label for="shipping-test-preset">Tipo de embalagem</label>
+                    <select id="shipping-test-preset" name="preset">
+                        <option value="roupa">Roupa leve</option>
+                        <option value="mesa">Mesa posta</option>
+                        <option value="sob-medida">Peça sob medida</option>
+                        <option value="manual">Informar medidas</option>
+                    </select>
+                </div>
+
+                <div class="shipping-test-grid">
+                    <div class="shipping-test-field">
+                        <label for="shipping-test-weight">Peso (kg)</label>
+                        <input id="shipping-test-weight" name="weight" type="number" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="shipping-test-field">
+                        <label for="shipping-test-height">Altura (cm)</label>
+                        <input id="shipping-test-height" name="height" type="number" min="1" step="1" required>
+                    </div>
+                    <div class="shipping-test-field">
+                        <label for="shipping-test-width">Largura (cm)</label>
+                        <input id="shipping-test-width" name="width" type="number" min="1" step="1" required>
+                    </div>
+                    <div class="shipping-test-field">
+                        <label for="shipping-test-length">Comprimento (cm)</label>
+                        <input id="shipping-test-length" name="length" type="number" min="1" step="1" required>
+                    </div>
+                </div>
+
+                <div class="shipping-test-field shipping-test-field-wide">
+                    <label for="shipping-test-insurance">Valor da peça (R$)</label>
+                    <input id="shipping-test-insurance" name="insurance" type="number" min="1" step="0.01" value="100" required>
+                    <small>Usado somente para a simulação do valor declarado.</small>
+                </div>
+
+                <button id="shipping-test-submit" type="submit">Calcular frete de teste</button>
+            </form>
+
+            <div id="shipping-test-status" class="shipping-test-status" role="status" aria-live="polite">
+                Informe um CEP para iniciar a primeira simulação.
+            </div>
+            <div id="shipping-test-results" class="shipping-test-results" aria-live="polite"></div>
+        </section>
+
+        <p class="shipping-test-footnote">
+            Use apenas dados de teste. Nenhuma informação de cliente é necessária nesta tela.
+        </p>
+    </main>
+</body>
+</html>

@@ -51,6 +51,35 @@ export function isShippingApiEnabled() {
     .toLowerCase() === "true";
 }
 
+export function isShippingCheckoutEnabled() {
+  if (!isShippingApiEnabled()) return false;
+
+  const checkoutEnabled = String(process.env.SHIPPING_CHECKOUT_ENABLED || "")
+    .trim()
+    .toLowerCase() === "true";
+  const vercelEnvironment = String(process.env.VERCEL_ENV || "").trim().toLowerCase();
+  const explicitTestMode = String(process.env.SHIPPING_TEST_MODE || "")
+    .trim()
+    .toLowerCase() === "true";
+  const isSandboxProvider = /(^|\.)sandbox\.melhorenvio\.com\.br$/i.test((() => {
+    try {
+      return new URL(getMelhorEnvioBaseUrl()).hostname;
+    } catch (error) {
+      return "";
+    }
+  })());
+
+  if (!checkoutEnabled) return false;
+
+  // A ativacao futura depende apenas de variaveis, mas combinacoes incoerentes
+  // falham fechadas: Preview/local usam Sandbox; Production nunca usa Sandbox.
+  if (vercelEnvironment === "production") {
+    return !explicitTestMode && !isSandboxProvider;
+  }
+
+  return explicitTestMode && isSandboxProvider;
+}
+
 export function getMelhorEnvioBaseUrl() {
   return String(process.env.MELHOR_ENVIO_BASE_URL || "https://www.melhorenvio.com.br").replace(/\/+$/, "");
 }
@@ -249,6 +278,11 @@ function extractMelhorEnvioError(payload, status) {
 export function isShippingProviderCredentialError(error) {
   const safeMessage = String(error?.message || error || "").toLowerCase();
   return safeMessage.includes("token has been revoked") ||
+    safeMessage.includes("token has expired") ||
+    safeMessage.includes("unauthenticated") ||
+    safeMessage.includes("invalid_client") ||
+    safeMessage.includes("invalid_grant") ||
+    safeMessage.includes("configure melhor_envio_") ||
     safeMessage.includes("acesso nao autorizado") ||
     safeMessage.includes("acesso não autorizado") ||
     safeMessage.includes("unauthorized") ||
@@ -659,6 +693,7 @@ export async function requestShippingQuote({ destinationPostalCode, items, packa
 export function getShippingHealth() {
   const provider = getShippingProvider();
   const enabled = isShippingApiEnabled();
+  const checkoutEnabled = isShippingCheckoutEnabled();
 
   if (provider === "correios") {
     const originPostalCode = normalizePostalCode(process.env.CORREIOS_ORIGIN_POSTAL_CODE || process.env.MELHOR_ENVIO_ORIGIN_POSTAL_CODE);
@@ -669,8 +704,9 @@ export function getShippingHealth() {
     const postageCard = getCorreiosPostageCard();
 
     return {
-      ok: enabled && Boolean(accessToken) && originPostalCode.length === 8 && serviceCodes.length > 0,
+      ok: checkoutEnabled && Boolean(accessToken) && originPostalCode.length === 8 && serviceCodes.length > 0,
       enabled,
+      checkoutEnabled,
       paused: !enabled,
       provider,
       baseUrl: getCorreiosBaseUrl(),
@@ -688,16 +724,22 @@ export function getShippingHealth() {
   const originPostalCode = normalizePostalCode(process.env.MELHOR_ENVIO_ORIGIN_POSTAL_CODE);
   const accessToken = String(process.env.MELHOR_ENVIO_ACCESS_TOKEN || "").trim();
   const refreshToken = String(process.env.MELHOR_ENVIO_REFRESH_TOKEN || "").trim();
+  const clientId = String(process.env.MELHOR_ENVIO_CLIENT_ID || "").trim();
+  const clientSecret = String(process.env.MELHOR_ENVIO_CLIENT_SECRET || "").trim();
+  const redirectUri = String(process.env.MELHOR_ENVIO_REDIRECT_URI || "").trim();
+  const refreshReady = Boolean(refreshToken && clientId && clientSecret && redirectUri);
 
   return {
-    ok: enabled && Boolean(accessToken || refreshToken) && originPostalCode.length === 8,
+    ok: checkoutEnabled && Boolean(accessToken || refreshReady) && originPostalCode.length === 8,
     enabled,
+    checkoutEnabled,
     paused: !enabled,
     provider,
     baseUrl: getMelhorEnvioBaseUrl(),
     originPostalCodeConfigured: originPostalCode.length === 8,
     accessTokenConfigured: Boolean(accessToken),
     refreshTokenConfigured: Boolean(refreshToken),
+    refreshFlowConfigured: refreshReady,
     servicesConfigured: getMelhorEnvioServices()
   };
 }

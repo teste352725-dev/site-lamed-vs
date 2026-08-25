@@ -600,6 +600,11 @@ function isAwaitingInfinitePay(order) {
     return gateway === 'infinitepay' && paymentStatus === 'pending';
 }
 
+function isManualOrder(order) {
+    const gateway = sanitizePlainText(order?.paymentGateway || order?.payment?.gateway, 40).toLowerCase();
+    return gateway === 'manual';
+}
+
 function getOrderDisplayStatus(order) {
     if (isAwaitingInfinitePay(order)) {
         return 'Aguardando pagamento';
@@ -640,7 +645,7 @@ function getOrderPaymentMeta(order) {
     if (gateway === 'manual') {
         return {
             label: 'WhatsApp',
-            detail: 'Pedido enviado; pagamento e entrega combinados com a equipe.'
+            detail: 'Frete, valor final e forma de pagamento serão confirmados com você pelo WhatsApp.'
         };
     }
 
@@ -906,6 +911,7 @@ function renderSelectedOrderDetail() {
     }
 
     const pedido = selectedOrder.data || {};
+    const manualOrder = isManualOrder(pedido);
     const paymentMeta = getOrderPaymentMeta(pedido);
     const totalFormatado = Number(pedido.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const subtotalFormatado = Number(pedido.subtotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -952,10 +958,12 @@ function renderSelectedOrderDetail() {
             <div class="account-detail-list">
                 <div class="account-detail-item">
                     <div class="account-detail-item-header">
-                        <span>Subtotal</span>
+                        <span>${manualOrder ? 'Total das peças' : 'Subtotal'}</span>
                         <span>${subtotalFormatado}</span>
                     </div>
-                    <div class="account-detail-item-meta">Total final do pedido: ${totalFormatado}</div>
+                    <div class="account-detail-item-meta">${manualOrder
+                        ? 'Frete, valor final e pagamento serão confirmados pelo WhatsApp.'
+                        : `Total final do pedido: ${totalFormatado}`}</div>
                 </div>
                 <div class="account-detail-item">
                     <div class="account-detail-item-header">
@@ -1323,6 +1331,7 @@ auth.onAuthStateChanged(async (user) => {
             const startupTasks = [
                 ['profile.sync', () => ensureUserProfileDoc(user)],
                 ['profile.load', () => carregarPerfilUsuario()],
+                ['cart.load', () => loadAccountCartPreview()],
                 ['push.init', () => iniciarNotificacoesWeb()],
                 ['payments.return', () => maybeHandleInfinitePayReturn(user)]
             ];
@@ -1851,7 +1860,8 @@ function carregarMeusPedidos() {
 
             list.innerHTML = ordersCache.map((entry) => {
                 const pedido = entry.data || {};
-                const valorTotal = Number(pedido.total || 0);
+                const manualOrder = isManualOrder(pedido);
+                const valorTotal = Number(manualOrder ? (pedido.subtotal || pedido.total || 0) : (pedido.total || 0));
                 const totalFormatado = valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 const dataPedido = formatOrderDate(pedido.data);
                 const previewItens = (pedido.produtos || []).slice(0, 3).map((item) => `
@@ -1873,7 +1883,7 @@ function carregarMeusPedidos() {
                         <div class="account-order-lines">${previewItens}</div>
                         <div class="account-order-card-footer">
                             <div>
-                                <span class="text-[0.68rem] uppercase tracking-[0.18em] text-[#a49382] font-bold">Total</span>
+                                <span class="text-[0.68rem] uppercase tracking-[0.18em] text-[#a49382] font-bold">${manualOrder ? 'Total das peças' : 'Total'}</span>
                                 <div class="account-order-total">${totalFormatado}</div>
                             </div>
                             <button type="button" class="account-soft-btn" onclick="event.stopPropagation(); iniciarSuportePedido('${entry.id}')">
@@ -2079,12 +2089,57 @@ function rolarChatParaBaixo() {
 }
 
 // --- SACOLA DENTRO DA AREA DO USUARIO ---
+let accountCartSyncQueue = Promise.resolve();
+let accountCartMutationRevision = 0;
+let accountCartHasUnsyncedChanges = false;
+let accountCheckoutSubmitting = false;
+let accountCheckoutPreviousFocus = null;
+let accountCartPreviousFocus = null;
+let accountCheckoutPostalLookup = 0;
+let accountCheckoutShippingRequest = 0;
+let accountCheckoutRuntimeConfig = {
+    loaded: false,
+    shippingCheckoutEnabled: false,
+    infinitePayEnabled: false,
+    whatsappFallbackEnabled: true
+};
+let accountCheckoutShippingState = {
+    loading: false,
+    postalCode: '',
+    cartSignature: '',
+    options: [],
+    selectedId: '',
+    error: ''
+};
+
 function readAccountCartItems() {
     try {
         const parsed = JSON.parse(localStorage.getItem('lamedCart') || '[]');
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed)
+            ? parsed.filter((item) => item && typeof item === 'object' && sanitizePlainText(item.cartId, 240))
+            : [];
     } catch (error) {
         return [];
+    }
+}
+
+function writeAccountCartItems(items) {
+    const safeItems = Array.isArray(items) ? items : [];
+    try {
+        const serialized = JSON.stringify(safeItems);
+        if (localStorage.getItem('lamedCart') !== serialized) {
+            localStorage.setItem('lamedCart', serialized);
+        }
+        localStorage.setItem('lamed_cart_owner', String((currentUser || auth.currentUser)?.uid || 'guest'));
+    } catch (error) {}
+    return safeItems;
+}
+
+function getAccountCartOwner() {
+    try {
+        return String(localStorage.getItem('lamed_cart_owner') || 'guest');
+    } catch (error) {
+        return 'guest';
     }
 }
 
@@ -2101,10 +2156,320 @@ function formatAccountCartCurrency(value) {
     return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function roundAccountCurrency(value) {
+    return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function getAccountCartSubtotal(items = readAccountCartItems()) {
+    return roundAccountCurrency((Array.isArray(items) ? items : []).reduce((sum, item) => {
+        const quantity = Math.max(1, Number.parseInt(item?.quantity, 10) || 1);
+        const price = Math.max(0, Number(item?.preco) || 0);
+        return sum + (price * quantity);
+    }, 0));
+}
+
+function accountMoneyToCents(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.round((numeric + Number.EPSILON) * 100) : 0;
+}
+
+function isAccountShippingCheckoutEnabled() {
+    return accountCheckoutRuntimeConfig.shippingCheckoutEnabled === true;
+}
+
+function isAccountInfinitePayEnabled() {
+    return accountCheckoutRuntimeConfig.infinitePayEnabled === true && isAccountShippingCheckoutEnabled();
+}
+
+function getAccountCheckoutPaymentValue() {
+    return sanitizePlainText(document.querySelector('#account-checkout-form input[name="pagamento"]:checked')?.value || 'WhatsApp', 40);
+}
+
+function getAccountCheckoutCartSignature(items = readAccountCartItems()) {
+    return JSON.stringify((Array.isArray(items) ? items : []).map((item) => ({
+        id: sanitizePlainText(item?.id, 120),
+        cartId: sanitizePlainText(item?.cartId, 240),
+        preco: accountMoneyToCents(item?.preco),
+        quantity: Math.max(1, Number.parseInt(item?.quantity, 10) || 1)
+    })));
+}
+
+function normalizeAccountShippingOption(option) {
+    if (!option || typeof option !== 'object') return null;
+    const id = sanitizePlainText(option.id || option.serviceCode || option.serviceId, 120);
+    const serviceId = sanitizePlainText(option.serviceId || option.id, 120);
+    const serviceCode = sanitizePlainText(option.serviceCode || option.id, 120);
+    const name = sanitizePlainText(option.name, 120);
+    const company = sanitizePlainText(option.company, 80);
+    const rawPrice = Number(option.price);
+    const priceCents = accountMoneyToCents(rawPrice);
+    const deliveryTime = Math.max(1, Number.parseInt(option.deliveryTime, 10) || 1);
+    if (!id || !serviceId || !serviceCode || !name || !company || !Number.isFinite(rawPrice) || rawPrice < 0) return null;
+    return {
+        id,
+        serviceId,
+        serviceCode,
+        name,
+        company,
+        price: priceCents / 100,
+        originalPrice: accountMoneyToCents(option.originalPrice ?? option.price) / 100,
+        deliveryTime,
+        fromPostalCode: String(option.fromPostalCode || '').replace(/\D/g, '').slice(0, 8),
+        toPostalCode: String(option.toPostalCode || '').replace(/\D/g, '').slice(0, 8)
+    };
+}
+
+function getSelectedAccountShippingOption() {
+    return accountCheckoutShippingState.options.find((option) => option.id === accountCheckoutShippingState.selectedId) || null;
+}
+
+function getAccountCheckoutTotal(items = readAccountCartItems()) {
+    const productCents = (Array.isArray(items) ? items : []).reduce((sum, item) => {
+        const quantity = Math.max(1, Number.parseInt(item?.quantity, 10) || 1);
+        return sum + (Math.max(0, accountMoneyToCents(item?.preco)) * quantity);
+    }, 0);
+    const shippingCents = accountMoneyToCents(getSelectedAccountShippingOption()?.price || 0);
+    return {
+        productCents,
+        shippingCents,
+        totalCents: productCents + shippingCents,
+        total: (productCents + shippingCents) / 100
+    };
+}
+
+function renderAccountCheckoutShipping() {
+    const panel = document.getElementById('account-checkout-shipping-panel');
+    const status = document.getElementById('account-checkout-shipping-status');
+    const container = document.getElementById('account-checkout-shipping-options');
+    const enabled = isAccountShippingCheckoutEnabled();
+    if (panel) panel.hidden = !enabled;
+    if (!status || !container) return;
+    container.replaceChildren();
+    if (!enabled) return;
+
+    if (accountCheckoutShippingState.loading) {
+        status.textContent = 'Calculando o frete no ambiente seguro de homologação...';
+        return;
+    }
+    if (accountCheckoutShippingState.error) {
+        status.textContent = `${accountCheckoutShippingState.error} Você ainda pode continuar pelo WhatsApp.`;
+        return;
+    }
+    if (!accountCheckoutShippingState.options.length) {
+        status.textContent = 'Informe um CEP completo e toque em Recalcular.';
+        return;
+    }
+
+    status.textContent = 'Escolha uma entrega. O servidor recalculará o valor antes de gerar a cobrança.';
+    accountCheckoutShippingState.options.forEach((option) => {
+        const label = document.createElement('label');
+        label.className = 'account-checkout-shipping-option';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'accountShipping';
+        input.value = option.id;
+        input.checked = option.id === accountCheckoutShippingState.selectedId;
+        input.addEventListener('change', () => {
+            accountCheckoutShippingState.selectedId = option.id;
+            renderAccountCheckoutSummary();
+        });
+        const text = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = `${option.company} · ${option.name}`;
+        const detail = document.createElement('small');
+        detail.textContent = `${formatAccountCartCurrency(option.price)} · cerca de ${option.deliveryTime} dia(s) úteis`;
+        text.append(title, detail);
+        label.append(input, text);
+        container.appendChild(label);
+    });
+}
+
+function syncAccountCheckoutRuntimeUI() {
+    const integratedOption = document.getElementById('account-checkout-infinitepay-option');
+    const integratedInput = document.getElementById('account-checkout-infinitepay');
+    const whatsappInput = document.getElementById('account-checkout-whatsapp');
+    const note = document.getElementById('account-checkout-runtime-note');
+    const enabled = isAccountInfinitePayEnabled();
+    if (integratedOption) integratedOption.hidden = !enabled;
+    if (integratedInput) integratedInput.disabled = !enabled;
+    if (!enabled && integratedInput?.checked) {
+        integratedInput.checked = false;
+        if (whatsappInput) whatsappInput.checked = true;
+    }
+    if (note) {
+        note.textContent = enabled
+            ? 'Homologação: o frete é cobrado junto com as peças. O WhatsApp continua disponível como alternativa.'
+            : 'Frete, valor final e pagamento serão confirmados pela equipe no WhatsApp.';
+    }
+    renderAccountCheckoutShipping();
+    renderAccountCheckoutSummary();
+    setAccountCheckoutSubmitState(false);
+}
+
+async function loadAccountCheckoutRuntimeConfig() {
+    try {
+        const response = await fetch(buildBackendUrl('/api/checkout/config'), {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store'
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || payload?.ok !== true) throw new Error('Configuração indisponível.');
+        accountCheckoutRuntimeConfig = {
+            loaded: true,
+            shippingCheckoutEnabled: payload.shippingCheckoutEnabled === true,
+            infinitePayEnabled: payload.infinitePayEnabled === true,
+            whatsappFallbackEnabled: payload.whatsappFallbackEnabled !== false
+        };
+    } catch (error) {
+        accountCheckoutRuntimeConfig = {
+            loaded: true,
+            shippingCheckoutEnabled: false,
+            infinitePayEnabled: false,
+            whatsappFallbackEnabled: true
+        };
+    }
+    syncAccountCheckoutRuntimeUI();
+}
+
+async function quoteAccountCheckoutShipping({ force = false } = {}) {
+    if (!isAccountShippingCheckoutEnabled()) return;
+    const postalCode = String(document.getElementById('account-checkout-cep')?.value || '').replace(/\D/g, '').slice(0, 8);
+    const items = readAccountCartItems();
+    const cartSignature = getAccountCheckoutCartSignature(items);
+    if (postalCode.length !== 8 || !items.length) {
+        accountCheckoutShippingState = { loading: false, postalCode, cartSignature, options: [], selectedId: '', error: '' };
+        renderAccountCheckoutShipping();
+        renderAccountCheckoutSummary(items);
+        return;
+    }
+    if (!force && accountCheckoutShippingState.postalCode === postalCode && accountCheckoutShippingState.cartSignature === cartSignature && accountCheckoutShippingState.options.length) return;
+
+    const requestId = ++accountCheckoutShippingRequest;
+    accountCheckoutShippingState = { loading: true, postalCode, cartSignature, options: [], selectedId: '', error: '' };
+    renderAccountCheckoutShipping();
+    renderAccountCheckoutSummary(items);
+    try {
+        const response = await fetch(buildBackendUrl('/api/shipping/quote'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ postalCode, cart: items })
+        });
+        const payload = await response.json().catch(() => null);
+        if (requestId !== accountCheckoutShippingRequest) return;
+        if (!response.ok || payload?.ok !== true) {
+            throw new Error(sanitizePlainText(payload?.error || 'Não foi possível calcular o frete.', 220));
+        }
+        const options = (Array.isArray(payload.options) ? payload.options : []).map(normalizeAccountShippingOption).filter(Boolean);
+        accountCheckoutShippingState = {
+            loading: false,
+            postalCode,
+            cartSignature,
+            options,
+            selectedId: options[0]?.id || '',
+            error: options.length ? '' : 'Nenhuma opção de entrega foi encontrada.'
+        };
+    } catch (error) {
+        if (requestId !== accountCheckoutShippingRequest) return;
+        accountCheckoutShippingState = {
+            loading: false,
+            postalCode,
+            cartSignature,
+            options: [],
+            selectedId: '',
+            error: sanitizePlainText(error?.message || 'Não foi possível calcular o frete.', 220)
+        };
+    }
+    renderAccountCheckoutShipping();
+    renderAccountCheckoutSummary(items);
+}
+
+function setAccountCheckoutFeedback(message = '', { type = 'error', field = null } = {}) {
+    const feedback = document.getElementById('account-checkout-feedback');
+    document.querySelectorAll('#account-checkout-form [aria-invalid="true"]').forEach((input) => {
+        input.removeAttribute('aria-invalid');
+    });
+    if (!feedback) return;
+
+    const safeMessage = sanitizePlainText(message, 320);
+    feedback.hidden = !safeMessage;
+    feedback.classList.toggle('is-info', type === 'info');
+    feedback.textContent = safeMessage;
+
+    if (field) {
+        field.setAttribute('aria-invalid', 'true');
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.setTimeout(() => field.focus({ preventScroll: true }), 180);
+    }
+}
+
+async function syncAccountCartSnapshot(items, revision) {
+    const user = currentUser || auth.currentUser;
+    if (!user) {
+        if (revision === accountCartMutationRevision) accountCartHasUnsyncedChanges = false;
+        return items;
+    }
+
+    const token = await user.getIdToken();
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const timeoutId = window.setTimeout(() => controller?.abort(), 12000);
+    let response;
+    try {
+        response = await fetch(buildBackendUrl('/api/cart/sync'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ mode: 'replace', items }),
+            ...(controller ? { signal: controller.signal } : {})
+        });
+    } finally {
+        window.clearTimeout(timeoutId);
+    }
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua sacola.', 220));
+    }
+
+    const syncedItems = Array.isArray(payload?.items) ? payload.items : items;
+    if (revision === accountCartMutationRevision) {
+        accountCartHasUnsyncedChanges = false;
+        writeAccountCartItems(syncedItems);
+        renderAccountCartPreview(syncedItems);
+        renderAccountCheckoutSummary(syncedItems);
+    }
+    return syncedItems;
+}
+
+function persistAccountCartItems(items) {
+    const snapshot = writeAccountCartItems(Array.isArray(items) ? items : []);
+    const revision = ++accountCartMutationRevision;
+    accountCartHasUnsyncedChanges = Boolean(currentUser || auth.currentUser);
+    renderAccountCartPreview(snapshot);
+    renderAccountCheckoutSummary(snapshot);
+
+    accountCartSyncQueue = accountCartSyncQueue
+        .catch(() => null)
+        .then(() => revision === accountCartMutationRevision
+            ? syncAccountCartSnapshot(snapshot, revision)
+            : snapshot)
+        .catch((error) => {
+            console.error('[account.cart.sync]', error);
+            if (revision === accountCartMutationRevision) {
+                accountCartHasUnsyncedChanges = true;
+            }
+            return snapshot;
+        });
+
+    return accountCartSyncQueue;
+}
+
 function renderAccountCartPreview(items = readAccountCartItems()) {
     const container = document.getElementById('account-cart-items');
     const subtotalEl = document.getElementById('account-cart-subtotal');
     const countEl = document.getElementById('account-cart-count');
+    const checkoutButton = document.getElementById('account-cart-checkout');
     if (!container || !subtotalEl || !countEl) return;
 
     container.replaceChildren();
@@ -2126,17 +2491,32 @@ function renderAccountCartPreview(items = readAccountCartItems()) {
         image.loading = 'lazy';
 
         const content = document.createElement('div');
+        content.className = 'account-cart-item-content';
+        const titleRow = document.createElement('div');
+        titleRow.className = 'account-cart-item-title-row';
         const title = document.createElement('strong');
         title.className = 'block text-sm text-[#2d2017]';
         title.textContent = sanitizePlainText(item?.nome || 'Peça', 120) || 'Peça';
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'account-cart-remove';
+        removeButton.dataset.cartRemove = sanitizePlainText(item?.cartId, 240);
+        removeButton.setAttribute('aria-label', `Remover ${title.textContent} da sacola`);
+        const removeIcon = document.createElement('i');
+        removeIcon.className = 'fa-regular fa-trash-can';
+        removeIcon.setAttribute('aria-hidden', 'true');
+        const removeLabel = document.createElement('span');
+        removeLabel.textContent = 'Remover';
+        removeButton.append(removeIcon, removeLabel);
+        titleRow.append(title, removeButton);
         const details = document.createElement('p');
         details.className = 'mt-1 text-xs leading-5 text-[#7d7166]';
-        const colorName = sanitizePlainText(item?.cor?.nome, 40);
+        const colorName = sanitizePlainText(typeof item?.cor === 'object' ? item?.cor?.nome : item?.cor, 40);
         details.textContent = [sanitizePlainText(item?.tamanho, 30), colorName].filter(Boolean).join(' · ') || 'Detalhes no checkout';
         const priceLine = document.createElement('p');
         priceLine.className = 'mt-2 text-sm font-semibold text-[#643f21]';
         priceLine.textContent = `${quantity} × ${formatAccountCartCurrency(price)}`;
-        content.append(title, details, priceLine);
+        content.append(titleRow, details, priceLine);
         row.append(image, content);
         container.appendChild(row);
     });
@@ -2151,26 +2531,480 @@ function renderAccountCartPreview(items = readAccountCartItems()) {
     subtotalEl.textContent = formatAccountCartCurrency(subtotal);
     countEl.textContent = String(count);
     countEl.classList.toggle('hidden', count === 0);
+    if (checkoutButton) {
+        checkoutButton.disabled = items.length === 0;
+        checkoutButton.setAttribute('aria-disabled', String(items.length === 0));
+    }
 }
 
 async function loadAccountCartPreview() {
     let items = readAccountCartItems();
+    const localOwner = getAccountCartOwner();
     renderAccountCartPreview(items);
     const user = currentUser || auth.currentUser;
     if (!user) return;
 
     try {
+        await accountCartSyncQueue.catch(() => null);
+        if (accountCartHasUnsyncedChanges) return;
+        const loadRevision = accountCartMutationRevision;
         const token = await user.getIdToken();
         const response = await fetch(buildBackendUrl('/api/cart/get'), {
             headers: { Accept: 'application/json', Authorization: `Bearer ${token}` }
         });
         const payload = await response.json().catch(() => null);
         if (!response.ok || payload?.ok === false) return;
-        items = mergeAccountCartPreviewItems(items, payload?.items);
-        localStorage.setItem('lamedCart', JSON.stringify(items));
+        if (loadRevision !== accountCartMutationRevision) return;
+        const canMergeLocalItems = localOwner === 'guest' || localOwner === user.uid;
+        items = mergeAccountCartPreviewItems(canMergeLocalItems ? items : [], payload?.items);
+        writeAccountCartItems(items);
         renderAccountCartPreview(items);
+        renderAccountCheckoutSummary(items);
     } catch (error) {
         console.error('[account.cart.preview]', error);
+    }
+}
+
+async function removeAccountCartItem(cartId) {
+    const safeCartId = sanitizePlainText(cartId, 240);
+    if (!safeCartId) return;
+    const currentItems = readAccountCartItems();
+    const nextItems = currentItems.filter((item) => sanitizePlainText(item?.cartId, 240) !== safeCartId);
+    if (nextItems.length === currentItems.length) return;
+    await persistAccountCartItems(nextItems);
+}
+
+function renderAccountCheckoutSummary(items = readAccountCartItems()) {
+    const container = document.getElementById('account-checkout-items');
+    const totalEl = document.getElementById('account-checkout-total');
+    const totalLabel = document.getElementById('account-checkout-total-label');
+    if (!container || !totalEl) return;
+
+    container.replaceChildren();
+    (Array.isArray(items) ? items : []).forEach((item) => {
+        const quantity = Math.max(1, Number.parseInt(item?.quantity, 10) || 1);
+        const price = Math.max(0, Number(item?.preco) || 0);
+        const row = document.createElement('div');
+        row.className = 'account-checkout-item';
+        const label = document.createElement('span');
+        label.textContent = `${quantity}x ${sanitizePlainText(item?.nome || 'Peça', 120) || 'Peça'}`;
+        const value = document.createElement('strong');
+        value.textContent = formatAccountCartCurrency(price * quantity);
+        row.append(label, value);
+        container.appendChild(row);
+    });
+
+    if (!items.length) {
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-[#7d7166]';
+        empty.textContent = 'Sua sacola está vazia.';
+        container.appendChild(empty);
+    }
+
+    const shipping = getSelectedAccountShippingOption();
+    if (shipping) {
+        const row = document.createElement('div');
+        row.className = 'account-checkout-item';
+        const label = document.createElement('span');
+        label.textContent = `Frete · ${shipping.company} · ${shipping.name}`;
+        const value = document.createElement('strong');
+        value.textContent = formatAccountCartCurrency(shipping.price);
+        row.append(label, value);
+        container.appendChild(row);
+    }
+
+    const totals = getAccountCheckoutTotal(items);
+    totalEl.textContent = formatAccountCartCurrency(totals.total);
+    if (totalLabel) totalLabel.textContent = shipping ? 'Total com frete' : 'Total das peças';
+}
+
+function getAccountCheckoutProfileFallback(user) {
+    // Nunca reaproveita campos do DOM: em aparelhos compartilhados eles podem
+    // ainda conter dados visuais da conta anterior durante a troca de sessao.
+    return buildUserProfileRecord({}, user);
+}
+
+function setAccountCheckoutInput(id, value) {
+    const input = document.getElementById(id);
+    if (input) input.value = String(value || '');
+}
+
+async function populateAccountCheckoutForm(user) {
+    let profile = getAccountCheckoutProfileFallback(user);
+    try {
+        const snapshot = await db.collection('usuarios').doc(user.uid).get();
+        profile = buildUserProfileRecord(profile, user, snapshot.data() || {});
+    } catch (error) {
+        console.error('[account.checkout.profile]', error);
+    }
+
+    const address = normalizeProfileAddress(profile.endereco) || {};
+    setAccountCheckoutInput('account-checkout-name', profile.nome || user.displayName || '');
+    setAccountCheckoutInput('account-checkout-phone', profile.telefone);
+    setAccountCheckoutInput('account-checkout-email', user.email || profile.email);
+    setAccountCheckoutInput('account-checkout-document', profile.documento);
+    setAccountCheckoutInput('account-checkout-cep', address.cep);
+    setAccountCheckoutInput('account-checkout-street', address.rua);
+    setAccountCheckoutInput('account-checkout-number', address.numero);
+    setAccountCheckoutInput('account-checkout-complement', address.complemento);
+    setAccountCheckoutInput('account-checkout-neighborhood', address.bairro);
+    setAccountCheckoutInput('account-checkout-city', address.cidade);
+    setAccountCheckoutInput('account-checkout-state', address.estado);
+}
+
+function getAccountCheckoutCustomer(form) {
+    const formData = new FormData(form);
+    return {
+        nome: sanitizePlainText(formData.get('nome'), 120),
+        telefone: sanitizePhone(formData.get('telefone')),
+        email: sanitizePlainText((currentUser || auth.currentUser)?.email || formData.get('email'), 120),
+        documento: normalizeProfileDocument(formData.get('documento')),
+        endereco: {
+            cep: String(formData.get('cep') || '').replace(/\D/g, '').slice(0, 8),
+            rua: sanitizePlainText(formData.get('rua'), 140),
+            numero: sanitizePlainText(formData.get('numero'), 40),
+            complemento: sanitizePlainText(formData.get('complemento'), 120),
+            bairro: sanitizePlainText(formData.get('bairro'), 80),
+            cidade: sanitizePlainText(formData.get('cidade'), 120),
+            estado: sanitizePlainText(formData.get('estado'), 2).toUpperCase()
+        }
+    };
+}
+
+function getAccountCheckoutValidationIssue(cliente) {
+    const issue = (message, id) => ({ message, field: document.getElementById(id) });
+    const phoneDigits = String(cliente?.telefone || '').replace(/\D/g, '');
+    if (!cliente?.nome) return issue('Informe seu nome completo.', 'account-checkout-name');
+    if (phoneDigits.length < 10) return issue('Informe um WhatsApp com DDD.', 'account-checkout-phone');
+    if (!cliente?.email || !cliente.email.includes('@')) return issue('Confirme o e-mail da sua conta.', 'account-checkout-email');
+    if (![11, 14].includes(cliente?.documento?.length)) return issue('Informe um CPF com 11 dígitos ou CNPJ com 14 dígitos.', 'account-checkout-document');
+    if (cliente?.endereco?.cep?.length !== 8) return issue('Informe um CEP válido com 8 dígitos.', 'account-checkout-cep');
+    if (!cliente?.endereco?.rua) return issue('Informe a rua ou avenida da entrega.', 'account-checkout-street');
+    if (!cliente?.endereco?.numero) return issue('Informe o número do endereço.', 'account-checkout-number');
+    if (!cliente?.endereco?.bairro) return issue('Informe o bairro da entrega.', 'account-checkout-neighborhood');
+    if (!cliente?.endereco?.cidade) return issue('Informe a cidade da entrega.', 'account-checkout-city');
+    if (cliente?.endereco?.estado?.length !== 2) return issue('Informe a UF com 2 letras.', 'account-checkout-state');
+    return null;
+}
+
+function getRecentAccountOrderId(maxAgeMs = 20 * 60 * 1000) {
+    const latest = ordersCache[0];
+    const rawDate = latest?.data?.data;
+    const timestamp = typeof rawDate?.toDate === 'function'
+        ? rawDate.toDate().getTime()
+        : (typeof rawDate?.seconds === 'number' ? rawDate.seconds * 1000 : 0);
+    if (!latest?.id || !timestamp || Date.now() - timestamp > maxAgeMs) return '';
+    return sanitizePlainText(latest.id, 120);
+}
+
+function setAccountCheckoutSubmitState(submitting) {
+    accountCheckoutSubmitting = submitting;
+    const button = document.getElementById('account-checkout-submit');
+    const note = document.getElementById('account-checkout-submit-note');
+    if (!button) return;
+    const integratedPayment = getAccountCheckoutPaymentValue().toLowerCase().includes('infinitepay') && isAccountInfinitePayEnabled();
+    button.disabled = submitting;
+    if (submitting) {
+        button.innerHTML = integratedPayment
+            ? '<i class="fa-solid fa-circle-notch fa-spin"></i> Criando pagamento seguro...'
+            : '<i class="fa-solid fa-circle-notch fa-spin"></i> Enviando pedido...';
+    } else {
+        button.innerHTML = integratedPayment
+            ? '<i class="fa-solid fa-arrow-up-right-from-square"></i> Pagar peças + frete'
+            : '<i class="fa-brands fa-whatsapp"></i> Enviar pedido para o WhatsApp';
+    }
+    if (note) {
+        note.textContent = integratedPayment
+            ? 'Você será encaminhada para a InfinitePay após a revalidação do resumo.'
+            : 'Nenhum pagamento é feito nesta tela.';
+    }
+}
+
+function setAccountCheckoutBackgroundInert(inert) {
+    const backgroundElements = [
+        document.getElementById('auth-container'),
+        document.getElementById('user-panel'),
+        document.getElementById('account-cart-drawer'),
+        document.querySelector('.account-mobile-nav')
+    ].filter(Boolean);
+    backgroundElements.forEach((element) => {
+        element.toggleAttribute('inert', inert);
+    });
+}
+
+function setAccountCartBackgroundInert(inert) {
+    const backgroundElements = [
+        document.getElementById('auth-container'),
+        document.getElementById('user-panel'),
+        document.querySelector('.account-mobile-nav')
+    ].filter(Boolean);
+    backgroundElements.forEach((element) => {
+        element.toggleAttribute('inert', inert);
+    });
+}
+
+function trapAccountCartFocus(event) {
+    const drawer = document.getElementById('account-cart-drawer');
+    const checkoutOpen = document.getElementById('account-checkout-overlay')?.classList.contains('is-open');
+    if (event.key !== 'Tab' || checkoutOpen || !drawer?.classList.contains('is-open')) return false;
+    const focusable = Array.from(drawer.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+    if (!focusable.length) {
+        event.preventDefault();
+        return true;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+        return true;
+    }
+    if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+        return true;
+    }
+    return false;
+}
+
+function trapAccountCheckoutFocus(event) {
+    const overlay = document.getElementById('account-checkout-overlay');
+    if (event.key !== 'Tab' || !overlay?.classList.contains('is-open')) return false;
+    const focusable = Array.from(overlay.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+    if (!focusable.length) {
+        event.preventDefault();
+        return true;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+        return true;
+    }
+    if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+        return true;
+    }
+    return false;
+}
+
+async function openAccountCheckout() {
+    const user = currentUser || auth.currentUser;
+    const items = readAccountCartItems();
+    if (!user) {
+        alert('Entre na sua conta para finalizar o pedido.');
+        return;
+    }
+    if (!items.length) {
+        alert('Sua sacola está vazia. Escolha uma peça antes de finalizar.');
+        return;
+    }
+
+    const overlay = document.getElementById('account-checkout-overlay');
+    if (!overlay) return;
+    if (overlay.classList.contains('is-open')) return;
+    accountCheckoutPreviousFocus = document.activeElement;
+    toggleAccountCart(false);
+    renderAccountCheckoutSummary(items);
+    setAccountCheckoutFeedback('Carregando seus dados salvos...', { type: 'info' });
+    overlay.hidden = false;
+    void overlay.offsetWidth;
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('account-checkout-open');
+    document.getElementById('account-checkout-close')?.focus({ preventScroll: true });
+    setAccountCheckoutBackgroundInert(true);
+
+    await populateAccountCheckoutForm(user);
+    if (!overlay.classList.contains('is-open')) return;
+    setAccountCheckoutFeedback();
+    await quoteAccountCheckoutShipping({ force: true });
+    const firstEmpty = Array.from(document.querySelectorAll('#account-checkout-form [required]'))
+        .find((input) => !String(input.value || '').trim());
+    (firstEmpty || document.getElementById('account-checkout-close'))?.focus({ preventScroll: true });
+}
+
+function closeAccountCheckout({ force = false } = {}) {
+    if (accountCheckoutSubmitting && !force) return;
+    const overlay = document.getElementById('account-checkout-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('account-checkout-open');
+    setAccountCheckoutBackgroundInert(false);
+    window.setTimeout(() => {
+        if (overlay.classList.contains('is-open')) return;
+        overlay.hidden = true;
+        const previousWasInsideCart = accountCheckoutPreviousFocus?.closest?.('#account-cart-drawer');
+        const focusTarget = previousWasInsideCart
+            ? document.getElementById('account-mobile-cart')
+            : accountCheckoutPreviousFocus;
+        if (focusTarget instanceof HTMLElement) {
+            focusTarget.focus({ preventScroll: true });
+        }
+    }, 220);
+}
+
+async function autofillAccountCheckoutAddress(rawPostalCode) {
+    const postalCode = String(rawPostalCode || '').replace(/\D/g, '').slice(0, 8);
+    if (postalCode.length !== 8) return;
+    const lookupId = ++accountCheckoutPostalLookup;
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${postalCode}/json/`);
+        const payload = await response.json().catch(() => null);
+        if (lookupId !== accountCheckoutPostalLookup || !response.ok || payload?.erro) return;
+        setAccountCheckoutInput('account-checkout-street', payload.logradouro);
+        setAccountCheckoutInput('account-checkout-neighborhood', payload.bairro);
+        setAccountCheckoutInput('account-checkout-city', payload.localidade);
+        setAccountCheckoutInput('account-checkout-state', sanitizePlainText(payload.uf, 2).toUpperCase());
+        document.getElementById('account-checkout-number')?.focus();
+    } catch (error) {
+        console.error('[account.checkout.postalCode]', error);
+    }
+}
+
+async function submitAccountCheckout(form) {
+    if (accountCheckoutSubmitting) return;
+    const user = currentUser || auth.currentUser;
+    const items = readAccountCartItems();
+    if (!user) {
+        setAccountCheckoutFeedback('Sua sessão terminou. Entre novamente para finalizar.');
+        return;
+    }
+    if (!items.length) {
+        setAccountCheckoutFeedback('Sua sacola está vazia. Feche esta tela e escolha uma peça.');
+        return;
+    }
+
+    const cliente = getAccountCheckoutCustomer(form);
+    const validationIssue = getAccountCheckoutValidationIssue(cliente);
+    if (validationIssue) {
+        setAccountCheckoutFeedback(validationIssue.message, { field: validationIssue.field });
+        return;
+    }
+
+    const pagamento = getAccountCheckoutPaymentValue();
+    const integratedPayment = pagamento.toLowerCase().includes('infinitepay');
+    const selectedShipping = isAccountShippingCheckoutEnabled() ? getSelectedAccountShippingOption() : null;
+    if (integratedPayment && !isAccountInfinitePayEnabled()) {
+        setAccountCheckoutFeedback('O pagamento integrado ainda está disponível somente na homologação. Continue pelo WhatsApp.');
+        return;
+    }
+    if (integratedPayment && !selectedShipping) {
+        setAccountCheckoutFeedback('Calcule e escolha uma opção de entrega antes de pagar com a InfinitePay.');
+        return;
+    }
+
+    try {
+        setAccountCheckoutSubmitState(true);
+        setAccountCheckoutFeedback('Registrando seu pedido com segurança...', { type: 'info' });
+        const token = await user.getIdToken();
+
+        await sendProfileSyncToBackend({
+            nome: cliente.nome,
+            email: cliente.email,
+            telefone: cliente.telefone,
+            documento: cliente.documento,
+            endereco: cliente.endereco
+        }, user).catch((error) => {
+            console.error('[account.checkout.profileSync]', error);
+        });
+
+        const response = await fetch(buildBackendUrl('/api/orders/create'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                cliente,
+                pagamento,
+                parcelas: 1,
+                cart: items,
+                shipping: selectedShipping,
+                expectedTotal: getAccountCheckoutTotal(items).total
+            })
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (response.status === 409 && Array.isArray(payload?.canonicalCart)) {
+            persistAccountCartItems(payload.canonicalCart);
+            accountCheckoutShippingState = {
+                loading: false,
+                postalCode: '',
+                cartSignature: '',
+                options: [],
+                selectedId: '',
+                error: ''
+            };
+            renderAccountCheckoutSummary(payload.canonicalCart);
+            await quoteAccountCheckoutShipping({ force: true });
+            throw new Error(sanitizePlainText(payload?.error || 'A sacola foi atualizada. Confira os valores e envie novamente.', 240));
+        }
+        if (response.status === 409 && payload?.code === 'DUPLICATE_ORDER') {
+            const duplicatedOrderId = sanitizePlainText(payload?.duplicatedOrderId || getRecentAccountOrderId(), 120);
+            if (duplicatedOrderId) {
+                try {
+                    sessionStorage.setItem('lamed_last_order_id', duplicatedOrderId);
+                } catch (error) {}
+            }
+            persistAccountCartItems([]);
+            setAccountCheckoutSubmitState(false);
+            closeAccountCheckout({ force: true });
+            const orderUrl = duplicatedOrderId
+                ? `minha-conta.html?pedido=${encodeURIComponent(duplicatedOrderId)}#pedidos`
+                : 'minha-conta.html#pedidos';
+            const duplicateWhatsappUrl = normalizeHttpUrl(payload?.whatsappUrl);
+            if (duplicateWhatsappUrl) {
+                window.history.replaceState({}, '', orderUrl);
+                window.location.assign(duplicateWhatsappUrl);
+                return;
+            }
+            window.location.assign(orderUrl);
+            return;
+        }
+        if (!response.ok || !payload?.ok || !payload?.orderId) {
+            throw new Error(sanitizePlainText(payload?.error || 'Não foi possível criar o pedido agora.', 240));
+        }
+
+        try {
+            sessionStorage.setItem('lamed_last_order_id', String(payload.orderId));
+        } catch (error) {}
+
+        // O servidor ja limpou o carrinho junto com a criacao do pedido. A
+        // limpeza local e otimista evita prender a cliente se uma sync antiga
+        // estiver lenta no celular; a fila remota continua em segundo plano.
+        persistAccountCartItems([]);
+        setAccountCheckoutSubmitState(false);
+        closeAccountCheckout({ force: true });
+
+        const paymentRedirectUrl = normalizeHttpUrl(payload?.paymentRedirectUrl);
+        const whatsappUrl = normalizeHttpUrl(payload?.whatsappUrl);
+        const orderUrl = `minha-conta.html?pedido=${encodeURIComponent(String(payload.orderId))}#pedidos`;
+        if (paymentRedirectUrl) {
+            window.location.assign(paymentRedirectUrl);
+            return;
+        }
+        if (whatsappUrl) {
+            window.history.replaceState({}, '', orderUrl);
+            window.location.assign(whatsappUrl);
+            return;
+        }
+        window.location.assign(orderUrl);
+    } catch (error) {
+        console.error('[account.checkout.submit]', error);
+        setAccountCheckoutFeedback(sanitizePlainText(error?.message || 'Não foi possível continuar agora.', 240));
+    } finally {
+        setAccountCheckoutSubmitState(false);
     }
 }
 
@@ -2181,6 +3015,7 @@ function toggleAccountCart(open) {
     if (!drawer || !overlay || !trigger) return;
 
     if (open) {
+        accountCartPreviousFocus = document.activeElement;
         drawer.hidden = false;
         overlay.hidden = false;
         // Forca o estado inicial antes da animacao e evita que a sacola apareca
@@ -2194,9 +3029,11 @@ function toggleAccountCart(open) {
     overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
     trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
     document.body.classList.toggle('account-cart-open', open);
+    setAccountCartBackgroundInert(open);
 
     if (open) {
         loadAccountCartPreview();
+        document.getElementById('account-cart-close')?.focus({ preventScroll: true });
         return;
     }
 
@@ -2204,13 +3041,87 @@ function toggleAccountCart(open) {
         if (drawer.classList.contains('is-open')) return;
         drawer.hidden = true;
         overlay.hidden = true;
+        if (!document.getElementById('account-checkout-overlay')?.classList.contains('is-open')) {
+            const focusTarget = accountCartPreviousFocus instanceof HTMLElement
+                ? accountCartPreviousFocus
+                : trigger;
+            focusTarget.focus({ preventScroll: true });
+        }
     }, 240);
 }
 
 document.getElementById('account-mobile-cart')?.addEventListener('click', () => toggleAccountCart(true));
 document.getElementById('account-cart-close')?.addEventListener('click', () => toggleAccountCart(false));
 document.getElementById('account-cart-overlay')?.addEventListener('click', () => toggleAccountCart(false));
+document.getElementById('account-cart-items')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-cart-remove]');
+    if (!button) return;
+    button.disabled = true;
+    removeAccountCartItem(button.dataset.cartRemove).catch((error) => {
+        console.error('[account.cart.remove]', error);
+    });
+});
+document.getElementById('account-cart-checkout')?.addEventListener('click', openAccountCheckout);
+document.getElementById('account-checkout-close')?.addEventListener('click', () => closeAccountCheckout());
+document.getElementById('account-checkout-overlay')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) closeAccountCheckout();
+});
+document.getElementById('account-checkout-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitAccountCheckout(event.currentTarget);
+});
+document.getElementById('account-checkout-cep')?.addEventListener('blur', (event) => {
+    autofillAccountCheckoutAddress(event.currentTarget.value)
+        .finally(() => quoteAccountCheckoutShipping({ force: true }));
+});
+document.getElementById('account-checkout-shipping-refresh')?.addEventListener('click', () => {
+    quoteAccountCheckoutShipping({ force: true });
+});
+document.querySelectorAll('#account-checkout-form input[name="pagamento"]').forEach((input) => {
+    input.addEventListener('change', () => {
+        renderAccountCheckoutSummary();
+        setAccountCheckoutSubmitState(false);
+    });
+});
+document.getElementById('account-checkout-state')?.addEventListener('input', (event) => {
+    event.currentTarget.value = sanitizePlainText(event.currentTarget.value, 2).toUpperCase();
+});
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') toggleAccountCart(false);
+    if (trapAccountCheckoutFocus(event)) return;
+    if (trapAccountCartFocus(event)) return;
+    if (event.key !== 'Escape') return;
+    if (document.getElementById('account-checkout-overlay')?.classList.contains('is-open')) {
+        closeAccountCheckout();
+        return;
+    }
+    toggleAccountCart(false);
+});
+window.addEventListener('storage', (event) => {
+    if (event.key !== 'lamedCart') return;
+    const items = readAccountCartItems();
+    if (currentUser || auth.currentUser) {
+        persistAccountCartItems(items);
+        return;
+    }
+    renderAccountCartPreview(items);
+    renderAccountCheckoutSummary(items);
+});
+window.addEventListener('pageshow', () => {
+    const checkoutOverlay = document.getElementById('account-checkout-overlay');
+    if (checkoutOverlay) {
+        checkoutOverlay.classList.remove('is-open');
+        checkoutOverlay.setAttribute('aria-hidden', 'true');
+        checkoutOverlay.hidden = true;
+    }
+    document.body.classList.remove('account-checkout-open');
+    document.body.classList.remove('account-cart-open');
+    setAccountCheckoutBackgroundInert(false);
+    setAccountCartBackgroundInert(false);
+    setAccountCheckoutSubmitState(false);
+    const items = readAccountCartItems();
+    renderAccountCartPreview(items);
+    renderAccountCheckoutSummary(items);
 });
 renderAccountCartPreview();
+renderAccountCheckoutSummary();
+loadAccountCheckoutRuntimeConfig();

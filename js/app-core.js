@@ -1457,10 +1457,10 @@ function calculateCheckoutTotals(cartItems, pagamento, parcelas, cep, shippingSe
     }
 
     const safeShipping = normalizeShippingSelection(shippingSelection);
-    const freeShippingEligible = isSudeste(cep) && hanukahSubtotal >= 500;
+    const freeShippingEligible = false;
     const shippingOriginal = safeShipping ? safeShipping.originalPrice : 0;
-    const shippingCost = safeShipping ? roundCurrency(freeShippingEligible ? 0 : safeShipping.price) : 0;
-    const shippingDiscount = safeShipping && freeShippingEligible ? roundCurrency(shippingOriginal) : 0;
+    const shippingCost = safeShipping ? roundCurrency(safeShipping.price) : 0;
+    const shippingDiscount = 0;
     final = roundCurrency(final + shippingCost);
 
     return {

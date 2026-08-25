@@ -1,4 +1,5 @@
 import { FieldValue, getAdminDb } from "./_firebase-admin.mjs";
+import { centsToMoney, moneyToCents, sumChargeItemsCents } from "./_checkout-finance.mjs";
 import { isAdminDecodedToken } from "./_session.mjs";
 
 class InfinitePayRequestError extends Error {
@@ -36,7 +37,7 @@ function roundCurrency(value) {
 }
 
 function toCents(value) {
-  return Math.round(roundCurrency(value) * 100);
+  return moneyToCents(value);
 }
 
 function formatCurrency(value) {
@@ -119,32 +120,41 @@ function getInfinitePayWebhookSecret() {
   return sanitizePlainText(process.env.INFINITEPAY_WEBHOOK_SECRET, 160);
 }
 
-function resolvePublicSiteBaseUrl(requestMeta = {}) {
-  const explicit = String(
-    process.env.PUBLIC_SITE_URL ||
-    process.env.WEB_PUSH_CLICK_BASE_URL ||
-    requestMeta.publicBaseUrl ||
-    ""
-  ).trim();
+function normalizeEnvironmentUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    return new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch (error) {
+    return null;
+  }
+}
 
-  if (explicit) {
-    return explicit.replace(/\/+$/, "");
+function resolvePublicSiteBaseUrl() {
+  const vercelEnvironment = String(process.env.VERCEL_ENV || "").trim().toLowerCase();
+  const vercelUrl = normalizeEnvironmentUrl(process.env.VERCEL_URL);
+  const branchUrl = normalizeEnvironmentUrl(process.env.VERCEL_BRANCH_URL);
+  const productionUrl = normalizeEnvironmentUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+  const explicitPublicUrl = normalizeEnvironmentUrl(process.env.PUBLIC_SITE_URL);
+  const trustedHosts = new Set([
+    "lamedvs.com.br",
+    "www.lamedvs.com.br",
+    vercelUrl?.hostname,
+    branchUrl?.hostname,
+    productionUrl?.hostname
+  ].filter(Boolean));
+
+  const candidate = vercelEnvironment === "preview"
+    ? (vercelUrl || branchUrl)
+    : (explicitPublicUrl || productionUrl || new URL("https://www.lamedvs.com.br"));
+
+  const isLocalDevelopment = candidate && ["localhost", "127.0.0.1"].includes(candidate.hostname) && vercelEnvironment !== "production";
+  const trustedProtocol = candidate?.protocol === "https:" || (isLocalDevelopment && candidate?.protocol === "http:");
+  if (!candidate || !trustedProtocol || (!trustedHosts.has(candidate.hostname) && !isLocalDevelopment)) {
+    throw new InfinitePayRequestError(503, "Configure uma URL publica confiavel para o retorno da InfinitePay.");
   }
 
-  const origin = String(requestMeta.origin || "").trim();
-  if (origin) {
-    try {
-      return new URL(origin).origin.replace(/\/+$/, "");
-    } catch (error) {}
-  }
-
-  const host = sanitizePlainText(requestMeta.host || "", 180);
-  const protocol = sanitizePlainText(requestMeta.protocol || "https", 10).toLowerCase() || "https";
-  if (host) {
-    return `${protocol}://${host}`.replace(/\/+$/, "");
-  }
-
-  return "https://www.lamedvs.com.br";
+  return candidate.origin.replace(/\/+$/, "");
 }
 
 function buildInfinitePayRedirectUrl(orderId, requestMeta = {}) {
@@ -161,13 +171,17 @@ function buildInfinitePayWebhookUrl(requestMeta = {}) {
 function buildInfinitePayItems(produtos) {
   return (Array.isArray(produtos) ? produtos : []).map((item) => ({
     quantity: Math.max(1, parseInt(item?.quantity, 10) || 1),
-    price: toCents(item?.preco || 0),
+    price: Math.max(
+      0,
+      parseInt(item?.precoCobrancaCentavos ?? item?.precoCentavos, 10) ||
+      toCents((item?.precoCobranca ?? item?.preco) || 0)
+    ),
     description: sanitizePlainText(item?.nome, 120) || "Produto"
   })).filter((item) => item.price > 0);
 }
 
 function buildInfinitePayShippingItem(frete) {
-  const price = toCents(frete?.price || 0);
+  const price = Math.max(0, parseInt(frete?.priceCents, 10) || toCents(frete?.price || 0));
   if (price <= 0) return null;
 
   const company = sanitizePlainText(frete?.company, 80);
@@ -303,6 +317,12 @@ export async function createInfinitePayCheckoutLink({ orderId, pedido, requestMe
     throw new InfinitePayRequestError(400, "Nao foi possivel gerar o checkout sem itens validos.");
   }
 
+  const expectedTotalCents = Math.max(0, parseInt(pedido?.totalCentavos, 10) || toCents(pedido?.total || 0));
+  const itemsTotalCents = sumChargeItemsCents(items);
+  if (!expectedTotalCents || itemsTotalCents !== expectedTotalCents) {
+    throw new InfinitePayRequestError(409, "O resumo financeiro do pedido nao confere. Revise os itens e o frete antes de gerar a cobranca.");
+  }
+
   const payload = {
     handle: getInfinitePayHandle(),
     items,
@@ -332,8 +352,7 @@ export async function createInfinitePayCheckoutLink({ orderId, pedido, requestMe
   if (!response.ok || !checkoutUrl) {
     throw new InfinitePayRequestError(
       502,
-      sanitizePlainText(responsePayload?.message || responsePayload?.error || "Nao foi possivel gerar o checkout InfinitePay.", 220),
-      { providerPayload: responsePayload }
+      sanitizePlainText(responsePayload?.message || responsePayload?.error || "Nao foi possivel gerar o checkout InfinitePay.", 220)
     );
   }
 
@@ -371,11 +390,32 @@ function normalizeInfinitePayCaptureMethod(value) {
   return normalized || "desconhecido";
 }
 
-function buildPaymentSummaryUpdate(order, payload) {
-  const amount = Number(payload?.amount || payload?.paid_amount || payload?.total_amount || 0);
-  const totalInCents = toCents(order?.total || 0);
+function getPositiveProviderAmountCents(candidates) {
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null || candidate === "") continue;
+    const amount = Number(candidate);
+    if (Number.isSafeInteger(amount) && amount > 0) return amount;
+  }
 
-  if (amount > 0 && totalInCents > 0 && amount !== totalInCents) {
+  return null;
+}
+
+function getVerifiedAmountCents(payload) {
+  const amount = getPositiveProviderAmountCents([payload?.amount, payload?.total_amount]);
+  if (amount) return amount;
+
+  const paidAmount = getPositiveProviderAmountCents([payload?.paid_amount]);
+  if (paidAmount) return paidAmount;
+
+  throw new InfinitePayRequestError(400, "A InfinitePay nao confirmou o valor integral desta cobranca.");
+}
+
+function buildPaymentSummaryUpdate(order, payload) {
+  const amountCents = getVerifiedAmountCents(payload);
+  const paidAmountCents = getPositiveProviderAmountCents([payload?.paid_amount]) || amountCents;
+  const totalInCents = Math.max(0, parseInt(order?.totalCentavos, 10) || toCents(order?.total || 0));
+
+  if (!totalInCents || amountCents !== totalInCents) {
     throw new InfinitePayRequestError(400, "O valor confirmado pela InfinitePay nao corresponde ao total do pedido.");
   }
 
@@ -388,8 +428,10 @@ function buildPaymentSummaryUpdate(order, payload) {
       invoiceSlug: sanitizePlainText(payload?.invoice_slug || payload?.slug, 120),
       transactionNsu: sanitizePlainText(payload?.transaction_nsu, 120),
       captureMethod: normalizeInfinitePayCaptureMethod(payload?.capture_method),
-      amount: amount > 0 ? roundCurrency(amount / 100) : roundCurrency(order?.total || 0),
-      paidAmount: Number(payload?.paid_amount || 0) > 0 ? roundCurrency(Number(payload.paid_amount) / 100) : roundCurrency(order?.total || 0),
+      amount: centsToMoney(amountCents),
+      amountCents,
+      paidAmount: centsToMoney(paidAmountCents),
+      paidAmountCents,
       installments: Math.max(1, parseInt(payload?.installments, 10) || 1),
       receiptUrl: sanitizePlainText(payload?.receipt_url, 500),
       updatedAt: new Date().toISOString()
@@ -397,38 +439,40 @@ function buildPaymentSummaryUpdate(order, payload) {
   };
 }
 
-export async function applyInfinitePayWebhook(payload, db = getAdminDb()) {
-  const normalizedPayload = normalizeInfinitePayWebhookEvent(payload);
-  const normalizedStatus = normalizeInfinitePayWebhookStatus(
-    normalizedPayload?.status || normalizedPayload?.payment_status || normalizedPayload?.invoice_status || normalizedPayload?.event
-  );
-
-  if (normalizedStatus && normalizedStatus !== "paid") {
-    return {
-      ok: true,
-      ignored: true,
-      paymentStatus: normalizedStatus
-    };
-  }
-
-  const orderId = sanitizePlainText(
-    normalizedPayload?.order_nsu ||
-    normalizedPayload?.external_reference ||
-    normalizedPayload?.metadata?.order_nsu,
-    120
-  );
-  if (!orderId) {
-    throw new InfinitePayRequestError(400, "Webhook InfinitePay sem order_nsu.");
-  }
-
+async function applyVerifiedInfinitePayPayment({ orderId, payload, slug, transactionNsu }, db = getAdminDb()) {
   const orderRef = db.collection("pedidos").doc(orderId);
   const snapshot = await orderRef.get();
   if (!snapshot.exists) {
-    throw new InfinitePayRequestError(404, "Pedido nao encontrado para este webhook.");
+    throw new InfinitePayRequestError(404, "Pedido nao encontrado para esta confirmacao.");
   }
 
   const order = snapshot.data() || {};
-  const paymentUpdate = buildPaymentSummaryUpdate(order, normalizedPayload);
+  const currentPaymentStatus = sanitizePlainText(order?.paymentStatus || order?.payment?.status, 40).toLowerCase();
+  const storedTransactionNsu = sanitizePlainText(order?.payment?.transactionNsu, 160);
+  const safeTransactionNsu = sanitizePlainText(transactionNsu || payload?.transaction_nsu, 160);
+
+  if (currentPaymentStatus === "paid") {
+    if (storedTransactionNsu && safeTransactionNsu && storedTransactionNsu !== safeTransactionNsu) {
+      throw new InfinitePayRequestError(409, "Este pedido ja possui outro pagamento confirmado.");
+    }
+
+    return {
+      ok: true,
+      idempotent: true,
+      orderId,
+      paymentStatus: "paid",
+      status: sanitizePlainText(order?.status, 20).toLowerCase() || "pago"
+    };
+  }
+
+  const verifiedPayload = {
+    ...payload,
+    slug: sanitizePlainText(slug || payload?.slug, 160),
+    invoice_slug: sanitizePlainText(payload?.invoice_slug || slug || payload?.slug, 160),
+    transaction_nsu: safeTransactionNsu,
+    order_nsu: orderId
+  };
+  const paymentUpdate = buildPaymentSummaryUpdate(order, verifiedPayload);
 
   const currentStatus = sanitizePlainText(order?.status, 20).toLowerCase();
   const nextStatus = ["enviado", "entregue", "cancelado"].includes(currentStatus)
@@ -449,6 +493,61 @@ export async function applyInfinitePayWebhook(payload, db = getAdminDb()) {
     paymentStatus: "paid",
     status: nextStatus
   };
+}
+
+export async function applyInfinitePayWebhook(payload, db = getAdminDb()) {
+  const normalizedPayload = normalizeInfinitePayWebhookEvent(payload);
+  const normalizedStatus = normalizeInfinitePayWebhookStatus(
+    normalizedPayload?.status || normalizedPayload?.payment_status || normalizedPayload?.invoice_status || normalizedPayload?.event
+  );
+  if (normalizedStatus && normalizedStatus !== "paid") {
+    return {
+      ok: true,
+      ignored: true,
+      paymentStatus: normalizedStatus
+    };
+  }
+
+  const orderId = sanitizePlainText(
+    normalizedPayload?.order_nsu ||
+    normalizedPayload?.external_reference ||
+    normalizedPayload?.metadata?.order_nsu,
+    120
+  );
+  const slug = sanitizePlainText(normalizedPayload?.invoice_slug || normalizedPayload?.slug, 160);
+  const transactionNsu = sanitizePlainText(normalizedPayload?.transaction_nsu, 160);
+
+  if (!orderId || !slug || !transactionNsu) {
+    throw new InfinitePayRequestError(400, "Webhook InfinitePay sem os identificadores necessarios para validar o pagamento.");
+  }
+
+  const orderSnapshot = await db.collection("pedidos").doc(orderId).get();
+  if (!orderSnapshot.exists) {
+    throw new InfinitePayRequestError(404, "Pedido nao encontrado para este webhook.");
+  }
+  const order = orderSnapshot.data() || {};
+  const currentPaymentStatus = sanitizePlainText(order?.paymentStatus || order?.payment?.status, 40).toLowerCase();
+  const storedTransactionNsu = sanitizePlainText(order?.payment?.transactionNsu, 160);
+  if (currentPaymentStatus === "paid") {
+    if (storedTransactionNsu && storedTransactionNsu !== transactionNsu) {
+      throw new InfinitePayRequestError(409, "Este pedido ja possui outro pagamento confirmado.");
+    }
+    return {
+      ok: true,
+      idempotent: true,
+      orderId,
+      paymentStatus: "paid",
+      status: sanitizePlainText(order?.status, 20).toLowerCase() || "pago"
+    };
+  }
+
+  const checkPayload = await requestInfinitePayPaymentCheck({ orderId, slug, transactionNsu });
+  return applyVerifiedInfinitePayPayment({
+    orderId,
+    slug,
+    transactionNsu,
+    payload: checkPayload
+  }, db);
 }
 
 export function isInfinitePayRequestError(error) {
@@ -475,8 +574,7 @@ async function requestInfinitePayPaymentCheck({ orderId, slug, transactionNsu })
   if (!response.ok) {
     throw new InfinitePayRequestError(
       502,
-      sanitizePlainText(payload?.message || payload?.error || "Nao foi possivel confirmar o pagamento na InfinitePay.", 220),
-      { providerPayload: payload }
+      sanitizePlainText(payload?.message || payload?.error || "Nao foi possivel confirmar o pagamento na InfinitePay.", 220)
     );
   }
 
@@ -532,12 +630,11 @@ export async function confirmInfinitePayPayment({ orderId, slug, transactionNsu,
     transactionNsu: safeTransactionNsu
   });
 
-  await applyInfinitePayWebhook({
-    ...checkPayload,
+  await applyVerifiedInfinitePayPayment({
+    orderId: safeOrderId,
     slug: safeSlug,
-    invoice_slug: checkPayload?.invoice_slug || safeSlug,
-    transaction_nsu: checkPayload?.transaction_nsu || safeTransactionNsu,
-    order_nsu: safeOrderId
+    transactionNsu: safeTransactionNsu,
+    payload: checkPayload
   }, db);
 
   const updatedSnapshot = await orderRef.get();

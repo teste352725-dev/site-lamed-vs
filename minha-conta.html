@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/account.css?v=20260818-order-actions">
+    <link rel="stylesheet" href="css/account.css?v=20260824-account-checkout">
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -412,7 +412,7 @@
     </div>
 
     <div id="account-cart-overlay" class="account-cart-overlay" aria-hidden="true" hidden></div>
-    <aside id="account-cart-drawer" class="account-cart-drawer" aria-hidden="true" aria-labelledby="account-cart-title" hidden>
+    <aside id="account-cart-drawer" class="account-cart-drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="account-cart-title" hidden>
         <div class="account-cart-head">
             <div>
                 <p class="account-field-label mb-1">Sua seleção</p>
@@ -428,9 +428,155 @@
                 <span class="text-sm text-[#7d7166]">Subtotal</span>
                 <strong id="account-cart-subtotal" class="account-serif text-2xl text-[#2d2017]">R$ 0,00</strong>
             </div>
-            <a href="index.html#finalizar-pedido" class="btn-chic mt-4 inline-flex items-center justify-center">Revisar e finalizar pedido</a>
+            <button type="button" id="account-cart-checkout" class="btn-chic mt-4 inline-flex w-full items-center justify-center" disabled>
+                Revisar e finalizar pedido
+            </button>
         </div>
     </aside>
+
+    <div id="account-checkout-overlay" class="account-checkout-overlay" aria-hidden="true" hidden>
+        <section id="account-checkout-panel" class="account-checkout-panel" role="dialog" aria-modal="true" aria-labelledby="account-checkout-title">
+            <header class="account-checkout-head">
+                <div>
+                    <p class="account-field-label mb-1">Finalização simples</p>
+                    <h2 id="account-checkout-title" class="account-serif">Revisar pedido</h2>
+                    <p>Confira seus dados sem sair da sua conta.</p>
+                </div>
+                <button type="button" id="account-checkout-close" class="account-power-btn" aria-label="Fechar finalização">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+
+            <form id="account-checkout-form" class="account-checkout-form" novalidate>
+                <section class="account-checkout-section" aria-labelledby="account-checkout-items-title">
+                    <div class="account-checkout-section-heading">
+                        <span class="account-checkout-step">1</span>
+                        <div>
+                            <h3 id="account-checkout-items-title">Confira suas peças</h3>
+                            <p>Se precisar alterar a sacola, feche esta tela e use o botão Remover.</p>
+                        </div>
+                    </div>
+                    <div id="account-checkout-items" class="account-checkout-items"></div>
+                    <div class="account-checkout-total-row">
+                        <span id="account-checkout-total-label">Total das peças</span>
+                        <strong id="account-checkout-total">R$ 0,00</strong>
+                    </div>
+                </section>
+
+                <section class="account-checkout-section" aria-labelledby="account-checkout-contact-title">
+                    <div class="account-checkout-section-heading">
+                        <span class="account-checkout-step">2</span>
+                        <div>
+                            <h3 id="account-checkout-contact-title">Confirme seus dados</h3>
+                            <p>Usamos estas informações para identificar e acompanhar seu pedido.</p>
+                        </div>
+                    </div>
+                    <div class="account-checkout-grid account-checkout-grid-2">
+                        <label class="account-checkout-field account-checkout-span-2">
+                            <span>Nome completo</span>
+                            <input type="text" id="account-checkout-name" name="nome" autocomplete="name" maxlength="120" required>
+                        </label>
+                        <label class="account-checkout-field">
+                            <span>WhatsApp</span>
+                            <input type="tel" id="account-checkout-phone" name="telefone" autocomplete="tel" maxlength="30" inputmode="tel" required>
+                        </label>
+                        <label class="account-checkout-field">
+                            <span>E-mail</span>
+                            <input type="email" id="account-checkout-email" name="email" autocomplete="email" maxlength="120" readonly required>
+                        </label>
+                        <label class="account-checkout-field account-checkout-span-2">
+                            <span>CPF ou CNPJ do recebedor</span>
+                            <input type="text" id="account-checkout-document" name="documento" autocomplete="off" maxlength="18" inputmode="numeric" required>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="account-checkout-section" aria-labelledby="account-checkout-address-title">
+                    <div class="account-checkout-section-heading">
+                        <span class="account-checkout-step">3</span>
+                        <div>
+                            <h3 id="account-checkout-address-title">Confirme a entrega</h3>
+                            <p>Na homologação, você pode calcular o frete; no site publicado, a equipe confirma pelo WhatsApp.</p>
+                        </div>
+                    </div>
+                    <div class="account-checkout-grid account-checkout-grid-2">
+                        <label class="account-checkout-field">
+                            <span>CEP</span>
+                            <input type="text" id="account-checkout-cep" name="cep" autocomplete="postal-code" maxlength="9" inputmode="numeric" required>
+                        </label>
+                        <label class="account-checkout-field">
+                            <span>Bairro</span>
+                            <input type="text" id="account-checkout-neighborhood" name="bairro" autocomplete="address-level3" maxlength="80" required>
+                        </label>
+                        <label class="account-checkout-field account-checkout-span-2">
+                            <span>Rua ou avenida</span>
+                            <input type="text" id="account-checkout-street" name="rua" autocomplete="address-line1" maxlength="140" required>
+                        </label>
+                        <label class="account-checkout-field">
+                            <span>Número</span>
+                            <input type="text" id="account-checkout-number" name="numero" autocomplete="address-line2" maxlength="40" required>
+                        </label>
+                        <label class="account-checkout-field">
+                            <span>Complemento <small>(opcional)</small></span>
+                            <input type="text" id="account-checkout-complement" name="complemento" autocomplete="address-line3" maxlength="120">
+                        </label>
+                        <label class="account-checkout-field">
+                            <span>Cidade</span>
+                            <input type="text" id="account-checkout-city" name="cidade" autocomplete="address-level2" maxlength="120" required>
+                        </label>
+                        <label class="account-checkout-field">
+                            <span>UF</span>
+                            <input type="text" id="account-checkout-state" name="estado" autocomplete="address-level1" maxlength="2" required>
+                        </label>
+                    </div>
+                    <div id="account-checkout-shipping-panel" class="account-checkout-shipping" hidden>
+                        <div class="account-checkout-shipping-head">
+                            <strong>Opções de entrega</strong>
+                            <button type="button" id="account-checkout-shipping-refresh" class="account-soft-btn">Recalcular</button>
+                        </div>
+                        <p id="account-checkout-shipping-status">Informe o CEP para calcular.</p>
+                        <div id="account-checkout-shipping-options" class="account-checkout-shipping-options"></div>
+                    </div>
+                </section>
+
+                <section class="account-checkout-section account-checkout-payment" aria-labelledby="account-checkout-payment-title">
+                    <div class="account-checkout-section-heading">
+                        <span class="account-checkout-step">4</span>
+                        <div>
+                            <h3 id="account-checkout-payment-title">Escolha como continuar</h3>
+                            <p id="account-checkout-runtime-note">Frete, valor final e pagamento serão confirmados pela equipe no WhatsApp.</p>
+                        </div>
+                    </div>
+                    <div class="account-checkout-payment-options">
+                        <label id="account-checkout-infinitepay-option" class="account-checkout-payment-option" hidden>
+                            <input id="account-checkout-infinitepay" type="radio" name="pagamento" value="InfinitePay" disabled>
+                            <span>
+                                <strong>Pagar peças e frete juntos</strong>
+                                <small>Na InfinitePay, escolha Pix ou cartão. O frete integral entra na mesma cobrança.</small>
+                            </span>
+                        </label>
+                        <label class="account-checkout-payment-option">
+                            <input id="account-checkout-whatsapp" type="radio" name="pagamento" value="WhatsApp" checked>
+                            <span>
+                                <strong>Continuar pelo WhatsApp</strong>
+                                <small>A equipe preserva o resumo e confirma tudo antes de enviar qualquer cobrança.</small>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <div id="account-checkout-feedback" class="account-checkout-feedback" role="alert" aria-live="assertive" hidden></div>
+
+                <div class="account-checkout-submit-wrap">
+                    <button type="submit" id="account-checkout-submit" class="btn-chic account-checkout-submit">
+                        <i class="fa-brands fa-whatsapp"></i>
+                        Enviar pedido para o WhatsApp
+                    </button>
+                    <p id="account-checkout-submit-note">Nenhum pagamento é feito nesta tela.</p>
+                </div>
+            </form>
+        </section>
+    </div>
 
     <nav class="account-mobile-nav" aria-label="Navegacao rapida">
         <a href="index.html#home" class="account-mobile-link" aria-label="Inicio">
@@ -452,7 +598,7 @@
         </button>
     </nav>
 
-    <script src="user.js?v=20260818-cart-profile"></script>
+    <script src="user.js?v=20260824-account-checkout"></script>
     <script>
         function buscarEndereco(cep) {
             cep = String(cep || '').replace(/\D/g, '');

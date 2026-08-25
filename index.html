@@ -75,7 +75,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="styles.css?v=20260818-simple-checkout">
+    <link rel="stylesheet" href="styles.css?v=20260824-whatsapp-checkout">
 </head>
 
 <body class="antialiased">
@@ -577,7 +577,7 @@
                     </p>
                     <p class="mb-2">Nossas peças são feitas sob demanda com muito carinho. Por isso, podem levar alguns dias para serem produzidas.</p>
                     <p id="shipping-cost-msg" class="font-medium text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
-                        <i class="fa-solid fa-box"></i> Frete temporariamente definido após o pedido.
+                        <i class="fa-solid fa-box"></i> O frete não é cobrado agora. Nós confirmamos o valor pelo WhatsApp.
                     </p>
                 </div>
 
@@ -677,40 +677,51 @@
                     <div class="flex flex-col gap-3">
                         <div>
                                 <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Frete e entrega</p>
-                                <p id="shipping-quote-status" class="mt-1 text-sm text-gray-500">Frete combinado pelo WhatsApp após o pedido.</p>
+                                <p id="shipping-quote-status" class="mt-1 text-sm text-gray-500">Frete calculado e confirmado pelo WhatsApp.</p>
                         </div>
                     </div>
                     <div id="shipping-options" class="mt-4 space-y-2">
                         <div class="rounded-2xl border border-[#EADBC9] bg-[#F9F5EF] p-4 text-sm leading-relaxed text-gray-600">
-                            Envie o pedido normalmente. Nossa equipe usará o CEP informado para combinar o valor e o prazo da entrega pelo WhatsApp.
+                            Envie o pedido normalmente. Usaremos o CEP informado para calcular a entrega e confirmaremos o valor com você antes do pagamento.
                         </div>
                     </div>
                 </div>
 
-                <!-- Campos de Pagamento -->
-                <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Pagamento</h3>
+                <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Como deseja continuar?</h3>
                 <div class="grid grid-cols-1 gap-3">
-                    <label class="block p-4 border border-[#dcdcdc] rounded bg-[#F8F6F0] cursor-pointer">
-                        <input type="radio" name="pagamento" value="InfinitePay" required checked class="mr-2">
-                        <span class="text-sm font-semibold">InfinitePay</span>
-                        <span class="mt-1 block text-xs text-gray-500">Na próxima tela, escolha Pix ou cartão e confirme o pagamento.</span>
+                    <label id="checkout-infinitepay-option" class="hidden cursor-pointer rounded-2xl border border-[#C9DDCD] bg-[#F3FAF4] p-4 shadow-sm">
+                        <span class="flex items-start gap-3">
+                            <input id="checkout-infinitepay-input" type="radio" name="pagamento" value="InfinitePay" class="mt-1" disabled>
+                            <span>
+                                <span class="block text-sm font-semibold text-[#2d2017]">Pagar peças e frete juntos</span>
+                                <span class="mt-1 block text-xs leading-relaxed text-gray-600">Você seguirá para a InfinitePay e poderá escolher Pix ou cartão. O frete integral entra na mesma cobrança.</span>
+                            </span>
+                        </span>
+                    </label>
+                    <label class="cursor-pointer rounded-2xl border border-[#DDE9DF] bg-white p-4 shadow-sm">
+                        <span class="flex items-start gap-3">
+                            <input id="checkout-whatsapp-input" type="radio" name="pagamento" value="WhatsApp" class="mt-1" checked>
+                            <span>
+                                <span class="block text-sm font-semibold text-[#2d2017]">Continuar pelo WhatsApp</span>
+                                <span class="mt-1 block text-xs leading-relaxed text-gray-600">Se preferir, a equipe confirma o resumo, o frete e a forma de pagamento antes de qualquer cobrança.</span>
+                            </span>
+                        </span>
                     </label>
                 </div>
-                <div id="parcelamento-container" class="hidden mt-2 bg-[#F8F6F0] p-2 rounded">
-                    <select id="parcelas-select" aria-label="Número de parcelas" class="w-full bg-transparent border-none outline-none text-sm"></select>
-                </div>
+                <p id="checkout-runtime-note" class="mt-2 text-xs leading-relaxed text-gray-500">No site publicado, frete e pagamento continuam sendo confirmados pelo WhatsApp.</p>
 
                 <div class="bg-[#F8F6F0] p-4 rounded text-sm mt-4">
                     <div id="checkout-summary" class="space-y-1"></div>
                     <div class="flex justify-between mt-2 pt-2 border-t border-[#dcdcdc] font-bold text-[--cor-texto]">
-                        <span>Total</span><span id="checkout-total">R$ 0,00</span>
+                        <span id="checkout-total-label">Total das peças</span><span id="checkout-total">R$ 0,00</span>
                     </div>
+                    <p id="checkout-total-note" class="mt-2 text-xs leading-relaxed text-gray-500">O frete não está incluído. O valor completo será confirmado no WhatsApp antes do pagamento.</p>
                 </div>
 
                 <div id="checkout-submit-feedback" class="hidden rounded-xl border px-4 py-3 text-sm leading-relaxed" role="alert" aria-live="assertive"></div>
 
                 <button type="submit" id="checkout-submit-btn" class="w-full bg-green-600 text-white py-4 rounded text-sm font-bold uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
-                    Finalizar pedido
+                    Continuar no WhatsApp
                 </button>
             </form>
         </div>
@@ -1097,7 +1108,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
     <script defer src="js/app-core.js"></script>
     <script defer src="js/app-storefront.js"></script>
-    <script defer src="js/app-cart-checkout.js?v=20260818-simple-checkout"></script>
+    <script defer src="js/app-cart-checkout.js?v=20260824-whatsapp-checkout"></script>
     <script defer src="js/app-account-cart.js"></script>
     <script defer src="js/app-operations.js"></script>
     

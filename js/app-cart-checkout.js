@@ -5,11 +5,83 @@ let orderSubmissionInFlight = false;
 let checkoutPushConfigCache = null;
 let checkoutPushToken = '';
 let checkoutAddressLookupToken = 0;
+let checkoutRuntimeConfig = {
+    loaded: false,
+    shippingCheckoutEnabled: false,
+    infinitePayEnabled: false,
+    pixProductDiscountEnabled: false,
+    whatsappFallbackEnabled: true
+};
 let checkoutSavedAddressesState = {
     addresses: [],
     selectedId: '',
     mode: 'manual'
 };
+
+function isShippingQuoteEnabled() {
+    return checkoutRuntimeConfig.shippingCheckoutEnabled === true;
+}
+
+function isInfinitePayCheckoutEnabled() {
+    return checkoutRuntimeConfig.infinitePayEnabled === true && isShippingQuoteEnabled();
+}
+
+function syncCheckoutRuntimeUI() {
+    const infinitePayOption = document.getElementById('checkout-infinitepay-option');
+    const infinitePayInput = document.getElementById('checkout-infinitepay-input');
+    const whatsappInput = document.getElementById('checkout-whatsapp-input');
+    const runtimeNote = document.getElementById('checkout-runtime-note');
+    const integratedEnabled = isInfinitePayCheckoutEnabled();
+
+    infinitePayOption?.classList.toggle('hidden', !integratedEnabled);
+    if (infinitePayInput) infinitePayInput.disabled = !integratedEnabled;
+    if (runtimeNote) {
+        runtimeNote.textContent = integratedEnabled
+            ? 'Homologação segura: o frete será recalculado no servidor e cobrado junto com as peças.'
+            : 'No site publicado, frete e pagamento continuam sendo confirmados pelo WhatsApp.';
+    }
+
+    if (!integratedEnabled && infinitePayInput?.checked) {
+        infinitePayInput.checked = false;
+        if (whatsappInput) whatsappInput.checked = true;
+    }
+
+    renderShippingOptions();
+    updateCheckoutSummary();
+    renderCheckoutSubmitButton(false);
+}
+
+async function loadCheckoutRuntimeConfig() {
+    try {
+        const response = await fetch(buildBackendUrl('/api/checkout/config'), {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            cache: 'no-store'
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || payload?.ok !== true) {
+            throw new Error('Configuracao de checkout indisponivel.');
+        }
+
+        checkoutRuntimeConfig = {
+            loaded: true,
+            shippingCheckoutEnabled: payload.shippingCheckoutEnabled === true,
+            infinitePayEnabled: payload.infinitePayEnabled === true,
+            pixProductDiscountEnabled: payload.pixProductDiscountEnabled === true,
+            whatsappFallbackEnabled: payload.whatsappFallbackEnabled !== false
+        };
+    } catch (error) {
+        checkoutRuntimeConfig = {
+            loaded: true,
+            shippingCheckoutEnabled: false,
+            infinitePayEnabled: false,
+            pixProductDiscountEnabled: false,
+            whatsappFallbackEnabled: true
+        };
+    }
+
+    syncCheckoutRuntimeUI();
+}
 
 function isFirestorePermissionError(error) {
     const code = String(error?.code || '').toLowerCase();
@@ -446,7 +518,7 @@ function formatCheckoutAddressSummary(address) {
 function applyCheckoutSelectedAddress(address) {
     if (!elements.checkoutForm || !address) return;
     fillCheckoutAddressFields(elements.checkoutForm, address, true);
-    if (SHIPPING_QUOTE_ENABLED && normalizePostalCode(address.cep).length === 8) {
+    if (isShippingQuoteEnabled() && normalizePostalCode(address.cep).length === 8) {
         scheduleShippingQuote(true);
     }
 }
@@ -1108,7 +1180,7 @@ function buildManualShippingSelection(destinationCep = '') {
         id: 'manual-pendente',
         serviceId: 'manual-pendente',
         serviceCode: 'manual-pendente',
-        name: 'Frete definido apos o pedido',
+        name: 'Frete definido após o pedido',
         company: 'A combinar',
         price: 0,
         originalPrice: 0,
@@ -1124,7 +1196,7 @@ function getCheckoutContext() {
     const pagamento = getSelectedCheckoutPaymentValue();
     const parcelas = parseInt(document.getElementById('parcelas-select')?.value, 10) || 1;
     const cep = normalizePostalCode(elements.checkoutCepInput?.value);
-    const shipping = SHIPPING_QUOTE_ENABLED ? getSelectedShippingOption() : null;
+    const shipping = isShippingQuoteEnabled() ? getSelectedShippingOption() : null;
     const totals = calculateCheckoutTotals(cart, pagamento, parcelas, cep, shipping);
 
     return { pagamento, parcelas, cep, shipping, totals };
@@ -1146,14 +1218,14 @@ function setShippingStatus(message, extraClass = 'text-gray-500') {
 
 function renderShippingOptions() {
     const container = elements.shippingOptions;
-    const disabledMessage = 'Usaremos o CEP informado para combinar valor e prazo da entrega.';
+    const disabledMessage = 'O frete não é cobrado agora. Confirmaremos valor e prazo pelo WhatsApp.';
 
     if (container) {
         container.replaceChildren();
     }
 
-    if (!SHIPPING_QUOTE_ENABLED) {
-        setShippingStatus('Frete combinado pelo WhatsApp.', 'text-amber-700');
+    if (!isShippingQuoteEnabled()) {
+        setShippingStatus('Frete calculado e confirmado pelo WhatsApp.', 'text-amber-700');
 
         if (container) {
             const note = document.createElement('div');
@@ -1248,7 +1320,7 @@ function renderShippingOptions() {
 }
 
 async function quoteShippingOptions({ force = false, cartItems = cart, destinationCep = null } = {}) {
-    if (!SHIPPING_QUOTE_ENABLED) {
+    if (!isShippingQuoteEnabled()) {
         shippingQuoteState = createEmptyShippingQuoteState();
         renderShippingOptions();
         updateCheckoutSummary();
@@ -1347,7 +1419,7 @@ async function quoteShippingOptions({ force = false, cartItems = cart, destinati
 }
 
 function scheduleShippingQuote(force = false) {
-    if (!SHIPPING_QUOTE_ENABLED) return;
+    if (!isShippingQuoteEnabled()) return;
     clearTimeout(shippingQuoteDebounceTimer);
     shippingQuoteDebounceTimer = window.setTimeout(() => {
         quoteShippingOptions({ force }).catch(() => {});
@@ -1360,7 +1432,7 @@ function setupShippingQuoteInteractions() {
             const formatted = formatPostalCode(event.target.value);
             event.target.value = formatted;
 
-            if (SHIPPING_QUOTE_ENABLED && normalizePostalCode(formatted).length === 8) {
+            if (isShippingQuoteEnabled() && normalizePostalCode(formatted).length === 8) {
                 scheduleShippingQuote();
             } else {
                 shippingQuoteState = createEmptyShippingQuoteState();
@@ -1374,7 +1446,7 @@ function setupShippingQuoteInteractions() {
             if (cep.length !== 8) return;
 
             autofillCheckoutAddressFromPostalCode(cep).then(() => {
-                if (SHIPPING_QUOTE_ENABLED) {
+                if (isShippingQuoteEnabled()) {
                     scheduleShippingQuote(true);
                 }
             }).catch(() => {});
@@ -1637,42 +1709,11 @@ function setupCheckoutExperience() {
 
 function syncParcelamentoVisibility() {
     const container = document.getElementById('parcelamento-container');
-    if (!container) return;
-
-    const selectedPayment = getSelectedCheckoutPaymentValue();
-    const paymentKey = getPaymentKey(selectedPayment);
-    const isCardPayment = paymentKey.includes('cartao');
-
-    container.classList.toggle('hidden', !isCardPayment);
-
-    if (isCardPayment) {
-        preencherParcelas();
+    if (container) {
+        container.classList.add('hidden');
     }
 
     renderCheckoutSubmitButton(false);
-}
-
-function preencherParcelas() {
-    const total = cart.reduce((sum, item) => sum + item.preco * item.quantity, 0);
-    const select = document.getElementById('parcelas-select');
-    if (!select) return;
-
-    select.innerHTML = '';
-
-    for (let index = 1; index <= 12; index += 1) {
-        let valorTotal = total;
-        let suffix = '(sem juros)';
-
-        if (index > 2) {
-            valorTotal = total * (1 + TAXA_JUROS);
-            suffix = '(c/ juros)';
-        }
-
-        select.innerHTML += `<option value="${index}">${index}x de ${formatarReal(valorTotal / index)} ${suffix}</option>`;
-    }
-
-    select.removeEventListener('change', updateCheckoutSummary);
-    select.addEventListener('change', updateCheckoutSummary);
 }
 
 function validarELimparCarrinho() {
@@ -1772,7 +1813,7 @@ async function openCheckoutModal() {
     syncParcelamentoVisibility();
     updateCheckoutSummary();
 
-    if (SHIPPING_QUOTE_ENABLED && normalizePostalCode(elements.checkoutCepInput?.value).length === 8) {
+    if (isShippingQuoteEnabled() && normalizePostalCode(elements.checkoutCepInput?.value).length === 8) {
         await quoteShippingOptions({ force: true });
     }
 
@@ -1834,6 +1875,8 @@ function updateCheckoutSummary() {
     });
 
     const { cep, shipping, totals } = getCheckoutContext();
+    const paymentKey = getPaymentKey(getSelectedCheckoutPaymentValue());
+    const integratedPayment = paymentKey === 'infinitepay' && isInfinitePayCheckoutEnabled();
 
     if (totals.pixDiscount > 0) {
         appendRow('Desconto PIX', `-${formatarReal(totals.pixDiscount)}`, 'mt-1 flex justify-between text-sm font-medium text-green-600');
@@ -1841,11 +1884,11 @@ function updateCheckoutSummary() {
         appendRow('Taxa Cartao (>2x)', `+${formatarReal(totals.cardFee)}`, 'mt-1 flex justify-between text-sm font-medium text-gray-500');
     }
 
-    if (!SHIPPING_QUOTE_ENABLED) {
-        appendRow('Frete', 'A combinar', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-amber-700');
+    if (!isShippingQuoteEnabled()) {
+        appendRow('Frete', 'Calculado no WhatsApp', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-amber-700');
         setShippingMessage(
             'fa-solid fa-box text-[--cor-marrom-cta]',
-            'Valor e prazo da entrega serão combinados pelo WhatsApp.'
+            'O frete não está incluído. Valor e prazo serão confirmados pelo WhatsApp.'
         );
     } else if (shipping) {
         const shippingLabel = `${shipping.company} - ${shipping.name}`;
@@ -1868,6 +1911,12 @@ function updateCheckoutSummary() {
                 `Entrega via ${shipping.company} - ${shipping.name} em cerca de ${shipping.deliveryTime} dia(s) uteis.`
             );
         }
+    } else if (!integratedPayment) {
+        appendRow('Frete', 'Pode ser confirmado no WhatsApp', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-amber-700');
+        setShippingMessage(
+            'fa-brands fa-whatsapp text-[#25D366]',
+            'Você pode continuar mesmo sem cotação automática; a equipe confirma o frete antes de cobrar.'
+        );
     } else if (shippingQuoteState.loading) {
         appendRow('Frete', 'Calculando...', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-gray-500');
         setShippingMessage('fa-solid fa-spinner fa-spin text-[--cor-marrom-cta]', 'Calculando o frete automatico pelo Melhor Envio...');
@@ -1883,29 +1932,35 @@ function updateCheckoutSummary() {
     }
 
     elements.checkoutTotal.textContent = formatarReal(totals.final);
+    const totalLabel = document.getElementById('checkout-total-label');
+    const totalNote = document.getElementById('checkout-total-note');
+    if (totalLabel) {
+        totalLabel.textContent = shipping ? 'Total com frete' : 'Total das peças';
+    }
+    if (totalNote) {
+        totalNote.textContent = shipping
+            ? 'O frete integral está separado no resumo e entra na mesma cobrança das peças.'
+            : 'O frete ainda não está incluído e será confirmado antes de qualquer cobrança.';
+    }
     renderCheckoutSubmitButton(false);
 }
 
 function renderCheckoutSubmitButton(isSubmitting = orderSubmissionInFlight) {
     if (!elements.checkoutSubmitButton) return;
 
-    const selectedPayment = getSelectedCheckoutPaymentValue();
-    const paymentKey = getPaymentKey(selectedPayment);
+    const paymentKey = getPaymentKey(getSelectedCheckoutPaymentValue());
+    const integratedPayment = paymentKey === 'infinitepay' && isInfinitePayCheckoutEnabled();
 
     if (isSubmitting) {
-        const loadingText = paymentKey === 'infinitepay'
-            ? 'Criando pagamento...'
-            : 'Enviando pedido...';
-        elements.checkoutSubmitButton.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${loadingText}`;
+        elements.checkoutSubmitButton.innerHTML = integratedPayment
+            ? '<i class="fa-solid fa-spinner fa-spin"></i> Criando pagamento seguro...'
+            : '<i class="fa-solid fa-spinner fa-spin"></i> Preparando seu pedido...';
         return;
     }
 
-    if (paymentKey === 'infinitepay') {
-        elements.checkoutSubmitButton.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> Pagar com InfinitePay';
-        return;
-    }
-
-    elements.checkoutSubmitButton.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Enviar pedido';
+    elements.checkoutSubmitButton.innerHTML = integratedPayment
+        ? '<i class="fa-solid fa-arrow-up-right-from-square"></i> Pagar peças + frete'
+        : '<i class="fa-brands fa-whatsapp"></i> Continuar no WhatsApp';
 }
 
 function setCheckoutSubmitState(isSubmitting) {
@@ -1926,11 +1981,9 @@ async function finalizarPedido(formData) {
 
     const cliente = buildCheckoutClienteFromFormData(formData);
 
-    const pagamento = sanitizePlainText(formData.get('pagamento'), 40);
+    const pagamento = sanitizePlainText(formData.get('pagamento') || 'WhatsApp', 40);
     const paymentKey = getPaymentKey(pagamento);
-    const parcelasSeguras = paymentKey.includes('cartao')
-        ? (parseInt(document.getElementById('parcelas-select')?.value, 10) || 1)
-        : 1;
+    const parcelasSeguras = 1;
 
     try {
         setCheckoutSubmitState(true);
@@ -1952,8 +2005,12 @@ async function finalizarPedido(formData) {
         let authToken = '';
         const authenticatedUser = preparedUser || currentUser || auth.currentUser;
 
+        if (paymentKey === 'infinitepay' && !isInfinitePayCheckoutEnabled()) {
+            throw new Error('O pagamento integrado ainda está disponível somente na homologação. Continue pelo WhatsApp.');
+        }
+
         if (paymentKey === 'infinitepay' && !authenticatedUser) {
-            throw new Error('Entre ou crie sua conta para pagar com InfinitePay.');
+            throw new Error('Entre ou crie sua conta para pagar com a InfinitePay.');
         }
 
         if (authenticatedUser) {
@@ -1964,9 +2021,9 @@ async function finalizarPedido(formData) {
             }
         }
 
-        const selectedShipping = SHIPPING_QUOTE_ENABLED ? getSelectedShippingOption() : null;
+        const selectedShipping = isShippingQuoteEnabled() ? getSelectedShippingOption() : null;
 
-        if (SHIPPING_QUOTE_ENABLED && !selectedShipping) {
+        if (paymentKey === 'infinitepay' && !selectedShipping) {
             throw new Error('Escolha uma opcao de frete antes de continuar.');
         }
 
@@ -1997,9 +2054,50 @@ async function finalizarPedido(formData) {
                 localStorage.setItem('lamedCart', JSON.stringify(payload.canonicalCart));
                 updateCartUI();
             }
+            shippingQuoteState = createEmptyShippingQuoteState();
             renderShippingOptions();
             updateCheckoutSummary();
+            if (isShippingQuoteEnabled() && normalizePostalCode(cliente?.endereco?.cep).length === 8) {
+                scheduleShippingQuote(true);
+            }
             throw new Error(sanitizePlainText(payload?.error || 'Seu carrinho foi atualizado com os dados mais recentes. Revise o pedido e confirme novamente.', 220));
+        }
+
+        if (response.status === 409 && payload?.code === 'DUPLICATE_ORDER') {
+            const duplicatedOrderId = sanitizePlainText(payload?.duplicatedOrderId, 120);
+            const duplicateWhatsappUrl = String(payload?.whatsappUrl || '').trim();
+            cart = [];
+            if (typeof window.clearAccountCartState === 'function') {
+                await window.clearAccountCartState().catch(() => {});
+            } else {
+                localStorage.setItem('lamedCart', '[]');
+            }
+            shippingQuoteState = createEmptyShippingQuoteState();
+            updateCartUI();
+            renderShippingOptions();
+            closeCheckoutModal();
+
+            if (authenticatedUser && duplicatedOrderId) {
+                try {
+                    sessionStorage.setItem('lamed_last_order_id', duplicatedOrderId);
+                } catch (error) {}
+                const orderUrl = `minha-conta.html?pedido=${encodeURIComponent(duplicatedOrderId)}#pedidos`;
+                if (duplicateWhatsappUrl) {
+                    window.history.replaceState({}, '', orderUrl);
+                    window.location.assign(duplicateWhatsappUrl);
+                    return;
+                }
+                window.location.assign(orderUrl);
+                return;
+            }
+
+            if (duplicateWhatsappUrl) {
+                window.location.assign(duplicateWhatsappUrl);
+                return;
+            }
+
+            alert('Seu pedido já foi recebido. Fale com a loja pelo WhatsApp para continuar.');
+            return;
         }
 
         if (!response.ok || !payload?.ok || !payload?.orderId) {
@@ -2008,7 +2106,6 @@ async function finalizarPedido(formData) {
 
         const whatsappUrl = String(payload?.whatsappUrl || '').trim();
         const paymentRedirectUrl = String(payload?.paymentRedirectUrl || '').trim();
-
         cart = [];
         if (typeof window.clearAccountCartState === 'function') {
             await window.clearAccountCartState().catch(() => {});
@@ -2026,29 +2123,23 @@ async function finalizarPedido(formData) {
             } catch (error) {}
 
             if (paymentRedirectUrl) {
-                window.location.href = paymentRedirectUrl;
+                window.location.assign(paymentRedirectUrl);
                 return;
             }
 
             if (whatsappUrl) {
-                window.open(whatsappUrl, '_blank', 'noopener');
-            } else if (payload?.whatsappMessage) {
-                window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(String(payload.whatsappMessage))}`, '_blank', 'noopener');
+                const orderUrl = `minha-conta.html?pedido=${encodeURIComponent(String(payload.orderId))}#pedidos`;
+                window.history.replaceState({}, '', orderUrl);
+                window.location.assign(whatsappUrl);
+                return;
             }
 
             window.location.href = `minha-conta.html?pedido=${encodeURIComponent(String(payload.orderId))}#pedidos`;
             return;
         }
 
-        if (paymentRedirectUrl) {
-            window.location.href = paymentRedirectUrl;
-            return;
-        }
-
         if (whatsappUrl) {
-            window.open(whatsappUrl, '_blank', 'noopener');
-        } else if (payload?.whatsappMessage) {
-            window.open(`https://wa.me/5527999287657?text=${encodeURIComponent(String(payload.whatsappMessage))}`, '_blank', 'noopener');
+            window.location.assign(whatsappUrl);
         }
     } catch (error) {
         console.error(error);
@@ -2065,7 +2156,7 @@ async function finalizarPedido(formData) {
 document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', setupPaymentOptions);
 document.addEventListener('DOMContentLoaded', setupCheckoutExperience);
+document.addEventListener('DOMContentLoaded', loadCheckoutRuntimeConfig);
 window.enablePushNotificationsFromCheckout = enablePushNotificationsFromCheckout;
 
-const SHIPPING_QUOTE_ENABLED = false;
 const MANUAL_SHIPPING_ORIGIN_POSTAL_CODE = '29056015';

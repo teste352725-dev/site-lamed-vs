@@ -4,12 +4,13 @@ import dotenv from "dotenv";
 import fs from "fs";
 import { createChatMessageFromBody, isChatRequestError } from "../server/_chat.mjs";
 import { getFirebaseAdminStatus } from "../server/_firebase-admin.mjs";
+import { isSafePixProductDiscountEnabled } from "../server/_checkout-finance.mjs";
 import { getInfinitePayHealth } from "../server/_infinitepay.mjs";
 import { applyInfinitePayWebhook, assertInfinitePayWebhookAccess, confirmInfinitePayPayment, isInfinitePayRequestError } from "../server/_infinitepay.mjs";
 import { createOrderFromBody, isOrderRequestError } from "../server/_orders.mjs";
 import { enforceInMemoryRateLimit, getClientAddress } from "../server/_security.mjs";
 import { isSessionRequestError, requireAdminUser, resolveAuthenticatedUser } from "../server/_session.mjs";
-import { getShippingHealth, isShippingApiEnabled, requestShippingQuote } from "../server/_shipping.mjs";
+import { getShippingHealth, isShippingCheckoutEnabled, requestShippingQuote } from "../server/_shipping.mjs";
 import { applyStorefrontAdminAction, isStorefrontAdminError } from "../server/_storefront-admin.mjs";
 import { applyPricingAction } from "../server/_pricing-admin.mjs";
 
@@ -470,11 +471,27 @@ app.get("/api/shipping/health", requireDiagnosticAccess, (req, res) => {
   res.json(getShippingHealth());
 });
 
+app.get("/api/checkout/config", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const shippingCheckoutEnabled = isShippingCheckoutEnabled();
+  const infinitePayEnabled = shippingCheckoutEnabled && getInfinitePayHealth().ok;
+  const pixProductDiscountEnabled = infinitePayEnabled && isSafePixProductDiscountEnabled();
+  res.json({
+    ok: true,
+    shippingCheckoutEnabled,
+    infinitePayEnabled,
+    pixProductDiscountEnabled,
+    pixProductDiscountPercent: pixProductDiscountEnabled ? 5 : 0,
+    whatsappFallbackEnabled: true
+  });
+});
+
 app.post("/api/shipping/quote", async (req, res) => {
-  if (!isShippingApiEnabled()) {
+  if (!isShippingCheckoutEnabled()) {
     return res.status(503).json({
       ok: false,
-      error: "Frete automatico pausado temporariamente. O valor e o prazo sao definidos manualmente apos o pedido."
+      code: "SHIPPING_PREVIEW_ONLY",
+      error: "O frete automatico esta disponivel somente no ambiente seguro de homologacao. Continue pelo WhatsApp neste ambiente."
     });
   }
 
@@ -572,6 +589,14 @@ app.post("/api/orders/create", async (req, res) => {
 
       if (error.totalsPreview && typeof error.totalsPreview === "object") {
         payload.totalsPreview = error.totalsPreview;
+      }
+
+      if (typeof error.whatsappUrl === "string" && error.whatsappUrl) {
+        payload.whatsappUrl = error.whatsappUrl;
+      }
+
+      if (typeof error.duplicatedOrderId === "string" && error.duplicatedOrderId) {
+        payload.duplicatedOrderId = error.duplicatedOrderId.slice(0, 120);
       }
 
       return res.status(status).json(payload);

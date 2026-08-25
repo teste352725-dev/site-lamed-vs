@@ -56,6 +56,14 @@ export default async function handler(req, res) {
         payload.totalsPreview = error.totalsPreview;
       }
 
+      if (typeof error.whatsappUrl === "string" && error.whatsappUrl) {
+        payload.whatsappUrl = error.whatsappUrl;
+      }
+
+      if (typeof error.duplicatedOrderId === "string" && error.duplicatedOrderId) {
+        payload.duplicatedOrderId = error.duplicatedOrderId.slice(0, 120);
+      }
+
       return res.status(status).json(payload);
     }
 
