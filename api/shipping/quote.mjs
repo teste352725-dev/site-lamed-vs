@@ -6,13 +6,30 @@ import {
   requestShippingQuote,
   setNoStore
 } from "../../server/_shipping.mjs";
+import { isSafePixProductDiscountEnabled } from "../../server/_checkout-finance.mjs";
+import { getInfinitePayHealth } from "../../server/_infinitepay.mjs";
 import { enforceInMemoryRateLimit, getClientAddress } from "../../server/_security.mjs";
 
 export default async function handler(req, res) {
   setNoStore(res);
 
+  if (req.method === "GET") {
+    const shippingCheckoutEnabled = isShippingCheckoutEnabled();
+    const infinitePayEnabled = shippingCheckoutEnabled && getInfinitePayHealth().ok;
+    const pixProductDiscountEnabled = infinitePayEnabled && isSafePixProductDiscountEnabled();
+
+    return res.status(200).json({
+      ok: true,
+      shippingCheckoutEnabled,
+      infinitePayEnabled,
+      pixProductDiscountEnabled,
+      pixProductDiscountPercent: pixProductDiscountEnabled ? 5 : 0,
+      whatsappFallbackEnabled: true
+    });
+  }
+
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ ok: false, error: "Metodo nao permitido." });
   }
 

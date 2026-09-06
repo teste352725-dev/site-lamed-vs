@@ -2308,7 +2308,7 @@ function syncAccountCheckoutRuntimeUI() {
 
 async function loadAccountCheckoutRuntimeConfig() {
     try {
-        const response = await fetch(buildBackendUrl('/api/checkout/config'), {
+        const response = await fetch(buildBackendUrl('/api/shipping/quote'), {
             headers: { Accept: 'application/json' },
             cache: 'no-store'
         });

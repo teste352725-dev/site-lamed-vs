@@ -53,7 +53,7 @@ function syncCheckoutRuntimeUI() {
 
 async function loadCheckoutRuntimeConfig() {
     try {
-        const response = await fetch(buildBackendUrl('/api/checkout/config'), {
+        const response = await fetch(buildBackendUrl('/api/shipping/quote'), {
             method: 'GET',
             headers: { Accept: 'application/json' },
             cache: 'no-store'
