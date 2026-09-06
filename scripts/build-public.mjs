@@ -17,6 +17,7 @@ const rootAssets = new Set([
   "user.js"
 ]);
 const publicDirectories = ["css", "js"];
+const productionExcludedHtml = new Set(["teste-frete.html"]);
 
 if (!outputDirectory.endsWith("/public")) {
   throw new Error("Diretorio de saida publico invalido.");
@@ -26,7 +27,11 @@ await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
 
 const rootEntries = await readdir(projectRoot);
-const htmlFiles = rootEntries.filter((name) => name.toLowerCase().endsWith(".html"));
+const isProductionBuild = String(process.env.VERCEL_ENV || "").trim().toLowerCase() === "production";
+const htmlFiles = rootEntries.filter((name) => (
+  name.toLowerCase().endsWith(".html") &&
+  !(isProductionBuild && productionExcludedHtml.has(name))
+));
 const filesToCopy = [...rootAssets, ...htmlFiles];
 
 for (const name of filesToCopy) {
