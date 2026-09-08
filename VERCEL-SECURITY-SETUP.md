@@ -12,7 +12,7 @@ Obrigatorias para pedidos via backend:
 
 Automacoes agendadas da loja:
 
-- `CRON_SECRET` — obrigatoria para o Cron da Vercel chamar `/api/automation/run` com seguranca. O projeto agenda essa rota de hora em hora e processa retiradas de desconto e janelas de colecao que ja venceram.
+- `CRON_SECRET` — obrigatoria para o Cron da Vercel chamar `/api/automation/run` com seguranca. O projeto agenda essa rota de hora em hora e processa retiradas de desconto e janelas de colecao que ja venceram. A Vercel envia esse valor no header `Authorization: Bearer <CRON_SECRET>` em cada execucao do Cron.
 
 Alternativa ao Base64:
 
