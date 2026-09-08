@@ -16,18 +16,13 @@
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260908-command-center" defer></script>
     <script src="js/executor-operations.js?v=20260908-command-center" defer></script>
+    <script src="js/executor-discount-schedule.js?v=20260908-1" defer></script>
 </head>
 <body class="executor-page">
     <header class="executor-topbar">
         <a href="dashboard.html" class="topbar-back" aria-label="Voltar ao painel"><i class="fa-solid fa-arrow-left"></i></a>
-        <div>
-            <span class="topbar-kicker">Painel administrativo</span>
-            <h1>Central de Operações</h1>
-        </div>
-        <div class="topbar-actions">
-            <span class="security-badge"><i class="fa-solid fa-shield-halved"></i> Admin</span>
-            <a href="index.html" target="_blank" rel="noopener" class="icon-action" aria-label="Abrir site público"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
-        </div>
+        <div><span class="topbar-kicker">Painel administrativo</span><h1>Central de Operações</h1></div>
+        <div class="topbar-actions"><span class="security-badge"><i class="fa-solid fa-shield-halved"></i> Admin</span><a href="index.html" target="_blank" rel="noopener" class="icon-action" aria-label="Abrir site público"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></div>
     </header>
 
     <main class="operations-shell">
@@ -36,17 +31,9 @@
                 <span class="eyebrow">Operação do dia a dia</span>
                 <h2>Prepare, publique e ajuste a loja sem editar peça por peça.</h2>
                 <p>Selecione produtos visualmente e aplique mudanças em massa. As rotinas críticas continuam protegidas e todas as operações administrativas passam pelo Firestore.</p>
-                <div class="hero-links">
-                    <a href="produtos.html" class="hero-link"><i class="fa-solid fa-box-open"></i> Produtos</a>
-                    <a href="colecoes.html" class="hero-link"><i class="fa-solid fa-layer-group"></i> Coleções</a>
-                    <a href="calculadora.html" class="hero-link"><i class="fa-solid fa-ruler-combined"></i> Precificação</a>
-                </div>
+                <div class="hero-links"><a href="produtos.html" class="hero-link"><i class="fa-solid fa-box-open"></i> Produtos</a><a href="colecoes.html" class="hero-link"><i class="fa-solid fa-layer-group"></i> Coleções</a><a href="calculadora.html" class="hero-link"><i class="fa-solid fa-ruler-combined"></i> Precificação</a></div>
             </div>
-            <div class="hero-status">
-                <span class="status-dot"></span>
-                <div><strong id="operation-busy-label">Pronto</strong><span>Central conectada ao catálogo</span></div>
-                <button id="refresh-operations-data" type="button" class="round-button" title="Atualizar dados"><i class="fa-solid fa-rotate"></i></button>
-            </div>
+            <div class="hero-status"><span class="status-dot"></span><div><strong id="operation-busy-label">Pronto</strong><span>Central conectada ao catálogo</span></div><button id="refresh-operations-data" type="button" class="round-button" title="Atualizar dados"><i class="fa-solid fa-rotate"></i></button></div>
         </section>
 
         <section class="stats-grid" aria-label="Resumo do catálogo">
@@ -59,129 +46,49 @@
         <div class="operations-layout">
             <section class="workspace-column">
                 <article class="panel catalog-panel">
-                    <div class="panel-heading">
-                        <div><span class="panel-kicker">Catálogo</span><h3>Selecione as peças</h3><p>Use filtros para montar o grupo que será alterado.</p></div>
-                        <div class="selection-summary"><strong id="selected-products-count">0 selecionadas</strong><span id="selected-products-value">R$ 0,00</span></div>
-                    </div>
-
+                    <div class="panel-heading"><div><span class="panel-kicker">Catálogo</span><h3>Selecione as peças</h3><p>Use filtros para montar o grupo que será alterado.</p></div><div class="selection-summary"><strong id="selected-products-count">0 selecionadas</strong><span id="selected-products-value">R$ 0,00</span></div></div>
                     <div class="filter-grid">
                         <label class="field field-search"><span>Buscar</span><div class="input-with-icon"><i class="fa-solid fa-magnifying-glass"></i><input id="product-search" type="search" placeholder="Nome, cor, categoria, coleção..."></div></label>
                         <label class="field"><span>Status</span><select id="filter-status"><option value="all">Todos</option><option value="active">Ativos</option><option value="inactive">Pausados</option></select></label>
                         <label class="field"><span>Coleção</span><select id="filter-collection"><option value="all">Todas as coleções</option></select></label>
                         <label class="field"><span>Categoria</span><select id="filter-category"><option value="all">Todas as categorias</option></select></label>
                     </div>
-
-                    <div class="catalog-toolbar">
-                        <div class="catalog-toolbar-left"><span id="filtered-products-count">0 resultados</span><label class="toggle-label"><input id="filter-selected-only" type="checkbox"><span>Somente selecionadas</span></label></div>
-                        <div class="catalog-toolbar-actions"><button id="select-filtered-products" type="button" class="text-button">Selecionar filtradas</button><button id="clear-product-selection" type="button" class="text-button">Limpar seleção</button></div>
-                    </div>
-
-                    <div id="product-operation-list" class="product-operation-list" aria-live="polite"></div>
-                    <select id="bulk-product-select" multiple hidden aria-hidden="true"></select>
+                    <div class="catalog-toolbar"><div class="catalog-toolbar-left"><span id="filtered-products-count">0 resultados</span><label class="toggle-label"><input id="filter-selected-only" type="checkbox"><span>Somente selecionadas</span></label></div><div class="catalog-toolbar-actions"><button id="select-filtered-products" type="button" class="text-button">Selecionar filtradas</button><button id="clear-product-selection" type="button" class="text-button">Limpar seleção</button></div></div>
+                    <div id="product-operation-list" class="product-operation-list" aria-live="polite"></div><select id="bulk-product-select" multiple hidden aria-hidden="true"></select>
                 </article>
 
                 <div class="action-grid">
                     <article class="operation-card launch-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-rocket"></i></span><div><span class="panel-kicker">Lançamento</span><h3>Preparar coleção</h3></div></div>
-                        <p>Monte a coleção, vincule as peças escolhidas e publique tudo de uma vez.</p>
-                        <label class="field"><span>Coleção</span><select id="launch-collection-target"></select></label>
-                        <div id="launch-collection-summary" class="launch-summary"><span>Escolha uma coleção.</span></div>
-                        <div class="operation-actions stack-actions">
-                            <button id="assign-selection-launch" data-operation-button type="button" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Vincular selecionadas</button>
-                            <button id="publish-launch-collection" data-operation-button type="button" class="btn btn-primary"><i class="fa-solid fa-rocket"></i> Publicar coleção + peças</button>
-                            <button id="hide-launch-collection" data-operation-button type="button" class="btn btn-ghost"><i class="fa-regular fa-eye-slash"></i> Ocultar coleção</button>
-                        </div>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-rocket"></i></span><div><span class="panel-kicker">Lançamento</span><h3>Preparar coleção</h3></div></div><p>Monte a coleção, vincule as peças escolhidas e publique tudo de uma vez.</p><label class="field"><span>Coleção</span><select id="launch-collection-target"></select></label><div id="launch-collection-summary" class="launch-summary"><span>Escolha uma coleção.</span></div><div class="operation-actions stack-actions"><button id="assign-selection-launch" data-operation-button type="button" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Vincular selecionadas</button><button id="publish-launch-collection" data-operation-button type="button" class="btn btn-primary"><i class="fa-solid fa-rocket"></i> Publicar coleção + peças</button><button id="hide-launch-collection" data-operation-button type="button" class="btn btn-ghost"><i class="fa-regular fa-eye-slash"></i> Ocultar coleção</button></div>
                     </article>
 
                     <article class="operation-card visibility-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-eye"></i></span><div><span class="panel-kicker">Vitrine</span><h3>Visibilidade das peças</h3></div></div>
-                        <p>Publique ou pause somente as peças selecionadas, sem alterar a coleção inteira.</p>
-                        <div class="operation-actions split-actions">
-                            <button id="publish-selected" data-operation-button type="button" class="btn btn-primary"><i class="fa-solid fa-eye"></i> Publicar</button>
-                            <button id="pause-selected" data-operation-button type="button" class="btn btn-secondary"><i class="fa-solid fa-pause"></i> Pausar</button>
-                        </div>
-                        <div class="micro-note"><i class="fa-solid fa-circle-info"></i> Status <code>active</code> deixa a peça disponível na vitrine.</div>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-eye"></i></span><div><span class="panel-kicker">Vitrine</span><h3>Visibilidade das peças</h3></div></div><p>Publique ou pause somente as peças selecionadas, sem alterar a coleção inteira.</p><div class="operation-actions split-actions"><button id="publish-selected" data-operation-button type="button" class="btn btn-primary"><i class="fa-solid fa-eye"></i> Publicar</button><button id="pause-selected" data-operation-button type="button" class="btn btn-secondary"><i class="fa-solid fa-pause"></i> Pausar</button></div><div class="micro-note"><i class="fa-solid fa-circle-info"></i> Status <code>active</code> deixa a peça disponível na vitrine.</div>
                     </article>
 
                     <article class="operation-card discount-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-percent"></i></span><div><span class="panel-kicker">Campanhas</span><h3>Descontos</h3></div></div>
-                        <p>Aplique promoção nas selecionadas ou em todo o catálogo.</p>
-                        <div class="dual-fields">
-                            <label class="field"><span>Selecionadas (%)</span><input id="selected-discount-percent" type="number" min="0" max="90" value="10"></label>
-                            <button id="apply-selected-discount" data-operation-button type="button" class="btn btn-secondary align-bottom"><i class="fa-solid fa-tags"></i> Aplicar</button>
-                        </div>
-                        <div class="divider"></div>
-                        <div class="dual-fields">
-                            <label class="field"><span>Catálogo inteiro (%)</span><input id="bulk-discount-percent" type="number" min="0" max="90" value="15"></label>
-                            <button onclick="runScript('aplicarDescontoGlobal')" data-operation-button type="button" class="btn btn-primary align-bottom"><i class="fa-solid fa-bolt"></i> Aplicar global</button>
-                        </div>
-                        <button id="remove-all-discounts" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-eraser"></i> Remover todos os descontos</button>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-percent"></i></span><div><span class="panel-kicker">Campanhas</span><h3>Descontos</h3></div></div><p>Aplique promoção nas selecionadas ou em todo o catálogo.</p><div class="dual-fields"><label class="field"><span>Selecionadas (%)</span><input id="selected-discount-percent" type="number" min="0" max="90" value="10"></label><button id="apply-selected-discount" data-operation-button type="button" class="btn btn-secondary align-bottom"><i class="fa-solid fa-tags"></i> Aplicar</button></div><div class="divider"></div><div class="dual-fields"><label class="field"><span>Catálogo inteiro (%)</span><input id="bulk-discount-percent" type="number" min="0" max="90" value="15"></label><button onclick="runScript('aplicarDescontoGlobal')" data-operation-button type="button" class="btn btn-primary align-bottom"><i class="fa-solid fa-bolt"></i> Aplicar global</button></div><button id="remove-all-discounts" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-eraser"></i> Remover todos os descontos</button>
                     </article>
 
                     <article class="operation-card color-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-palette"></i></span><div><span class="panel-kicker">Variantes</span><h3>Estúdio de cores</h3></div></div>
-                        <p>Adicione uma cor às peças selecionadas sem abrir cada cadastro.</p>
-                        <label class="field"><span>Nome da cor</span><input id="bulk-color-name" type="text" placeholder="Ex.: Verde oliva"></label>
-                        <div class="color-input-row">
-                            <span id="color-preview" class="color-preview" style="--swatch:#6B705C"></span>
-                            <input id="bulk-color-hex" type="color" value="#6b705c" aria-label="Escolher cor">
-                            <label class="field compact-field"><span>HEX</span><input id="bulk-color-hex-text" type="text" value="#6B705C" maxlength="7"></label>
-                        </div>
-                        <button id="add-color-selected" data-operation-button type="button" class="btn btn-primary full-width"><i class="fa-solid fa-plus"></i> Adicionar às selecionadas</button>
-                        <div class="divider"></div>
-                        <label class="field"><span>Remover cor pelo nome</span><input id="bulk-color-remove-name" type="text" placeholder="Ex.: Verde oliva"></label>
-                        <button id="remove-color-selected" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-minus"></i> Remover das selecionadas</button>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-palette"></i></span><div><span class="panel-kicker">Variantes</span><h3>Estúdio de cores</h3></div></div><p>Adicione uma cor às peças selecionadas sem abrir cada cadastro.</p><label class="field"><span>Nome da cor</span><input id="bulk-color-name" type="text" placeholder="Ex.: Verde oliva"></label><div class="color-input-row"><span id="color-preview" class="color-preview" style="--swatch:#6B705C"></span><input id="bulk-color-hex" type="color" value="#6b705c" aria-label="Escolher cor"><label class="field compact-field"><span>HEX</span><input id="bulk-color-hex-text" type="text" value="#6B705C" maxlength="7"></label></div><button id="add-color-selected" data-operation-button type="button" class="btn btn-primary full-width"><i class="fa-solid fa-plus"></i> Adicionar às selecionadas</button><div class="divider"></div><label class="field"><span>Remover cor pelo nome</span><input id="bulk-color-remove-name" type="text" placeholder="Ex.: Verde oliva"></label><button id="remove-color-selected" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-minus"></i> Remover das selecionadas</button>
                     </article>
 
                     <article class="operation-card organize-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-folder-tree"></i></span><div><span class="panel-kicker">Organização</span><h3>Classificar peças</h3></div></div>
-                        <p>Altere coleção, categoria ou a vitrine principal das peças selecionadas.</p>
-                        <label class="field"><span>Vincular à coleção</span><select id="bulk-collection-target"></select></label>
-                        <button id="assign-selected-collection" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-layer-group"></i> Aplicar coleção</button>
-                        <label class="field"><span>Categoria</span><select id="bulk-category-target"><option value="">Escolha uma categoria</option></select></label>
-                        <button id="apply-selected-category" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-folder"></i> Aplicar categoria</button>
-                        <label class="field"><span>Vitrine</span><select id="bulk-segment-target"><option value="mesa">Mesa posta</option><option value="moda">Roupas</option></select></label>
-                        <button id="apply-selected-segment" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-store"></i> Mover para vitrine</button>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-folder-tree"></i></span><div><span class="panel-kicker">Organização</span><h3>Classificar peças</h3></div></div><p>Altere coleção, categoria ou a vitrine principal das peças selecionadas.</p><label class="field"><span>Vincular à coleção</span><select id="bulk-collection-target"></select></label><button id="assign-selected-collection" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-layer-group"></i> Aplicar coleção</button><label class="field"><span>Categoria</span><select id="bulk-category-target"><option value="">Escolha uma categoria</option></select></label><button id="apply-selected-category" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-folder"></i> Aplicar categoria</button><label class="field"><span>Vitrine</span><select id="bulk-segment-target"><option value="mesa">Mesa posta</option><option value="moda">Roupas</option></select></label><button id="apply-selected-segment" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-store"></i> Mover para vitrine</button>
                     </article>
 
                     <article class="operation-card routine-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span><div><span class="panel-kicker">Rotinas prontas</span><h3>Manutenção rápida</h3></div></div>
-                        <p>Ferramentas seguras para revisão e auditoria do catálogo.</p>
-                        <div class="routine-list">
-                            <button onclick="runScript('syncContadores')" data-operation-button type="button"><i class="fa-solid fa-rotate"></i><span><strong>Atualizar catálogo</strong><small>Recarrega produtos e coleções</small></span></button>
-                            <button onclick="runScript('corrigirPrecos')" data-operation-button type="button"><i class="fa-solid fa-screwdriver-wrench"></i><span><strong>Verificar preços</strong><small>Corrige somente valores inválidos</small></span></button>
-                            <button onclick="runScript('detectarDuplicados')" data-operation-button type="button"><i class="fa-solid fa-clone"></i><span><strong>Procurar duplicados</strong><small>Compara peças pelo nome</small></span></button>
-                            <button onclick="runScript('backupCompleto')" data-operation-button type="button"><i class="fa-solid fa-download"></i><span><strong>Backup completo</strong><small>Baixa um JSON administrativo</small></span></button>
-                            <button onclick="runScript('logsAlteracoes')" data-operation-button type="button"><i class="fa-solid fa-clock-rotate-left"></i><span><strong>Logs recentes</strong><small>Mostra as últimas operações</small></span></button>
-                            <button onclick="runScript('historicoPrecos')" data-operation-button type="button"><i class="fa-solid fa-chart-line"></i><span><strong>Histórico de preços</strong><small>Consulta alterações registradas</small></span></button>
-                        </div>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span><div><span class="panel-kicker">Rotinas prontas</span><h3>Manutenção rápida</h3></div></div><p>Ferramentas seguras para revisão e auditoria do catálogo.</p><div class="routine-list"><button onclick="runScript('syncContadores')" data-operation-button type="button"><i class="fa-solid fa-rotate"></i><span><strong>Atualizar catálogo</strong><small>Recarrega produtos e coleções</small></span></button><button onclick="runScript('corrigirPrecos')" data-operation-button type="button"><i class="fa-solid fa-screwdriver-wrench"></i><span><strong>Verificar preços</strong><small>Corrige somente valores inválidos</small></span></button><button onclick="runScript('detectarDuplicados')" data-operation-button type="button"><i class="fa-solid fa-clone"></i><span><strong>Procurar duplicados</strong><small>Compara peças pelo nome</small></span></button><button onclick="runScript('backupCompleto')" data-operation-button type="button"><i class="fa-solid fa-download"></i><span><strong>Backup completo</strong><small>Baixa um JSON administrativo</small></span></button><button onclick="runScript('logsAlteracoes')" data-operation-button type="button"><i class="fa-solid fa-clock-rotate-left"></i><span><strong>Logs recentes</strong><small>Mostra as últimas operações</small></span></button><button onclick="runScript('historicoPrecos')" data-operation-button type="button"><i class="fa-solid fa-chart-line"></i><span><strong>Histórico de preços</strong><small>Consulta alterações registradas</small></span></button></div>
                     </article>
                 </div>
 
-                <article id="operation-results-panel" class="panel results-panel">
-                    <div class="panel-heading compact-heading"><div><span class="panel-kicker">Resultado das rotinas</span><h3>Diagnósticos e auditoria</h3></div><button id="open-results-panel" type="button" class="round-button"><i class="fa-solid fa-arrow-down"></i></button></div>
-                    <div id="operation-results" class="operation-results"><div class="empty-results">Execute uma rotina de diagnóstico para ver os resultados aqui.</div></div>
-                </article>
+                <article id="operation-results-panel" class="panel results-panel"><div class="panel-heading compact-heading"><div><span class="panel-kicker">Resultado das rotinas</span><h3>Diagnósticos e auditoria</h3></div><button id="open-results-panel" type="button" class="round-button"><i class="fa-solid fa-arrow-down"></i></button></div><div id="operation-results" class="operation-results"><div class="empty-results">Execute uma rotina de diagnóstico para ver os resultados aqui.</div></div></article>
             </section>
 
             <aside class="console-column">
-                <article class="panel console-panel">
-                    <div class="console-heading"><div><span class="panel-kicker">Atividade</span><h3>Console</h3></div><button onclick="limparConsole()" type="button" class="text-button">Limpar</button></div>
-                    <div id="console-output" class="console-box" aria-live="polite"><div class="console-placeholder">// Aguardando comandos...</div></div>
-                    <div class="console-note"><i class="fa-solid fa-shield-halved"></i><span>Somente rotinas administrativas pré-definidas estão habilitadas. O executor de código livre permanece desativado.</span></div>
-                </article>
-
-                <article class="panel checklist-panel">
-                    <span class="panel-kicker">Antes de lançar</span><h3>Checklist de coleção</h3>
-                    <ul>
-                        <li><i class="fa-regular fa-circle-check"></i><span>Preço e desconto revisados</span></li>
-                        <li><i class="fa-regular fa-circle-check"></i><span>Fotos e cores cadastradas</span></li>
-                        <li><i class="fa-regular fa-circle-check"></i><span>Peças vinculadas à coleção</span></li>
-                        <li><i class="fa-regular fa-circle-check"></i><span>Estoque/status conferidos</span></li>
-                        <li><i class="fa-regular fa-circle-check"></i><span>Coleção publicada por último</span></li>
-                    </ul>
-                    <a href="colecoes.html" class="btn btn-secondary full-width"><i class="fa-solid fa-layer-group"></i> Abrir editor de coleções</a>
-                </article>
+                <article class="panel console-panel"><div class="console-heading"><div><span class="panel-kicker">Atividade</span><h3>Console</h3></div><button onclick="limparConsole()" type="button" class="text-button">Limpar</button></div><div id="console-output" class="console-box" aria-live="polite"><div class="console-placeholder">// Aguardando comandos...</div></div><div class="console-note"><i class="fa-solid fa-shield-halved"></i><span>Somente rotinas administrativas pré-definidas estão habilitadas. O executor de código livre permanece desativado.</span></div></article>
+                <article class="panel checklist-panel"><span class="panel-kicker">Antes de lançar</span><h3>Checklist de coleção</h3><ul><li><i class="fa-regular fa-circle-check"></i><span>Preço e desconto revisados</span></li><li><i class="fa-regular fa-circle-check"></i><span>Fotos e cores cadastradas</span></li><li><i class="fa-regular fa-circle-check"></i><span>Peças vinculadas à coleção</span></li><li><i class="fa-regular fa-circle-check"></i><span>Estoque/status conferidos</span></li><li><i class="fa-regular fa-circle-check"></i><span>Coleção publicada por último</span></li></ul><a href="colecoes.html" class="btn btn-secondary full-width"><i class="fa-solid fa-layer-group"></i> Abrir editor de coleções</a></article>
             </aside>
         </div>
     </main>
