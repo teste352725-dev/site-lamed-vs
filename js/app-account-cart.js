@@ -189,3 +189,100 @@ window.clearAccountCartState = async function() {
 
     return [];
 };
+
+// Mantem a vitrine sincronizada com alteracoes administrativas de preco/desconto.
+let storefrontProductsRealtimeUnsubscribe = null;
+let storefrontProductsRealtimeStarted = false;
+
+function buildStorefrontProductsSignature(items) {
+    return (Array.isArray(items) ? items : [])
+        .map((item) => [
+            item?.id || '',
+            Number(item?.preco || 0),
+            Number(item?.desconto || 0),
+            String(item?.status || ''),
+            Number(item?.ordem || 0),
+            String(item?.categoria || ''),
+            String(item?.colecaoId || '')
+        ].join('|'))
+        .sort()
+        .join('::');
+}
+
+function refreshVisibleStorefrontAfterProductsSync() {
+    if (typeof renderSidebarCategoryLinks === 'function') renderSidebarCategoryLinks();
+    if (typeof renderHomeShopFilters === 'function') renderHomeShopFilters();
+    if (typeof renderHomeShopGrid === 'function') renderHomeShopGrid();
+    if (typeof renderizarSecoesColecoes === 'function') renderizarSecoesColecoes();
+    if (typeof popularPreviewColecao === 'function') popularPreviewColecao();
+
+    const hash = String(window.location.hash || '');
+    if (hash === '#loja' && typeof renderShopPage === 'function') {
+        renderShopPage(typeof currentShopFilter === 'string' ? currentShopFilter : 'all');
+        return;
+    }
+
+    if (hash.startsWith('#/colecao/') && typeof renderizarGridColecao === 'function') {
+        renderizarGridColecao(hash.split('/')[2]);
+        return;
+    }
+
+    if (hash.startsWith('#/categoria/') && typeof renderShopPage === 'function') {
+        renderShopPage(hash.split('/')[2]);
+        return;
+    }
+
+    if (hash.startsWith('#/produto/')) {
+        const productId = hash.split('/')[2];
+        const syncedProduct = Array.isArray(products)
+            ? products.find((item) => item.id === productId)
+            : null;
+
+        if (syncedProduct) {
+            currentProduct = syncedProduct;
+            const priceElement = document.getElementById('detail-price');
+            if (priceElement && typeof formatarReal === 'function') {
+                const discountedPrice = Number(syncedProduct.preco || 0) * (1 - Number(syncedProduct.desconto || 0) / 100);
+                priceElement.innerHTML = `
+                    <span class="text-3xl font-light text-[--cor-marrom-cta]">${formatarReal(discountedPrice)}</span>
+                    ${Number(syncedProduct.desconto || 0) > 0 ? `<span class="ml-2 text-lg text-gray-400 line-through">${formatarReal(syncedProduct.preco)}</span>` : ''}
+                `;
+            }
+        }
+    }
+}
+
+function startStorefrontProductsRealtimeSync() {
+    if (storefrontProductsRealtimeStarted) return;
+    if (typeof db === 'undefined' || typeof products === 'undefined' || !db?.collection) return;
+
+    storefrontProductsRealtimeStarted = true;
+    let previousSignature = buildStorefrontProductsSignature(products);
+
+    storefrontProductsRealtimeUnsubscribe = db.collection('pecas').onSnapshot((snapshot) => {
+        const nextProducts = snapshot.docs
+            .map((document) => ({
+                id: document.id,
+                ...document.data(),
+                preco: parseFloat(document.data()?.preco || 0),
+                desconto: Number(document.data()?.desconto || 0)
+            }))
+            .filter((product) => String(product?.status || '').trim().toLowerCase() !== 'inactive');
+
+        const nextSignature = buildStorefrontProductsSignature(nextProducts);
+        if (nextSignature === previousSignature) return;
+
+        previousSignature = nextSignature;
+        products = nextProducts;
+        refreshVisibleStorefrontAfterProductsSync();
+        console.info('[storefront.sync] Catalogo atualizado em tempo real.');
+    }, (error) => {
+        storefrontProductsRealtimeStarted = false;
+        storefrontProductsRealtimeUnsubscribe = null;
+        console.warn('[storefront.sync] Nao foi possivel acompanhar alteracoes do catalogo.', error);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.setTimeout(startStorefrontProductsRealtimeSync, 0);
+});
