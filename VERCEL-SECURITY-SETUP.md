@@ -10,6 +10,10 @@ Obrigatorias para pedidos via backend:
 - `FIREBASE_ADMIN_SERVICE_ACCOUNT_BASE64`
 - `FCM_WEB_PUSH_PUBLIC_KEY` se for ativar notificacoes web
 
+Automacoes agendadas da loja:
+
+- `CRON_SECRET` — obrigatoria para o Cron da Vercel chamar `/api/automation/run` com seguranca. O projeto agenda essa rota de hora em hora e processa retiradas de desconto e janelas de colecao que ja venceram.
+
 Alternativa ao Base64:
 
 - `FIREBASE_ADMIN_PROJECT_ID`
@@ -55,6 +59,8 @@ Esperado:
 - `api/status` nao deve abrir sem token
 - `ordersConfigured` deve ficar `true`
 - `firebaseAdmin.configured` deve ficar `true`
+
+Para as automacoes, confirme no painel da Vercel que `CRON_SECRET` existe antes de depender da execucao automatica. O botao **Executar agora** no admin usa a sessao do administrador e continua funcionando independentemente do cron.
 
 ## 4. Bucket compartilhado
 
