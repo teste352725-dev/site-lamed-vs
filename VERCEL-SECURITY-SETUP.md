@@ -8,7 +8,6 @@ Obrigatorias para pedidos via backend:
 
 - `DIAGNOSTIC_TOKEN`
 - `FIREBASE_ADMIN_SERVICE_ACCOUNT_BASE64`
-- `FCM_WEB_PUSH_PUBLIC_KEY` se for ativar notificacoes web
 
 Automacoes agendadas da loja:
 
@@ -29,7 +28,7 @@ Se um dia o frete automatico voltar:
 - `SHIPPING_PROVIDER`
 - `CORREIOS_*` ou `MELHOR_ENVIO_*`
 
-Notificacoes web:
+Notificacoes web, se ativadas:
 
 - `FCM_WEB_PUSH_PUBLIC_KEY`
 - `WEB_PUSH_NOTIFICATION_ICON_URL`
