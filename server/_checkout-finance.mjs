@@ -1,4 +1,4 @@
-export const PIX_PRODUCT_DISCOUNT_BASIS_POINTS = 500;
+export const PIX_PRODUCT_DISCOUNT_BASIS_POINTS = 0;
 
 function clampInteger(value, minimum, maximum) {
   const numeric = Number(value);
@@ -32,18 +32,10 @@ export function getCatalogUnitPriceCents(product) {
   return applyDiscountBasisPoints(listPriceCents, catalogDiscountBasisPoints);
 }
 
-export function isSafePixProductDiscountEnabled(env = process.env) {
-  const discountEnabled = String(env?.INFINITEPAY_PIX_PRODUCT_DISCOUNT_ENABLED || "")
-    .trim()
-    .toLowerCase() === "true";
-  const pixOnlyCheckoutConfirmed = String(env?.INFINITEPAY_CHECKOUT_PIX_ONLY || "")
-    .trim()
-    .toLowerCase() === "true";
-
-  // A API de links da InfinitePay nao documenta um parametro por link capaz de
-  // impedir que a cliente troque Pix por cartao. O desconto so pode ser ligado
-  // quando a conta/checkout inteiro estiver operacionalmente limitado a Pix.
-  return discountEnabled && pixOnlyCheckoutConfirmed;
+export function isSafePixProductDiscountEnabled() {
+  // Desconto adicional por forma de pagamento foi retirado.
+  // Promocoes do catalogo continuam sendo calculadas pelo campo `desconto` da peca.
+  return false;
 }
 
 export function calculateCheckoutAmounts({
@@ -62,9 +54,9 @@ export function calculateCheckoutAmounts({
       0,
       Number.MAX_SAFE_INTEGER
     );
-    const chargedUnitPriceCents = applyPixProductDiscount
-      ? applyDiscountBasisPoints(unitPriceCents, PIX_PRODUCT_DISCOUNT_BASIS_POINTS)
-      : unitPriceCents;
+    // Mantem o parametro por compatibilidade com clientes antigos, mas nao aplica
+    // abatimento extra por Pix. O valor cobrado e sempre o preco do catalogo.
+    const chargedUnitPriceCents = unitPriceCents;
 
     productSubtotalCents += unitPriceCents * quantity;
     productChargeCents += chargedUnitPriceCents * quantity;
@@ -79,7 +71,7 @@ export function calculateCheckoutAmounts({
     };
   });
 
-  const pixDiscountCents = productSubtotalCents - productChargeCents;
+  const pixDiscountCents = 0;
   const totalCents = productChargeCents + safeShippingCents;
 
   if (!Number.isSafeInteger(totalCents)) {
