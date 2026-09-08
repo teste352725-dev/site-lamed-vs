@@ -11,7 +11,7 @@ Obrigatorias para pedidos via backend:
 
 Automacoes agendadas da loja:
 
-- `CRON_SECRET` — obrigatoria para o Cron da Vercel chamar `/api/automation/run` com seguranca. O projeto agenda essa rota de hora em hora e processa retiradas de desconto e janelas de colecao que ja venceram. A Vercel envia esse valor no header `Authorization: Bearer <CRON_SECRET>` em cada execucao do Cron.
+- `CRON_SECRET` — obrigatoria para o Cron da Vercel chamar `/api/automation/run` com seguranca. No plano Hobby, o projeto agenda essa rota uma vez por dia (`0 3 * * *`, aproximadamente meia-noite no horario de Brasilia) e processa retiradas de desconto e janelas de colecao que ja venceram. A Vercel envia esse valor no header `Authorization: Bearer <CRON_SECRET>` em cada execucao do Cron.
 
 Alternativa ao Base64:
 
@@ -59,7 +59,7 @@ Esperado:
 - `ordersConfigured` deve ficar `true`
 - `firebaseAdmin.configured` deve ficar `true`
 
-Para as automacoes, confirme no painel da Vercel que `CRON_SECRET` existe antes de depender da execucao automatica. O botao **Executar agora** no admin usa a sessao do administrador e continua funcionando independentemente do cron.
+Para as automacoes, confirme no painel da Vercel que `CRON_SECRET` existe antes de depender da execucao automatica. No Hobby, a varredura automatica e diaria; para cumprir um horario especifico, use o botao **Executar agora** no admin. Esse botao usa a sessao do administrador e nao depende do Cron.
 
 ## 4. Bucket compartilhado
 
