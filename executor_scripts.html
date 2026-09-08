@@ -1,877 +1,189 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scripts de manutenção | Painel administrativo</title>
+    <title>Central de Operações | Laméd</title>
     <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDK -->
+    <link rel="stylesheet" href="css/executor-scripts.css?v=20260908-command-center">
+    <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
+
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
-    <script src="js/admin-native-shell.js?v=20260818-team-access" defer></script>
-
-        <link rel="stylesheet" href="css/executor-scripts.css">
-        <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
+    <script src="js/admin-native-shell.js?v=20260908-command-center" defer></script>
+    <script src="js/executor-operations.js?v=20260908-command-center" defer></script>
 </head>
-<body class="min-h-screen pb-20">
-    <!--
-      MAPA DE MANUTENCAO:
-      - CSS desta pagina: css/executor-scripts.css
-      - JS local ligado a esta pagina: js/admin-embedded-mode.js
-      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
-      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
-      - Sem ids mapeados automaticamente. Verifique classes e data-* antes de remover algo do layout.
-    -->
-
-
-    <!-- Cabeçalho -->
-    <header class="bg-white shadow-sm sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <a href="dashboard.html" class="text-gray-500"><i class="fa-solid fa-arrow-left"></i></a>
-            <h1 class="font-allura text-3xl text-gray-800">Executor de Scripts</h1>
+<body class="executor-page">
+    <header class="executor-topbar">
+        <a href="dashboard.html" class="topbar-back" aria-label="Voltar ao painel"><i class="fa-solid fa-arrow-left"></i></a>
+        <div>
+            <span class="topbar-kicker">Painel administrativo</span>
+            <h1>Central de Operações</h1>
         </div>
-        <div class="flex gap-2">
-            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-bold border border-red-200">
-                <i class="fa-solid fa-lock mr-1"></i>Área sensível
-            </span>
+        <div class="topbar-actions">
+            <span class="security-badge"><i class="fa-solid fa-shield-halved"></i> Admin</span>
+            <a href="index.html" target="_blank" rel="noopener" class="icon-action" aria-label="Abrir site público"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <!-- Coluna Esquerda: Scripts Prontos -->
-        <div class="lg:col-span-2 space-y-6">
-            
-            <!-- Manutenção de rotina -->
-            <div class="card">
-                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h2 class="font-bold text-gray-700"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>Manutenção de rotina</h2>
-                    <span class="text-xs text-gray-500">Uso seguro</span>
-                </div>
-                
-                <div class="script-item">
-                    <div class="flex items-center gap-3">
-                        <div class="script-icon bg-blue-100 text-blue-600"><i class="fa-solid fa-broom"></i></div>
-                        <div>
-                            <h3 class="font-medium text-gray-800">Limpar Carrinhos Antigos</h3>
-                            <p class="text-xs text-gray-500">Remove carrinhos abandonados do navegador.</p>
-                        </div>
-                    </div>
-                    <button onclick="runScript('limparCarrinhos')" class="btn btn-secondary text-xs">Executar</button>
-                </div>
-
-                <div class="script-item">
-                    <div class="flex items-center gap-3">
-                        <div class="script-icon bg-purple-100 text-purple-600"><i class="fa-solid fa-sync"></i></div>
-                        <div>
-                            <h3 class="font-medium text-gray-800">Sincronizar Contadores</h3>
-                            <p class="text-xs text-gray-500">Recalcula o total de produtos e coleções ativas.</p>
-                        </div>
-                    </div>
-                    <button onclick="runScript('syncContadores')" class="btn btn-secondary text-xs">Executar</button>
-                </div>
-
-                <div class="script-item">
-                    <div class="flex items-center gap-3">
-                        <div class="script-icon bg-green-100 text-green-600"><i class="fa-solid fa-tags"></i></div>
-                        <div>
-                            <h3 class="font-medium text-gray-800">Corrigir preços inválidos</h3>
-                            <p class="text-xs text-gray-500">Define preço 0,00 para produtos com preço nulo ou negativo.</p>
-                        </div>
-                    </div>
-                    <button onclick="runScript('corrigirPrecos')" class="btn btn-secondary text-xs">Executar</button>
-                </div>
-
-                <div class="script-item">
-                    <div class="flex items-center gap-3">
-                        <div class="script-icon bg-amber-100 text-amber-700"><i class="fa-solid fa-percent"></i></div>
-                        <div>
-                            <h3 class="font-medium text-gray-800">Remover Todos os Descontos</h3>
-                            <p class="text-xs text-gray-500">Zera o campo <code>desconto</code> de todos os produtos com promoção ativa.</p>
-                        </div>
-                    </div>
-                    <button onclick="runScript('removerDescontosProdutos')" class="btn btn-secondary text-xs">Executar</button>
-                </div>
-
-                <div class="script-item">
-                    <div class="flex items-center gap-3">
-                        <div class="script-icon bg-teal-100 text-teal-600"><i class="fa-solid fa-download"></i></div>
-                        <div>
-                            <h3 class="font-medium text-gray-800">Backup de segurança</h3>
-                            <p class="text-xs text-gray-500">Baixa um arquivo JSON com todos os produtos e pedidos.</p>
-                        </div>
-                    </div>
-                    <button onclick="runScript('backupDados')" class="btn btn-secondary text-xs">Executar</button>
+    <main class="operations-shell">
+        <section class="operations-hero">
+            <div class="hero-copy">
+                <span class="eyebrow">Operação do dia a dia</span>
+                <h2>Prepare, publique e ajuste a loja sem editar peça por peça.</h2>
+                <p>Selecione produtos visualmente e aplique mudanças em massa. As rotinas críticas continuam protegidas e todas as operações administrativas passam pelo Firestore.</p>
+                <div class="hero-links">
+                    <a href="produtos.html" class="hero-link"><i class="fa-solid fa-box-open"></i> Produtos</a>
+                    <a href="colecoes.html" class="hero-link"><i class="fa-solid fa-layer-group"></i> Coleções</a>
+                    <a href="calculadora.html" class="hero-link"><i class="fa-solid fa-ruler-combined"></i> Precificação</a>
                 </div>
             </div>
-
-            <!-- Central de Operações -->
-            <div class="card">
-                <div class="p-4 border-b bg-amber-50 flex justify-between items-center">
-                    <h2 class="font-bold text-amber-900"><i class="fa-solid fa-sliders mr-2"></i>Central de Operações</h2>
-                    <span class="text-xs text-amber-700 font-bold">Edição em massa</span>
-                </div>
-
-                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b">
-                    <div class="rounded-lg border border-amber-100 bg-white p-4">
-                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-percent text-amber-600 mr-2"></i>Desconto global</h3>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Percentual (%)</label>
-                        <input id="bulk-discount-percent" type="number" min="0" max="90" value="10" class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-3">
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="runScript('aplicarDescontoGlobal')" class="btn btn-primary text-xs">Aplicar</button>
-                            <button onclick="runScript('removerDescontosProdutos')" class="btn btn-secondary text-xs">Remover todos</button>
-                        </div>
-                    </div>
-
-                    <div class="rounded-lg border border-blue-100 bg-white p-4">
-                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-droplet text-blue-600 mr-2"></i>Adicionar cor em peças</h3>
-                        <input id="bulk-color-name" type="text" placeholder="Nome da cor" class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-2">
-                        <div class="flex gap-2 mb-3">
-                            <input id="bulk-color-hex" type="color" value="#000000" class="h-10 w-14 rounded border border-gray-200">
-                            <input id="bulk-color-hex-text" type="text" value="#000000" class="flex-1 rounded border border-gray-200 px-3 py-2 text-sm">
-                        </div>
-                        <select id="bulk-product-select" multiple size="6" class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-3"></select>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="selecionarProdutosFiltrados()" class="btn btn-secondary text-xs">Selecionar busca</button>
-                            <button onclick="runScript('adicionarCorProdutos')" class="btn btn-primary text-xs">Adicionar cor</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b">
-                    <div class="rounded-lg border border-gray-100 bg-white p-4">
-                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-magnifying-glass text-gray-600 mr-2"></i>Busca avançada</h3>
-                        <input id="advanced-search-input" type="text" placeholder="Buscar por nome, categoria, coleção, tag..." class="w-full rounded border border-gray-200 px-3 py-2 text-sm mb-3">
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="runScript('buscarProdutos')" class="btn btn-secondary text-xs">Buscar</button>
-                            <button onclick="carregarProdutosOperacao()" class="btn btn-secondary text-xs">Recarregar produtos</button>
-                        </div>
-                    </div>
-
-                    <div class="rounded-lg border border-gray-100 bg-white p-4">
-                        <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-shield-halved text-teal-600 mr-2"></i>Auditoria e backups</h3>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="runScript('backupCompleto')" class="btn btn-secondary text-xs">Backup completo</button>
-                            <button onclick="runScript('baixarArquivos')" class="btn btn-secondary text-xs">Arquivos/imagens</button>
-                            <button onclick="runScript('detectarDuplicados')" class="btn btn-secondary text-xs">Duplicados</button>
-                            <button onclick="runScript('logsAlteracoes')" class="btn btn-secondary text-xs">Logs</button>
-                            <button onclick="runScript('historicoPrecos')" class="btn btn-secondary text-xs">Histórico preços</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="operation-results" class="p-4 text-sm text-gray-600">
-                    <p class="text-gray-400">Use a busca ou rode uma operação para ver resultados aqui.</p>
-                </div>
+            <div class="hero-status">
+                <span class="status-dot"></span>
+                <div><strong id="operation-busy-label">Pronto</strong><span>Central conectada ao catálogo</span></div>
+                <button id="refresh-operations-data" type="button" class="round-button" title="Atualizar dados"><i class="fa-solid fa-rotate"></i></button>
             </div>
+        </section>
 
-            <!-- Ações de Emergência -->
-            <div class="card border-red-200">
-                <div class="p-4 border-b bg-red-50 flex justify-between items-center">
-                    <h2 class="font-bold text-red-800"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Ações de emergência</h2>
-                    <span class="text-xs text-red-600 font-bold">Cuidado!</span>
-                </div>
+        <section class="stats-grid" aria-label="Resumo do catálogo">
+            <article class="stat-card"><span class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></span><div><strong id="stat-products">—</strong><span>Produtos</span></div></article>
+            <article class="stat-card"><span class="stat-icon"><i class="fa-solid fa-eye"></i></span><div><strong id="stat-active">—</strong><span>Ativos na loja</span></div></article>
+            <article class="stat-card"><span class="stat-icon"><i class="fa-solid fa-tags"></i></span><div><strong id="stat-discounted">—</strong><span>Em promoção</span></div></article>
+            <article class="stat-card"><span class="stat-icon"><i class="fa-solid fa-layer-group"></i></span><div><strong id="stat-collections">—</strong><span>Coleções visíveis</span></div></article>
+        </section>
 
-                <div class="script-item hover:bg-red-50">
-                    <div class="flex items-center gap-3">
-                        <div class="script-icon bg-red-100 text-red-600"><i class="fa-solid fa-box-open"></i></div>
-                        <div>
-                            <h3 class="font-medium text-gray-800">Zerar Estoque de Produto</h3>
-                            <p class="text-xs text-gray-500">Define estoque = 0 para um produto específico.</p>
+        <div class="operations-layout">
+            <section class="workspace-column">
+                <article class="panel catalog-panel">
+                    <div class="panel-heading">
+                        <div><span class="panel-kicker">Catálogo</span><h3>Selecione as peças</h3><p>Use filtros para montar o grupo que será alterado.</p></div>
+                        <div class="selection-summary"><strong id="selected-products-count">0 selecionadas</strong><span id="selected-products-value">R$ 0,00</span></div>
+                    </div>
+
+                    <div class="filter-grid">
+                        <label class="field field-search"><span>Buscar</span><div class="input-with-icon"><i class="fa-solid fa-magnifying-glass"></i><input id="product-search" type="search" placeholder="Nome, cor, categoria, coleção..."></div></label>
+                        <label class="field"><span>Status</span><select id="filter-status"><option value="all">Todos</option><option value="active">Ativos</option><option value="inactive">Pausados</option></select></label>
+                        <label class="field"><span>Coleção</span><select id="filter-collection"><option value="all">Todas as coleções</option></select></label>
+                        <label class="field"><span>Categoria</span><select id="filter-category"><option value="all">Todas as categorias</option></select></label>
+                    </div>
+
+                    <div class="catalog-toolbar">
+                        <div class="catalog-toolbar-left"><span id="filtered-products-count">0 resultados</span><label class="toggle-label"><input id="filter-selected-only" type="checkbox"><span>Somente selecionadas</span></label></div>
+                        <div class="catalog-toolbar-actions"><button id="select-filtered-products" type="button" class="text-button">Selecionar filtradas</button><button id="clear-product-selection" type="button" class="text-button">Limpar seleção</button></div>
+                    </div>
+
+                    <div id="product-operation-list" class="product-operation-list" aria-live="polite"></div>
+                    <select id="bulk-product-select" multiple hidden aria-hidden="true"></select>
+                </article>
+
+                <div class="action-grid">
+                    <article class="operation-card launch-card">
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-rocket"></i></span><div><span class="panel-kicker">Lançamento</span><h3>Preparar coleção</h3></div></div>
+                        <p>Monte a coleção, vincule as peças escolhidas e publique tudo de uma vez.</p>
+                        <label class="field"><span>Coleção</span><select id="launch-collection-target"></select></label>
+                        <div id="launch-collection-summary" class="launch-summary"><span>Escolha uma coleção.</span></div>
+                        <div class="operation-actions stack-actions">
+                            <button id="assign-selection-launch" data-operation-button type="button" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Vincular selecionadas</button>
+                            <button id="publish-launch-collection" data-operation-button type="button" class="btn btn-primary"><i class="fa-solid fa-rocket"></i> Publicar coleção + peças</button>
+                            <button id="hide-launch-collection" data-operation-button type="button" class="btn btn-ghost"><i class="fa-regular fa-eye-slash"></i> Ocultar coleção</button>
                         </div>
-                    </div>
-                    <button onclick="abrirModalPrompt('zerarEstoque')" class="btn btn-warning text-xs">Configurar</button>
-                </div>
+                    </article>
 
-                <div class="script-item hover:bg-red-50">
-                    <div class="flex items-center gap-3">
-                        <div class="script-icon bg-red-600 text-white"><i class="fa-solid fa-bomb"></i></div>
-                        <div>
-                            <h3 class="font-medium text-red-700">Restauração de fábrica (limpar tudo)</h3>
-                            <p class="text-xs text-red-500">Apaga TODOS os produtos, pedidos e clientes.</p>
+                    <article class="operation-card visibility-card">
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-eye"></i></span><div><span class="panel-kicker">Vitrine</span><h3>Visibilidade das peças</h3></div></div>
+                        <p>Publique ou pause somente as peças selecionadas, sem alterar a coleção inteira.</p>
+                        <div class="operation-actions split-actions">
+                            <button id="publish-selected" data-operation-button type="button" class="btn btn-primary"><i class="fa-solid fa-eye"></i> Publicar</button>
+                            <button id="pause-selected" data-operation-button type="button" class="btn btn-secondary"><i class="fa-solid fa-pause"></i> Pausar</button>
                         </div>
-                    </div>
-                    <button onclick="confirmarPerigo('limparTudo')" class="btn btn-danger text-xs">Executar</button>
-                </div>
-            </div>
+                        <div class="micro-note"><i class="fa-solid fa-circle-info"></i> Status <code>active</code> deixa a peça disponível na vitrine.</div>
+                    </article>
 
-            <!-- NOVO: EDITOR DE SCRIPT PERSONALIZADO -->
-            <div class="card">
-                <div class="p-4 border-b bg-gray-900 flex justify-between items-center rounded-t-lg">
-                    <h2 class="font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-code"></i> Editor de Script Personalizado
-                    </h2>
-                    <div class="flex gap-2">
-                        <button onclick="carregarRascunho()" class="text-xs text-gray-400 hover:text-white">Carregar Rascunho</button>
-                        <button onclick="salvarRascunho()" class="text-xs text-gray-400 hover:text-white">Salvar Rascunho</button>
-                    </div>
-                </div>
-                <div class="p-0">
-                    <textarea id="custom-script-input" class="code-editor border-0 focus:ring-0" spellcheck="false" readonly aria-disabled="true"
-placeholder="// O executor personalizado está desativado por segurança.
-// Use apenas as rotinas administrativas prontas desta página.
+                    <article class="operation-card discount-card">
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-percent"></i></span><div><span class="panel-kicker">Campanhas</span><h3>Descontos</h3></div></div>
+                        <p>Aplique promoção nas selecionadas ou em todo o catálogo.</p>
+                        <div class="dual-fields">
+                            <label class="field"><span>Selecionadas (%)</span><input id="selected-discount-percent" type="number" min="0" max="90" value="10"></label>
+                            <button id="apply-selected-discount" data-operation-button type="button" class="btn btn-secondary align-bottom"><i class="fa-solid fa-tags"></i> Aplicar</button>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="dual-fields">
+                            <label class="field"><span>Catálogo inteiro (%)</span><input id="bulk-discount-percent" type="number" min="0" max="90" value="15"></label>
+                            <button onclick="runScript('aplicarDescontoGlobal')" data-operation-button type="button" class="btn btn-primary align-bottom"><i class="fa-solid fa-bolt"></i> Aplicar global</button>
+                        </div>
+                        <button id="remove-all-discounts" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-eraser"></i> Remover todos os descontos</button>
+                    </article>
 
-// Exemplo: Listar todos os produtos
-// (async () => {
-//    const snap = await getDocs(collection(db, 'pecas'));
-//    log('Total de produtos: ' + snap.size);
-//    snap.forEach(doc => log(doc.data().nome));
-// })();"></textarea>
-                </div>
-                <div class="p-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
-                    <button onclick="limparEditor()" class="btn btn-secondary text-xs">Limpar</button>
-                    <button onclick="executarScriptPersonalizado()" class="btn btn-primary text-xs opacity-60 cursor-not-allowed" disabled>
-                        <i class="fa-solid fa-shield-halved mr-2"></i>Execução desativada
-                    </button>
-                </div>
-            </div>
+                    <article class="operation-card color-card">
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-palette"></i></span><div><span class="panel-kicker">Variantes</span><h3>Estúdio de cores</h3></div></div>
+                        <p>Adicione uma cor às peças selecionadas sem abrir cada cadastro.</p>
+                        <label class="field"><span>Nome da cor</span><input id="bulk-color-name" type="text" placeholder="Ex.: Verde oliva"></label>
+                        <div class="color-input-row">
+                            <span id="color-preview" class="color-preview" style="--swatch:#6B705C"></span>
+                            <input id="bulk-color-hex" type="color" value="#6b705c" aria-label="Escolher cor">
+                            <label class="field compact-field"><span>HEX</span><input id="bulk-color-hex-text" type="text" value="#6B705C" maxlength="7"></label>
+                        </div>
+                        <button id="add-color-selected" data-operation-button type="button" class="btn btn-primary full-width"><i class="fa-solid fa-plus"></i> Adicionar às selecionadas</button>
+                        <div class="divider"></div>
+                        <label class="field"><span>Remover cor pelo nome</span><input id="bulk-color-remove-name" type="text" placeholder="Ex.: Verde oliva"></label>
+                        <button id="remove-color-selected" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-minus"></i> Remover das selecionadas</button>
+                    </article>
 
+                    <article class="operation-card organize-card">
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-folder-tree"></i></span><div><span class="panel-kicker">Organização</span><h3>Classificar peças</h3></div></div>
+                        <p>Altere coleção, categoria ou a vitrine principal das peças selecionadas.</p>
+                        <label class="field"><span>Vincular à coleção</span><select id="bulk-collection-target"></select></label>
+                        <button id="assign-selected-collection" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-layer-group"></i> Aplicar coleção</button>
+                        <label class="field"><span>Categoria</span><select id="bulk-category-target"><option value="">Escolha uma categoria</option></select></label>
+                        <button id="apply-selected-category" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-folder"></i> Aplicar categoria</button>
+                        <label class="field"><span>Vitrine</span><select id="bulk-segment-target"><option value="mesa">Mesa posta</option><option value="moda">Roupas</option></select></label>
+                        <button id="apply-selected-segment" data-operation-button type="button" class="btn btn-secondary full-width"><i class="fa-solid fa-store"></i> Mover para vitrine</button>
+                    </article>
+
+                    <article class="operation-card routine-card">
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span><div><span class="panel-kicker">Rotinas prontas</span><h3>Manutenção rápida</h3></div></div>
+                        <p>Ferramentas seguras para revisão e auditoria do catálogo.</p>
+                        <div class="routine-list">
+                            <button onclick="runScript('syncContadores')" data-operation-button type="button"><i class="fa-solid fa-rotate"></i><span><strong>Atualizar catálogo</strong><small>Recarrega produtos e coleções</small></span></button>
+                            <button onclick="runScript('corrigirPrecos')" data-operation-button type="button"><i class="fa-solid fa-screwdriver-wrench"></i><span><strong>Verificar preços</strong><small>Corrige somente valores inválidos</small></span></button>
+                            <button onclick="runScript('detectarDuplicados')" data-operation-button type="button"><i class="fa-solid fa-clone"></i><span><strong>Procurar duplicados</strong><small>Compara peças pelo nome</small></span></button>
+                            <button onclick="runScript('backupCompleto')" data-operation-button type="button"><i class="fa-solid fa-download"></i><span><strong>Backup completo</strong><small>Baixa um JSON administrativo</small></span></button>
+                            <button onclick="runScript('logsAlteracoes')" data-operation-button type="button"><i class="fa-solid fa-clock-rotate-left"></i><span><strong>Logs recentes</strong><small>Mostra as últimas operações</small></span></button>
+                            <button onclick="runScript('historicoPrecos')" data-operation-button type="button"><i class="fa-solid fa-chart-line"></i><span><strong>Histórico de preços</strong><small>Consulta alterações registradas</small></span></button>
+                        </div>
+                    </article>
+                </div>
+
+                <article id="operation-results-panel" class="panel results-panel">
+                    <div class="panel-heading compact-heading"><div><span class="panel-kicker">Resultado das rotinas</span><h3>Diagnósticos e auditoria</h3></div><button id="open-results-panel" type="button" class="round-button"><i class="fa-solid fa-arrow-down"></i></button></div>
+                    <div id="operation-results" class="operation-results"><div class="empty-results">Execute uma rotina de diagnóstico para ver os resultados aqui.</div></div>
+                </article>
+            </section>
+
+            <aside class="console-column">
+                <article class="panel console-panel">
+                    <div class="console-heading"><div><span class="panel-kicker">Atividade</span><h3>Console</h3></div><button onclick="limparConsole()" type="button" class="text-button">Limpar</button></div>
+                    <div id="console-output" class="console-box" aria-live="polite"><div class="console-placeholder">// Aguardando comandos...</div></div>
+                    <div class="console-note"><i class="fa-solid fa-shield-halved"></i><span>Somente rotinas administrativas pré-definidas estão habilitadas. O executor de código livre permanece desativado.</span></div>
+                </article>
+
+                <article class="panel checklist-panel">
+                    <span class="panel-kicker">Antes de lançar</span><h3>Checklist de coleção</h3>
+                    <ul>
+                        <li><i class="fa-regular fa-circle-check"></i><span>Preço e desconto revisados</span></li>
+                        <li><i class="fa-regular fa-circle-check"></i><span>Fotos e cores cadastradas</span></li>
+                        <li><i class="fa-regular fa-circle-check"></i><span>Peças vinculadas à coleção</span></li>
+                        <li><i class="fa-regular fa-circle-check"></i><span>Estoque/status conferidos</span></li>
+                        <li><i class="fa-regular fa-circle-check"></i><span>Coleção publicada por último</span></li>
+                    </ul>
+                    <a href="colecoes.html" class="btn btn-secondary full-width"><i class="fa-solid fa-layer-group"></i> Abrir editor de coleções</a>
+                </article>
+            </aside>
         </div>
-
-        <!-- Coluna Direita: Console -->
-        <div class="lg:col-span-1">
-            <div class="card p-4 sticky top-20">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-gray-700"><i class="fa-solid fa-terminal mr-2"></i>Console de saída</h3>
-                    <button onclick="limparConsole()" class="text-xs text-gray-400 hover:text-gray-600">Limpar</button>
-                </div>
-                
-                <div id="console-output" class="console-box mb-4">
-                    <div class="text-gray-500">// Aguardando comandos...</div>
-                </div>
-
-                <div class="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100">
-                    <i class="fa-solid fa-info-circle mr-1"></i>
-                    Somente rotinas administrativas previamente revisadas podem ser executadas nesta página.
-                </div>
-            </div>
-        </div>
-
     </main>
-
-    <!-- Scripts Firebase -->
-    <script type="module">
-        // Configuração Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
-            authDomain: "site-lamed.firebaseapp.com",
-            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
-            projectId: "site-lamed",
-            storageBucket: "site-lamed.firebasestorage.app",
-            messagingSenderId: "862756160215",
-            appId: "1:862756160215:web:d0fded233682bf93eaa692",
-            measurementId: "G-BL1G961PGT"
-        };
-
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { 
-            getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, 
-            writeBatch, query, where, addDoc 
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-        let app, auth, db;
-
-        try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (e) { console.error(e); }
-
-        // Camada de compatibilidade para scripts antigos do executor
-        // Permite usar sintaxe legada: db.collection('pecas').get()
-        const dbCompat = {
-            collection: (path) => ({
-                get: () => getDocs(collection(db, path)),
-                doc: (id) => ({
-                    get: () => getDoc(doc(db, path, id)),
-                    update: (payload) => updateDoc(doc(db, path, id), payload),
-                    delete: () => deleteDoc(doc(db, path, id)),
-                    ref: doc(db, path, id)
-                }),
-                where: (field, op, value) => ({
-                    get: () => getDocs(query(collection(db, path), where(field, op, value)))
-                }),
-                add: (payload) => addDoc(collection(db, path), payload)
-            })
-        };
-
-        // --- Autenticação ---
-        // ATUALIZADO COM SEU NOVO ID
-        const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
-
-        async function isAuthorizedAdmin(user) {
-            if (!user) return false;
-            if (ADMIN_UIDS.includes(user.uid)) return true;
-
-            try {
-                const tokenResult = await user.getIdTokenResult();
-                return tokenResult?.claims?.admin === true;
-            } catch (error) {
-                return false;
-            }
-        }
-
-        auth.onAuthStateChanged(async (user) => {
-            if (!(await isAuthorizedAdmin(user))) {
-                log("Acesso negado. Redirecionando...", "error");
-                setTimeout(() => window.location.href = 'login-admin.html', 2000);
-            } else {
-                log("Autenticado como Admin. Sistema pronto.", "success");
-                carregarRascunho(); // Carrega o rascunho salvo ao iniciar
-                carregarProdutosOperacao().catch((error) => log(`Aviso ao carregar produtos: ${error.message}`, "warning"));
-            }
-        });
-
-        // --- Funções de log ---
-        function log(msg, type="info") {
-            const consoleBox = document.getElementById('console-output');
-            const div = document.createElement('div');
-            div.className = `log-entry log-${type}`;
-            
-            const time = new Date().toLocaleTimeString();
-            // Converte objetos para string para leitura
-            const text = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
-            
-            const timestamp = document.createElement('span');
-            timestamp.className = 'opacity-50';
-            timestamp.textContent = `[${time}]`;
-
-            div.appendChild(timestamp);
-            div.appendChild(document.createTextNode(` ${text}`));
-            
-            consoleBox.appendChild(div);
-            consoleBox.scrollTop = consoleBox.scrollHeight;
-        }
-
-        // Disponibilizar log globalmente para o script customizado
-        window.log = log;
-
-        window.limparConsole = () => {
-            const consoleBox = document.getElementById('console-output');
-            consoleBox.replaceChildren();
-
-            const line = document.createElement('div');
-            line.className = 'text-gray-500';
-            line.textContent = '// Console limpo';
-            consoleBox.appendChild(line);
-        }
-
-        const OPERATION_COLLECTIONS = ['pecas', 'colecoes', 'pedidos', 'usuarios', 'chats', 'site_config', 'notificacoes', 'operacoes_logs', 'historico_precos'];
-        let operationProductsCache = [];
-
-        function sanitizePlainText(value, maxLength = 180) {
-            return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
-        }
-
-        function escapeHtml(value, maxLength = 180) {
-            return sanitizePlainText(value, maxLength)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function getCurrentAdminEmail() {
-            return auth?.currentUser?.email || auth?.currentUser?.uid || 'admin';
-        }
-
-        function normalizeHexColor(value) {
-            const raw = String(value || '').trim();
-            return /^#[0-9a-f]{6}$/i.test(raw) ? raw : '#000000';
-        }
-
-        function getSelectedProductIds() {
-            const select = document.getElementById('bulk-product-select');
-            return Array.from(select?.selectedOptions || []).map((option) => option.value).filter(Boolean);
-        }
-
-        function renderOperationResults(rows, emptyMessage = 'Nenhum resultado encontrado.') {
-            const container = document.getElementById('operation-results');
-            if (!container) return;
-
-            if (!Array.isArray(rows) || rows.length === 0) {
-                container.innerHTML = `<p class="text-gray-400">${emptyMessage}</p>`;
-                return;
-            }
-
-            container.innerHTML = rows.map((row) => `
-                <div class="rounded-lg border border-gray-100 bg-white p-3 mb-2">
-                    <div class="font-semibold text-gray-800">${escapeHtml(row.title || row.nome || row.id, 120)}</div>
-                    <div class="text-xs text-gray-500 mt-1">${escapeHtml(row.description || row.categoria || row.status || '', 240)}</div>
-                </div>
-            `).join('');
-        }
-
-        function downloadJson(filename, payload) {
-            const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(payload, null, 2))}`;
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute('href', dataStr);
-            downloadAnchor.setAttribute('download', filename);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        async function recordOperationLog(action, details = {}) {
-            await addDoc(collection(db, 'operacoes_logs'), {
-                action: sanitizePlainText(action, 120),
-                details,
-                admin: getCurrentAdminEmail(),
-                createdAt: new Date()
-            }).catch((error) => console.warn('[executor.log.skipped]', error));
-        }
-
-        async function recordPriceHistory(productDoc, before = {}, after = {}) {
-            await addDoc(collection(db, 'historico_precos'), {
-                produtoId: productDoc.id,
-                produtoNome: sanitizePlainText(before?.nome || productDoc.id, 160),
-                precoAnterior: Number(before?.preco || 0),
-                precoNovo: Number(after?.preco ?? before?.preco ?? 0),
-                descontoAnterior: Number(before?.desconto || 0),
-                descontoNovo: Number(after?.desconto ?? before?.desconto ?? 0),
-                admin: getCurrentAdminEmail(),
-                createdAt: new Date()
-            }).catch((error) => console.warn('[executor.priceHistory.skipped]', error));
-        }
-
-        async function carregarProdutosOperacao() {
-            const snap = await getDocs(collection(db, 'pecas'));
-            operationProductsCache = snap.docs
-                .map((productDoc) => ({ id: productDoc.id, ...productDoc.data() }))
-                .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
-
-            const select = document.getElementById('bulk-product-select');
-            if (select) {
-                select.innerHTML = operationProductsCache.map((product) => (
-                    `<option value="${escapeHtml(product.id, 120)}">${escapeHtml(product.nome || product.id, 90)} • ${escapeHtml(product.categoria || 'sem categoria', 40)}</option>`
-                )).join('');
-            }
-
-            log(`${operationProductsCache.length} produto(s) carregado(s) na Central de Operações.`, 'success');
-            return operationProductsCache;
-        }
-
-        window.carregarProdutosOperacao = carregarProdutosOperacao;
-
-        window.selecionarProdutosFiltrados = () => {
-            const term = sanitizePlainText(document.getElementById('advanced-search-input')?.value, 120).toLowerCase();
-            const select = document.getElementById('bulk-product-select');
-            if (!select || !term) return log('Digite uma busca para selecionar produtos filtrados.', 'warning');
-
-            Array.from(select.options).forEach((option) => {
-                option.selected = option.textContent.toLowerCase().includes(term);
-            });
-
-            log(`${Array.from(select.selectedOptions).length} produto(s) selecionado(s) pela busca.`, 'info');
-        };
-
-        // --- Executores de Scripts ---
-
-        window.runScript = async (scriptName, params = null) => {
-            log(`Iniciando script: ${scriptName}...`, "info");
-            
-            try {
-                switch(scriptName) {
-                    
-                    case 'limparCarrinhos':
-                        log("Carrinhos são locais. Limpando o armazenamento deste navegador...", "warning");
-                        localStorage.removeItem('lamedCart');
-                        log("Carrinho local limpo.", "success");
-                        break;
-
-                    case 'syncContadores':
-                        const produtos = await getDocs(collection(db, "pecas"));
-                        const colecoes = await getDocs(collection(db, "colecoes"));
-                        log(`Sincronização: ${produtos.size} produtos, ${colecoes.size} coleções encontradas.`, "success");
-                        break;
-
-                    case 'corrigirPrecos':
-                        const snapPrecos = await getDocs(collection(db, "pecas"));
-                        let corrigidos = 0;
-                        const batchPrecos = writeBatch(db);
-                        
-                        snapPrecos.forEach(doc => {
-                            const p = doc.data();
-                            if (!p.preco || p.preco < 0 || isNaN(p.preco)) {
-                                batchPrecos.update(doc.ref, { preco: 0 });
-                                corrigidos++;
-                                log(`Corrigindo preço do produto ID: ${doc.id}`, "warning");
-                            }
-                        });
-                        
-                        if (corrigidos > 0) {
-                            await batchPrecos.commit();
-                            log(`${corrigidos} preços corrigidos.`, "success");
-                        } else {
-                            log("Nenhum preço inválido encontrado.", "success");
-                        }
-                        break;
-
-                    case 'aplicarDescontoGlobal': {
-                        const percent = Number(document.getElementById('bulk-discount-percent')?.value || 0);
-                        if (!Number.isFinite(percent) || percent < 0 || percent > 90) {
-                            log('Informe um desconto entre 0 e 90%.', 'error');
-                            break;
-                        }
-
-                        if (!confirm(`Aplicar ${percent}% de desconto em TODAS as peças?`)) {
-                            log('Operação cancelada pelo usuário.', 'info');
-                            break;
-                        }
-
-                        const snap = await getDocs(collection(db, 'pecas'));
-                        let batch = writeBatch(db);
-                        let ops = 0;
-                        let changed = 0;
-
-                        for (const productDoc of snap.docs) {
-                            const before = productDoc.data() || {};
-                            batch.update(productDoc.ref, { desconto: percent, updatedAt: new Date() });
-                            recordPriceHistory(productDoc, before, { desconto: percent });
-                            ops++;
-                            changed++;
-
-                            if (ops >= 400) {
-                                await batch.commit();
-                                log(`Parcial: ${changed}/${snap.size} desconto(s) aplicado(s).`, 'info');
-                                batch = writeBatch(db);
-                                ops = 0;
-                            }
-                        }
-
-                        if (ops > 0) await batch.commit();
-                        await recordOperationLog('aplicar_desconto_global', { percent, total: changed });
-                        log(`Desconto de ${percent}% aplicado em ${changed} peça(s).`, 'success');
-                        break;
-                    }
-
-                    case 'adicionarCorProdutos': {
-                        const selectedIds = getSelectedProductIds();
-                        const colorName = sanitizePlainText(document.getElementById('bulk-color-name')?.value, 60);
-                        const colorHex = normalizeHexColor(document.getElementById('bulk-color-hex-text')?.value || document.getElementById('bulk-color-hex')?.value);
-
-                        if (!selectedIds.length) {
-                            log('Selecione ao menos uma peça para adicionar cor.', 'warning');
-                            break;
-                        }
-                        if (!colorName) {
-                            log('Digite o nome da cor.', 'warning');
-                            break;
-                        }
-
-                        let updated = 0;
-                        for (const productId of selectedIds) {
-                            const productRef = doc(db, 'pecas', productId);
-                            const productSnap = await getDoc(productRef);
-                            if (!productSnap.exists()) continue;
-
-                            const data = productSnap.data() || {};
-                            const currentColors = Array.isArray(data.cores) ? data.cores : [];
-                            const alreadyExists = currentColors.some((color) => sanitizePlainText(color?.nome, 60).toLowerCase() === colorName.toLowerCase());
-                            if (alreadyExists) {
-                                log(`Cor já existia em ${data.nome || productId}.`, 'info');
-                                continue;
-                            }
-
-                            await updateDoc(productRef, {
-                                cores: [...currentColors, { nome: colorName, hex: colorHex }],
-                                updatedAt: new Date()
-                            });
-                            updated++;
-                        }
-
-                        await recordOperationLog('adicionar_cor_produtos', { selectedIds, colorName, colorHex, updated });
-                        await carregarProdutosOperacao();
-                        log(`Cor ${colorName} (${colorHex}) adicionada em ${updated} peça(s).`, 'success');
-                        break;
-                    }
-
-                    case 'removerDescontosProdutos':
-                        log("Buscando produtos com desconto ativo...", "info");
-                        const snapDescontos = await getDocs(collection(db, "pecas"));
-                        let descontosRemovidos = 0;
-                        let operacoesDesconto = 0;
-                        let batchDescontos = writeBatch(db);
-
-                        for (const produtoDoc of snapDescontos.docs) {
-                            const produto = produtoDoc.data();
-                            const descontoAtual = Number(produto?.desconto || 0);
-
-                            if (descontoAtual <= 0) {
-                                continue;
-                            }
-
-                            batchDescontos.update(produtoDoc.ref, { desconto: 0, updatedAt: new Date() });
-                            recordPriceHistory(produtoDoc, produto, { desconto: 0 });
-                            descontosRemovidos++;
-                            operacoesDesconto++;
-                            log(`Removendo desconto de ${produto?.nome || produtoDoc.id} (${descontoAtual}%).`, "warning");
-
-                            if (operacoesDesconto >= 400) {
-                                await batchDescontos.commit();
-                                batchDescontos = writeBatch(db);
-                                operacoesDesconto = 0;
-                            }
-                        }
-
-                        if (operacoesDesconto > 0) {
-                            await batchDescontos.commit();
-                        }
-
-                        if (descontosRemovidos > 0) {
-                            await recordOperationLog('remover_descontos_produtos', { total: descontosRemovidos });
-                            log(`${descontosRemovidos} produto(s) tiveram o desconto zerado.`, "success");
-                        } else {
-                            log("Nenhum produto com desconto ativo foi encontrado.", "success");
-                        }
-                        break;
-
-                    case 'backupDados':
-                        log("Gerando backup JSON...", "info");
-                        const allData = {};
-                        const colNames = ['pecas', 'colecoes', 'pedidos'];
-                        
-                        for (const colName of colNames) {
-                            const snap = await getDocs(collection(db, colName));
-                            allData[colName] = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                        }
-                        
-                        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData));
-                        const downloadAnchor = document.createElement('a');
-                        downloadAnchor.setAttribute("href", dataStr);
-                        downloadAnchor.setAttribute("download", `backup_lamed_${new Date().toISOString().split('T')[0]}.json`);
-                        document.body.appendChild(downloadAnchor);
-                        downloadAnchor.click();
-                        downloadAnchor.remove();
-                        
-                        log("Backup baixado com sucesso.", "success");
-                        break;
-
-                    case 'backupCompleto': {
-                        log('Gerando backup completo...', 'info');
-                        const payload = {
-                            generatedAt: new Date().toISOString(),
-                            generatedBy: getCurrentAdminEmail(),
-                            collections: {}
-                        };
-
-                        for (const colName of OPERATION_COLLECTIONS) {
-                            const snap = await getDocs(collection(db, colName)).catch(() => null);
-                            if (!snap) continue;
-                            payload.collections[colName] = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
-                            log(`Backup: ${colName} (${snap.size} docs).`, 'info');
-                        }
-
-                        downloadJson(`backup_completo_lamed_${new Date().toISOString().slice(0, 10)}.json`, payload);
-                        await recordOperationLog('backup_completo', { collections: Object.keys(payload.collections) });
-                        log('Backup completo baixado com sucesso.', 'success');
-                        break;
-                    }
-
-                    case 'baixarArquivos': {
-                        log('Gerando manifesto de arquivos/imagens...', 'info');
-                        const snap = await getDocs(collection(db, 'pecas'));
-                        const files = [];
-
-                        snap.docs.forEach((productDoc) => {
-                            const data = productDoc.data() || {};
-                            const images = Array.isArray(data.imagens) ? data.imagens : [];
-                            images.forEach((url, index) => {
-                                if (url) files.push({ produtoId: productDoc.id, produtoNome: data.nome || productDoc.id, index, url });
-                            });
-                            if (data.imagem) files.push({ produtoId: productDoc.id, produtoNome: data.nome || productDoc.id, index: 'principal', url: data.imagem });
-                        });
-
-                        downloadJson(`arquivos_imagens_lamed_${new Date().toISOString().slice(0, 10)}.json`, { generatedAt: new Date().toISOString(), total: files.length, files });
-                        await recordOperationLog('baixar_manifesto_arquivos', { total: files.length });
-                        log(`${files.length} arquivo(s)/imagem(ns) encontrados no manifesto.`, 'success');
-                        break;
-                    }
-
-                    case 'detectarDuplicados': {
-                        const snap = await getDocs(collection(db, 'pecas'));
-                        const byName = new Map();
-
-                        snap.docs.forEach((productDoc) => {
-                            const data = productDoc.data() || {};
-                            const key = sanitizePlainText(data.nome, 160).toLowerCase();
-                            if (!key) return;
-                            if (!byName.has(key)) byName.set(key, []);
-                            byName.get(key).push({ id: productDoc.id, ...data });
-                        });
-
-                        const duplicates = Array.from(byName.values()).filter((items) => items.length > 1);
-                        renderOperationResults(
-                            duplicates.flatMap((items) => items.map((item) => ({ title: item.nome, description: `Possível duplicado • ID: ${item.id} • Categoria: ${item.categoria || '-'}` }))),
-                            'Nenhum duplicado por nome encontrado.'
-                        );
-                        await recordOperationLog('detectar_duplicados', { grupos: duplicates.length });
-                        log(`${duplicates.length} grupo(s) de duplicados detectado(s).`, duplicates.length ? 'warning' : 'success');
-                        break;
-                    }
-
-                    case 'buscarProdutos': {
-                        const term = sanitizePlainText(document.getElementById('advanced-search-input')?.value, 120).toLowerCase();
-                        if (!operationProductsCache.length) await carregarProdutosOperacao();
-                        const results = operationProductsCache.filter((product) => {
-                            const haystack = [product.nome, product.categoria, product.segmento, product.tags, product.colecaoId, product.status]
-                                .join(' ')
-                                .toLowerCase();
-                            return !term || haystack.includes(term);
-                        });
-                        renderOperationResults(results.map((product) => ({ title: product.nome || product.id, description: `${product.categoria || 'sem categoria'} • ${product.status || 'sem status'} • desconto ${Number(product.desconto || 0)}%` })));
-                        log(`${results.length} produto(s) encontrado(s).`, 'success');
-                        break;
-                    }
-
-                    case 'logsAlteracoes': {
-                        const snap = await getDocs(collection(db, 'operacoes_logs'));
-                        const rows = snap.docs
-                            .map((logDoc) => ({ id: logDoc.id, ...logDoc.data() }))
-                            .sort((a, b) => Number(b.createdAt?.seconds || 0) - Number(a.createdAt?.seconds || 0))
-                            .slice(0, 20)
-                            .map((entry) => ({ title: entry.action || entry.id, description: `${entry.admin || '-'} • ${entry.createdAt?.seconds ? new Date(entry.createdAt.seconds * 1000).toLocaleString('pt-BR') : 'sem data'}` }));
-                        renderOperationResults(rows, 'Nenhum log de alteração encontrado.');
-                        log(`${rows.length} log(s) exibido(s).`, 'success');
-                        break;
-                    }
-
-                    case 'historicoPrecos': {
-                        const snap = await getDocs(collection(db, 'historico_precos'));
-                        const rows = snap.docs
-                            .map((historyDoc) => ({ id: historyDoc.id, ...historyDoc.data() }))
-                            .sort((a, b) => Number(b.createdAt?.seconds || 0) - Number(a.createdAt?.seconds || 0))
-                            .slice(0, 30)
-                            .map((entry) => ({
-                                title: entry.produtoNome || entry.produtoId,
-                                description: `Preço ${entry.precoAnterior} → ${entry.precoNovo} • Desconto ${entry.descontoAnterior}% → ${entry.descontoNovo}%`
-                            }));
-                        renderOperationResults(rows, 'Nenhum histórico de preço encontrado.');
-                        log(`${rows.length} registro(s) de histórico exibido(s).`, 'success');
-                        break;
-                    }
-
-                    case 'zerarEstoque':
-                        if (!params) { log("ID do produto não fornecido.", "error"); return; }
-                        
-                        const prodRef = doc(db, "pecas", params);
-                        await updateDoc(prodRef, { 
-                            status: 'inactive',
-                            cores: [] 
-                        });
-                        log(`Estoque do produto ${params} zerado e produto desativado.`, "success");
-                        break;
-
-                    case 'modoManutencao':
-                        // Exemplo de flag global
-                        log("Modo de manutenção ativado (simulação).", "warning");
-                        break;
-                        
-                    default:
-                        log("Script não reconhecido.", "error");
-                }
-            } catch (e) {
-                log(`Erro: ${e.message}`, "error");
-                console.error(e);
-            }
-        };
-
-        // --- EXECUTOR DE SCRIPT PERSONALIZADO ---
-
-        const CUSTOM_SCRIPT_EXECUTOR_ENABLED = false;
-
-        window.executarScriptPersonalizado = () => {
-            log("O executor personalizado está desativado por segurança. Use somente as rotinas revisadas.", "warning");
-        };
-
-        // --- Persistência do editor ---
-
-        if (!CUSTOM_SCRIPT_EXECUTOR_ENABLED) {
-            const editor = document.getElementById('custom-script-input');
-            const button = document.querySelector('button[onclick="executarScriptPersonalizado()"]');
-
-            if (editor) {
-                editor.value = '// Editor personalizado pausado por segurança.\n// Use os scripts prontos ou mova manutenções sensíveis para o backend.';
-                editor.readOnly = true;
-            }
-
-            if (button) {
-                button.disabled = true;
-                button.classList.add('opacity-60', 'cursor-not-allowed');
-                button.innerHTML = '<i class="fa-solid fa-shield-halved mr-2"></i>Execucao pausada';
-            }
-        }
-
-        window.salvarRascunho = () => {
-            const code = document.getElementById('custom-script-input').value;
-            localStorage.setItem('customScriptDraft', code);
-            log("Rascunho salvo no navegador.", "success");
-        };
-
-        window.carregarRascunho = () => {
-            const code = localStorage.getItem('customScriptDraft');
-            if (code) {
-                document.getElementById('custom-script-input').value = code;
-                // log("Rascunho carregado.", "info");
-            }
-        };
-
-        window.limparEditor = () => {
-            if(confirm("Limpar o editor?")) {
-                document.getElementById('custom-script-input').value = "";
-            }
-        };
-
-        // --- Funções auxiliares de confirmação ---
-
-        window.confirmarPerigo = async (acao) => {
-            const codigo = Math.floor(1000 + Math.random() * 9000);
-            const resposta = prompt(`PERIGO: Esta ação é destrutiva!\nDigite o código ${codigo} para confirmar:`);
-            
-            if (resposta == codigo) {
-                if (acao === 'limparTudo') {
-                    log("Iniciando limpeza total...", "warning");
-                    const batch = writeBatch(db);
-                    
-                    const pecas = await getDocs(collection(db, "pecas"));
-                    pecas.forEach(d => batch.delete(d.ref));
-                    
-                    const pedidos = await getDocs(collection(db, "pedidos"));
-                    pedidos.forEach(d => batch.delete(d.ref));
-                    
-                    await batch.commit();
-                    log("Banco de dados limpo com sucesso.", "success");
-                }
-            } else {
-                log("Ação cancelada. Código incorreto.", "info");
-            }
-        };
-
-        window.abrirModalPrompt = (tipo) => {
-            if (tipo === 'zerarEstoque') {
-                const id = prompt("Digite o ID do produto para zerar o estoque:");
-                if (id) window.runScript('zerarEstoque', id);
-            }
-        };
-
-        document.getElementById('bulk-color-hex')?.addEventListener('input', (event) => {
-            const textInput = document.getElementById('bulk-color-hex-text');
-            if (textInput) textInput.value = event.target.value;
-        });
-
-        document.getElementById('bulk-color-hex-text')?.addEventListener('input', (event) => {
-            const colorInput = document.getElementById('bulk-color-hex');
-            const nextHex = normalizeHexColor(event.target.value);
-            if (colorInput && nextHex === event.target.value) colorInput.value = nextHex;
-        });
-
-    </script>
 </body>
 </html>
