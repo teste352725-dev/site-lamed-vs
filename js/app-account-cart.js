@@ -215,6 +215,7 @@ function refreshVisibleStorefrontAfterProductsSync() {
     if (typeof renderHomeShopGrid === 'function') renderHomeShopGrid();
     if (typeof renderizarSecoesColecoes === 'function') renderizarSecoesColecoes();
     if (typeof popularPreviewColecao === 'function') popularPreviewColecao();
+    if (typeof window.renderSeasonalHome === 'function') window.renderSeasonalHome();
 
     const hash = String(window.location.hash || '');
     if (hash === '#loja' && typeof renderShopPage === 'function') {
@@ -283,6 +284,16 @@ function startStorefrontProductsRealtimeSync() {
     });
 }
 
+function loadSeasonalHomeExtension() {
+    if (document.querySelector('script[data-home-seasonal-collections]')) return;
+    const script = document.createElement('script');
+    script.src = 'js/home-seasonal-collections.js?v=20260908-1';
+    script.async = false;
+    script.dataset.homeSeasonalCollections = '1';
+    script.addEventListener('error', () => console.warn('[home.collections] Nao foi possivel carregar a extensao sazonal.'));
+    document.head.appendChild(script);
+}
+
 // O checkout nao concede mais desconto adicional por forma de pagamento.
 // O desconto promocional do catalogo continua sendo respeitado normalmente.
 if (typeof calculateCheckoutTotals === 'function') {
@@ -307,5 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof checkoutRuntimeConfig !== 'undefined') {
         checkoutRuntimeConfig.pixProductDiscountEnabled = false;
     }
+    loadSeasonalHomeExtension();
     window.setTimeout(startStorefrontProductsRealtimeSync, 0);
 });
