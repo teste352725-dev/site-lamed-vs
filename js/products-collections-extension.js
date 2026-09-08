@@ -3,7 +3,8 @@
         collections: [],
         installed: false,
         queryCollection: new URLSearchParams(window.location.search).get('collection') || '',
-        querySegment: new URLSearchParams(window.location.search).get('segment') || ''
+        querySegment: new URLSearchParams(window.location.search).get('segment') || '',
+        lastProductsSignature: ''
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -57,6 +58,19 @@
             console.warn('[products.collections] Não foi possível carregar metadados das coleções.', error);
             state.collections = [];
         }
+    }
+
+    function injectExtensionStyles() {
+        if ($('#products-collections-extension-style')) return;
+        const style = document.createElement('style');
+        style.id = 'products-collections-extension-style';
+        style.textContent = `
+            #open-collections-admin { text-decoration: none; }
+            @media (min-width: 960px) {
+                .filters-grid { grid-template-columns: minmax(220px, 1.7fr) repeat(4, minmax(150px, 1fr)) !important; }
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     function buildFilterControls() {
@@ -269,10 +283,24 @@
         window.filtrarProdutos?.();
     }
 
+    function startProductsWatcher() {
+        window.setInterval(() => {
+            if (typeof produtos === 'undefined' || !Array.isArray(produtos)) return;
+            const signature = produtos.map((product) => `${product.id}:${product.segmento || ''}:${product.categoria || ''}:${product.colecaoId || ''}:${product.status || ''}`).sort().join('|');
+            if (signature === state.lastProductsSignature) return;
+            state.lastProductsSignature = signature;
+            applyCategoryScope();
+            if (state.queryCollection || state.querySegment || $('#filter-collection')?.value !== 'all' || $('#filter-segment')?.value !== 'all') {
+                window.filtrarProdutos?.();
+            }
+        }, 500);
+    }
+
     async function install() {
         if (state.installed) return;
         if (typeof db === 'undefined' || typeof produtos === 'undefined') return;
         state.installed = true;
+        injectExtensionStyles();
         await loadCollectionsMetadata();
         buildFilterControls();
         applyCategoryScope();
@@ -281,6 +309,7 @@
         installFilterOverride();
         installModalHook();
         applyQueryFilters();
+        startProductsWatcher();
 
         try {
             db.collection('colecoes').onSnapshot((snapshot) => {
