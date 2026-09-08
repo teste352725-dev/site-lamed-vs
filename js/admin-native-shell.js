@@ -247,6 +247,13 @@
     const currentPage = pages.find((page) => page.href === pageName);
     if (!currentPage || currentPage.id === "overview") return;
 
+    if (currentPage.id === 'products' && !document.querySelector('script[data-products-collections-extension]')) {
+        const productsExtension = document.createElement('script');
+        productsExtension.src = 'js/products-collections-extension.js?v=20260908-1';
+        productsExtension.dataset.productsCollectionsExtension = '1';
+        document.head.appendChild(productsExtension);
+    }
+
     const start = () => {
         if (!document.body || document.body.classList.contains("admin-native-page")) return;
 
