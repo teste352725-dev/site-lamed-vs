@@ -283,6 +283,29 @@ function startStorefrontProductsRealtimeSync() {
     });
 }
 
+// O checkout nao concede mais desconto adicional por forma de pagamento.
+// O desconto promocional do catalogo continua sendo respeitado normalmente.
+if (typeof calculateCheckoutTotals === 'function') {
+    const calculateCheckoutTotalsWithLegacyPaymentRules = calculateCheckoutTotals;
+    calculateCheckoutTotals = function(...args) {
+        const totals = calculateCheckoutTotalsWithLegacyPaymentRules(...args);
+        const legacyPixDiscount = Number(totals?.pixDiscount || 0);
+
+        if (legacyPixDiscount <= 0) return totals;
+
+        return {
+            ...totals,
+            pixDiscount: 0,
+            final: typeof roundCurrency === 'function'
+                ? roundCurrency(Number(totals.final || 0) + legacyPixDiscount)
+                : Number(totals.final || 0) + legacyPixDiscount
+        };
+    };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    if (typeof checkoutRuntimeConfig !== 'undefined') {
+        checkoutRuntimeConfig.pixProductDiscountEnabled = false;
+    }
     window.setTimeout(startStorefrontProductsRealtimeSync, 0);
 });
