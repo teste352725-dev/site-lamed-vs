@@ -1,422 +1,148 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de coleções | Painel Administrativo - Laméd</title>
+    <title>Coleções sazonais | Painel Administrativo - Laméd</title>
     <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDK (compatibilidade) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
-    <script src="js/admin-native-shell.js?v=20260818-team-access" defer></script>
-
-        <link rel="stylesheet" href="css/colecoes.css">
-        <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
+    <script src="js/admin-native-shell.js?v=20260908-collections" defer></script>
+    <script src="js/collections-admin.js?v=20260908-1" defer></script>
+    <link rel="stylesheet" href="css/colecoes.css?v=20260908-1">
+    <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
 </head>
-<body class="min-h-screen pb-20">
-    <!--
-      MAPA DE MANUTENCAO:
-      - CSS desta pagina: css/colecoes.css
-      - JS local ligado a esta pagina: js/admin-embedded-mode.js, script inline desta pagina
-      - Se mudar o design, preserve ids, classes utilitarias e data-* que o JS usa.
-      - Antes de apagar um bloco, pesquise o id ou a classe no JS correspondente.
-      - Ids usados pelo JS: #active-collections, #active-grid, #active-section, #add-collection-btn, #close-modal, #collection-date, #collection-description, #collection-form
-      - Ids usados pelo JS: #collection-image, #collection-modal, #collection-name, #collection-order, #collections-grid, #collection-slug, #delete-collection-btn, #empty-state
-      - Ids usados pelo JS: #loading-state, #modal-title, #preview-image, #save-collection-btn, #sort-select, #total-collections
-    -->
-
-
-    <!-- Cabeçalho -->
-    <header class="bg-white shadow-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 py-3">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <a href="dashboard.html" class="text-gray-600 text-xl"><i class="fa-solid fa-arrow-left"></i></a>
-                    <h1 class="font-allura text-3xl text-gray-800">Coleções</h1>
-                </div>
-                <button id="add-collection-btn" class="btn btn-primary text-sm shadow-lg">
-                    <i class="fa-solid fa-plus mr-2"></i><span class="hidden sm:inline">Nova</span>
-                </button>
+<body>
+    <div class="collections-page">
+        <header class="collections-hero">
+            <div class="hero-copy">
+                <span class="eyebrow"><i class="fa-solid fa-layer-group"></i> Catálogo sazonal</span>
+                <h1>Coleções</h1>
+                <p>Organize campanhas temporárias sem misturar a estrutura permanente de Roupas e Mesa Posta.</p>
             </div>
-        </div>
-    </header>
-
-    <main class="max-w-7xl mx-auto p-4">
-        <!-- Status -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-center">
-                <span class="block text-2xl font-bold text-[--cor-marrom-cta]" id="total-collections">0</span>
-                <span class="text-xs text-gray-500">Total</span>
+            <div class="hero-actions">
+                <a href="produtos.html" class="button button-secondary"><i class="fa-solid fa-shirt"></i> Produtos</a>
+                <button type="button" id="add-collection-btn" class="button button-primary"><i class="fa-solid fa-plus"></i> Nova coleção</button>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-center">
-                <span class="block text-2xl font-bold text-green-600" id="active-collections">0</span>
-                <span class="text-xs text-gray-500">Ativas (Max 2)</span>
+        </header>
+
+        <section class="metrics-grid" aria-label="Resumo das coleções">
+            <article class="metric-card"><span>Total</span><strong id="metric-total">0</strong><small>coleções cadastradas</small></article>
+            <article class="metric-card metric-live"><span>Ativas</span><strong id="metric-active">0</strong><small>visíveis no site</small></article>
+            <article class="metric-card"><span>Roupas</span><strong id="metric-moda">0</strong><small>coleções com moda</small></article>
+            <article class="metric-card"><span>Mesa posta</span><strong id="metric-mesa">0</strong><small>coleções com mesa</small></article>
+            <article class="metric-card"><span>Encerradas</span><strong id="metric-ended">0</strong><small>arquivo histórico</small></article>
+        </section>
+
+        <section class="panel filters-panel">
+            <div class="panel-heading">
+                <div><span class="eyebrow">Biblioteca</span><h2>Encontrar coleção</h2></div>
+                <div id="collections-result-count" class="result-count">0 resultados</div>
             </div>
-        </div>
-
-        <!-- Seção de coleções ativas -->
-        <div id="active-section" class="mb-8 hidden">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <i class="fa-solid fa-star text-yellow-500 mr-2"></i> Ativas no Site
-            </h2>
-            <div id="active-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-
-        <!-- Lista Geral -->
-        <div class="card p-4 sm:p-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h3 class="text-lg font-semibold text-gray-800">Biblioteca</h3>
-                <select id="sort-select" class="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
-                    <option value="date-desc">Mais Recentes</option>
-                    <option value="name-asc">Nome (A-Z)</option>
-                    <option value="status">Status (Ativas primeiro)</option>
-                </select>
+            <div class="filters-grid">
+                <label class="field search-field"><span>Buscar</span><div class="field-control"><i class="fa-solid fa-magnifying-glass"></i><input id="collection-search" type="search" placeholder="Nome, descrição ou slug"></div></label>
+                <label class="field"><span>Status</span><select id="collection-status-filter"><option value="all">Todos</option><option value="active">Ativas</option><option value="draft">Rascunhos</option><option value="ended">Encerradas</option></select></label>
+                <label class="field"><span>Área</span><select id="collection-segment-filter"><option value="all">Roupas + Mesa Posta</option><option value="moda">Roupas</option><option value="mesa">Mesa Posta</option></select></label>
+                <label class="field"><span>Ordenar</span><select id="collection-sort"><option value="priority">Prioridade</option><option value="newest">Mais recentes</option><option value="name">Nome A–Z</option><option value="ending">Encerram primeiro</option></select></label>
             </div>
+        </section>
 
-            <div id="loading-state" class="text-center py-12">
-                <div class="loading-spinner mx-auto mb-2"></div>
-                <p class="text-gray-500 text-sm">Carregando coleções...</p>
+        <section id="active-collections-section" class="panel active-panel hidden">
+            <div class="panel-heading">
+                <div><span class="eyebrow">No ar agora</span><h2>Coleções ativas</h2><p>Não existe mais limite de duas coleções simultâneas.</p></div>
+            </div>
+            <div id="active-collections-grid" class="collection-grid collection-grid-featured"></div>
+        </section>
+
+        <section class="panel library-panel">
+            <div class="panel-heading">
+                <div><span class="eyebrow">Todas</span><h2>Biblioteca de coleções</h2><p>Rascunhos, campanhas atuais e coleções encerradas ficam organizadas aqui.</p></div>
+            </div>
+            <div id="collections-loading" class="empty-state"><span class="spinner"></span><p>Carregando coleções e produtos…</p></div>
+            <div id="collections-empty" class="empty-state hidden"><i class="fa-solid fa-box-archive"></i><h3>Nenhuma coleção encontrada</h3><p>Ajuste os filtros ou crie uma nova coleção.</p></div>
+            <div id="collections-grid" class="collection-grid hidden"></div>
+        </section>
+    </div>
+
+    <div id="collection-modal" class="modal" aria-hidden="true">
+        <div class="modal-shell" role="dialog" aria-modal="true" aria-labelledby="collection-modal-title">
+            <div class="modal-header">
+                <div><span id="collection-modal-badge" class="eyebrow">Nova coleção</span><h2 id="collection-modal-title">Criar coleção sazonal</h2><p>Defina onde ela aparece, quando fica ativa e quais peças fazem parte dela.</p></div>
+                <button type="button" id="close-collection-modal" class="icon-button" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div id="empty-state" class="hidden text-center py-12">
-                <i class="fa-solid fa-layer-group text-4xl text-gray-300 mb-3"></i>
-                <p class="text-gray-500">Nenhuma coleção criada.</p>
-            </div>
-
-            <div id="collections-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </div>
-    </main>
-
-    <!-- Modal -->
-    <div id="collection-modal" class="modal">
-        <div class="modal-content w-full h-full md:h-auto md:max-w-2xl md:rounded-xl">
-            <div class="flex justify-between items-center p-4 border-b">
-                <h2 id="modal-title" class="text-xl font-semibold">Nova coleção</h2>
-                <button id="close-modal" class="text-gray-500 p-2 text-xl">&times;</button>
-            </div>
-
-            <form id="collection-form" class="p-4 overflow-y-auto flex-1 space-y-4">
+            <form id="collection-form" class="modal-body">
                 <input type="hidden" id="collection-id">
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                    <input type="text" id="collection-name" required class="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[--cor-ouro-acento] outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
-                    <input type="text" id="collection-slug" required class="w-full border rounded-lg p-3 bg-gray-50 text-gray-500">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                    <textarea id="collection-description" rows="3" class="w-full border rounded-lg p-3 outline-none"></textarea>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
-                        <input type="number" id="collection-order" value="0" class="w-full border rounded-lg p-3">
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-solid fa-signature"></i><div><h3>Identidade</h3><p>Informações vistas na navegação e usadas na URL.</p></div></div>
+                    <div class="form-grid two-columns">
+                        <label class="field"><span>Nome da coleção</span><input id="collection-name" type="text" required placeholder="Ex: Yom Kipur 2026"></label>
+                        <label class="field"><span>Slug</span><input id="collection-slug" type="text" required placeholder="yom-kipur-2026"></label>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Data de lançamento</label>
-                        <input type="date" id="collection-date" class="w-full border rounded-lg p-3">
+                    <label class="field"><span>Descrição</span><textarea id="collection-description" rows="3" placeholder="Conte a proposta desta coleção."></textarea></label>
+                    <label class="field"><span>Chamada curta para a vitrine</span><input id="collection-home-copy" type="text" maxlength="120" placeholder="Ex: Peças da nova coleção Yom Kipur"></label>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-solid fa-table-columns"></i><div><h3>Abrangência</h3><p>Roupas e Mesa Posta continuam sendo as duas áreas permanentes do site.</p></div></div>
+                    <div class="segment-picker">
+                        <label class="segment-option"><input id="collection-segment-moda" type="checkbox" value="moda"><span class="segment-icon"><i class="fa-solid fa-shirt"></i></span><span><strong>Roupas</strong><small>Vestidos, conjuntos, saias e demais peças de moda.</small></span></label>
+                        <label class="segment-option"><input id="collection-segment-mesa" type="checkbox" value="mesa"><span class="segment-icon"><i class="fa-solid fa-utensils"></i></span><span><strong>Mesa Posta</strong><small>Peças de mesa, inclusive linhas e temas proféticos.</small></span></label>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Imagem Capa (URL)</label>
-                    <input type="url" id="collection-image" class="w-full border rounded-lg p-3 mb-2">
-                    <img id="preview-image" src="" class="w-full h-32 object-cover rounded-lg hidden bg-gray-100">
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-regular fa-calendar"></i><div><h3>Ciclo da coleção</h3><p>Rascunho não aparece no site. Ativa entra na vitrine. Encerrada fica arquivada.</p></div></div>
+                    <div class="form-grid three-columns">
+                        <label class="field"><span>Status</span><select id="collection-status"><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="ended">Encerrada</option></select></label>
+                        <label class="field"><span>Início</span><input id="collection-start-date" type="date"></label>
+                        <label class="field"><span>Fim</span><input id="collection-end-date" type="date"></label>
+                    </div>
+                    <div class="form-grid two-columns">
+                        <label class="field"><span>Prioridade / ordem</span><input id="collection-order" type="number" min="0" max="99999" value="0"></label>
+                        <label class="toggle-field"><input id="collection-featured" type="checkbox"><span class="toggle"></span><span><strong>Destacar na página inicial</strong><small>Prepara esta coleção para ocupar a área de destaque da Home.</small></span></label>
+                    </div>
                 </div>
 
-                <div class="pt-4 mt-4 border-t grid grid-cols-2 gap-3">
-                    <button type="button" id="delete-collection-btn" class="btn btn-danger hidden">
-                        <i class="fa-solid fa-trash mr-2"></i> Excluir
-                    </button>
-                    <button type="submit" id="save-collection-btn" class="btn btn-primary col-span-2">
-                        Salvar coleção
-                    </button>
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-regular fa-image"></i><div><h3>Imagem de capa</h3><p>Usada nos cards e na futura navegação de coleções em destaque.</p></div></div>
+                    <label class="field"><span>URL da imagem</span><input id="collection-image" type="url" placeholder="https://..."></label>
+                    <div id="collection-image-preview" class="image-preview hidden"><img alt="Prévia da coleção"></div>
+                </div>
+
+                <div id="linked-products-section" class="form-section hidden">
+                    <div class="section-title products-section-title"><i class="fa-solid fa-boxes-stacked"></i><div><h3>Peças vinculadas</h3><p id="linked-products-copy">0 peças nesta coleção.</p></div><a id="open-products-filtered" href="produtos.html" class="text-link">Abrir em Produtos <i class="fa-solid fa-arrow-up-right-from-square"></i></a></div>
+                    <div id="linked-products-list" class="linked-products-list"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="delete-collection-btn" class="button button-danger hidden"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    <div class="footer-spacer"></div>
+                    <button type="button" id="cancel-collection-btn" class="button button-secondary">Cancelar</button>
+                    <button type="submit" id="save-collection-btn" class="button button-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar coleção</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCzB4_YotWCPVh1yaqWkhbB4LypPQYvV4U",
-            authDomain: "site-lamed.firebaseapp.com",
-            databaseURL: "https://site-lamed-default-rtdb.firebaseio.com",
-            projectId: "site-lamed",
-            storageBucket: "site-lamed.firebasestorage.app",
-            messagingSenderId: "862756160215",
-            appId: "1:862756160215:web:d0fded233682bf93eaa692",
-            measurementId: "G-BL1G961PGT"
-        };
+    <div id="end-collection-modal" class="modal" aria-hidden="true">
+        <div class="modal-shell modal-shell-small" role="dialog" aria-modal="true" aria-labelledby="end-modal-title">
+            <div class="modal-header">
+                <div><span class="eyebrow">Encerramento</span><h2 id="end-modal-title">Encerrar coleção</h2><p>Escolha quais peças continuam no catálogo depois que a campanha sair do ar.</p></div>
+                <button type="button" id="close-end-modal" class="icon-button" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="notice"><i class="fa-solid fa-circle-info"></i><p>A coleção ficará como <strong>Encerrada</strong>. Marque as peças que devem continuar ativas no site; as demais serão pausadas.</p></div>
+                <div id="end-products-list" class="end-products-list"></div>
+                <div class="modal-footer"><button type="button" id="cancel-end-btn" class="button button-secondary">Cancelar</button><button type="button" id="confirm-end-btn" class="button button-primary"><i class="fa-solid fa-box-archive"></i> Confirmar encerramento</button></div>
+            </div>
+        </div>
+    </div>
 
-        // Inicializar Firebase (Global)
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
-
-        function sanitizePlainText(value, maxLength = 180) {
-            return String(value ?? '')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .slice(0, maxLength);
-        }
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        async function isAuthorizedAdmin(user) {
-            if (!user) return false;
-            if (ADMIN_UIDS.includes(user.uid)) return true;
-
-            try {
-                const tokenResult = await user.getIdTokenResult();
-                return tokenResult?.claims?.admin === true;
-            } catch (error) {
-                return false;
-            }
-        }
-
-        let colecoes = [];
-        let currentCollectionId = null;
-
-        // --- Inicialização ---
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log("Iniciando...");
-            auth.onAuthStateChanged(async (user) => {
-                if (!(await isAuthorizedAdmin(user))) {
-                    auth.signOut().catch(() => {});
-                    console.log("Não autenticado, redirecionando...");
-                    window.location.href = './login-admin.html';
-                } else {
-                    console.log("Autenticado:", user.email);
-                    carregarColecoes();
-                }
-            });
-            setupEventListeners();
-        });
-
-        function carregarColecoes() {
-            const grid = document.getElementById('collections-grid');
-            const loading = document.getElementById('loading-state');
-
-            db.collection("colecoes").orderBy("ordem", "asc").onSnapshot((snapshot) => {
-                colecoes = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .filter(colecao => colecao.id !== "__catalog_settings" && colecao.kind !== "catalog_settings");
-                console.log("Coleções carregadas:", colecoes.length);
-                renderizarTela();
-                loading.classList.add('hidden');
-            }, (error) => {
-                console.error("Erro ao carregar coleções:", error);
-                loading.innerHTML = `<p class="text-red-500">Erro ao carregar dados.</p>`;
-            });
-        }
-
-        function renderizarTela() {
-            const grid = document.getElementById('collections-grid');
-            const activeGrid = document.getElementById('active-grid');
-            
-            grid.innerHTML = '';
-            activeGrid.innerHTML = '';
-
-            if (colecoes.length === 0) {
-                document.getElementById('empty-state').classList.remove('hidden');
-                return;
-            }
-            document.getElementById('empty-state').classList.add('hidden');
-
-            // Contadores
-            const ativas = colecoes.filter(c => c.ativa);
-            document.getElementById('total-collections').textContent = colecoes.length;
-            document.getElementById('active-collections').textContent = ativas.length;
-
-            // Ativas
-            if (ativas.length > 0) {
-                document.getElementById('active-section').classList.remove('hidden');
-                ativas.forEach(c => activeGrid.appendChild(criarCard(c)));
-            } else {
-                document.getElementById('active-section').classList.add('hidden');
-            }
-
-            // Lista Geral (Ordenada)
-            const sortType = document.getElementById('sort-select').value;
-            let sorted = [...colecoes];
-            if(sortType === 'date-desc') sorted.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-            if(sortType === 'name-asc') sorted.sort((a,b) => a.nome.localeCompare(b.nome));
-            if(sortType === 'status') sorted.sort((a,b) => (b.ativa === a.ativa) ? 0 : b.ativa ? 1 : -1);
-
-            sorted.forEach(c => grid.appendChild(criarCard(c)));
-        }
-
-        function criarCard(c) {
-            const div = document.createElement('div');
-            div.className = `card p-4 flex flex-col gap-3 ${c.ativa ? 'collection-card active' : ''}`;
-            
-            const data = c.dataLancamento ? new Date(c.dataLancamento.seconds * 1000).toLocaleDateString('pt-BR') : '-';
-            const safeName = escapeHtml(sanitizePlainText(c.nome, 120) || 'Coleção');
-            const safeDescription = escapeHtml(sanitizePlainText(c.descricao || 'Sem descrição', 220));
-            
-            div.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h4 class="font-bold text-gray-800 text-lg">${safeName}</h4>
-                        <span class="text-xs text-gray-500">${data}</span>
-                    </div>
-                    <span class="status-badge ${c.ativa ? 'status-active' : 'status-inactive'}">
-                        ${c.ativa ? 'Ativa' : 'Inativa'}
-                    </span>
-                </div>
-                <p class="text-sm text-gray-600 line-clamp-2 flex-grow">${c.descricao || 'Sem descrição'}</p>
-                <div class="grid grid-cols-2 gap-2 mt-auto pt-3 border-t border-gray-100">
-                    <button class="btn ${c.ativa ? 'btn-secondary' : 'btn-success'} text-xs toggle-status-btn">
-                        ${c.ativa ? '<i class="fa-solid fa-pause mr-1"></i> Pausar' : '<i class="fa-solid fa-play mr-1"></i> Ativar'}
-                    </button>
-                    <button class="btn btn-primary text-xs edit-btn">
-                        <i class="fa-solid fa-pen mr-1"></i> Editar
-                    </button>
-                </div>
-            `;
-
-            const descriptionEl = div.querySelector('p.text-sm.text-gray-600.line-clamp-2.flex-grow');
-            if (descriptionEl) {
-                descriptionEl.textContent = sanitizePlainText(c.descricao || 'Sem descrição', 220);
-            }
-             
-            div.querySelector('.toggle-status-btn').onclick = () => toggleStatus(c);
-            div.querySelector('.edit-btn').onclick = () => abrirModal(c);
-            return div;
-        }
-
-        async function toggleStatus(colecao) {
-            const novoStatus = !colecao.ativa;
-            if (novoStatus === true) {
-                const ativas = colecoes.filter(c => c.ativa).length;
-                if (ativas >= 2) {
-                    alert("Limite atingido! Máximo de 2 coleções ativas.");
-                    return;
-                }
-            }
-            try {
-                await db.collection("colecoes").doc(colecao.id).update({ 
-                    ativa: novoStatus, 
-                    updatedAt: new Date() 
-                });
-            } catch (e) {
-                console.error(e);
-                alert("Erro ao atualizar: " + e.message);
-            }
-        }
-
-        function abrirModal(colecao = null) {
-            const form = document.getElementById('collection-form');
-            form.reset();
-            currentCollectionId = null;
-            document.getElementById('preview-image').classList.add('hidden');
-            document.getElementById('delete-collection-btn').classList.add('hidden');
-            const saveBtn = document.getElementById('save-collection-btn');
-            saveBtn.classList.remove('col-span-1');
-            saveBtn.classList.add('col-span-2');
-
-            if (colecao) {
-                currentCollectionId = colecao.id;
-                document.getElementById('modal-title').textContent = 'Editar coleção';
-                document.getElementById('collection-name').value = colecao.nome;
-                document.getElementById('collection-slug').value = colecao.slug;
-                document.getElementById('collection-description').value = colecao.descricao || '';
-                document.getElementById('collection-order').value = colecao.ordem || 0;
-                document.getElementById('collection-image').value = colecao.imagemDestaque || '';
-                
-                if (colecao.dataLancamento) {
-                    const d = new Date(colecao.dataLancamento.seconds * 1000);
-                    document.getElementById('collection-date').value = d.toISOString().split('T')[0];
-                }
-                if (colecao.imagemDestaque) {
-                    const img = document.getElementById('preview-image');
-                    img.src = colecao.imagemDestaque;
-                    img.classList.remove('hidden');
-                }
-
-                document.getElementById('delete-collection-btn').classList.remove('hidden');
-                saveBtn.classList.remove('col-span-2');
-                saveBtn.classList.add('col-span-1');
-            } else {
-                document.getElementById('modal-title').textContent = 'Nova coleção';
-            }
-            document.getElementById('collection-modal').classList.add('visivel');
-        }
-
-        async function salvarColecao(e) {
-            e.preventDefault();
-            const nome = document.getElementById('collection-name').value;
-            const slug = document.getElementById('collection-slug').value;
-            const dateVal = document.getElementById('collection-date').value;
-
-            const data = {
-                nome, slug,
-                descricao: document.getElementById('collection-description').value,
-                ordem: parseInt(document.getElementById('collection-order').value) || 0,
-                imagemDestaque: document.getElementById('collection-image').value,
-                updatedAt: new Date()
-            };
-            if (dateVal) data.dataLancamento = new Date(dateVal);
-
-            try {
-                if (currentCollectionId) {
-                    await db.collection("colecoes").doc(currentCollectionId).update(data);
-                } else {
-                    data.createdAt = new Date();
-                    data.ativa = false;
-                    await db.collection("colecoes").add(data);
-                }
-                document.getElementById('collection-modal').classList.remove('visivel');
-            } catch (error) {
-                alert("Erro ao salvar: " + error.message);
-            }
-        }
-
-        async function excluirColecao() {
-            if (!currentCollectionId || !confirm("Tem certeza?")) return;
-            try {
-                await db.collection("colecoes").doc(currentCollectionId).delete();
-                document.getElementById('collection-modal').classList.remove('visivel');
-            } catch (e) { alert("Erro ao excluir."); }
-        }
-
-        function setupEventListeners() {
-            document.getElementById('add-collection-btn').onclick = () => abrirModal();
-            document.getElementById('close-modal').onclick = () => document.getElementById('collection-modal').classList.remove('visivel');
-            document.getElementById('collection-form').onsubmit = salvarColecao;
-            document.getElementById('delete-collection-btn').onclick = excluirColecao;
-            document.getElementById('sort-select').onchange = renderizarTela;
-            
-            document.getElementById('collection-name').oninput = (e) => {
-                if(!currentCollectionId) {
-                    document.getElementById('collection-slug').value = e.target.value.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-                }
-            };
-            document.getElementById('collection-image').oninput = (e) => {
-                const img = document.getElementById('preview-image');
-                if(e.target.value) { img.src = e.target.value; img.classList.remove('hidden'); }
-                else img.classList.add('hidden');
-            };
-        }
-    </script>
+    <div id="collections-toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
