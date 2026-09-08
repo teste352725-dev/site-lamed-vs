@@ -10,9 +10,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260908-collections" defer></script>
     <script src="js/collections-admin.js?v=20260908-1" defer></script>
+    <script src="js/collections-upload-extension.js?v=20260908-1" defer></script>
     <link rel="stylesheet" href="css/colecoes.css?v=20260908-1">
     <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
 </head>
@@ -109,7 +111,7 @@
                 </div>
 
                 <div class="form-section">
-                    <div class="section-title"><i class="fa-regular fa-image"></i><div><h3>Imagem de capa</h3><p>Usada nos cards e na futura navegação de coleções em destaque.</p></div></div>
+                    <div class="section-title"><i class="fa-regular fa-image"></i><div><h3>Imagem de capa</h3><p>Usada nos cards e na navegação das coleções em destaque.</p></div></div>
                     <label class="field"><span>URL da imagem</span><input id="collection-image" type="url" placeholder="https://..."></label>
                     <div id="collection-image-preview" class="image-preview hidden"><img alt="Prévia da coleção"></div>
                 </div>
