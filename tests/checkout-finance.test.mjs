@@ -20,7 +20,7 @@ test("aplica desconto de catalogo por unidade em centavos", () => {
   assert.equal(getCatalogUnitPriceCents({ preco: 199.9, desconto: 10 }), 17_991);
 });
 
-test("desconto Pix reduz somente produtos e preserva frete integral", () => {
+test("checkout nao concede desconto adicional por Pix", () => {
   const result = calculateCheckoutAmounts({
     products: [
       { nome: "Peca A", precoCentavos: 10_000, quantity: 1 },
@@ -31,29 +31,29 @@ test("desconto Pix reduz somente produtos e preserva frete integral", () => {
   });
 
   assert.equal(result.productSubtotalCents, 16_666);
-  assert.equal(result.productChargeCents, 15_832);
-  assert.equal(result.pixDiscountCents, 834);
+  assert.equal(result.productChargeCents, 16_666);
+  assert.equal(result.pixDiscountCents, 0);
   assert.equal(result.shippingCents, 2_750);
-  assert.equal(result.totalCents, 18_582);
-  assert.equal(result.productLines[0].precoCobrancaCentavos, 9_500);
-  assert.equal(result.productLines[1].precoCobrancaCentavos, 3_166);
+  assert.equal(result.totalCents, 19_416);
+  assert.equal(result.productLines[0].precoCobrancaCentavos, 10_000);
+  assert.equal(result.productLines[1].precoCobrancaCentavos, 3_333);
 });
 
-test("regra de Pix exige as duas confirmacoes de seguranca", () => {
+test("desconto Pix permanece desativado independentemente das flags antigas", () => {
   assert.equal(isSafePixProductDiscountEnabled({}), false);
   assert.equal(isSafePixProductDiscountEnabled({ INFINITEPAY_PIX_PRODUCT_DISCOUNT_ENABLED: "true" }), false);
   assert.equal(isSafePixProductDiscountEnabled({ INFINITEPAY_CHECKOUT_PIX_ONLY: "true" }), false);
   assert.equal(isSafePixProductDiscountEnabled({
     INFINITEPAY_PIX_PRODUCT_DISCOUNT_ENABLED: "true",
     INFINITEPAY_CHECKOUT_PIX_ONLY: "true"
-  }), true);
+  }), false);
 });
 
 test("soma dos itens enviados precisa coincidir com o total", () => {
   assert.equal(sumChargeItemsCents([
-    { price: 9_500, quantity: 1 },
-    { price: 3_166, quantity: 2 },
+    { price: 10_000, quantity: 1 },
+    { price: 3_333, quantity: 2 },
     { price: 2_750, quantity: 1 }
-  ]), 18_582);
+  ]), 19_416);
   assert.equal(applyDiscountBasisPoints(10_000, 500), 9_500);
 });
