@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+
 const RATE_LIMIT_BUCKETS = new Map();
 
 function cleanupBucket(now = Date.now()) {
@@ -55,4 +57,14 @@ export function enforceInMemoryRateLimit({ key, maxRequests, windowMs }) {
     allowed: true,
     retryAfterSeconds: 0
   };
+}
+
+// Compara segredos (tokens, senhas de webhook/cron) em tempo constante.
+export function safeTokenEquals(provided, expected) {
+  const left = String(provided || "");
+  const right = String(expected || "");
+  if (!left || !right) return false;
+  const a = createHash("sha256").update(left).digest();
+  const b = createHash("sha256").update(right).digest();
+  return timingSafeEqual(a, b);
 }

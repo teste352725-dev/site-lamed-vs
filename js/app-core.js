@@ -271,21 +271,21 @@ async function ensureEntryAssistUserProfileDoc(user) {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua conta agora.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível sincronizar sua conta agora.', 220));
     }
 }
 
 function getDefaultStorefrontCopy() {
     return {
         heroTitle: 'Mesa Posta Lamed',
-        heroSubtitle: 'Pecas artesanais para transformar sua mesa',
+        heroSubtitle: 'Peças artesanais para transformar sua mesa',
         heroCta: 'Conheca a Loja',
         shopTitle: 'Conheca nossa Loja',
-        shopSubtitle: 'Explore as pecas, filtre por categoria e encontre o que faz sentido para o seu momento.',
+        shopSubtitle: 'Explore as peças, filtre por categoria e encontre o que faz sentido para o seu momento.',
         philosophyTitle: 'Nossa Filosofia',
-        philosophyBody: 'A Lamed VS nasce da harmonia entre elegancia, proposito e cuidado com voce. Cada peca e confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequencia. Mais que roupas, criamos experiencias atemporais, conscientes e unicas - feitas para vestir seu corpo e inspirar sua mente.',
-        messageTitle: 'Uma Mensagem Para Voce',
-        messageBody1: 'Ao escolher uma de nossas criacoes, voce se conecta com a sua essencia. Nossos produtos sao um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem voce e.',
+        philosophyBody: 'A Lamed VS nasce da harmonia entre elegância, propósito e cuidado com você. Cada peça e confeccionada em fibras naturais, escolhidas por sua capacidade de transmitir bem-estar e elevar sua frequencia. Mais que roupas, criamos experiencias atemporais, conscientes e unicas - feitas para vestir seu corpo e inspirar sua mente.',
+        messageTitle: 'Uma Mensagem Para Você',
+        messageBody1: 'Ao escolher uma de nossas criações, você se conecta com a sua essência. Nossos produtos sao um convite ao bem-estar, desenvolvidos com o cuidado das fibras naturais e um design que honra quem você e.',
         messageBody2: 'Os materiais que escolhemos dialogam com a energia do seu corpo e do seu ambiente, cultivando uma sensacao de vitalidade e paz interior. Lamed vs e um lembrete do poder que reside em suas escolhas diarias, especialmente naquelas feitas com consciencia e amor.'
     };
 }
@@ -458,7 +458,7 @@ function openInlineOperationsEditing() {
 
 async function signInWithGoogleSafe() {
     if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
-        throw new Error('O login com Google nao esta disponivel agora.');
+        throw new Error('O login com Google não está disponível agora.');
     }
 
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -520,14 +520,14 @@ async function signInWithGoogleFromEntryAssist() {
             alert('O Google bloqueia login dentro do navegador interno do app. Abra no Chrome/Safari e tente novamente.');
             return;
         }
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel entrar com Google agora.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível entrar com Google agora.', 220));
     } finally {
         if (elements.entryAssistActionBtn) {
             elements.entryAssistActionBtn.disabled = false;
             const actionMode = sanitizePlainText(elements.entryAssistActionBtn.dataset.mode, 40);
             elements.entryAssistActionBtn.textContent = actionMode === 'login_google'
                 ? 'Continuar com Google'
-                : 'Ativar notificacoes';
+                : 'Ativar notificações';
         }
     }
 }
@@ -560,13 +560,13 @@ async function saveStorefrontCopy() {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok || payload?.ok === false) {
-            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel salvar os textos da home.', 220));
+            throw new Error(sanitizePlainText(payload?.error || 'Não foi possível salvar os textos da home.', 220));
         }
 
         applyStorefrontCopy(nextCopy);
         closeStorefrontCopyModal();
     } catch (error) {
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar os textos agora.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível salvar os textos agora.', 220));
     } finally {
         if (saveButton) {
             saveButton.disabled = false;
@@ -729,7 +729,7 @@ function bindStorefrontForegroundNotifications() {
         storefrontForegroundPushBound = true;
         messaging.onMessage((payload) => {
             const title = sanitizePlainText(payload?.notification?.title || payload?.data?.title || 'Lamed VS', 120);
-            const body = sanitizePlainText(payload?.notification?.body || payload?.data?.body || 'Voce recebeu uma nova atualizacao.', 240);
+            const body = sanitizePlainText(payload?.notification?.body || payload?.data?.body || 'Você recebeu uma nova atualização.', 240);
             const link = sanitizePlainText(payload?.fcmOptions?.link || payload?.data?.link || 'minha-conta.html#pedidos', 500);
             const icon = normalizeUrl(payload?.notification?.icon || payload?.data?.icon) || 'https://i.ibb.co/mr93jDHT/JM.png';
 
@@ -789,6 +789,10 @@ function init() {
     document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
 }
 
+// UX: evita dois modais seguidos na entrada. Se o aviso de entrega aparecer
+// nesta visita, o convite de login/notificacoes fica para a proxima visita.
+let deliveryPopupShownThisVisit = false;
+
 function scheduleDeliveryPopupCheck() {
     if (localStorage.getItem('lamed_hide_delivery_notice') === 'true') return;
 
@@ -809,6 +813,7 @@ function checkDeliveryPopup() {
     const hideNotice = localStorage.getItem('lamed_hide_delivery_notice');
     if (hideNotice === 'true') return;
     popup.classList.add('active');
+    deliveryPopupShownThisVisit = true;
     lockBodyScroll('delivery-popup');
 }
 
@@ -1166,7 +1171,7 @@ function normalizeSavedProfileAddressBook(list, primaryAddress = null, primaryAd
 
     normalizedEntries.forEach((item, index) => {
         if (!item.label) {
-            item.label = item.principal ? 'Endereco principal' : `Endereco salvo ${index + 1}`;
+            item.label = item.principal ? 'Endereco principal' : `Endereço salvo ${index + 1}`;
         }
     });
 
@@ -1549,7 +1554,7 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                 const component = product.componentes[idx];
                 const componentProduct = await ensureProductLoaded(productMap, component.id);
                 if (!componentProduct) {
-                    throw new Error(`Um item do combo "${canonicalItem.nome}" nao foi encontrado.`);
+                    throw new Error(`Um item do combo "${canonicalItem.nome}" não foi encontrado.`);
                 }
 
                 const requestedSelection = sourceItem.comboSelections?.[idx] || sourceItem.comboSelections?.[String(idx)] || {};
@@ -1615,7 +1620,7 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                 : normalizeSizeLabel(sourceItem.tamanho);
 
             if (!canonicalSize || canonicalSize === 'Combo') {
-                throw new Error(`As opcoes de "${canonicalItem.nome}" precisam ser selecionadas novamente.`);
+                throw new Error(`As opções de "${canonicalItem.nome}" precisam ser selecionadas novamente.`);
             }
 
             canonicalItem.tamanho = canonicalSize;
@@ -1679,12 +1684,12 @@ function configureEntryAssistPrompt({ type, title, copy, iconClass, linkLabel = 
     if (elements.entryAssistActionBtn) {
         setEntryAssistActionStyle(type === 'login' ? 'secondary' : 'primary');
         elements.entryAssistActionBtn.classList.toggle('hidden', !actionLabel);
-        elements.entryAssistActionBtn.textContent = actionLabel || 'Ativar notificacoes';
+        elements.entryAssistActionBtn.textContent = actionLabel || 'Ativar notificações';
         elements.entryAssistActionBtn.dataset.mode = type === 'login' ? 'login_google' : type;
     }
 
     if (elements.dismissAuthPromptBtn) {
-        elements.dismissAuthPromptBtn.textContent = type === 'push' ? 'Agora nao' : 'Continuar explorando';
+        elements.dismissAuthPromptBtn.textContent = type === 'push' ? 'Agora não' : 'Continuar explorando';
     }
 
     elements.authPromptModal.classList.remove('hidden');
@@ -1720,13 +1725,16 @@ function checkAuthPrompt(user) {
     } catch (error) {}
 
     entryAssistTimer = window.setTimeout(() => {
+        const deliveryPopupOpen = elements.deliveryPopupOverlay?.classList.contains('active');
+        if (deliveryPopupShownThisVisit || deliveryPopupOpen) return;
+
         if (promptType === 'push' && auth.currentUser) {
             configureEntryAssistPrompt({
                 type: 'push',
                 title: 'Ative avisos neste aparelho',
-                copy: 'Receba novidades e atualizacoes do seu pedido sem precisar ficar entrando no site o tempo todo.',
+                copy: 'Receba novidades e atualizações do seu pedido sem precisar ficar entrando no site o tempo todo.',
                 iconClass: 'fa-regular fa-bell',
-                actionLabel: 'Ativar notificacoes'
+                actionLabel: 'Ativar notificações'
             });
             return;
         }
@@ -1735,7 +1743,7 @@ function checkAuthPrompt(user) {
             configureEntryAssistPrompt({
                 type: 'login',
                 title: 'Entre para acompanhar seus pedidos',
-                copy: 'Fazendo login, voce acompanha o historico do pedido, favoritos, suporte e depois ainda pode ativar notificacoes neste aparelho.',
+                copy: 'Entrando na sua conta, você acompanha o histórico dos pedidos, seus favoritos e o suporte, e ainda pode ativar notificações neste aparelho.',
                 iconClass: 'fa-regular fa-user-circle',
                 linkLabel: 'Entrar ou cadastrar',
                 actionLabel: 'Continuar com Google'

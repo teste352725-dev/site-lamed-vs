@@ -60,7 +60,7 @@ async function loadCheckoutRuntimeConfig() {
         });
         const payload = await response.json().catch(() => null);
         if (!response.ok || payload?.ok !== true) {
-            throw new Error('Configuracao de checkout indisponivel.');
+            throw new Error('Configuração de checkout indisponível.');
         }
 
         checkoutRuntimeConfig = {
@@ -111,7 +111,7 @@ async function sendCheckoutProfileSyncToBackend(profile = {}, user = currentUser
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua conta agora.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível sincronizar sua conta agora.', 220));
     }
 
     return payload;
@@ -134,7 +134,7 @@ async function sendFavoriteToggleToBackend(productId, favorite, user = currentUs
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel salvar este favorito agora.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível salvar este favorito agora.', 220));
     }
 
     return payload;
@@ -142,7 +142,7 @@ async function sendFavoriteToggleToBackend(productId, favorite, user = currentUs
 
 async function signInWithGoogleSafeForCheckout() {
     if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
-        throw new Error('O login com Google nao esta disponivel agora.');
+        throw new Error('O login com Google não está disponível agora.');
     }
 
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -446,7 +446,7 @@ function normalizeCheckoutSavedAddresses(list, primaryAddress = null, primaryAdd
 
     normalizedEntries.forEach((item, index) => {
         if (!item.label) {
-            item.label = item.principal ? 'Endereco principal' : `Endereco salvo ${index + 1}`;
+            item.label = item.principal ? 'Endereco principal' : `Endereço salvo ${index + 1}`;
         }
     });
 
@@ -706,6 +706,8 @@ function setCheckoutSubmitFeedback(message = '', type = 'error', field = null) {
     }, 60);
 }
 
+let lastAutofilledCheckoutCep = '';
+
 async function autofillCheckoutAddressFromPostalCode(rawPostalCode) {
     const cep = normalizePostalCode(rawPostalCode);
     if (cep.length !== 8 || !elements.checkoutForm) return null;
@@ -722,13 +724,19 @@ async function autofillCheckoutAddressFromPostalCode(rawPostalCode) {
         if (requestId !== checkoutAddressLookupToken) return null;
         if (!response.ok || !payload || payload.erro) return null;
 
-        fillCheckoutAddressFields(elements.checkoutForm, {
-            cep,
-            rua: payload.logradouro,
-            bairro: payload.bairro,
-            cidade: payload.localidade,
-            estado: payload.uf
-        }, true);
+        // Preenche so o que o ViaCEP devolveu. Numero e complemento ficam como a
+        // cliente digitou (a resposta pode chegar depois que ela ja os preencheu).
+        const form = elements.checkoutForm;
+        const cityState = splitCheckoutCityAndState(payload.localidade, payload.uf);
+        const lookedUp = {
+            rua: sanitizePlainText(payload.logradouro, 140),
+            bairro: sanitizePlainText(payload.bairro, 80),
+            cidade: cityState.cidade,
+            estado: cityState.estado
+        };
+        Object.entries(lookedUp).forEach(([name, value]) => {
+            if (value) setCheckoutInputValue(form, name, value, true);
+        });
 
         return payload;
     } catch (error) {
@@ -752,7 +760,7 @@ function syncCheckoutAccountUI() {
 
     if (authenticatedUser) {
         if (copy) {
-            copy.textContent = 'Sua conta ja esta ativa. O pedido sera associado automaticamente ao seu painel.';
+            copy.textContent = 'Sua conta já esta ativa. O pedido será associado automaticamente ao seu painel.';
         }
         syncCheckoutAddressVisibility();
         return;
@@ -765,11 +773,11 @@ function syncCheckoutAccountUI() {
 
     if (copy) {
         if (mode === 'login') {
-            copy.textContent = 'Entre com a senha da sua conta para este pedido cair direto no seu historico.';
+            copy.textContent = 'Entre com a senha da sua conta para este pedido cair direto no seu histórico.';
         } else if (mode === 'guest') {
-            copy.textContent = 'Voce pode finalizar sem conta, mas perde o painel pessoal de acompanhamento.';
+            copy.textContent = 'Você pode finalizar sem conta, mas perde o painel pessoal de acompanhamento.';
         } else {
-            copy.textContent = 'Crie uma senha agora e este pedido ja nasce dentro da sua conta.';
+            copy.textContent = 'Crie uma senha agora e este pedido já nasce dentro da sua conta.';
         }
     }
 
@@ -846,7 +854,7 @@ async function loginWithGoogleForCheckout() {
             alert('Google bloqueia login no navegador interno do app. Abra no Chrome/Safari e tente novamente.');
             return;
         }
-        alert('Nao foi possivel entrar com Google agora.');
+        alert('Não foi possível entrar com Google agora.');
     }
 }
 
@@ -890,15 +898,15 @@ async function prepareCheckoutAccount(formData, cliente) {
     } catch (error) {
         const errorCode = String(error?.code || '');
         if (errorCode === 'auth/email-already-in-use') {
-            throw new Error('Esse e-mail ja possui conta. Escolha "Ja tenho conta" ou use Google.');
+            throw new Error('Esse e-mail já possui conta. Escolha "Já tenho conta" ou use Google.');
         }
         if (errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found') {
-            throw new Error('Nao foi possivel entrar com este e-mail e senha.');
+            throw new Error('Não foi possível entrar com este e-mail e senha.');
         }
         if (errorCode === 'auth/weak-password') {
             throw new Error('A senha da conta precisa ter pelo menos 6 caracteres.');
         }
-        throw new Error('Nao foi possivel preparar sua conta agora.');
+        throw new Error('Não foi possível preparar sua conta agora.');
     }
 }
 
@@ -912,7 +920,7 @@ async function fetchCheckoutPushConfig() {
     const payload = await response.json().catch(() => null);
 
     if (!response.ok || !payload?.ok) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel carregar a configuracao de notificacoes.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível carregar a configuração de notificações.', 220));
     }
 
     checkoutPushConfigCache = payload;
@@ -921,7 +929,7 @@ async function fetchCheckoutPushConfig() {
 
 async function getCheckoutMessagingInstance() {
     if (!firebase.messaging || typeof firebase.messaging !== 'function') {
-        throw new Error('Notificacoes web indisponiveis neste navegador.');
+        throw new Error('Notificações web indisponiveis neste navegador.');
     }
 
     if (!checkoutPushConfigCache) {
@@ -933,7 +941,7 @@ async function getCheckoutMessagingInstance() {
 
 async function ensureCheckoutPushServiceWorkerRegistration() {
     if (!('serviceWorker' in navigator)) {
-        throw new Error('Este navegador nao suporta notificacoes web.');
+        throw new Error('Este navegador não suporta notificações web.');
     }
 
     await navigator.serviceWorker.register('/sw.js', {
@@ -942,7 +950,7 @@ async function ensureCheckoutPushServiceWorkerRegistration() {
     });
     const registration = await navigator.serviceWorker.ready;
     if (!registration?.active) {
-        throw new Error('O service worker de notificacoes ainda nao ficou ativo. Atualize a pagina e tente novamente.');
+        throw new Error('O service worker de notificações ainda não ficou ativo. Atualize a página e tente novamente.');
     }
     return registration;
 }
@@ -950,7 +958,7 @@ async function ensureCheckoutPushServiceWorkerRegistration() {
 async function sendCheckoutPushSubscription(token) {
     const authenticatedUser = currentUser || auth.currentUser;
     if (!authenticatedUser || !token) {
-        throw new Error('Entre na sua conta antes de ativar notificacoes.');
+        throw new Error('Entre na sua conta antes de ativar notificações.');
     }
 
     const idToken = await authenticatedUser.getIdToken();
@@ -970,7 +978,7 @@ async function sendCheckoutPushSubscription(token) {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.ok) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel registrar as notificacoes.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível registrar as notificações.', 220));
     }
 }
 
@@ -1015,11 +1023,11 @@ async function enablePushNotificationsFromCheckout() {
     try {
         const config = await fetchCheckoutPushConfig();
         if (!config?.enabled || !config?.vapidPublicKey) {
-            throw new Error('As notificacoes ainda nao estao prontas neste momento.');
+            throw new Error('As notificações ainda não estao prontas neste momento.');
         }
 
         if (!('Notification' in window)) {
-            throw new Error('Seu navegador nao suporta notificacoes.');
+            throw new Error('Seu navegador não suporta notificações.');
         }
 
         let permission = Notification.permission;
@@ -1029,8 +1037,8 @@ async function enablePushNotificationsFromCheckout() {
 
         if (permission !== 'granted') {
             throw new Error(permission === 'denied'
-                ? 'As notificacoes estao bloqueadas neste navegador. Libere nas configuracoes do aparelho para continuar.'
-                : 'Permissao de notificacao nao concedida.');
+                ? 'As notificações estao bloqueadas neste navegador. Libere nas configurações do aparelho para continuar.'
+                : 'Permissao de notificação não concedida.');
         }
 
         const messaging = await getCheckoutMessagingInstance();
@@ -1041,16 +1049,16 @@ async function enablePushNotificationsFromCheckout() {
         });
 
         if (!token) {
-            throw new Error('Nao foi possivel ativar as notificacoes neste navegador.');
+            throw new Error('Não foi possível ativar as notificações neste navegador.');
         }
 
         checkoutPushToken = token;
         await sendCheckoutPushSubscription(token);
         closeCheckoutPushModal();
-        alert('Notificacoes ativadas neste aparelho.');
+        alert('Notificações ativadas neste aparelho.');
     } catch (error) {
         console.error(error);
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel ativar as notificacoes agora.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível ativar as notificações agora.', 220));
     }
 }
 
@@ -1077,15 +1085,15 @@ function extractShippingErrorMessage(payload, response = null) {
 
     if (response?.status === 404) {
         return API_BASE_URL
-            ? 'O endpoint de frete nao foi encontrado na API configurada.'
-            : 'O backend de frete ainda nao esta publicado neste dominio.';
+            ? 'O endpoint de frete não foi encontrado na API configurada.'
+            : 'O backend de frete ainda não esta publicado neste dominio.';
     }
 
     if (response?.status >= 500) {
         return 'O servidor de frete respondeu com erro. Tente novamente em instantes.';
     }
 
-    return 'Nao foi possivel calcular o frete agora.';
+    return 'Não foi possível calcular o frete agora.';
 }
 
 function extractShippingRequestErrorMessage(error) {
@@ -1093,8 +1101,8 @@ function extractShippingRequestErrorMessage(error) {
 
     if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
         return API_BASE_URL
-            ? `Nao foi possivel conectar ao backend de frete em ${API_BASE_URL}.`
-            : 'O backend de frete nao esta disponivel neste dominio.';
+            ? `Não foi possível conectar ao backend de frete em ${API_BASE_URL}.`
+            : 'O backend de frete não está disponível neste dominio.';
     }
 
     return message || 'Falha ao calcular o frete.';
@@ -1116,7 +1124,7 @@ function normalizeShippingBackendMessage(message) {
     const safe = sanitizePlainText(message || '', 220);
 
     if (isShippingProviderCredentialErrorMessage(safe)) {
-        return 'A integracao de frete esta em ajuste. O pedido continua disponivel e o frete sera confirmado manualmente pela equipe.';
+        return 'A integracao de frete esta em ajuste. O pedido continua disponível e o frete será confirmado manualmente pela equipe.';
     }
 
     return safe;
@@ -1244,7 +1252,7 @@ function renderShippingOptions() {
     const selectedId = shippingQuoteState.selectedOptionId;
 
     if (!cep) {
-        setShippingStatus('Informe o CEP para ver as opcoes do Melhor Envio.');
+        setShippingStatus('Informe o CEP para ver as opções do Melhor Envio.');
         return;
     }
 
@@ -1272,7 +1280,7 @@ function renderShippingOptions() {
 
     setShippingStatus(
         freeShippingEligible
-            ? 'Escolha a transportadora. A promocao de frete gratis sera aplicada no total.'
+            ? 'Escolha a transportadora. A promocao de frete grátis será aplicada no total.'
             : 'Escolha a opcao de entrega que preferir.',
         freeShippingEligible ? 'text-green-700' : 'text-gray-600'
     );
@@ -1289,7 +1297,7 @@ function renderShippingOptions() {
 
         const currentPrice = freeShippingEligible ? 'Gratis' : formatarReal(normalized.price);
         const helperText = freeShippingEligible
-            ? `Entrega em cerca de ${normalized.deliveryTime} dia(s) uteis - de ${formatarReal(normalized.originalPrice)} por gratis`
+            ? `Entrega em cerca de ${normalized.deliveryTime} dia(s) uteis - de ${formatarReal(normalized.originalPrice)} por grátis`
             : `Entrega em cerca de ${normalized.deliveryTime} dia(s) uteis`;
 
         card.innerHTML = `
@@ -1298,8 +1306,8 @@ function renderShippingOptions() {
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <p class="text-sm font-semibold text-[--cor-texto]">${normalized.company} - ${normalized.name}</p>
-                            <p class="text-xs text-gray-500">${helperText}</p>
+                            <p class="text-sm font-semibold text-[--cor-texto]">${escapeHtml(normalized.company)} - ${escapeHtml(normalized.name)}</p>
+                            <p class="text-xs text-gray-500">${escapeHtml(helperText)}</p>
                         </div>
                         <div class="text-left md:text-right">
                             <p class="text-sm font-bold text-[--cor-marrom-cta]">${currentPrice}</p>
@@ -1432,6 +1440,11 @@ function setupShippingQuoteInteractions() {
             const formatted = formatPostalCode(event.target.value);
             event.target.value = formatted;
 
+            if (normalizePostalCode(formatted).length === 8 && normalizePostalCode(formatted) !== lastAutofilledCheckoutCep) {
+                lastAutofilledCheckoutCep = normalizePostalCode(formatted);
+                autofillCheckoutAddressFromPostalCode(formatted).catch(() => {});
+            }
+
             if (isShippingQuoteEnabled() && normalizePostalCode(formatted).length === 8) {
                 scheduleShippingQuote();
             } else {
@@ -1506,7 +1519,7 @@ function setupShippingQuoteInteractions() {
 
 function addToCart() {
     if (typeof window.isStorefrontOrderingBlocked === 'function' && window.isStorefrontOrderingBlocked()) {
-        alert('A loja esta temporariamente indisponivel para novos pedidos.');
+        alert('A loja esta temporariamente indisponível para novos pedidos.');
         return;
     }
 
@@ -1517,7 +1530,7 @@ function addToCart() {
     const tamanhoFinal = (isMesaPosta || isCombo) ? (isCombo ? 'Combo' : 'Unico') : selectedSize;
     const personalizacao = currentProduct.personalizavel ? getCurrentPersonalization() : null;
     if (currentProduct.personalizavel && !personalizacao?.texto) {
-        alert('Escolha uma opcao de personalizacao antes de adicionar a peca.');
+        alert('Escolha uma opcao de personalizacao antes de adicionar a peça.');
         return;
     }
 
@@ -1587,29 +1600,29 @@ function updateCartUI() {
             detailsHtml = '<div class="mt-1 border-l-2 border-purple-200 pl-2 text-[10px] text-gray-500">';
             item.componentes.forEach((comp, idx) => {
                 const selection = item.comboSelections[idx];
-                const cor = selection?.cor?.nome || '-';
-                const tamanho = selection?.tamanho && selection.tamanho !== 'Unico' ? `(${selection.tamanho})` : '';
-                detailsHtml += `<div>${comp.quantidade}x ${comp.nome} <strong>${cor}</strong> ${tamanho}</div>`;
+                const cor = escapeHtml(selection?.cor?.nome || '-');
+                const tamanho = selection?.tamanho && selection.tamanho !== 'Unico' ? `(${escapeHtml(selection.tamanho)})` : '';
+                detailsHtml += `<div>${Number(comp.quantidade || 0)}x ${escapeHtml(comp.nome)} <strong>${cor}</strong> ${tamanho}</div>`;
             });
             detailsHtml += '</div>';
         } else {
-            detailsHtml = `<p class="mb-1 text-xs text-gray-500">${item.tamanho || 'Unico'}${item.cor ? ` | ${item.cor.nome}` : ''}</p>`;
-            if (item.personalizacao?.texto) detailsHtml += `<p class="mb-1 text-[11px] text-amber-800">Personalizacao: ${item.personalizacao.texto}</p>`;
-            if (item.personalizacao?.observacoes) detailsHtml += `<p class="mb-1 text-[11px] text-gray-500">Obs: ${item.personalizacao.observacoes}</p>`;
+            detailsHtml = `<p class="mb-1 text-xs text-gray-500">${escapeHtml(item.tamanho || 'Unico')}${item.cor ? ` | ${escapeHtml(item.cor.nome)}` : ''}</p>`;
+            if (item.personalizacao?.texto) detailsHtml += `<p class="mb-1 text-[11px] text-amber-800">Personalizacao: ${escapeHtml(item.personalizacao.texto)}</p>`;
+            if (item.personalizacao?.observacoes) detailsHtml += `<p class="mb-1 text-[11px] text-gray-500">Obs: ${escapeHtml(item.personalizacao.observacoes)}</p>`;
         }
 
         itemMarkup.push(`
             <div class="cart-drawer-item mb-4 flex gap-4 border-b border-[#E5E0D8] pb-4 last:border-0">
-                <img src="${item.imagem}" class="h-20 w-16 rounded-sm border border-[#E5E0D8] object-cover" loading="lazy" decoding="async">
+                <img ${typeof optimizedImageAttrs === 'function' ? optimizedImageAttrs(item.imagem, '64px', 480) : `src="${escapeHtml(item.imagem)}"`} alt="" class="h-20 w-16 rounded-sm border border-[#E5E0D8] object-cover" loading="lazy" decoding="async">
                 <div class="flex-grow">
-                    <h4 class="text-sm font-medium text-[--cor-texto]">${item.nome}</h4>
+                    <h4 class="text-sm font-medium text-[--cor-texto]">${escapeHtml(item.nome)}</h4>
                     ${detailsHtml}
                     <div class="mt-1 flex items-center justify-between">
                         <span class="text-sm font-semibold">${formatarReal(item.preco)}</span>
                         <div class="flex items-center rounded border border-[#dcdcdc] bg-white">
-                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="dec" data-id="${item.cartId}">-</button>
-                            <span class="px-2 text-xs">${item.quantity}</span>
-                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="inc" data-id="${item.cartId}">+</button>
+                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="dec" data-id="${escapeHtml(item.cartId)}">-</button>
+                            <span class="px-2 text-xs">${Number(item.quantity || 0)}</span>
+                            <button class="px-2 text-gray-500 hover:bg-gray-100" data-action="inc" data-id="${escapeHtml(item.cartId)}">+</button>
                         </div>
                     </div>
                 </div>
@@ -1753,7 +1766,7 @@ async function toggleFavorite() {
         console.error(error);
         icon.className = isFavorite ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart';
         elements.favoriteBtn?.setAttribute('aria-pressed', String(isFavorite));
-        alert('Nao foi possivel salvar este favorito agora.');
+        alert('Não foi possível salvar este favorito agora.');
     }
 }
 
@@ -1786,9 +1799,9 @@ function closeCheckoutModal() {
 }
 
 async function openCheckoutModal() {
-    if (cart.length === 0) return alert('Sua sacola esta vazia.');
+    if (cart.length === 0) return alert('Sua sacola está vazia.');
     if (typeof window.isStorefrontOrderingBlocked === 'function' && window.isStorefrontOrderingBlocked()) {
-        return alert('A loja esta temporariamente indisponivel para novos pedidos.');
+        return alert('A loja esta temporariamente indisponível para novos pedidos.');
     }
 
     setCheckoutSubmitFeedback();
@@ -1881,7 +1894,7 @@ function updateCheckoutSummary() {
     if (totals.pixDiscount > 0) {
         appendRow('Desconto PIX', `-${formatarReal(totals.pixDiscount)}`, 'mt-1 flex justify-between text-sm font-medium text-green-600');
     } else if (totals.cardFee > 0) {
-        appendRow('Taxa Cartao (>2x)', `+${formatarReal(totals.cardFee)}`, 'mt-1 flex justify-between text-sm font-medium text-gray-500');
+        appendRow('Taxa Cartão (>2x)', `+${formatarReal(totals.cardFee)}`, 'mt-1 flex justify-between text-sm font-medium text-gray-500');
     }
 
     if (!isShippingQuoteEnabled()) {
@@ -1902,7 +1915,7 @@ function updateCheckoutSummary() {
             appendRow('Desconto promocional no frete', `-${formatarReal(totals.shippingDiscount)}`, 'mt-1 flex justify-between text-sm font-medium text-green-700');
             setShippingMessage(
                 'fa-solid fa-gift text-green-600',
-                `Frete gratis aplicado para ${shipping.company} - ${shipping.name}.`,
+                `Frete grátis aplicado para ${shipping.company} - ${shipping.name}.`,
                 'font-bold text-green-700'
             );
         } else {
@@ -1921,7 +1934,7 @@ function updateCheckoutSummary() {
         appendRow('Frete', 'Calculando...', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-gray-500');
         setShippingMessage('fa-solid fa-spinner fa-spin text-[--cor-marrom-cta]', 'Calculando o frete automatico pelo Melhor Envio...');
     } else if (shippingQuoteState.error) {
-        appendRow('Frete', 'Nao disponivel', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-red-600');
+        appendRow('Frete', 'Não disponível', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-red-600');
         setShippingMessage('fa-solid fa-circle-exclamation text-red-600', shippingQuoteState.error, 'text-red-600');
     } else if (cep.length !== 8) {
         appendRow('Frete', 'Informe o CEP', 'mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-gray-500');
@@ -1990,7 +2003,7 @@ async function finalizarPedido(formData) {
         setCheckoutSubmitFeedback();
 
         if (!cart.length) {
-            throw new Error('Sua sacola esta vazia.');
+            throw new Error('Sua sacola está vazia.');
         }
 
         const validationIssue = getCheckoutValidationIssue(cliente);
@@ -2017,7 +2030,7 @@ async function finalizarPedido(formData) {
             try {
                 authToken = await authenticatedUser.getIdToken();
             } catch (error) {
-                throw new Error('Nao foi possivel validar sua sessao. Entre novamente e tente de novo.');
+                throw new Error('Não foi possível validar sua sessão. Entre novamente e tente de novo.');
             }
         }
 
@@ -2101,7 +2114,7 @@ async function finalizarPedido(formData) {
         }
 
         if (!response.ok || !payload?.ok || !payload?.orderId) {
-            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel criar o pedido no servidor.', 220));
+            throw new Error(sanitizePlainText(payload?.error || 'Não foi possível criar o pedido no servidor.', 220));
         }
 
         const whatsappUrl = String(payload?.whatsappUrl || '').trim();

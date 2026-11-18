@@ -1,0 +1,42 @@
+/* Pagina estatica de produto (/produto/<slug>/), gerada no build. */
+.produto-main { max-width: 72rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+
+.produto-breadcrumb { font-size: .78rem; color: var(--cor-texto-suave); margin-bottom: 1.5rem; }
+.produto-breadcrumb a { color: var(--cor-texto-suave); text-decoration: none; }
+.produto-breadcrumb a:hover { color: var(--cor-ouro); }
+
+.produto-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 860px) { .produto-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 3.5rem; } }
+
+.produto-foto {
+  width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; display: block;
+  border-radius: 22px; background: var(--cor-papel); border: 1px solid var(--cor-linha);
+}
+.produto-foto--vazia { background: linear-gradient(135deg, #f3eee5, #e9e1d3); }
+.produto-miniaturas { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; margin-top: .6rem; }
+.produto-miniaturas img {
+  width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 12px; border: 1px solid var(--cor-linha);
+}
+
+@media (min-width: 860px) { .produto-info { position: sticky; top: 6rem; } }
+.produto-info h1 {
+  font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: clamp(1.9rem, 4.5vw, 2.6rem); line-height: 1.12; margin: 0 0 1rem;
+}
+.produto-preco { display: flex; align-items: baseline; gap: .75rem; margin: 0 0 1.5rem; }
+.produto-preco__atual { font-family: 'Cormorant Garamond', serif; font-size: 1.9rem; font-weight: 600; color: var(--cor-marrom); }
+.produto-preco__antigo { text-decoration: line-through; color: var(--cor-texto-suave); font-size: 1rem; }
+.produto-indisponivel { background: #fbf1e6; border: 1px solid #ead2b4; border-radius: 12px; padding: .75rem 1rem; font-size: .9rem; }
+
+.produto-cta { width: 100%; justify-content: center; padding: 1.1rem 1.4rem; }
+@media (min-width: 860px) { .produto-cta { width: auto; } }
+
+.produto-descricao { margin-top: 1.75rem; }
+.produto-meta { font-size: .95rem; }
+
+.produto-garantias {
+  list-style: none; padding: 1.1rem 1.25rem; margin: 1.75rem 0; background: var(--cor-papel);
+  border: 1px solid var(--cor-linha); border-radius: 18px; font-size: .9rem;
+}
+.produto-garantias li + li { margin-top: .55rem; }
+
+.produto-whats { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; }

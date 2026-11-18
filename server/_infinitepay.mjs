@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { FieldValue, getAdminDb } from "./_firebase-admin.mjs";
 import { centsToMoney, moneyToCents, sumChargeItemsCents } from "./_checkout-finance.mjs";
 import { isAdminDecodedToken } from "./_session.mjs";
+import { safeTokenEquals } from "./_security.mjs";
 
 class InfinitePayRequestError extends Error {
   constructor(status, message, details = {}) {
@@ -371,6 +373,7 @@ function normalizeWebhookToken(rawValue) {
   return sanitizePlainText(rawValue, 160);
 }
 
+
 export function assertInfinitePayWebhookAccess(req) {
   const expectedToken = getInfinitePayWebhookSecret();
   if (!expectedToken) {
@@ -378,7 +381,7 @@ export function assertInfinitePayWebhookAccess(req) {
   }
 
   const providedToken = normalizeWebhookToken(req?.query?.token || req?.headers?.["x-webhook-token"] || req?.headers?.["x-infinitepay-token"]);
-  if (!providedToken || providedToken !== expectedToken) {
+  if (!safeTokenEquals(providedToken, expectedToken)) {
     throw new InfinitePayRequestError(403, "Webhook InfinitePay nao autorizado.");
   }
 }
@@ -439,60 +442,92 @@ function buildPaymentSummaryUpdate(order, payload) {
   };
 }
 
+// Cada pagamento (transaction_nsu) da InfinitePay so pode quitar UM pedido.
+// O vinculo fica em infinitepay_transacoes/{sha256(nsu)}, gravado na mesma
+// transacao que marca o pedido como pago. Clientes nao acessam essa colecao
+// (sem regra no firestore.rules = acesso negado).
+const PAYMENT_CLAIMS_COLLECTION = "infinitepay_transacoes";
+
+function buildPaymentClaimId(transactionNsu) {
+  return createHash("sha256").update(`infinitepay:${transactionNsu}`).digest("hex");
+}
+
 async function applyVerifiedInfinitePayPayment({ orderId, payload, slug, transactionNsu }, db = getAdminDb()) {
   const orderRef = db.collection("pedidos").doc(orderId);
-  const snapshot = await orderRef.get();
-  if (!snapshot.exists) {
-    throw new InfinitePayRequestError(404, "Pedido nao encontrado para esta confirmacao.");
-  }
-
-  const order = snapshot.data() || {};
-  const currentPaymentStatus = sanitizePlainText(order?.paymentStatus || order?.payment?.status, 40).toLowerCase();
-  const storedTransactionNsu = sanitizePlainText(order?.payment?.transactionNsu, 160);
   const safeTransactionNsu = sanitizePlainText(transactionNsu || payload?.transaction_nsu, 160);
+  const claimRef = safeTransactionNsu
+    ? db.collection(PAYMENT_CLAIMS_COLLECTION).doc(buildPaymentClaimId(safeTransactionNsu))
+    : null;
 
-  if (currentPaymentStatus === "paid") {
-    if (storedTransactionNsu && safeTransactionNsu && storedTransactionNsu !== safeTransactionNsu) {
-      throw new InfinitePayRequestError(409, "Este pedido ja possui outro pagamento confirmado.");
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(orderRef);
+    if (!snapshot.exists) {
+      throw new InfinitePayRequestError(404, "Pedido nao encontrado para esta confirmacao.");
     }
+
+    const claimSnapshot = claimRef ? await transaction.get(claimRef) : null;
+    const claimedOrderId = claimSnapshot?.exists
+      ? sanitizePlainText(claimSnapshot.data()?.orderId, 160)
+      : "";
+    if (claimedOrderId && claimedOrderId !== orderId) {
+      throw new InfinitePayRequestError(409, "Este pagamento ja foi usado para confirmar outro pedido.");
+    }
+
+    const order = snapshot.data() || {};
+    const currentPaymentStatus = sanitizePlainText(order?.paymentStatus || order?.payment?.status, 40).toLowerCase();
+    const storedTransactionNsu = sanitizePlainText(order?.payment?.transactionNsu, 160);
+
+    if (currentPaymentStatus === "paid") {
+      if (storedTransactionNsu && safeTransactionNsu && storedTransactionNsu !== safeTransactionNsu) {
+        throw new InfinitePayRequestError(409, "Este pedido ja possui outro pagamento confirmado.");
+      }
+
+      return {
+        ok: true,
+        idempotent: true,
+        orderId,
+        paymentStatus: "paid",
+        status: sanitizePlainText(order?.status, 20).toLowerCase() || "pago"
+      };
+    }
+
+    const verifiedPayload = {
+      ...payload,
+      slug: sanitizePlainText(slug || payload?.slug, 160),
+      invoice_slug: sanitizePlainText(payload?.invoice_slug || slug || payload?.slug, 160),
+      transaction_nsu: safeTransactionNsu,
+      order_nsu: orderId
+    };
+    const paymentUpdate = buildPaymentSummaryUpdate(order, verifiedPayload);
+
+    const currentStatus = sanitizePlainText(order?.status, 20).toLowerCase();
+    const nextStatus = ["enviado", "entregue", "cancelado"].includes(currentStatus)
+      ? currentStatus
+      : "pago";
+
+    if (claimRef && !claimSnapshot?.exists) {
+      transaction.set(claimRef, {
+        orderId,
+        gateway: "infinitepay",
+        createdAt: FieldValue.serverTimestamp()
+      });
+    }
+
+    transaction.set(orderRef, {
+      paymentGateway: paymentUpdate.paymentGateway,
+      paymentStatus: paymentUpdate.paymentStatus,
+      payment: paymentUpdate.payment,
+      status: nextStatus,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
 
     return {
       ok: true,
-      idempotent: true,
       orderId,
       paymentStatus: "paid",
-      status: sanitizePlainText(order?.status, 20).toLowerCase() || "pago"
+      status: nextStatus
     };
-  }
-
-  const verifiedPayload = {
-    ...payload,
-    slug: sanitizePlainText(slug || payload?.slug, 160),
-    invoice_slug: sanitizePlainText(payload?.invoice_slug || slug || payload?.slug, 160),
-    transaction_nsu: safeTransactionNsu,
-    order_nsu: orderId
-  };
-  const paymentUpdate = buildPaymentSummaryUpdate(order, verifiedPayload);
-
-  const currentStatus = sanitizePlainText(order?.status, 20).toLowerCase();
-  const nextStatus = ["enviado", "entregue", "cancelado"].includes(currentStatus)
-    ? currentStatus
-    : "pago";
-
-  await orderRef.set({
-    paymentGateway: paymentUpdate.paymentGateway,
-    paymentStatus: paymentUpdate.paymentStatus,
-    payment: paymentUpdate.payment,
-    status: nextStatus,
-    updatedAt: FieldValue.serverTimestamp()
-  }, { merge: true });
-
-  return {
-    ok: true,
-    orderId,
-    paymentStatus: "paid",
-    status: nextStatus
-  };
+  });
 }
 
 export async function applyInfinitePayWebhook(payload, db = getAdminDb()) {

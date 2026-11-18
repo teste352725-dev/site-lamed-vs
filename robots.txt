@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+
+# Paginas internas (admin, conta, producao) usam "noindex" no HTML e no
+# cabecalho X-Robots-Tag; nao bloqueie aqui, senao o Google nao le o noindex.
 
 Sitemap: https://www.lamedvs.com.br/sitemap.xml

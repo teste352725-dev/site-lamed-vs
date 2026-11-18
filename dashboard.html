@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="robots" content="noindex,nofollow">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard | Central Admin Lamed</title>
 
@@ -13,7 +14,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-      <link rel="stylesheet" href="css/dashboard.css?v=20260818-native-admin">
+      <link rel="stylesheet" href="css/dashboard.css?v=20260913-embedded-admin">
 </head>
 <body>
     <!--
@@ -37,7 +38,7 @@
         <p class="font-brand text-3xl leading-none text-[--admin-brown]">Lamed</p>
         <p class="text-[10px] uppercase tracking-[0.22em] text-slate-500">Central Admin</p>
       </div>
-      <button onclick="refreshOverview()" class="h-10 w-10 rounded-xl border border-[#e8dfd1] text-slate-700">
+      <button onclick="refreshCurrentAdminView()" class="h-10 w-10 rounded-xl border border-[#e8dfd1] text-slate-700" aria-label="Atualizar área atual">
         <i class="fa-solid fa-rotate"></i>
       </button>
     </div>
@@ -58,13 +59,13 @@
       <div class="mb-5 rounded-2xl bg-[var(--admin-cream)] p-4">
         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Painel</p>
         <p class="mt-2 text-sm leading-6 text-slate-600">
-          Abra a area desejada pelo menu e trabalhe em um lugar so.
+          Abra a área desejada pelo menu e trabalhe em um só lugar.
         </p>
       </div>
 
       <nav class="flex-1 space-y-2 text-sm">
         <button id="nav-overview" class="sidebar-link active flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('overview')">
-          <i class="fa-solid fa-chart-pie w-5 text-center"></i> Visao geral
+          <i class="fa-solid fa-chart-pie w-5 text-center"></i> Visão geral
         </button>
         <button id="nav-products" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('products')">
           <i class="fa-solid fa-box-open w-5 text-center"></i> Produtos
@@ -79,13 +80,13 @@
           <i class="fa-solid fa-cart-shopping w-5 text-center"></i> Pedidos
         </button>
         <button id="nav-collections" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('collections')">
-          <i class="fa-solid fa-layer-group w-5 text-center"></i> Colecoes
+          <i class="fa-solid fa-layer-group w-5 text-center"></i> Coleções
         </button>
         <button id="nav-gallery" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('gallery')">
           <i class="fa-solid fa-images w-5 text-center"></i> Galeria
         </button>
         <button id="nav-pricing" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('pricing')">
-          <i class="fa-solid fa-ruler-combined w-5 text-center"></i> Precificacao
+          <i class="fa-solid fa-ruler-combined w-5 text-center"></i> Precificação
         </button>
         <button id="nav-chat" class="sidebar-link flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-medium text-slate-600" onclick="changeView('chat')">
           <i class="fa-solid fa-comments w-5 text-center"></i> Atendimento
@@ -97,7 +98,7 @@
 
       <div class="mt-6 space-y-3 border-t border-[#ece4d8] pt-4">
         <a href="index.html" target="_blank" class="flex items-center gap-3 rounded-2xl border border-[#ece4d8] px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
-          <i class="fa-solid fa-arrow-up-right-from-square w-5 text-center"></i> Abrir site publico
+          <i class="fa-solid fa-arrow-up-right-from-square w-5 text-center"></i> Abrir site público
         </a>
         <button onclick="logout()" class="flex w-full items-center gap-3 rounded-2xl border border-red-100 px-4 py-3 text-left text-sm font-medium text-red-500 transition hover:bg-red-50">
           <i class="fa-solid fa-right-from-bracket w-5 text-center"></i> Sair
@@ -162,7 +163,7 @@
             <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Produtos ativos</p>
             <div class="mt-4 flex items-end justify-between">
               <strong id="stat-products" class="text-4xl font-semibold text-slate-900">0</strong>
-              <span id="stat-custom-products" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">0 personalizaveis</span>
+              <span id="stat-custom-products" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">0 personalizáveis</span>
             </div>
           </div>
 
@@ -183,7 +184,7 @@
           </div>
 
           <div class="stat-card rounded-[24px] p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Colecoes ativas</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">Coleções ativas</p>
             <div class="mt-4 flex items-end justify-between">
               <strong id="stat-collections" class="text-4xl font-semibold text-slate-900">0</strong>
               <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-[#eadfcd]">Limite recomendado: 2</span>
@@ -245,7 +246,7 @@
                 <span class="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(29,78,216,0.08)] text-blue-700">
                   <i class="fa-solid fa-layer-group"></i>
                 </span>
-                <p class="text-sm font-semibold text-slate-900">Colecoes do site</p>
+                <p class="text-sm font-semibold text-slate-900">Coleções do site</p>
                 <p class="mt-1 text-xs leading-5 text-slate-500">Ative, pause, ordene e revise o visual das colecoes.</p>
               </button>
 
@@ -283,6 +284,22 @@
             </div>
           </div>
         </div>
+
+        <div class="panel-card rounded-[28px] p-6" aria-labelledby="catalog-health-title">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Qualidade do catálogo</p>
+              <h2 id="catalog-health-title" class="mt-2 text-2xl font-semibold text-slate-900">Saúde do catálogo</h2>
+              <p class="mt-1 text-sm text-slate-500">Peças com descrição e várias fotos vendem mais e aparecem melhor no Google.</p>
+            </div>
+            <button onclick="changeView('products')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">
+              Editar produtos
+            </button>
+          </div>
+          <div id="catalog-health" class="mt-6">
+            <div class="rounded-2xl border border-dashed border-[#e6dccd] px-4 py-6 text-center text-sm text-slate-500">Analisando catálogo...</div>
+          </div>
+        </div>
       </section>
 
       <section id="view-products" class="admin-view hidden space-y-4">
@@ -304,12 +321,50 @@
         </div>
       </section>
 
+      <section id="view-stock" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Produção</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Estoque e produção</h2>
+              <p class="mt-2 text-sm text-slate-500">Leia QR Codes, movimente peças e acompanhe as etapas sem sair do dashboard.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('stock')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('stock')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="workspace-viewport mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-stock" class="workspace-frame" title="Estoque e produção" loading="lazy" data-src="estoque-mesaposta.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-team" class="admin-view hidden space-y-4">
+        <div class="workspace-card rounded-[28px] p-4 md:p-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Segurança</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Equipe e acessos</h2>
+              <p class="mt-2 text-sm text-slate-500">Crie acessos individuais e controle as permissões da equipe dentro do painel.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="reloadWorkspace('team')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
+              <button onclick="openWorkspaceInNewTab('team')" class="rounded-full bg-[--admin-brown] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Abrir tela cheia</button>
+            </div>
+          </div>
+          <div class="workspace-viewport mt-5 overflow-hidden rounded-[24px] border border-[#eadfcd] bg-white">
+            <iframe id="frame-team" class="workspace-frame" title="Equipe e acessos" loading="lazy" data-src="equipe.html?embedded=1"></iframe>
+          </div>
+        </div>
+      </section>
+
       <section id="view-orders" class="admin-view hidden space-y-4">
         <div class="workspace-card rounded-[28px] p-4 md:p-6">
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
-              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Pedidos e operacao</h2>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Pedidos e operação</h2>
               <p class="mt-2 text-sm text-slate-500">Acompanhe status, detalhes do cliente e observações de personalização no mesmo fluxo.</p>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -328,8 +383,8 @@
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
-              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Colecoes</h2>
-              <p class="mt-2 text-sm text-slate-500">Organize a vitrine principal e a narrativa das colecoes sem sair do painel.</p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">Coleções</h2>
+              <p class="mt-2 text-sm text-slate-500">Organize a vitrine principal e a narrativa das coleções sem sair do painel.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button onclick="reloadWorkspace('collections')" class="rounded-full border border-[#dfd3c0] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[--admin-gold] hover:text-[--admin-brown]">Recarregar</button>
@@ -420,6 +475,6 @@
     </main>
   </div>
 
-  <script src="js/admin-dashboard.js?v=20260818-team-access" defer></script>
+  <script src="js/admin-dashboard.js?v=20260913-embedded-admin" defer></script>
 </body>
 </html>

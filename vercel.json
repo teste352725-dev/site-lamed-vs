@@ -56,6 +56,33 @@
           "value": "no-store"
         }
       ]
+    },
+    {
+      "source": "/(dashboard|produtos|pedidos|colecoes|galeria|chat-admin|editor-imagem|equipe|estoque-mesaposta|executor_scripts|calculadora|login-admin|login-admin-google|login-producao|minha-conta|offline)(.html)?",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/img/p/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, stale-while-revalidate=86400"
+        }
+      ]
     }
   ],
   "rewrites": [

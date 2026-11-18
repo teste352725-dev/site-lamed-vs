@@ -14,7 +14,9 @@ export function isSessionRequestError(error) {
   return error instanceof SessionRequestError;
 }
 
-export async function resolveAuthenticatedUser(authorizationHeader) {
+// checkRevoked: usado nas rotas privilegiadas (admin/producao). Assim, ao desativar
+// ou rebaixar alguem da equipe, o acesso cai na hora, sem esperar o token expirar (1h).
+export async function resolveAuthenticatedUser(authorizationHeader, { checkRevoked = false } = {}) {
   const rawHeader = String(authorizationHeader || "").trim();
   if (!rawHeader) {
     throw new SessionRequestError(401, "Sessao nao encontrada.");
@@ -26,7 +28,7 @@ export async function resolveAuthenticatedUser(authorizationHeader) {
   }
 
   try {
-    return await getAdminAuth().verifyIdToken(match[1]);
+    return await getAdminAuth().verifyIdToken(match[1], checkRevoked);
   } catch (error) {
     throw new SessionRequestError(401, "Nao foi possivel validar sua sessao. Entre novamente e tente de novo.");
   }
@@ -47,7 +49,7 @@ export function isAdminDecodedToken(decodedToken) {
 }
 
 export async function requireAdminUser(authorizationHeader) {
-  const decoded = await resolveAuthenticatedUser(authorizationHeader);
+  const decoded = await resolveAuthenticatedUser(authorizationHeader, { checkRevoked: true });
   if (!isAdminDecodedToken(decoded)) {
     throw new SessionRequestError(403, "Esta operacao exige permissao administrativa.");
   }

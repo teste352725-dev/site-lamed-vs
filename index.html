@@ -13,7 +13,10 @@
     <meta property="og:title" content="Laméd vs | Alfaiataria e Casa">
     <meta property="og:description" content="Criações artesanais em fibras naturais para vestir e transformar a casa com elegância, bem-estar e propósito.">
     <meta property="og:url" content="https://www.lamedvs.com.br/">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="https://www.lamedvs.com.br/assets/hero-lamed.jpg">
+    <meta property="og:image:alt" content="Mesa posta Laméd vs com bordados artesanais">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://www.lamedvs.com.br/assets/hero-lamed.jpg">
     <meta name="twitter:title" content="Laméd vs | Alfaiataria e Casa">
     <meta name="twitter:description" content="Criações artesanais em fibras naturais para vestir e transformar a casa com elegância, bem-estar e propósito.">
     <script type="application/ld+json">
@@ -58,24 +61,28 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="preconnect" href="https://i.supaimg.com" crossorigin>
     <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
     <link rel="stylesheet" href="css/tailwind.generated.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css">
+    <link rel="preload" as="image" href="assets/hero-lamed-828.webp" imagesrcset="assets/hero-lamed-828.webp 828w, assets/hero-lamed-1024.webp 1024w" imagesizes="100vw" fetchpriority="high">
+    <!-- Carrossel e icones nao bloqueiam a primeira pintura da pagina -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css"></noscript>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
     
     <!-- Firebase SDK -->
+    <script src="js/image-variants.js?v=20261118"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
     <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="styles.css?v=20260824-whatsapp-checkout">
+    <link rel="stylesheet" href="styles.css?v=20261118">
 </head>
 
 <body class="antialiased">
@@ -140,7 +147,7 @@
                 <i class="fa-solid fa-wifi-slash"></i>
                 Sem internet
             </span>
-            <p class="offline-banner__text">Algumas partes da loja podem ficar limitadas ate a conexao voltar.</p>
+            <p class="offline-banner__text">Algumas partes da loja podem ficar limitadas até a conexão voltar.</p>
         </div>
         <button type="button" id="offline-banner-retry" class="offline-banner__action">Tentar novamente</button>
     </div>
@@ -149,15 +156,15 @@
         <div class="admin-quickbar__scroll">
             <button type="button" id="admin-quickbar-operations" class="admin-quickbar__btn">
                 <i class="fa-solid fa-sliders"></i>
-                Operacao
+                Operação
             </button>
             <button type="button" id="admin-quickbar-products" class="admin-quickbar__btn">
                 <i class="fa-solid fa-shirt"></i>
-                Pecas
+                Peças
             </button>
             <button type="button" id="admin-quickbar-collections" class="admin-quickbar__btn">
                 <i class="fa-solid fa-layer-group"></i>
-                Colecoes
+                Coleções
             </button>
             <button type="button" id="admin-quickbar-categories" class="admin-quickbar__btn">
                 <i class="fa-solid fa-tags"></i>
@@ -178,15 +185,15 @@
             </button>
             <button type="button" class="admin-fab-link" id="admin-open-operations-editor">
                 <i class="fa-solid fa-sliders"></i>
-                Operacao
+                Operação
             </button>
             <button type="button" class="admin-fab-link" id="admin-open-products-editor">
                 <i class="fa-solid fa-shirt"></i>
-                Pecas
+                Peças
             </button>
             <button type="button" class="admin-fab-link" id="admin-open-collections-editor">
                 <i class="fa-solid fa-layer-group"></i>
-                Colecoes
+                Coleções
             </button>
             <button type="button" class="admin-fab-link" id="admin-open-categories-editor">
                 <i class="fa-solid fa-tags"></i>
@@ -277,14 +284,21 @@
                 </li>
                 <li id="sidebar-admin-operation-item" class="hidden">
                     <button type="button" id="sidebar-admin-operation-link" class="sidebar-link w-full text-left block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-marrom-cta] hover:bg-[#F0EEE6]">
-                        Operacao da Loja
+                        Operação da Loja
                     </button>
                 </li>
+                <!-- inst:inicio -->
                 <li>
-                    <a href="#contato" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">
-                        Contato
+                    <a href="atendimento.html" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">
+                        Atendimento
                     </a>
                 </li>
+                <li>
+                    <a href="entregas.html" class="sidebar-link block px-6 py-3 text-sm uppercase tracking-widest text-[--cor-texto] hover:bg-[#F0EEE6]">
+                        Entregas e trocas
+                    </a>
+                </li>
+                <!-- inst:fim -->
             </ul>
         </nav>
 
@@ -301,7 +315,7 @@
             
             <!-- Hero Section -->
             <section class="hero-section flex items-center justify-center text-center relative overflow-hidden h-[70vh] w-full">
-                <img src="https://i.supaimg.com/24744ff6-247c-4e17-9e94-6455c96da980/bf59713f-69b5-4c2e-8fc6-25c26ce229e8.jpg" alt="Coleção Laméd" class="absolute inset-0 w-full h-full object-cover" fetchpriority="high" loading="eager" decoding="async">
+                <img src="assets/hero-lamed.jpg" srcset="assets/hero-lamed-828.webp 828w, assets/hero-lamed-1024.webp 1024w" sizes="100vw" width="1024" height="1536" alt="Coleção Laméd" class="absolute inset-0 w-full h-full object-cover" fetchpriority="high" loading="eager" decoding="async">
                 <div class="hero-overlay"></div>
                 <div class="hero-content p-8 md:p-12 rounded-sm shadow-xl max-w-lg mx-4" style="background-color: rgba(253, 251, 246, 0.95);">
                     <div id="admin-hero-inline-tools" class="admin-inline-tools hidden"></div>
@@ -420,7 +434,7 @@
                         <div class="grid gap-4 md:grid-cols-[1.3fr_0.7fr] md:items-center">
                             <label class="flex items-center gap-3 rounded-full border border-[#E5E0D8] px-4 py-3 bg-[#FDFBF6]">
                                 <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
-                                <input id="shop-search-input" type="text" placeholder="Buscar por nome da peça..." class="w-full bg-transparent text-sm outline-none">
+                                <input id="shop-search-input" type="search" autocomplete="off" aria-label="Buscar peças" placeholder="Buscar por nome da peça..." class="w-full bg-transparent text-sm outline-none">
                             </label>
                             <div class="text-center md:text-right">
                                 <p id="shop-results-copy" class="text-xs uppercase tracking-[0.24em] text-gray-400">Carregando catálogo</p>
@@ -582,23 +596,23 @@
                 </div>
 
                 <!-- Campos Pessoais -->
-                <input type="text" name="nome" aria-label="Nome completo" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Nome Completo" required>
+                <input type="text" name="nome" autocomplete="name" aria-label="Nome completo" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Nome Completo" required>
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="tel" name="telefone" aria-label="WhatsApp" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="WhatsApp" required>
-                    <input type="email" name="email" aria-label="E-mail" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="E-mail" required>
+                    <input type="tel" name="telefone" autocomplete="tel" inputmode="tel" aria-label="WhatsApp" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="WhatsApp" required>
+                    <input type="email" name="email" autocomplete="email" aria-label="E-mail" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="E-mail" required>
                 </div>
 
                 <div id="checkout-account-assist" class="rounded-2xl border border-[#E5E0D8] bg-white p-4 shadow-sm space-y-4">
                     <div id="checkout-logged-in-card" class="hidden">
                         <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Conta conectada</p>
                         <h3 class="serif text-2xl text-[--cor-texto] mt-2">Seu pedido vai direto para a sua area.</h3>
-                        <p class="mt-2 text-sm text-gray-500">Depois de finalizar, voce sera levada para o pedido na sua conta e podera continuar a finalizacao pelo WhatsApp.</p>
+                        <p class="mt-2 text-sm text-gray-500">Depois de finalizar, o pedido aparece na sua conta e você pode continuar a finalização pelo WhatsApp.</p>
                     </div>
 
                     <div id="checkout-guest-card">
                         <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Acompanhamento do pedido</p>
                         <h3 class="serif text-2xl text-[--cor-texto] mt-2">Crie sua conta enquanto fecha o pedido.</h3>
-                        <p class="mt-2 text-sm text-gray-500">Assim voce acompanha status, favoritos, suporte e proximas etapas em um espaco proprio.</p>
+                        <p class="mt-2 text-sm text-gray-500">Assim você acompanha status, favoritos, suporte e próximas etapas em um espaço proprio.</p>
 
                         <button type="button" id="checkout-google-login-btn" class="mt-4 w-full border border-[#E5E0D8] py-3 flex items-center justify-center gap-3 hover:bg-[#F8F6F0] transition text-sm text-gray-600 rounded-xl">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5" alt="Google">
@@ -610,37 +624,37 @@
                                 <input type="radio" name="checkout-account-mode" value="create" checked class="mt-1">
                                 <span>
                                     <strong class="block text-[--cor-texto]">Criar conta com este pedido</strong>
-                                    <span class="text-xs text-gray-500">Recomendado para acompanhar tudo em um so lugar.</span>
+                                    <span class="text-xs text-gray-500">Recomendado para acompanhar tudo em um só lugar.</span>
                                 </span>
                             </label>
                             <label class="flex items-start gap-3 rounded-xl border border-[#EFE5D8] p-3 cursor-pointer">
                                 <input type="radio" name="checkout-account-mode" value="login" class="mt-1">
                                 <span>
-                                    <strong class="block text-[--cor-texto]">Ja tenho conta</strong>
-                                    <span class="text-xs text-gray-500">Entre com sua senha e associe este pedido ao seu historico.</span>
+                                    <strong class="block text-[--cor-texto]">Já tenho conta</strong>
+                                    <span class="text-xs text-gray-500">Entre com sua senha e associe este pedido ao seu histórico.</span>
                                 </span>
                             </label>
                             <label class="flex items-start gap-3 rounded-xl border border-[#EFE5D8] p-3 cursor-pointer">
                                 <input type="radio" name="checkout-account-mode" value="guest" class="mt-1">
                                 <span>
                                     <strong class="block text-[--cor-texto]">Continuar sem conta</strong>
-                                    <span class="text-xs text-gray-500">Voce ainda conclui o pedido, mas sem painel pessoal.</span>
+                                    <span class="text-xs text-gray-500">Você ainda conclui o pedido, mas sem painel pessoal.</span>
                                 </span>
                             </label>
                         </div>
 
                         <div id="checkout-account-password-wrap" class="mt-4">
                             <label class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Senha da conta</label>
-                            <input type="password" id="checkout-account-password" aria-label="Senha da conta" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Minimo de 6 caracteres" autocomplete="current-password">
+                            <input type="password" id="checkout-account-password" aria-label="Senha da conta" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Mínimo de 6 caracteres" autocomplete="current-password">
                         </div>
 
-                        <p id="checkout-account-copy" class="text-xs text-gray-400 leading-relaxed">Use o mesmo e-mail do pedido. Se criar a conta agora, o pedido ja entra no seu painel.</p>
+                        <p id="checkout-account-copy" class="text-xs text-gray-400 leading-relaxed">Use o mesmo e-mail do pedido. Se criar a conta agora, o pedido já entra no seu painel.</p>
                     </div>
                 </div>
 
                 <!-- Campos de Entrega -->
                 <h3 class="text-xs font-bold uppercase tracking-widest text-gray-400 mt-4">Entrega</h3>
-                <p class="text-xs leading-relaxed text-gray-500">Pedimos documento e endereco completo para gerar sua etiqueta sem retrabalho quando formos postar o pedido.</p>
+                <p class="text-xs leading-relaxed text-gray-500">Pedimos documento e endereço completo para gerar sua etiqueta sem retrabalho quando formos postar o pedido.</p>
                 <input type="text" id="checkout-documento" name="documento" aria-label="CPF ou CNPJ do recebedor" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="CPF ou CNPJ (obrigatório)" autocomplete="off" inputmode="numeric" required>
 
                 <div id="checkout-saved-addresses-panel" class="hidden rounded-2xl border border-[#E5E0D8] bg-[#FCFAF6] p-4 shadow-sm">
@@ -663,7 +677,7 @@
                         <input type="text" id="checkout-rua" name="rua" aria-label="Rua ou avenida" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Rua / Avenida" autocomplete="address-line1" required>
                     </div>
                     <div class="grid gap-4 md:grid-cols-2">
-                        <input type="text" id="checkout-numero" name="numero" aria-label="Número" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Numero" autocomplete="address-line2" required>
+                        <input type="text" id="checkout-numero" name="numero" aria-label="Número" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Número" autocomplete="address-line2" required>
                         <input type="text" id="checkout-complemento" name="complemento" aria-label="Complemento opcional" class="w-full border-b border-[#dcdcdc] bg-transparent p-2 text-sm outline-none focus:border-[--cor-ouro-acento]" placeholder="Complemento (opcional)" autocomplete="address-line3">
                     </div>
                     <div class="grid gap-4 md:grid-cols-3">
@@ -720,6 +734,14 @@
 
                 <div id="checkout-submit-feedback" class="hidden rounded-xl border px-4 py-3 text-sm leading-relaxed" role="alert" aria-live="assertive"></div>
 
+                <!-- inst:inicio -->
+                <p class="checkout-legal-note text-xs leading-relaxed text-gray-500">
+                    Ao continuar, você concorda com os <a href="termos-de-uso.html" target="_blank" rel="noopener" class="underline hover:text-[--cor-ouro-acento]">Termos de uso</a>
+                    e declara estar ciente da <a href="politica-de-privacidade.html" target="_blank" rel="noopener" class="underline hover:text-[--cor-ouro-acento]">Política de privacidade</a>.
+                    Você pode desistir da compra em até 7 dias após o recebimento: veja <a href="trocas-e-devolucoes.html" target="_blank" rel="noopener" class="underline hover:text-[--cor-ouro-acento]">Trocas e devoluções</a>.
+                </p>
+                <!-- inst:fim -->
+
                 <button type="submit" id="checkout-submit-btn" class="w-full bg-green-600 text-white py-4 rounded text-sm font-bold uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
                     Continuar no WhatsApp
                 </button>
@@ -736,7 +758,7 @@
             <p id="entry-assist-copy" class="text-sm text-gray-600 mb-6 font-light">Entre para acompanhar seus pedidos, salvar favoritos e ativar avisos neste aparelho.</p>
             <div class="space-y-3">
                 <a id="entry-assist-link" href="minha-conta.html" class="block w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Entrar ou cadastrar</a>
-                <button id="entry-assist-action-btn" type="button" class="hidden w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Ativar notificacoes</button>
+                <button id="entry-assist-action-btn" type="button" class="hidden w-full bg-[#643f21] text-white py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Ativar notificações</button>
                 <button id="auth-prompt-dismiss" class="text-xs text-gray-400 underline hover:text-gray-600">Continuar como visitante</button>
             </div>
         </div>
@@ -789,7 +811,7 @@
         <div class="storefront-copy-sheet w-full max-w-4xl bg-[#FDFBF6] rounded-t-[28px] md:rounded-[28px] shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between border-b border-[#E5E0D8] px-5 py-4">
                 <div>
-                    <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Operacao da loja</p>
+                    <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Operação da loja</p>
                     <h3 class="serif text-2xl text-[#45301F]">Agenda, avisos e visibilidade</h3>
                 </div>
                 <button type="button" id="close-store-operations-modal" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
@@ -801,13 +823,13 @@
                         <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Estado da loja</h4>
                         <span id="store-operations-current-mode" class="inline-flex items-center rounded-full border border-[#E5E0D8] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#6B5139]">Modo atual: Loja aberta</span>
                     </div>
-                    <p id="store-operations-save-feedback" class="rounded-2xl border border-[#EFE5D8] bg-white px-4 py-3 text-sm text-gray-500">As alteracoes ficam salvas e continuam ativas mesmo depois de atualizar a pagina.</p>
+                    <p id="store-operations-save-feedback" class="rounded-2xl border border-[#EFE5D8] bg-white px-4 py-3 text-sm text-gray-500">As alterações ficam salvas e continuam ativas mesmo depois de atualizar a página.</p>
                     <div class="grid gap-3 md:grid-cols-2">
                         <label class="flex items-start gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600">
                             <input type="checkbox" id="store-operations-public-enabled" class="mt-1">
                             <span>
                                 <strong class="block text-[--cor-texto]">Loja aberta ao publico</strong>
-                                <span class="text-xs text-gray-500">Desative para pausar novas compras sem mexer no codigo.</span>
+                                <span class="text-xs text-gray-500">Desative para pausar novas compras sem mexer no código.</span>
                             </span>
                         </label>
                         <label class="flex items-start gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600">
@@ -843,7 +865,7 @@
                 <section class="space-y-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Biblioteca de notificacoes</h4>
+                            <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Biblioteca de notificações</h4>
                             <p class="mt-1 text-sm text-gray-500">Escolha em quais momentos a loja envia avisos para o aparelho da cliente.</p>
                         </div>
                         <button type="button" id="run-store-operations-now" class="rounded-full border border-[#D8C9B6] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B5139]">Executar agora</button>
@@ -854,7 +876,7 @@
                         <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-favorite-promotion" type="checkbox"> Favorito entrou em promocao</label>
                         <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-purchase-promotion" type="checkbox"> Compra anterior entrou em promocao</label>
                         <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-favorite-low-stock" type="checkbox"> Favorito com pouco estoque</label>
-                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-collection-launch" type="checkbox"> Lancamento de colecao</label>
+                        <label class="flex items-center gap-3 rounded-2xl border border-[#EFE5D8] bg-white p-4 text-sm text-gray-600"><input id="store-operations-notify-collection-launch" type="checkbox"> Lancamento de coleção</label>
                     </div>
                     <label class="space-y-2 block max-w-xs">
                         <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Limite de pouco estoque</span>
@@ -876,8 +898,8 @@
                 <section class="space-y-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Agendar colecoes</h4>
-                            <p class="mt-1 text-sm text-gray-500">Ative ou encerre colecoes automaticamente em datas especificas.</p>
+                            <h4 class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Agendar coleções</h4>
+                            <p class="mt-1 text-sm text-gray-500">Ative ou encerre coleções automaticamente em datas especificas.</p>
                         </div>
                         <button type="button" id="store-operations-add-collection-schedule" class="rounded-full border border-[#D8C9B6] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B5139]">Nova janela</button>
                     </div>
@@ -887,7 +909,7 @@
 
             <div class="flex flex-col gap-3 border-t border-[#E5E0D8] px-5 py-4 sm:flex-row sm:justify-end">
                 <button type="button" id="cancel-store-operations" class="w-full sm:w-auto rounded-full border border-[#D8C9B6] px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#6B5139]">Cancelar</button>
-                <button type="button" id="save-store-operations" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar operacao</button>
+                <button type="button" id="save-store-operations" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar operação</button>
             </div>
         </div>
     </div>
@@ -897,7 +919,7 @@
             <div class="flex items-center justify-between border-b border-[#E5E0D8] px-5 py-4">
                 <div>
                     <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Edicao rapida</p>
-                    <h3 class="serif text-2xl text-[#45301F]">Peca da vitrine</h3>
+                    <h3 class="serif text-2xl text-[#45301F]">Peça da vitrine</h3>
                 </div>
                 <button type="button" id="close-product-quick-edit-modal" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
             </div>
@@ -907,7 +929,7 @@
                 <section class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label class="space-y-2 sm:col-span-2">
                         <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Nome</span>
-                        <input id="product-quick-edit-name" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Nome da peca">
+                        <input id="product-quick-edit-name" type="text" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" placeholder="Nome da peça">
                     </label>
 
                     <label class="space-y-2">
@@ -939,7 +961,7 @@
                     </label>
 
                     <label class="space-y-2">
-                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Colecao</span>
+                        <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Coleção</span>
                         <select id="product-quick-edit-collection" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm"></select>
                     </label>
                 </section>
@@ -953,13 +975,13 @@
                 </label>
 
                 <label class="space-y-2 block">
-                    <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Descricao</span>
-                    <textarea id="product-quick-edit-description" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[132px]" placeholder="Detalhes desta peca na vitrine"></textarea>
+                    <span class="text-xs font-bold uppercase tracking-[0.22em] text-[#9C8564]">Descrição</span>
+                    <textarea id="product-quick-edit-description" class="w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm min-h-[132px]" placeholder="Detalhes desta peça na vitrine"></textarea>
                 </label>
             </form>
             <div class="flex flex-col gap-3 border-t border-[#E5E0D8] px-5 py-4 sm:flex-row sm:justify-end">
                 <button type="button" id="cancel-product-quick-edit" class="w-full sm:w-auto rounded-full border border-[#D8C9B6] px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#6B5139]">Cancelar</button>
-                <button type="button" id="save-product-quick-edit" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar peca</button>
+                <button type="button" id="save-product-quick-edit" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar peça</button>
             </div>
         </div>
     </div>
@@ -969,19 +991,19 @@
             <div class="flex items-center justify-between border-b border-[#E5E0D8] px-5 py-4">
                 <div>
                     <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#9C8564]">Edicao rapida</p>
-                    <h3 class="serif text-2xl text-[#45301F]">Colecoes da vitrine</h3>
+                    <h3 class="serif text-2xl text-[#45301F]">Coleções da vitrine</h3>
                 </div>
                 <button type="button" id="close-collection-manager-modal" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             <div class="max-h-[82vh] overflow-y-auto px-5 py-5">
-                <p class="text-sm text-gray-500 mb-4">Ative, oculte, renomeie e reorganize as colecoes sem sair do index.</p>
+                <p class="text-sm text-gray-500 mb-4">Ative, oculte, renomeie e reorganize as coleções sem sair do index.</p>
                 <div id="collection-manager-list" class="space-y-3">
-                    <p class="text-sm text-gray-400 text-center py-10">Carregando colecoes...</p>
+                    <p class="text-sm text-gray-400 text-center py-10">Carregando coleções...</p>
                 </div>
             </div>
             <div class="flex flex-col gap-3 border-t border-[#E5E0D8] px-5 py-4 sm:flex-row sm:justify-end">
                 <button type="button" id="cancel-collection-manager" class="w-full sm:w-auto rounded-full border border-[#D8C9B6] px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#6B5139]">Cancelar</button>
-                <button type="button" id="save-collection-manager" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar colecoes</button>
+                <button type="button" id="save-collection-manager" class="w-full sm:w-auto rounded-full bg-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white">Salvar coleções</button>
             </div>
         </div>
     </div>
@@ -996,7 +1018,7 @@
                 <button type="button" id="close-category-manager-modal" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             <div class="max-h-[82vh] overflow-y-auto px-5 py-5 space-y-5">
-                <p class="text-sm text-gray-500">Voce pode ajustar nome, ordem e visibilidade das categorias daqui.</p>
+                <p class="text-sm text-gray-500">Você pode ajustar nome, ordem e visibilidade das categorias daqui.</p>
                 <div id="category-manager-list" class="space-y-3">
                     <p class="text-sm text-gray-400 text-center py-10">Carregando categorias...</p>
                 </div>
@@ -1024,10 +1046,10 @@
                 <i class="fa-regular fa-bell"></i>
             </div>
             <h3 class="serif text-3xl text-[#45301F] mb-3">Receba avisos deste pedido</h3>
-            <p class="text-sm text-gray-600 leading-relaxed">Como voce ja esta logada, pode ativar notificacoes neste aparelho para receber atualizacoes do pedido e respostas do suporte sem precisar abrir o site toda hora.</p>
+            <p class="text-sm text-gray-600 leading-relaxed">Como você já esta logada, pode ativar notificações neste aparelho para receber atualizações do pedido e respostas do suporte sem precisar abrir o site toda hora.</p>
             <div class="space-y-3 mt-6">
                 <button type="button" id="checkout-push-enable-btn" class="w-full bg-[--cor-marrom-cta] text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#4a2e18] transition shadow-md">Ativar neste aparelho</button>
-                <button type="button" id="checkout-push-later-btn" class="w-full border border-[#E5E0D8] py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[--cor-marrom-cta] transition">Agora nao</button>
+                <button type="button" id="checkout-push-later-btn" class="w-full border border-[#E5E0D8] py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[--cor-marrom-cta] transition">Agora não</button>
             </div>
         </div>
     </div>
@@ -1038,7 +1060,7 @@
             <h3 id="delivery-popup-title" class="serif">Aviso de Entrega</h3>
             <p>
                 Lembramos que nossas peças são produzidas de forma artesanal.
-                O prazo de entrega é de <strong>20 dias úteis</strong> após a confirmação do pedido.
+                O prazo de entrega é de <strong>40 dias úteis</strong> após a confirmação do pedido.
                 Cada detalhe é feito com dedicação exclusiva para você.
             </p>
             <div class="delivery-popup-actions">
@@ -1050,7 +1072,7 @@
 
     <!-- RODAPÃ‰ -->
     <footer id="contato" class="bg-[#F8F6F0] text-[--cor-texto] py-16 px-4 mt-auto border-t border-[#E5E0D8] deferred-section">
-        <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 text-center md:text-left">
+        <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left" data-inst-grid>
             <div>
                 <div class="mb-6 group inline-block text-left">
                     <div class="flex items-baseline gap-1">
@@ -1064,6 +1086,18 @@
                     <p class="text-sm font-light italic">Laméd vs é alta frequência.</p>
                 </div>
             </div>
+            <!-- inst:inicio -->
+            <nav aria-label="Informações da loja">
+                <h4 class="font-serif text-lg mb-4">Institucional</h4>
+                <ul class="text-sm font-light space-y-1">
+                    <li><a href="atendimento.html" class="hover:text-[--cor-ouro-acento] transition">Atendimento</a></li>
+                    <li><a href="entregas.html" class="hover:text-[--cor-ouro-acento] transition">Entregas e prazos</a></li>
+                    <li><a href="trocas-e-devolucoes.html" class="hover:text-[--cor-ouro-acento] transition">Trocas e devoluções</a></li>
+                    <li><a href="politica-de-privacidade.html" class="hover:text-[--cor-ouro-acento] transition">Política de privacidade</a></li>
+                    <li><a href="termos-de-uso.html" class="hover:text-[--cor-ouro-acento] transition">Termos de uso</a></li>
+                </ul>
+            </nav>
+            <!-- inst:fim -->
             <div>
                 <h4 class="font-serif text-lg mb-4">Contato</h4>
                 <div class="text-sm font-light space-y-1">
@@ -1078,7 +1112,7 @@
             </div>
         </div>
         <div class="border-t border-[#E5E0D8] mt-12 pt-8 text-center">
-            <p class="text-xs text-gray-400 tracking-wide">&copy; <span data-current-year>2026</span> Laméd vs. Todos os direitos reservados.</p>
+            <p class="text-xs text-gray-400 tracking-wide">&copy; <span data-current-year>2026</span> Laméd vs · Veronica Soares da Silva · CNPJ 43.698.381/0001-37. Todos os direitos reservados.</p>
         </div>
     </footer>
 
@@ -1107,8 +1141,8 @@
 
     <script defer src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
     <script defer src="js/app-core.js"></script>
-    <script defer src="js/app-storefront.js"></script>
-    <script defer src="js/app-cart-checkout.js?v=20260824-whatsapp-checkout"></script>
+    <script defer src="js/app-storefront.js?v=20261118"></script>
+    <script defer src="js/app-cart-checkout.js?v=20261118"></script>
     <script defer src="js/app-account-cart.js"></script>
     <script defer src="js/app-operations.js"></script>
     

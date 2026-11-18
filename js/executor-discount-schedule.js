@@ -2,6 +2,12 @@
     const DOC_ID = 'store_operations';
     const $ = (selector, root = document) => root.querySelector(selector);
     const sanitize = (value, max = 160) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+    const escapeHtml = (value, max = 160) => sanitize(value, max)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     let db = null;
     let auth = null;
     let schedules = [];
@@ -28,12 +34,17 @@
         }
         list.innerHTML = schedules.map((entry, index) => `
             <div class="discount-schedule-row" data-schedule-index="${index}">
-                <div><strong>${sanitize(entry.label || 'Retirar descontos')}</strong><small>${entry.runAt ? new Date(entry.runAt).toLocaleString('pt-BR') : 'Sem horário'}${entry.lastRunAt ? ' · executado em ' + new Date(entry.lastRunAt).toLocaleString('pt-BR') : ''}</small></div>
+                <div><strong>${escapeHtml(entry.label || 'Retirar descontos')}</strong><small>${entry.runAt ? new Date(entry.runAt).toLocaleString('pt-BR') : 'Sem horário'}${entry.lastRunAt ? ' · executado em ' + new Date(entry.lastRunAt).toLocaleString('pt-BR') : ''}</small></div>
                 <span class="${entry.enabled === false ? 'is-off' : ''}">${entry.enabled === false ? 'Desativado' : 'Ativo'}</span>
                 <button type="button" data-remove-schedule="${index}" class="text-button">Remover</button>
             </div>`).join('');
         list.querySelectorAll('[data-remove-schedule]').forEach((button) => button.addEventListener('click', async () => {
-            schedules.splice(Number(button.dataset.removeSchedule), 1);
+            const index = Number(button.dataset.removeSchedule);
+            const entry = schedules[index];
+            if (!entry) return;
+            const confirmed = window.confirm(`Remover o agendamento “${sanitize(entry.label || 'Retirar descontos', 120)}”?`);
+            if (!confirmed) return;
+            schedules.splice(index, 1);
             await saveSchedules();
         }));
     }

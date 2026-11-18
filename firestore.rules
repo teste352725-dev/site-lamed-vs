@@ -354,5 +354,19 @@ service cloud.firestore {
     match /precificacoes/{document=**} {
       allow read, write: if isAdmin();
     }
+
+    // Auditoria das operacoes em lote do painel (desconto global, backups etc.).
+    // Antes nao havia regra e toda gravacao era negada em silencio.
+    // Somente inclusao: ninguem edita ou apaga um registro.
+    match /operacoes_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() &&
+        request.resource.data.keys().hasOnly(['action', 'details', 'admin', 'createdAt']) &&
+        validString(request.resource.data.action, 1, 120) &&
+        validOptionalString(request.resource.data.admin, 200) &&
+        (!hasField(request.resource.data, 'details') || request.resource.data.details is map) &&
+        request.resource.data.createdAt is timestamp;
+      allow update, delete: if false;
+    }
   }
 }

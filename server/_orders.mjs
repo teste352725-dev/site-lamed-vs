@@ -1151,22 +1151,25 @@ export async function createOrderFromBody(body, authorizationHeader, requestMeta
   const fingerprint = buildOrderFingerprint(cliente, pagamento, parcelas, canonicalCart, totals);
   const duplicatedOrder = await findRecentDuplicateOrder(db, fingerprint);
   if (duplicatedOrder) {
+    // So reaproveita (e devolve) o pedido existente para o proprio dono logado.
+    // Sem isso, quem conhece e-mail/telefone/CPF/CEP de outra pessoa recebia o pedido dela.
+    const canRevealDuplicateId = Boolean(
+      userId && sanitizePlainText(duplicatedOrder?.userId, 128) === userId
+    );
     const existingCheckoutUrl = normalizeUrl(duplicatedOrder?.payment?.checkoutUrl);
-    if (paymentGateway === "infinitepay" && existingCheckoutUrl) {
+    if (paymentGateway === "infinitepay" && existingCheckoutUrl && canRevealDuplicateId) {
+      const { metadata: _metadata, fingerprint: _fingerprint, ...reusedPublicOrder } = duplicatedOrder;
       return {
         ok: true,
         reusedOrder: true,
         orderId: duplicatedOrder.id,
-        order: duplicatedOrder,
+        order: reusedPublicOrder,
         paymentGateway: "infinitepay",
         paymentStatus: sanitizePlainText(duplicatedOrder?.paymentStatus || duplicatedOrder?.payment?.status, 40).toLowerCase() || "pending",
         paymentRedirectUrl: existingCheckoutUrl
       };
     }
 
-    const canRevealDuplicateId = Boolean(
-      userId && sanitizePlainText(duplicatedOrder?.userId, 128) === userId
-    );
     const orderCode = String(duplicatedOrder.id).slice(0, 6).toUpperCase();
     const whatsappMessage = canRevealDuplicateId
       ? `Oi! Quero continuar o pedido #${orderCode} que acabei de enviar pelo site.`

@@ -162,7 +162,11 @@
         const items = collectionProducts(selected.id, segment);
         const title = sanitize(selected.nome || 'Coleção', 120);
         const description = sanitize(selected.chamadaHome || selected.descricao || 'Conheça as peças desta coleção.', 260);
-        const image = sanitize(selected.imagemDestaque, 700);
+        const originalImage = sanitize(selected.imagemDestaque, 700);
+        // Versao leve (WebP do build) quando existir; a capa original tem ate 3 MB.
+        const image = originalImage && window.LamedImages?.has(originalImage)
+            ? window.LamedImages.url(originalImage, 1080)
+            : originalImage;
         const segmentLabel = segment === 'mesa' ? 'Mesa Posta' : 'Roupas';
 
         heading.classList.remove('hidden');

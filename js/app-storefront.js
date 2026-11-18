@@ -1,5 +1,9 @@
+const DEFAULT_DOCUMENT_TITLE = document.title;
+
 function handleRouting() {
     const hash = window.location.hash;
+    // O titulo da aba volta ao padrao; a tela de produto troca pelo nome da peca.
+    if (!hash.startsWith('#/produto/')) document.title = DEFAULT_DOCUMENT_TITLE;
     
     if(elements.sidebarMenu && elements.sidebarMenu.classList.contains('open')) toggleSidebar();
     if (typeof closeCart === 'function' && hash !== '#sacola') closeCart();
@@ -127,7 +131,7 @@ const categoryManagerElements = {
 const DEFAULT_SITE_CATEGORIES = [
     { slug: 'vestido', nome: 'Vestidos', ordem: 10, ativa: true },
     { slug: 'conjunto', nome: 'Conjuntos', ordem: 20, ativa: true },
-    { slug: 'calca', nome: 'Calcas', ordem: 30, ativa: true },
+    { slug: 'calca', nome: 'Calças', ordem: 30, ativa: true },
     { slug: 'camisa', nome: 'Camisas', ordem: 40, ativa: true },
     { slug: 'saia', nome: 'Saias', ordem: 50, ativa: true },
     { slug: 'mesa_posta', nome: 'Mesa Posta', ordem: 60, ativa: true },
@@ -136,7 +140,7 @@ const DEFAULT_SITE_CATEGORIES = [
     { slug: 'anel_guardanapo', nome: 'Anel de Guardanapo', ordem: 90, ativa: true },
     { slug: 'trilho_velas', nome: 'Trilho para Velas', ordem: 100, ativa: true },
     { slug: 'caminho_mesa', nome: 'Caminho de Mesa', ordem: 110, ativa: true },
-    { slug: 'capa_de_matza', nome: 'Capa de Matza Bordada', ordem: 120, ativa: true }
+    { slug: 'capa_de_matza', nome: 'Capa de Matzá Bordada', ordem: 120, ativa: true }
 ];
 
 function slugifyCategoryName(value) {
@@ -160,6 +164,16 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// Atributos <img> com a versao leve da foto (gerada no build) e a original como reserva.
+function optimizedImageAttrs(src, sizes, fallbackWidth = 1080) {
+    const original = String(src || '');
+    const images = window.LamedImages;
+    if (!images || !images.has(original)) {
+        return `src="${escapeHtmlAttr(original)}"`;
+    }
+    return `src="${escapeHtmlAttr(images.url(original, fallbackWidth))}" srcset="${escapeHtmlAttr(images.srcset(original))}" sizes="${escapeHtmlAttr(sizes)}" data-original-src="${escapeHtmlAttr(original)}"`;
 }
 
 function escapeHtmlAttr(value) {
@@ -271,14 +285,14 @@ function buildQuickEditCategoryOptions(product) {
 }
 
 function buildQuickEditCollectionOptions(product) {
-    const options = [{ value: '', label: 'Sem colecao' }];
+    const options = [{ value: '', label: 'Sem coleção' }];
     const currentCollectionId = sanitizePlainText(product?.colecaoId, 120);
     const collections = [...activeCollections];
 
     if (currentCollectionId && !collections.some((entry) => entry.id === currentCollectionId)) {
         collections.push({
             id: currentCollectionId,
-            nome: 'Colecao atual'
+            nome: 'Coleção atual'
         });
     }
 
@@ -338,7 +352,7 @@ function renderCollectionManagerList() {
     if (!container) return;
 
     if (!Array.isArray(adminCollectionsCache) || adminCollectionsCache.length === 0) {
-        container.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Nenhuma colecao encontrada.</p>';
+        container.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Nenhuma coleção encontrada.</p>';
         return;
     }
 
@@ -415,7 +429,7 @@ async function openCollectionManagerModal() {
     if (!currentUserIsAdmin || !collectionManagerElements.modal) return;
 
     try {
-        collectionManagerElements.list.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Carregando colecoes...</p>';
+        collectionManagerElements.list.innerHTML = '<p class="text-sm text-gray-400 text-center py-10">Carregando coleções...</p>';
         const snapshot = await db.collection('colecoes').get();
         applyCollectionsLocally(snapshot.docs
             .filter((doc) => doc.id !== '__catalog_settings')
@@ -426,7 +440,7 @@ async function openCollectionManagerModal() {
         if (typeof lockBodyScroll === 'function') lockBodyScroll('collection-manager');
         if (typeof toggleAdminFabPanel === 'function') toggleAdminFabPanel(false);
     } catch (error) {
-        alert('Nao foi possivel carregar as colecoes agora.');
+        alert('Não foi possível carregar as coleções agora.');
     }
 }
 
@@ -447,7 +461,7 @@ async function openCategoryManagerModal() {
         if (typeof lockBodyScroll === 'function') lockBodyScroll('category-manager');
         if (typeof toggleAdminFabPanel === 'function') toggleAdminFabPanel(false);
     } catch (error) {
-        alert('Nao foi possivel carregar as categorias agora.');
+        alert('Não foi possível carregar as categorias agora.');
     }
 }
 
@@ -468,7 +482,7 @@ function openProductQuickEditModal(productId) {
 
     const product = products.find((entry) => entry.id === productId);
     if (!product) {
-        alert('Nao foi possivel localizar esta peca.');
+        alert('Não foi possível localizar esta peça.');
         return;
     }
 
@@ -559,7 +573,7 @@ function refreshStorefrontAfterQuickEdit(productId) {
 
 async function sendStorefrontAdminAction(action, payload, fallbackMessage) {
     if (!currentUserIsAdmin || !currentUser) {
-        throw new Error('Sua sessao de administracao nao esta disponivel.');
+        throw new Error('Sua sessão de administracao não está disponível.');
     }
 
     const idToken = await currentUser.getIdToken();
@@ -588,7 +602,7 @@ async function saveProductQuickEdit() {
     const payload = buildQuickEditPayload();
 
     if (!payload.productId || !payload.nome) {
-        alert('Preencha ao menos o nome da peca.');
+        alert('Preencha ao menos o nome da peça.');
         return;
     }
 
@@ -598,17 +612,17 @@ async function saveProductQuickEdit() {
             saveButton.textContent = 'Salvando...';
         }
 
-        const result = await sendStorefrontAdminAction('product_quick_edit', payload, 'Nao foi possivel salvar esta peca agora.');
+        const result = await sendStorefrontAdminAction('product_quick_edit', payload, 'Não foi possível salvar esta peça agora.');
 
         replaceProductLocally(result?.product || payload);
         closeProductQuickEditModal();
         refreshStorefrontAfterQuickEdit(payload.productId);
     } catch (error) {
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar esta peca agora.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível salvar esta peça agora.', 220));
     } finally {
         if (saveButton) {
             saveButton.disabled = false;
-            saveButton.textContent = 'Salvar peca';
+            saveButton.textContent = 'Salvar peça';
         }
     }
 }
@@ -627,7 +641,7 @@ async function saveCollectionManager() {
 
     const payload = { collections: readCollectionsManagerPayload() };
     if (!payload.collections.length) {
-        alert('Nenhuma colecao valida para salvar.');
+        alert('Nenhuma coleção valida para salvar.');
         return;
     }
 
@@ -637,17 +651,17 @@ async function saveCollectionManager() {
             collectionManagerElements.save.textContent = 'Salvando...';
         }
 
-        const result = await sendStorefrontAdminAction('collections_bulk_save', payload, 'Nao foi possivel salvar as colecoes agora.');
+        const result = await sendStorefrontAdminAction('collections_bulk_save', payload, 'Não foi possível salvar as coleções agora.');
         applyCollectionsLocally(result?.collections || payload.collections);
         renderCollectionManagerList();
         closeCollectionManagerModal();
         refreshStorefrontAfterQuickEdit('');
     } catch (error) {
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar as colecoes agora.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível salvar as coleções agora.', 220));
     } finally {
         if (collectionManagerElements.save) {
             collectionManagerElements.save.disabled = false;
-            collectionManagerElements.save.textContent = 'Salvar colecoes';
+            collectionManagerElements.save.textContent = 'Salvar coleções';
         }
     }
 }
@@ -670,7 +684,7 @@ function addCategoryManagerEntry() {
 
     const slug = slugifyCategoryName(nome);
     if (adminCategoriesCache.some((entry) => entry.slug === slug)) {
-        alert('Essa categoria ja existe.');
+        alert('Essa categoria já existe.');
         return;
     }
 
@@ -705,7 +719,7 @@ async function saveCategoryManager() {
             categoryManagerElements.save.textContent = 'Salvando...';
         }
 
-        const result = await sendStorefrontAdminAction('categories_bulk_save', payload, 'Nao foi possivel salvar as categorias agora.');
+        const result = await sendStorefrontAdminAction('categories_bulk_save', payload, 'Não foi possível salvar as categorias agora.');
         applyCategoriesLocally(result?.categories || payload.categories);
         renderCategoryManagerList();
         closeCategoryManagerModal();
@@ -715,7 +729,7 @@ async function saveCategoryManager() {
         renderShopPage(currentShopFilter);
         renderHomeShopGrid();
     } catch (error) {
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar as categorias agora.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível salvar as categorias agora.', 220));
     } finally {
         if (categoryManagerElements.save) {
             categoryManagerElements.save.disabled = false;
@@ -827,7 +841,7 @@ function createProductQuickEditButton(peca, compact = false) {
         : 'absolute right-2 bottom-2 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-[#643f21] shadow-lg transition hover:scale-105';
     button.setAttribute('aria-label', `Editar ${sanitizePlainText(peca?.nome, 120) || 'peca'}`);
     button.innerHTML = compact
-        ? '<i class="fa-solid fa-pen text-[11px]"></i><span>Editar peca</span>'
+        ? '<i class="fa-solid fa-pen text-[11px]"></i><span>Editar peça</span>'
         : '<i class="fa-solid fa-pen text-sm"></i>';
 
     button.addEventListener('click', (event) => {
@@ -1014,10 +1028,27 @@ function setupShopPageFilters() {
     });
 }
 
-function getShopFilteredProducts() {
-    const normalizedSearch = currentShopSearch.trim();
+function normalizeShopSearchText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+}
 
-    return getSegmentedProducts()
+function getShopSearchHaystack(product) {
+    const categoryName = siteCategories.find((category) => category.slug === product.categoria)?.nome || '';
+    return normalizeShopSearchText(`${product.nome || ''} ${categoryName} ${String(product.categoria || '').replace(/_/g, ' ')}`);
+}
+
+function getShopFilteredProducts() {
+    const normalizedSearch = normalizeShopSearchText(currentShopSearch);
+    // Com busca digitada, procura na loja toda (Casa e Alfaiataria): quem digita
+    // "vestido" estando na linha Casa deve encontrar o vestido.
+    const baseProducts = normalizedSearch ? products.slice() : getSegmentedProducts();
+
+    return baseProducts
         .sort(sortProductsByNewest)
         .filter((product) => {
             if (currentShopFilter === 'combo') {
@@ -1027,7 +1058,8 @@ function getShopFilteredProducts() {
             }
 
             if (!normalizedSearch) return true;
-            return String(product.nome || '').toLowerCase().includes(normalizedSearch);
+            const haystack = getShopSearchHaystack(product);
+            return normalizedSearch.split(' ').every((term) => haystack.includes(term));
         });
 }
 
@@ -1083,7 +1115,11 @@ function renderShopPage(initialFilter = null) {
     renderShopFilterButtons();
 
     const filteredProducts = getShopFilteredProducts();
-    if (copy) copy.textContent = `${filteredProducts.length} item(ns) encontrados`;
+    if (copy) {
+        const total = filteredProducts.length;
+        const label = total === 1 ? '1 peça encontrada' : `${total} peças encontradas`;
+        copy.textContent = normalizeShopSearchText(currentShopSearch) ? `${label} em toda a loja` : label;
+    }
 
     renderProductsIntoGrid(
         grid,
@@ -1223,7 +1259,9 @@ async function carregarDadosLoja() {
         const [colecoesSnap, produtosSnap, catalogSettingsSnap] = await Promise.all([
             db.collection("colecoes").where("ativa", "==", true).get(),
             db.collection("pecas").where("status", "==", "active").get(),
-            db.collection("colecoes").doc("__catalog_settings").get()
+            db.collection("colecoes").doc("__catalog_settings").get(),
+            // Fotos leves (WebP do build). Nunca atrasa mais que ~2,5 s.
+            window.LamedImages?.ready || Promise.resolve()
         ]);
         let storefrontCopyData = null;
 
@@ -1251,6 +1289,7 @@ async function carregarDadosLoja() {
 
         products = productDocs
             .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
+        storefrontCatalogLoaded = true;
 
         const savedCatalogSegment = readSavedCatalogSegment();
         currentCatalogSegment = savedCatalogSegment || getLatestCollectionSegment();
@@ -1354,6 +1393,10 @@ function renderizarSecoesColecoes() {
     });
 }
 
+// UX: enquanto o catalogo nao chega do Firestore, mostra "Carregando" em vez de
+// "Nenhuma peca em destaque" (que dava a impressao de loja vazia).
+let storefrontCatalogLoaded = false;
+
 function popularPreviewColecao() {
     const grid = document.getElementById('home-featured-grid');
     if (!grid) return;
@@ -1361,6 +1404,10 @@ function popularPreviewColecao() {
     const destaques = getSegmentedProducts()
         .sort(sortProductsByNewest)
         .slice(0, 4);
+    if (destaques.length === 0 && !storefrontCatalogLoaded) {
+        grid.innerHTML = '<div class="col-span-full text-gray-400 text-sm py-8" role="status">Carregando peças...</div>';
+        return;
+    }
     grid.innerHTML = '';
 
     if (destaques.length === 0) {
@@ -1456,7 +1503,7 @@ function renderHomeShopGrid() {
         pageItems.forEach((peca) => grid.appendChild(criarCardProduto(peca)));
     }
 
-    if (pageInfo) pageInfo.textContent = `Pagina ${currentHomePage} de ${totalPages}`;
+    if (pageInfo) pageInfo.textContent = `Página ${currentHomePage} de ${totalPages}`;
     if (prevBtn) prevBtn.disabled = currentHomePage <= 1;
     if (nextBtn) nextBtn.disabled = currentHomePage >= totalPages;
 }
@@ -1474,7 +1521,6 @@ function renderizarListaDeColecoes() {
         const count = getSegmentedProducts().filter(p => p.colecaoId === col.id).length;
         const img = col.imagemDestaque || 'https://placehold.co/600x400/eee/ccc?text=Sem+Imagem';
         const safeCollectionName = escapeHtml(sanitizePlainText(col.nome, 120) || 'Coleção');
-        const safeCollectionImage = escapeHtmlAttr(img);
         const card = document.createElement('div');
         card.className = "group cursor-pointer";
         card.setAttribute('role', 'link');
@@ -1482,7 +1528,7 @@ function renderizarListaDeColecoes() {
         card.setAttribute('aria-label', `Ver coleção ${sanitizePlainText(col.nome, 120) || ''}`.trim());
         card.innerHTML = `
             <div class="relative overflow-hidden aspect-[4/3] mb-4 bg-gray-100">
-                <img src="${safeCollectionImage}" alt="${safeCollectionName}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async" fetchpriority="low">
+                <img ${optimizedImageAttrs(img, '(min-width: 768px) 50vw, 100vw', 1080)} alt="${safeCollectionName}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async" fetchpriority="low">
                 <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
                 <div class="absolute bottom-6 left-6 text-white">
                     <h3 class="serif text-3xl mb-1">${safeCollectionName}</h3>
@@ -1568,8 +1614,6 @@ function criarCardProduto(peca) {
     const imgHover = images[1] || images[0];
     const shouldRenderHoverImage = canUseHoverPreviews && imgHover && imgHover !== imgPrincipal;
     const safeName = escapeHtml(sanitizePlainText(peca.nome, 120) || 'Peca');
-    const safeMainImage = escapeHtmlAttr(imgPrincipal);
-    const safeHoverImage = escapeHtmlAttr(imgHover);
     
     let priceHtml = '';
     if (peca.desconto > 0) {
@@ -1595,8 +1639,8 @@ function criarCardProduto(peca) {
 
     card.innerHTML = `
         <div class="aspect-[3/4] relative overflow-hidden bg-gray-100 mb-3 rounded-sm card-img-wrapper">
-             <img src="${safeMainImage}" alt="${safeName}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">
-             ${shouldRenderHoverImage ? `<img src="${safeHoverImage}" alt="" aria-hidden="true" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">` : ''}
+             <img ${optimizedImageAttrs(imgPrincipal, '(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw', 480)} alt="${safeName}" class="card-img-main w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">
+             ${shouldRenderHoverImage ? `<img ${optimizedImageAttrs(imgHover, '(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw', 480)} alt="" aria-hidden="true" class="card-img-hover w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low">` : ''}
              ${badge}
              ${customBadge}
              <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
@@ -1604,7 +1648,7 @@ function criarCardProduto(peca) {
         <div class="text-center px-2">
             <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${safeName}</h4>
             ${priceHtml}
-            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">${catLabel}</p>
+            <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">${catLabel}</p>
          </div>
     `;
 
@@ -1616,7 +1660,6 @@ function criarCardProduto(peca) {
 
     card.setAttribute('role', 'link');
     card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', `Ver detalhes de ${sanitizePlainText(peca.nome, 120) || 'peça'}`);
     const openProduct = () => { window.location.hash = `#/produto/${peca.id}`; };
     card.addEventListener('click', openProduct);
     card.addEventListener('keydown', (event) => {
@@ -1638,6 +1681,7 @@ function showProductDetail(id) {
     
     document.querySelectorAll('.size-option').forEach(el => el.classList.remove('selected'));
     document.getElementById('detail-title').textContent = currentProduct.nome;
+    document.title = `${sanitizePlainText(currentProduct.nome, 90)} | Laméd vs`;
     document.getElementById('detail-description').textContent = sanitizePlainText(currentProduct.descricao, 2000) || '';
     
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto||0)/100);
@@ -1966,7 +2010,7 @@ function renderComboSelectors() {
         const header = document.createElement('div');
         header.className = "flex gap-4 mb-4 pb-4 border-b border-gray-100";
         header.innerHTML = `
-            <img src="${componentImage}" class="w-16 h-20 object-cover rounded-sm border border-gray-100">
+            <img ${optimizedImageAttrs(componentImage, '64px', 480)} class="w-16 h-20 object-cover rounded-sm border border-gray-100">
             <div>
                 <span class="text-[10px] font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-500 uppercase tracking-wider">${categoriaLabel}</span>
                 <h5 class="font-medium text-gray-800 mt-1">${comp.quantidade}x ${componentName}</h5>
@@ -2123,7 +2167,7 @@ function renderPersonalizationSection() {
     section.innerHTML = `
         <div>
             <p class="text-xs font-bold uppercase tracking-[0.22em] text-amber-900">Personalização da peça</p>
-            <p class="mt-1 text-xs leading-5 text-amber-800">Selecione uma das opcoes disponiveis para esta peca.</p>
+            <p class="mt-1 text-xs leading-5 text-amber-800">Selecione uma das opções disponíveis para esta peça.</p>
         </div>
         <label for="personalization-option-select" class="block text-xs font-semibold text-amber-900"></label>
         <select id="personalization-option-select" class="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm outline-none focus:border-[--cor-marrom-cta]"></select>
@@ -2215,8 +2259,8 @@ function setupSplideCarousel() {
         const loadingMode = index === 0 ? 'eager' : 'lazy';
         const fetchPriority = index === 0 ? 'high' : 'low';
         const safeProductName = escapeHtml(sanitizePlainText(currentProduct?.nome, 120) || 'Peça Laméd');
-        mainSlides.push(`<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img src="${img}" alt="${safeProductName}${images.length > 1 ? ` — imagem ${index + 1}` : ''}" class="h-full w-auto object-contain" loading="${loadingMode}" decoding="async" fetchpriority="${fetchPriority}"></li>`);
-        thumbSlides.push(`<li class="splide__slide thumbnail-slide opacity-60"><img src="${img}" alt="" aria-hidden="true" class="w-full h-full object-cover rounded cursor-pointer" loading="lazy" decoding="async" fetchpriority="low"></li>`);
+        mainSlides.push(`<li class="splide__slide flex items-center justify-center bg-transparent h-[50vh] md:h-[60vh]"><img ${optimizedImageAttrs(img, '(min-width: 768px) 50vw, 100vw', 1080)} alt="${safeProductName}${images.length > 1 ? ` — imagem ${index + 1}` : ''}" class="h-full w-auto object-contain" loading="${loadingMode}" decoding="async" fetchpriority="${fetchPriority}"></li>`);
+        thumbSlides.push(`<li class="splide__slide thumbnail-slide opacity-60"><img ${optimizedImageAttrs(img, '120px', 480)} alt="" aria-hidden="true" class="w-full h-full object-cover rounded cursor-pointer" loading="lazy" decoding="async" fetchpriority="low"></li>`);
     });
 
     mainList.innerHTML = mainSlides.join('');

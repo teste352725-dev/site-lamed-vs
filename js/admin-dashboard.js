@@ -19,8 +19,8 @@ const adminAuth = firebase.auth();
 const ADMIN_UIDS = ["NoGsCqiKc0VJwWb6rppk7QVLV1B2"];
 const WORKSPACE_VIEWS = {
     products: "produtos.html?embedded=1",
-    stock: "estoque-mesaposta.html",
-    team: "equipe.html",
+    stock: "estoque-mesaposta.html?embedded=1",
+    team: "equipe.html?embedded=1",
     orders: "pedidos.html?embedded=1",
     collections: "colecoes.html?embedded=1",
     gallery: "galeria.html?embedded=1",
@@ -337,7 +337,7 @@ async function refreshOverview() {
         const unreadChats = chats.filter((chat) => chat.unread === true);
 
         if (productsEl) productsEl.textContent = String(products.length);
-        if (customProductsEl) customProductsEl.textContent = `${customProducts.length} personalizaveis`;
+        if (customProductsEl) customProductsEl.textContent = `${customProducts.length} personalizáveis`;
         if (pendingEl) pendingEl.textContent = String(pendingOrders.length);
         if (ordersEl) ordersEl.textContent = `${orders.length} pedidos totais`;
         if (salesEl) salesEl.textContent = formatCurrency(totalSales);
@@ -347,28 +347,85 @@ async function refreshOverview() {
         if (unreadChatsEl) unreadChatsEl.textContent = `${unreadChats.length} com alerta`;
 
         renderRecentOrders(orders.slice(0, 5));
+        renderCatalogHealth(products);
     } catch (error) {
         console.error("Erro ao atualizar overview:", error);
         if (recentOrdersEl) {
             recentOrdersEl.innerHTML = `
                 <div class="rounded-2xl border border-red-100 bg-red-50 px-4 py-8 text-center text-sm text-red-600">
-                    Nao foi possivel carregar o painel agora. ${escapeHtml(error.message || "Erro inesperado")}
+                    Não foi possível carregar o painel agora. ${escapeHtml(error.message || "Erro inesperado")}
                 </div>
             `;
         }
     }
 }
 
+// Diagnostico somente leitura do catalogo (nao grava nada no Firestore).
+function summarizeCatalogHealth(products) {
+    const active = products.filter((product) => String(product.status || "").toLowerCase() === "active");
+    const photosOf = (product) => (Array.isArray(product.imagens) ? product.imagens.filter(Boolean).length : 0);
+    return {
+        total: products.length,
+        active: active.length,
+        inactive: products.length - active.length,
+        withoutDescription: active.filter((product) => !String(product.descricao || "").trim()),
+        withoutPhoto: active.filter((product) => photosOf(product) === 0),
+        singlePhoto: active.filter((product) => photosOf(product) === 1),
+        withoutPrice: active.filter((product) => !(Number(product.preco) > 0))
+    };
+}
+
+function renderCatalogHealth(products) {
+    const container = document.getElementById("catalog-health");
+    if (!container) return;
+    const health = summarizeCatalogHealth(products);
+    const metric = (label, value, tone) => `
+        <div class="rounded-2xl border border-[#ece2d4] bg-white px-4 py-3">
+            <p class="text-xs uppercase tracking-[0.16em] text-slate-500">${escapeHtml(label)}</p>
+            <p class="mt-1 text-2xl font-semibold ${tone}">${escapeHtml(String(value))}</p>
+        </div>`;
+    const attention = [
+        ...health.withoutPrice.map((product) => [product, "sem preço"]),
+        ...health.withoutPhoto.map((product) => [product, "sem foto"]),
+        ...health.withoutDescription.map((product) => [product, "sem descrição"]),
+        ...health.singlePhoto.map((product) => [product, "só 1 foto"])
+    ];
+    const seen = new Set();
+    const rows = attention.filter(([product]) => !seen.has(product.id) && seen.add(product.id)).slice(0, 8);
+
+    container.innerHTML = `
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            ${metric("Ativas", health.active, "text-slate-900")}
+            ${metric("Inativas", health.inactive, "text-slate-500")}
+            ${metric("Sem descrição", health.withoutDescription.length, health.withoutDescription.length ? "text-amber-700" : "text-emerald-700")}
+            ${metric("Só 1 foto", health.singlePhoto.length, health.singlePhoto.length ? "text-amber-700" : "text-emerald-700")}
+            ${metric("Sem preço ou foto", health.withoutPrice.length + health.withoutPhoto.length, (health.withoutPrice.length + health.withoutPhoto.length) ? "text-red-700" : "text-emerald-700")}
+        </div>
+        ${rows.length ? `
+        <p class="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Para melhorar primeiro</p>
+        <ul class="mt-2 divide-y divide-[#f0e8dc] rounded-2xl border border-[#ece2d4] bg-white">
+            ${rows.map(([product, reason]) => `
+            <li class="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                <span class="min-w-0 truncate text-slate-800">${escapeHtml(product.nome || "Peça sem nome")}</span>
+                <span class="shrink-0 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">${escapeHtml(reason)}</span>
+            </li>`).join("")}
+        </ul>` : `<p class="mt-5 text-sm text-emerald-700">Tudo certo: todas as peças ativas têm preço, foto e descrição.</p>`}
+    `;
+}
+
 window.refreshOverview = refreshOverview;
+
+window.refreshCurrentAdminView = function refreshCurrentAdminView() {
+    if (currentAdminView === "overview") {
+        refreshOverview();
+        return;
+    }
+    reloadWorkspace(currentAdminView);
+};
 
 window.changeView = function changeView(view) {
     const nextView = view in WORKSPACE_VIEWS || view === "overview" ? view : "overview";
     currentAdminView = nextView;
-
-    if (nextView !== "overview") {
-        window.location.href = WORKSPACE_VIEWS[nextView].replace("?embedded=1", "");
-        return;
-    }
 
     document.querySelectorAll(".admin-view").forEach((section) => {
         section.classList.toggle("hidden", section.id !== `view-${nextView}`);

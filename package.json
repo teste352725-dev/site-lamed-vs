@@ -16,6 +16,7 @@
     "jwks-rsa": "3.2.2"
   },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17"
   }
 }

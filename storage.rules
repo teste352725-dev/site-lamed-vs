@@ -24,40 +24,38 @@ service firebase.storage {
         request.resource.contentType.matches('image/.*');
     }
 
-    function isSafeLegacyUpload() {
-      return request.resource != null &&
-        request.resource.size <= 20 * 1024 * 1024 &&
-        (
-          request.resource.contentType.matches('image/.*') ||
-          request.resource.contentType.matches('video/.*') ||
-          request.resource.contentType.matches('application/pdf')
-        );
-    }
-
     match /produtos/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isAdmin();
       allow write: if isAdmin() && isSafeImageUpload(10 * 1024 * 1024);
     }
 
     match /galeria/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isAdmin();
       allow write: if isAdmin() && isSafeImageUpload(10 * 1024 * 1024);
     }
 
+    // Fotos de perfil: abrir pela URL continua livre, mas listar a pasta
+    // (descobrir fotos/UIDs de clientes) fica restrito ao admin.
     match /profile_images/{fileName} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isAdmin();
       allow write: if (isAdmin() || isOwnProfileImage(fileName)) && isSafeImageUpload(5 * 1024 * 1024);
     }
 
-    // Ajuste este prefixo para a pasta real usada pelo outro site que
-    // precisa continuar publica dentro deste mesmo bucket compartilhado.
+    // Pasta legada criada para um "outro site" que nao existe mais.
+    // Auditoria 2026-11-03: estava vazia e aceitava upload ANONIMO de ate 20 MB.
+    // Leitura mantida; escrita fechada.
     match /legacy-open/{allPaths=**} {
-      allow read: if true;
-      allow write: if isSafeLegacyUpload();
+      allow get: if true;
+      allow list: if isAdmin();
+      allow write: if false;
     }
 
     match /{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isAdmin();
       allow write: if false;
     }
   }

@@ -274,6 +274,30 @@
             padding: 0 0 1.25rem !important;
         }
 
+        body.admin-embedded .stock-topbar {
+            display: none !important;
+        }
+
+        body.admin-embedded .stock-hero {
+            padding: 1.1rem !important;
+            border-radius: 20px !important;
+            box-shadow: none !important;
+        }
+
+        body.admin-embedded .stock-hero .hero-copy {
+            margin-bottom: 0 !important;
+        }
+
+        body.admin-embedded .team-page {
+            width: 100% !important;
+            padding: 0 0 1.25rem !important;
+        }
+
+        body.admin-embedded .team-hero,
+        body.admin-embedded .team-card {
+            box-shadow: none !important;
+        }
+
         body.admin-embedded .hero-panel {
             position: static !important;
             top: auto !important;

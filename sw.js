@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lamed-v33';
+const CACHE_NAME = 'lamed-v35'; // v35: fotos WebP do build + correcoes do checkout (2026-11-18)
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -11,7 +11,8 @@ const APP_SHELL = [
   '/js/app-storefront.js',
   '/js/app-cart-checkout.js',
   '/js/app-account-cart.js',
-  '/js/app-operations.js'
+  '/js/app-operations.js',
+  '/js/image-variants.js'
 ];
 
 const STATIC_FILE_PATTERN = /\.(?:css|js|png|jpg|jpeg|webp|svg|gif|ico|json|woff2?|ttf)$/i;
@@ -109,6 +110,12 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request, event.preloadResponse));
+    return;
+  }
+
+  // Lista das fotos leves muda a cada deploy: sempre tenta a rede primeiro.
+  if (url.pathname.endsWith('/img/manifest.json')) {
+    event.respondWith(fetch(request).then((response) => putInCache(request, response)).catch(() => caches.match(request)));
     return;
   }
 

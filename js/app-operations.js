@@ -121,7 +121,7 @@ function normalizeStoreOperationsState(rawValue) {
         })).filter((entry) => entry.runAt),
         collectionSchedules: (Array.isArray(raw.collectionSchedules) ? raw.collectionSchedules : []).map((entry, index) => ({
             id: sanitizePlainText(entry?.id, 120) || `collection-${index + 1}`,
-            label: sanitizePlainText(entry?.label, 120) || `Colecao ${index + 1}`,
+            label: sanitizePlainText(entry?.label, 120) || `Coleção ${index + 1}`,
             collectionId: sanitizePlainText(entry?.collectionId, 120),
             startAt: normalizeIsoDateTime(entry?.startAt),
             endAt: normalizeIsoDateTime(entry?.endAt),
@@ -181,11 +181,11 @@ function refreshStoreOperationsMetaUi(useDraftValues = false) {
 
     if (storeOperationsState.updatedAt) {
         const formatted = new Date(storeOperationsState.updatedAt).toLocaleString('pt-BR');
-        updateStoreOperationsFeedback(`Ultima gravacao salva: ${formatted}. Essas configuracoes continuam ativas mesmo depois de atualizar a pagina.`, 'success');
+        updateStoreOperationsFeedback(`Última gravação salva: ${formatted}. Essas configurações continuam ativas mesmo depois de atualizar a página.`, 'success');
         return;
     }
 
-    updateStoreOperationsFeedback('As alteracoes ficam salvas e continuam ativas mesmo depois de atualizar a pagina.', 'neutral');
+    updateStoreOperationsFeedback('As alterações ficam salvas e continuam ativas mesmo depois de atualizar a página.', 'neutral');
 }
 
 function isStorefrontBlockedForPublic() {
@@ -292,7 +292,7 @@ function buildCollectionOptions(selectedId = '') {
         ? operationsCollectionsCache
         : (Array.isArray(activeCollections) ? activeCollections : []);
     const options = [
-        '<option value="">Selecione uma colecao</option>',
+        '<option value="">Selecione uma coleção</option>',
         ...entries.map((entry) => {
             const id = sanitizePlainText(entry?.id, 120);
             const label = sanitizePlainText(entry?.nome, 120) || 'Colecao';
@@ -315,7 +315,7 @@ function renderCollectionSchedules() {
     if (!storeOperationsState.collectionSchedules.length) {
         const empty = document.createElement('p');
         empty.className = 'text-sm text-gray-400';
-        empty.textContent = 'Nenhuma colecao com janela programada.';
+        empty.textContent = 'Nenhuma coleção com janela programada.';
         container.appendChild(empty);
         return;
     }
@@ -331,7 +331,7 @@ function renderCollectionSchedules() {
                     <input type="text" class="ops-collection-label w-full rounded-2xl border border-[#E5E0D8] px-4 py-3 text-sm" value="${entry.label}">
                 </label>
                 <label class="space-y-2">
-                    <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Colecao</span>
+                    <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9C8564]">Coleção</span>
                     <select class="ops-collection-id w-full rounded-2xl border border-[#E5E0D8] px-4 py-3 text-sm">${buildCollectionOptions(entry.collectionId)}</select>
                 </label>
                 <label class="space-y-2">
@@ -511,7 +511,7 @@ async function saveStoreOperations(options = {}) {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok || payload?.ok === false) {
-            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel salvar a operacao da loja.', 220));
+            throw new Error(sanitizePlainText(payload?.error || 'Não foi possível salvar a operação da loja.', 220));
         }
 
         storeOperationsState = normalizeStoreOperationsState(payload?.result?.operations || nextState);
@@ -521,15 +521,15 @@ async function saveStoreOperations(options = {}) {
             closeStoreOperationsModal();
         }
     } catch (error) {
-        updateStoreOperationsFeedback(sanitizePlainText(error?.message || 'Nao foi possivel salvar agora.', 220), 'error');
+        updateStoreOperationsFeedback(sanitizePlainText(error?.message || 'Não foi possível salvar agora.', 220), 'error');
         if (source !== 'toggle') {
-            alert(sanitizePlainText(error?.message || 'Nao foi possivel salvar agora.', 220));
+            alert(sanitizePlainText(error?.message || 'Não foi possível salvar agora.', 220));
         }
     } finally {
         storeOperationsSaveInFlight = false;
         if (storeOperationsElements.saveBtn) {
             storeOperationsElements.saveBtn.disabled = false;
-            storeOperationsElements.saveBtn.textContent = 'Salvar operacao';
+            storeOperationsElements.saveBtn.textContent = 'Salvar operação';
         }
 
         if (storeOperationsAutoSaveQueued) {
@@ -559,12 +559,12 @@ async function runStoreAutomationNow() {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok || payload?.ok === false) {
-            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel rodar a automacao agora.', 220));
+            throw new Error(sanitizePlainText(payload?.error || 'Não foi possível rodar a automacao agora.', 220));
         }
 
-        alert('Automacao executada. Agenda, colecoes e notificacoes foram verificadas.');
+        alert('Automacao executada. Agenda, coleções e notificações foram verificadas.');
     } catch (error) {
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel rodar a automacao.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível rodar a automacao.', 220));
     } finally {
         if (storeOperationsElements.runNowBtn) {
             storeOperationsElements.runNowBtn.disabled = false;
@@ -637,7 +637,7 @@ function bindStoreOperationsModal() {
         storeOperationsElements.addCollectionScheduleBtn.addEventListener('click', () => {
             storeOperationsState.collectionSchedules.push({
                 id: `collection-${Date.now()}`,
-                label: `Colecao ${storeOperationsState.collectionSchedules.length + 1}`,
+                label: `Coleção ${storeOperationsState.collectionSchedules.length + 1}`,
                 collectionId: '',
                 startAt: '',
                 endAt: '',
@@ -664,7 +664,7 @@ function startStoreOperationsFeed() {
         }, () => {
             storeOperationsState = getDefaultStoreOperationsState();
             applyStoreOperationsPublicState();
-            updateStoreOperationsFeedback('Nao foi possivel ler a configuracao salva agora. A tela esta usando o modo padrao temporariamente.', 'error');
+            updateStoreOperationsFeedback('Não foi possível ler a configuração salva agora. A tela esta usando o modo padrao temporariamente.', 'error');
         });
 }
 

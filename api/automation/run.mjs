@@ -1,11 +1,12 @@
 import { runStoreAutomation } from "../../server/_store-automation.mjs";
 import { setNoStore } from "../../server/_shipping.mjs";
 import { isSessionRequestError, requireAdminUser } from "../../server/_session.mjs";
+import { safeTokenEquals } from "../../server/_security.mjs";
 
 function isAuthorizedCronRequest(authorizationHeader) {
   const secret = String(process.env.CRON_SECRET || "").trim();
   const header = String(authorizationHeader || "").trim();
-  return Boolean(secret && header === `Bearer ${secret}`);
+  return Boolean(secret) && safeTokenEquals(header, `Bearer ${secret}`);
 }
 
 export default async function handler(req, res) {

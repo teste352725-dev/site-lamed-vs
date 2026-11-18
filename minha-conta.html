@@ -2,14 +2,16 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex,nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="lamed-api-base-url" content="">
     <title>Minha Conta | Lamed vs</title>
     <link rel="stylesheet" href="css/tailwind.generated.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@300;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/account.css?v=20260824-account-checkout">
+    <link rel="stylesheet" href="css/account.css?v=20260913-login-methods">
 
+    <script src="js/image-variants.js?v=20261118"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -46,7 +48,7 @@
                             <span class="text-xl uppercase tracking-[0.45em] text-[--account-gold]">VS</span>
                         </div>
                     </a>
-                    <h1 class="account-brand-title">Acompanhe seus pedidos em um so lugar.</h1>
+                    <h1 class="account-brand-title">Acompanhe seus pedidos em um só lugar.</h1>
                     <p class="account-brand-copy">
                         Veja pedidos, salve favoritos, receba avisos e fale com a equipe de forma simples.
                     </p>
@@ -56,21 +58,21 @@
                             <i class="fa-solid fa-bag-shopping"></i>
                             <div>
                                 <strong>Pedidos sempre por perto</strong>
-                                <p>Veja o historico, o status e os proximos passos de cada encomenda em um so lugar.</p>
+                                <p>Veja o histórico, o status e os próximos passos de cada encomenda em um só lugar.</p>
                             </div>
                         </article>
                         <article class="account-benefit-card">
                             <i class="fa-regular fa-heart"></i>
                             <div>
                                 <strong>Favoritos salvos</strong>
-                                <p>Guarde pecas e colecoes para encontrar tudo de novo quando quiser.</p>
+                                <p>Guarde peças e coleções para encontrar tudo de novo quando quiser.</p>
                             </div>
                         </article>
                         <article class="account-benefit-card">
                             <i class="fa-regular fa-bell"></i>
                             <div>
                                 <strong>Avisos no celular</strong>
-                                <p>Receba notificacoes sobre pedido, suporte e novidades neste aparelho.</p>
+                                <p>Receba notificações sobre pedido, suporte e novidades neste aparelho.</p>
                             </div>
                         </article>
                     </div>
@@ -80,7 +82,7 @@
                     <i class="fa-solid fa-gem"></i>
                     <div>
                         <strong>Login deixa tudo pronto</strong>
-                        <p>Endereco salvo, acesso mais rapido e suporte ligado ao seu pedido.</p>
+                        <p>Endereço salvo, acesso mais rápido e suporte ligado ao seu pedido.</p>
                     </div>
                 </div>
             </section>
@@ -114,7 +116,7 @@
                     <div class="mt-8 rounded-[22px] border border-[#eadfce] bg-white/80 p-5">
                         <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Primeira vez aqui?</p>
                         <h3 class="account-serif text-3xl text-[#2d2017] mt-3">Crie sua conta</h3>
-                        <p class="mt-3 text-sm leading-7 text-[#7d7166]">Voce tambem pode entrar com Google e deixar seus dados prontos para os proximos pedidos.</p>
+                        <p class="mt-3 text-sm leading-7 text-[#7d7166]">Você também pode entrar com Google e deixar seus dados prontos para os próximos pedidos.</p>
                         <button type="button" onclick="switchAuthView('register')" class="btn-chic mt-5">Criar minha conta</button>
                     </div>
                 </div>
@@ -140,7 +142,7 @@
                         </div>
                         <div>
                             <label for="reg-phone" class="account-field-label">WhatsApp</label>
-                            <input type="tel" id="reg-phone" class="input-chic" placeholder="DDD + numero" autocomplete="tel" required>
+                            <input type="tel" id="reg-phone" class="input-chic" placeholder="DDD + número" autocomplete="tel" required>
                         </div>
                         <div>
                             <label for="reg-documento" class="account-field-label">CPF ou CNPJ</label>
@@ -148,11 +150,11 @@
                         </div>
                         <div>
                             <label for="reg-pass" class="account-field-label">Senha</label>
-                            <input type="password" id="reg-pass" class="input-chic" placeholder="Minimo de 6 caracteres" autocomplete="new-password" required>
+                            <input type="password" id="reg-pass" class="input-chic" placeholder="Mínimo de 6 caracteres" autocomplete="new-password" required>
                         </div>
 
                         <div class="rounded-[22px] border border-[#eadfce] bg-white/80 p-5 mt-2">
-                            <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco inicial</p>
+                            <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereço inicial</p>
                             <div class="grid grid-cols-3 gap-3 mt-4">
                                 <input type="text" id="reg-cep" aria-label="CEP" placeholder="CEP" class="input-chic col-span-1" autocomplete="postal-code" onblur="buscarEndereco(this.value)">
                                 <input type="text" id="reg-cidade" aria-label="Cidade" placeholder="Cidade" class="input-chic col-span-2" autocomplete="address-level2">
@@ -179,7 +181,7 @@
                     </button>
 
                     <p class="text-center text-sm text-[#7d7166] mt-7">
-                        Ja tem conta?
+                        Já tem conta?
                         <button type="button" onclick="switchAuthView('login')" class="text-[--account-brown] font-semibold underline">Entrar agora</button>
                     </p>
                 </div>
@@ -251,7 +253,7 @@
                         <div class="account-favorites-head">
                             <div>
                                 <h3>Favoritos</h3>
-                                <p class="account-panel-copy">Monte sua curadoria e volte nas pecas que chamaram sua atencao sem perder o fio da meada.</p>
+                                <p class="account-panel-copy">Monte sua curadoria e volte nas peças que chamaram sua atencao sem perder o fio da meada.</p>
                             </div>
                             <a href="index.html#loja" class="account-soft-btn">
                                 <i class="fa-solid fa-store"></i>
@@ -259,7 +261,7 @@
                             </a>
                         </div>
                         <div id="favorites-grid" class="account-favorites-grid">
-                            <p class="col-span-full text-center text-gray-400 py-10">Voce ainda nao tem pecas favoritas.</p>
+                            <p class="col-span-full text-center text-gray-400 py-10">Você ainda não tem peças favoritas.</p>
                         </div>
                     </div>
                 </section>
@@ -272,23 +274,23 @@
 
                             <div class="account-profile-summary mt-6">
                                 <div class="account-summary-tile">
-                                    <strong>Endereco pronto no checkout</strong>
-                                    <p>Seus proximos pedidos ficam mais rapidos, com menos campos para repetir.</p>
+                                    <strong>Endereço pronto no checkout</strong>
+                                    <p>Seus próximos pedidos ficam mais rapidos, com menos campos para repetir.</p>
                                 </div>
                                 <div class="account-summary-tile">
                                     <strong>Suporte com memoria do pedido</strong>
-                                    <p>Voce entra no chat com o pedido certo em foco e poupa varias explicacoes repetidas.</p>
+                                    <p>Você entra no chat com o pedido certo em foco e poupa varias explicacoes repetidas.</p>
                                 </div>
                                 <div class="account-summary-tile">
                                     <strong>Alertas neste aparelho</strong>
-                                    <p>Ative notificacoes para ser avisada quando o pedido mudar de etapa ou a equipe responder.</p>
+                                    <p>Ative notificações para ser avisada quando o pedido mudar de etapa ou a equipe responder.</p>
                                 </div>
                             </div>
                         </aside>
 
                         <div class="account-profile-panel">
                             <h3>Meus dados</h3>
-                            <p class="account-panel-copy">Edite sua foto, telefone e endereco para deixar cada atendimento mais pessoal.</p>
+                            <p class="account-panel-copy">Edite sua foto, telefone e endereço para deixar cada atendimento mais pessoal.</p>
 
                             <form id="profile-form" class="mt-6">
                                 <div class="account-avatar-editor">
@@ -323,7 +325,7 @@
                                     </div>
 
                                     <div class="rounded-[24px] border border-[#eadfce] bg-white/85 p-5">
-                                        <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereco de entrega</p>
+                                        <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[#a49382] font-bold">Endereço de entrega</p>
                                         <div class="grid grid-cols-3 gap-4 mt-4">
                                             <input type="text" id="profile-cep" aria-label="CEP" placeholder="CEP" class="input-chic col-span-1" onblur="buscarEndereco(this.value)">
                                             <input type="text" id="profile-cidade" aria-label="Cidade" placeholder="Cidade" class="input-chic col-span-2">
@@ -340,18 +342,65 @@
                                     </div>
                                 </div>
 
-                                <button type="submit" class="btn-chic mt-6">Salvar alteracoes</button>
+                                <button type="submit" class="btn-chic mt-6">Salvar alterações</button>
 
                                 <div id="push-notification-card" class="account-notification-card">
-                                    <p class="text-[0.72rem] uppercase tracking-[0.24em] font-bold opacity-80">Notificacoes web</p>
+                                    <p class="text-[0.72rem] uppercase tracking-[0.24em] font-bold opacity-80">Notificações web</p>
                                     <h4 class="account-serif text-3xl mt-3">Receba avisos neste aparelho</h4>
-                                    <p id="push-status-text" class="text-sm mt-3 opacity-90">Ative as notificacoes para receber atualizacoes de pedido e mensagens do suporte.</p>
+                                    <p id="push-status-text" class="text-sm mt-3 opacity-90">Ative as notificações para receber atualizações de pedido e mensagens do suporte.</p>
                                     <div class="flex flex-col sm:flex-row gap-3 mt-5">
                                         <button type="button" id="push-enable-btn" class="btn-chic sm:w-auto px-6">Ativar neste aparelho</button>
                                         <button type="button" id="push-disable-btn" class="account-secondary-btn sm:w-auto px-6">Desativar</button>
                                     </div>
                                 </div>
                             </form>
+
+                            <section id="account-login-methods" class="account-login-methods" aria-labelledby="account-login-methods-title">
+                                <div class="account-login-methods-head">
+                                    <div>
+                                        <p class="account-field-label">Segurança da conta</p>
+                                        <h4 id="account-login-methods-title" class="account-serif">Formas de entrar</h4>
+                                        <p>Você pode usar Google e senha na mesma conta, sem perder pedidos, favoritos ou dados salvos.</p>
+                                    </div>
+                                    <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                                </div>
+
+                                <div id="account-login-methods-feedback" class="account-login-methods-feedback hidden" role="status" aria-live="polite"></div>
+
+                                <div class="account-login-method-row">
+                                    <span class="account-login-method-icon account-login-method-google"><i class="fa-brands fa-google" aria-hidden="true"></i></span>
+                                    <div>
+                                        <strong>Entrar com Google</strong>
+                                        <small id="account-google-method-status">Verificando…</small>
+                                    </div>
+                                    <button type="button" id="account-link-google-btn" class="account-soft-btn">Vincular Google</button>
+                                </div>
+
+                                <div class="account-login-method-row account-login-method-password">
+                                    <span class="account-login-method-icon"><i class="fa-solid fa-key" aria-hidden="true"></i></span>
+                                    <div>
+                                        <strong>Entrar com e-mail e senha</strong>
+                                        <small id="account-password-method-status">Verificando…</small>
+                                    </div>
+                                    <button type="button" id="account-password-reset-btn" class="account-soft-btn hidden">Trocar senha</button>
+                                </div>
+
+                                <form id="account-password-link-form" class="account-password-link-form hidden">
+                                    <p>Crie uma senha para também entrar usando <strong id="account-password-email">seu e-mail</strong>.</p>
+                                    <div class="account-profile-two">
+                                        <div>
+                                            <label for="account-new-password" class="account-field-label">Nova senha</label>
+                                            <input type="password" id="account-new-password" class="input-chic" minlength="6" autocomplete="new-password" placeholder="Mínimo de 6 caracteres" required>
+                                        </div>
+                                        <div>
+                                            <label for="account-confirm-password" class="account-field-label">Repita a senha</label>
+                                            <input type="password" id="account-confirm-password" class="input-chic" minlength="6" autocomplete="new-password" placeholder="Digite novamente" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn-chic">Adicionar senha à minha conta</button>
+                                    <small>A senha é enviada diretamente ao Firebase e não fica salva no site.</small>
+                                </form>
+                            </section>
                         </div>
                     </div>
                 </section>
@@ -362,7 +411,7 @@
                             <div class="account-favorites-head">
                                 <div>
                     <h3>Chats ativos</h3>
-                                    <p class="account-panel-copy">Como admin, voce ve daqui as conversas mais recentes e pula direto para o atendimento.</p>
+                                    <p class="account-panel-copy">Como admin, você ve daqui as conversas mais recentes e pula direto para o atendimento.</p>
                                 </div>
                                 <a href="chat-admin.html" class="account-soft-btn">
                                     <i class="fa-regular fa-comments"></i>
@@ -583,9 +632,9 @@
             <i class="fa-solid fa-house"></i>
             <span>Home</span>
         </a>
-        <a href="index.html#loja" class="account-mobile-link" aria-label="Todas as pecas">
+        <a href="index.html#loja" class="account-mobile-link" aria-label="Todas as peças">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <span>Todas as pecas</span>
+            <span>Todas as peças</span>
         </a>
         <a href="minha-conta.html" class="account-mobile-link is-active" aria-current="page" aria-label="Conta">
             <i class="fa-regular fa-user"></i>
@@ -598,7 +647,7 @@
         </button>
     </nav>
 
-    <script src="user.js?v=20260824-account-checkout"></script>
+    <script src="user.js?v=20261118"></script>
     <script>
         function buscarEndereco(cep) {
             cep = String(cep || '').replace(/\D/g, '');

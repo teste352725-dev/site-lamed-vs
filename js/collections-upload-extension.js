@@ -26,7 +26,30 @@
         return window.firebase.storage(app);
     }
 
-    async function uploadCover(file) {
+    // Reduz a capa antes do envio (fotos de celular chegam com 3 a 14 MB).
+    // Em qualquer falha, envia o arquivo original como antes.
+    async function optimizeCoverForUpload(file) {
+        try {
+            if (!/^image\/(jpeg|webp|png)$/i.test(file.type) || file.size < 650000) return file;
+            if (!('createImageBitmap' in window)) return file;
+            const bitmap = await createImageBitmap(file);
+            const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+            canvas.getContext('2d', { alpha: /png/i.test(file.type) }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            bitmap.close();
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.84));
+            if (!blob || blob.size >= file.size) return file;
+            return new File([blob], `${String(file.name || 'capa').replace(/\.[^.]+$/, '') || 'capa'}.webp`, { type: 'image/webp', lastModified: Date.now() });
+        } catch (error) {
+            console.warn('[collections.upload.optimize]', error);
+            return file;
+        }
+    }
+
+    async function uploadCover(originalFile) {
+        const file = originalFile ? await optimizeCoverForUpload(originalFile) : originalFile;
         if (!file) return;
         if (!String(file.type || '').startsWith('image/')) {
             throw new Error('Selecione um arquivo de imagem.');

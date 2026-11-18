@@ -1,40 +1,29 @@
+import { safeTokenEquals } from "./_security.mjs";
+
 function readHeader(req, name) {
   return String(req?.headers?.[name] || req?.headers?.[name.toLowerCase()] || "").trim();
 }
 
 function looksLocalHost(hostname) {
-  return ["localhost", "127.0.0.1"].includes(String(hostname || "").toLowerCase());
+  const host = String(hostname || "").toLowerCase().replace(/:\d+$/, "");
+  return host === "localhost" || host === "127.0.0.1";
 }
 
-function looksLocalIp(value) {
-  const raw = String(value || "").toLowerCase();
-  return raw.includes("127.0.0.1") || raw.includes("::1");
-}
-
-export function hasDiagnosticAccess(req) {
-  const configuredToken = String(process.env.DIAGNOSTIC_TOKEN || "").trim();
+// Seguranca (auditoria 2026-11-03): antes, um cabecalho "Origin: http://localhost"
+// ou "X-Forwarded-For: 127.0.0.1" (ambos controlados pelo cliente) liberava o
+// diagnostico em producao. Agora so o DIAGNOSTIC_TOKEN libera; o atalho local
+// vale apenas fora da Vercel (servidor de desenvolvimento na propria maquina).
+export function hasDiagnosticAccess(req, env = process.env) {
+  const configuredToken = String(env.DIAGNOSTIC_TOKEN || "").trim();
   const providedToken = readHeader(req, "x-diagnostic-token");
 
-  if (configuredToken && providedToken && providedToken === configuredToken) {
+  if (safeTokenEquals(providedToken, configuredToken)) {
     return true;
   }
 
-  const hostHeader = readHeader(req, "host");
-  const originHeader = readHeader(req, "origin");
-  const forwardedFor = readHeader(req, "x-forwarded-for");
-  const realIp = readHeader(req, "x-real-ip");
-
-  if (looksLocalHost(hostHeader) || looksLocalIp(forwardedFor) || looksLocalIp(realIp)) {
+  const runningOnVercel = Boolean(env.VERCEL || env.VERCEL_ENV);
+  if (!runningOnVercel && looksLocalHost(readHeader(req, "host"))) {
     return true;
-  }
-
-  if (originHeader) {
-    try {
-      const parsed = new URL(originHeader);
-      if (looksLocalHost(parsed.hostname)) return true;
-    } catch (error) {
-      return false;
-    }
   }
 
   return false;

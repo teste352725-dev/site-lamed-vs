@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex,nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galeria | Painel Administrativo</title>
     <link rel="stylesheet" href="css/tailwind.generated.css">
@@ -162,14 +163,14 @@
 
         async function optimizeImageForUpload(file) {
             if (!String(file.type || '').startsWith('image/')) throw new Error('Selecione apenas imagens.');
-            if (!/^image\/(jpeg|webp)$/i.test(file.type) || file.size < 650000) return file;
+            if (!/^image\/(jpeg|webp|png)$/i.test(file.type) || file.size < 650000) return file;
             if (!("createImageBitmap" in window)) return file;
             const bitmap = await createImageBitmap(file);
             const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
             const canvas = document.createElement('canvas');
             canvas.width = Math.max(1, Math.round(bitmap.width * scale));
             canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-            canvas.getContext('2d', { alpha: false }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            canvas.getContext('2d', { alpha: /png/i.test(file.type) }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
             bitmap.close();
             const blob = await new Promise((resolve, reject) => canvas.toBlob(
                 result => result ? resolve(result) : reject(new Error('Não foi possível otimizar a imagem.')),

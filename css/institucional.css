@@ -1,0 +1,132 @@
+/* Paginas institucionais (privacidade, termos, trocas, entregas, atendimento).
+   Leves de proposito: sem Firebase nem Tailwind, so tipografia da marca. */
+:root {
+  --cor-fundo: #FDFBF6;
+  --cor-papel: #F8F6F0;
+  --cor-texto: #45301F;
+  --cor-texto-suave: #6b5a4c;
+  --cor-ouro: #A58A5C;
+  --cor-marrom: #643f21;
+  --cor-linha: #E5E0D8;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 300;
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+a { color: var(--cor-marrom); text-underline-offset: 3px; }
+a:hover { color: var(--cor-ouro); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--cor-ouro); outline-offset: 3px; border-radius: 4px; }
+
+.skip-link {
+  position: absolute; left: -9999px; top: 0; background: var(--cor-marrom); color: #fff; padding: .6rem 1rem; z-index: 100;
+}
+.skip-link:focus { left: 1rem; top: 1rem; }
+
+.inst-header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--cor-fundo);
+  border-bottom: 1px solid var(--cor-linha);
+}
+.inst-header__inner {
+  max-width: 72rem; margin: 0 auto; padding: .75rem 1rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.inst-logo { display: inline-flex; align-items: baseline; gap: .35rem; text-decoration: none; color: var(--cor-texto); }
+.inst-logo__name { font-family: 'Allura', cursive; font-size: 2.6rem; line-height: 1; letter-spacing: .05em; }
+.inst-logo__vs { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; color: var(--cor-ouro); }
+.inst-back {
+  font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 500;
+  text-decoration: none; color: var(--cor-texto); border: 1px solid var(--cor-linha);
+  padding: .55rem .95rem; border-radius: 999px; white-space: nowrap;
+}
+.inst-back:hover { border-color: var(--cor-ouro); color: var(--cor-marrom); }
+
+.inst-main { max-width: 46rem; margin: 0 auto; padding: 3rem 1rem 4rem; }
+
+.inst-eyebrow {
+  font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; color: var(--cor-ouro); font-weight: 500; margin: 0 0 .75rem;
+}
+.inst-main h1 {
+  font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: clamp(2.1rem, 6vw, 3rem);
+  line-height: 1.1; margin: 0 0 1rem;
+}
+.inst-rule { width: 4rem; height: 2px; background: var(--cor-ouro); border: 0; margin: 1.5rem 0 2rem; }
+.inst-lead { font-size: 1.08rem; color: var(--cor-texto-suave); }
+.inst-updated { font-size: .8rem; color: var(--cor-texto-suave); }
+
+.inst-main h2 {
+  font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 1.55rem; line-height: 1.25;
+  margin: 2.6rem 0 .75rem; scroll-margin-top: 6rem;
+}
+.inst-main h3 { font-size: 1rem; font-weight: 600; margin: 1.6rem 0 .4rem; }
+.inst-main p, .inst-main li { color: var(--cor-texto); }
+.inst-main ul, .inst-main ol { padding-left: 1.25rem; }
+.inst-main li + li { margin-top: .35rem; }
+.inst-main strong { font-weight: 600; }
+
+.inst-toc {
+  background: var(--cor-papel); border: 1px solid var(--cor-linha); border-radius: 18px; padding: 1.1rem 1.4rem; margin: 2rem 0;
+}
+.inst-toc p { margin: 0 0 .4rem; font-size: .7rem; letter-spacing: .22em; text-transform: uppercase; color: var(--cor-ouro); font-weight: 500; }
+.inst-toc ol { margin: 0; font-size: .95rem; }
+
+.inst-card {
+  background: var(--cor-papel); border: 1px solid var(--cor-linha); border-radius: 18px; padding: 1.25rem 1.4rem; margin: 1.25rem 0;
+}
+.inst-card h3 { margin-top: 0; }
+
+.inst-contacts { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); margin: 1.5rem 0; }
+.inst-contact {
+  display: block; text-decoration: none; color: var(--cor-texto);
+  background: #fff; border: 1px solid var(--cor-linha); border-radius: 18px; padding: 1.2rem 1.3rem;
+  transition: border-color .2s, box-shadow .2s;
+}
+.inst-contact:hover { border-color: var(--cor-ouro); box-shadow: 0 10px 30px -18px rgba(69, 48, 31, .45); color: var(--cor-texto); }
+.inst-contact__label { display: block; font-size: .68rem; letter-spacing: .22em; text-transform: uppercase; color: var(--cor-ouro); font-weight: 500; }
+.inst-contact__value { display: block; font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 600; margin-top: .25rem; word-break: break-word; }
+.inst-contact__hint { display: block; font-size: .85rem; color: var(--cor-texto-suave); margin-top: .2rem; }
+
+.inst-cta {
+  display: inline-flex; align-items: center; gap: .5rem; background: var(--cor-marrom); color: #fff; text-decoration: none;
+  font-size: .75rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; padding: .95rem 1.4rem; border-radius: 999px;
+}
+.inst-cta:hover { background: var(--cor-texto); color: #fff; }
+
+/* Trechos que a proprietaria precisa definir antes de publicar. */
+.pendente {
+  background: #fff3c4; color: #5c4200; border-bottom: 1px dashed #b58900; padding: 0 .2rem; border-radius: 3px; font-weight: 500;
+}
+.inst-draft {
+  background: #fff8dc; border: 1px solid #e6c65c; border-radius: 14px; padding: .9rem 1.1rem; font-size: .88rem; margin-bottom: 2rem;
+}
+
+.inst-footer { background: var(--cor-papel); border-top: 1px solid var(--cor-linha); padding: 2.5rem 1rem; }
+.inst-footer__inner { max-width: 72rem; margin: 0 auto; display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); font-size: .88rem; }
+.inst-footer h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 600; margin: 0 0 .5rem; }
+.inst-footer ul { list-style: none; margin: 0; padding: 0; }
+.inst-footer li + li { margin-top: .3rem; }
+.inst-footer a { color: var(--cor-texto); text-decoration: none; }
+.inst-footer a:hover, .inst-footer a[aria-current="page"] { color: var(--cor-ouro); }
+.inst-footer__legal { max-width: 72rem; margin: 2rem auto 0; padding-top: 1.25rem; border-top: 1px solid var(--cor-linha); font-size: .75rem; color: #8a7a6c; text-align: center; }
+
+@media (max-width: 480px) {
+  .inst-logo__name { font-size: 2.2rem; }
+  .inst-back { padding: .5rem .75rem; letter-spacing: .12em; }
+  .inst-main { padding-top: 2rem; }
+}
+
+@media print {
+  .inst-header, .inst-footer, .inst-back, .inst-draft { display: none; }
+  body { background: #fff; }
+}

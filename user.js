@@ -60,6 +60,19 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
+// Usa a versao leve (WebP do build, js/image-variants.js) quando existir;
+// a original fica guardada para o caso de a versao leve falhar.
+function setLightImageSource(image, src, width) {
+    const original = String(src || '');
+    const images = window.LamedImages;
+    if (images && images.has(original)) {
+        image.setAttribute('data-original-src', original);
+        image.src = images.url(original, width);
+        return;
+    }
+    image.src = original;
+}
+
 function buildBackendUrl(pathname) {
     const safePath = String(pathname || '').startsWith('/') ? pathname : `/${pathname || ''}`;
     return API_BASE_URL ? `${API_BASE_URL}${safePath}` : safePath;
@@ -70,6 +83,20 @@ function sanitizePlainText(value, maxLength = 160) {
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, maxLength);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Texto vindo do banco que vai para innerHTML: limpa espaços e escapa HTML.
+function safeHtmlText(value, maxLength = 160) {
+    return escapeHtml(sanitizePlainText(value, maxLength));
 }
 
 function sanitizePhone(value) {
@@ -251,7 +278,7 @@ function normalizeSavedProfileAddressBook(list, primaryAddress = null, primaryAd
 
     normalizedEntries.forEach((item, index) => {
         if (!item.label) {
-            item.label = item.principal ? 'Endereco principal' : `Endereco salvo ${index + 1}`;
+            item.label = item.principal ? 'Endereco principal' : `Endereço salvo ${index + 1}`;
         }
     });
 
@@ -356,7 +383,7 @@ function showOpenInBrowserGuidance() {
             action: async () => {
                 try {
                     await navigator.clipboard.writeText(window.location.href);
-                    showAccountAuthFeedback('Link copiado. Agora abra o Chrome/Safari e cole o endereco para entrar com Google.');
+                    showAccountAuthFeedback('Link copiado. Agora abra o Chrome/Safari e cole o endereço para entrar com Google.');
                 } catch (error) {
                     showAccountAuthFeedback(`Copie este link e abra no Chrome/Safari: ${window.location.href}`);
                 }
@@ -387,7 +414,7 @@ async function sendProfileSyncToBackend(profile = {}, user = currentUser || auth
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua conta agora.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível sincronizar sua conta agora.', 220));
     }
 
     return payload;
@@ -395,7 +422,7 @@ async function sendProfileSyncToBackend(profile = {}, user = currentUser || auth
 
 async function signInWithGoogleSafe() {
     if (!firebase.auth || typeof firebase.auth.GoogleAuthProvider !== 'function') {
-        throw new Error('O login com Google nao esta disponivel agora.');
+        throw new Error('O login com Google não está disponível agora.');
     }
 
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -440,6 +467,111 @@ async function syncGoogleUserProfileDoc(user) {
         email: sanitizePlainText(user.email, 120),
         fotoUrl: normalizeImageUrl(user.photoURL) || null
     }, user);
+}
+
+function accountProviderIds(user = currentUser || auth.currentUser) {
+    return new Set((user?.providerData || []).map((provider) => String(provider?.providerId || '')));
+}
+
+function showLoginMethodsFeedback(message = '', type = 'info') {
+    const element = document.getElementById('account-login-methods-feedback');
+    if (!element) return;
+    element.textContent = sanitizePlainText(message, 260);
+    element.classList.toggle('hidden', !message);
+    element.classList.toggle('is-success', type === 'success');
+    element.classList.toggle('is-error', type === 'error');
+}
+
+function renderAccountLoginMethods(user = currentUser || auth.currentUser) {
+    const googleStatus = document.getElementById('account-google-method-status');
+    const passwordStatus = document.getElementById('account-password-method-status');
+    const googleButton = document.getElementById('account-link-google-btn');
+    const passwordForm = document.getElementById('account-password-link-form');
+    const resetButton = document.getElementById('account-password-reset-btn');
+    const passwordEmail = document.getElementById('account-password-email');
+    if (!googleStatus || !passwordStatus || !googleButton || !passwordForm || !resetButton) return;
+
+    const providerIds = accountProviderIds(user);
+    const hasGoogle = providerIds.has('google.com');
+    const hasPassword = providerIds.has('password');
+    const email = sanitizePlainText(user?.email, 120);
+
+    googleStatus.textContent = hasGoogle ? 'Vinculado e pronto para entrar.' : 'Ainda não está vinculado.';
+    googleButton.classList.toggle('hidden', hasGoogle);
+    googleButton.disabled = !user;
+
+    passwordStatus.textContent = hasPassword
+        ? `Vinculada ao e-mail ${email || 'da conta'}.`
+        : email
+            ? 'Você ainda não criou uma senha para esta conta.'
+            : 'Entre com uma conta que tenha e-mail para adicionar uma senha.';
+    passwordForm.classList.toggle('hidden', hasPassword || !email);
+    resetButton.classList.toggle('hidden', !hasPassword || !email);
+    resetButton.disabled = !user;
+    if (passwordEmail) passwordEmail.textContent = email || 'seu e-mail';
+}
+
+function loginMethodErrorMessage(error, action) {
+    const code = String(error?.code || '');
+    const messages = {
+        'auth/requires-recent-login': 'Por segurança, saia e entre novamente na conta antes de fazer esta alteração.',
+        'auth/credential-already-in-use': 'Esta forma de entrada já está vinculada a outra conta. Entre em contato com o suporte para não perder seus dados.',
+        'auth/email-already-in-use': 'Este e-mail já pertence a outra conta. Entre em contato com o suporte para unificar o acesso.',
+        'auth/provider-already-linked': 'Esta forma de entrada já está vinculada à sua conta.',
+        'auth/weak-password': 'Escolha uma senha com pelo menos 6 caracteres.',
+        'auth/popup-closed-by-user': 'A janela do Google foi fechada antes de concluir.',
+        'auth/cancelled-popup-request': 'A vinculação anterior foi cancelada. Tente novamente.',
+        'auth/network-request-failed': 'A conexão falhou. Confira sua internet e tente novamente.'
+    };
+    return messages[code] || `Não foi possível ${action} agora. Tente novamente.`;
+}
+
+async function linkGoogleToCurrentAccount() {
+    const user = currentUser || auth.currentUser;
+    if (!user) throw new Error('Entre na sua conta para continuar.');
+    if (accountProviderIds(user).has('google.com')) {
+        renderAccountLoginMethods(user);
+        return;
+    }
+
+    const browserFingerprint = String(navigator.userAgent || '').toLowerCase();
+    if (/(instagram|fbav|fban|fb_iab|messenger|line|micromessenger|tiktok|twitter|linkedin|pinterest|snapchat|gsa|googleapp|wv)/i.test(browserFingerprint)) {
+        showOpenInBrowserGuidance();
+        return;
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+        const result = await user.linkWithPopup(provider);
+        if (result?.user) {
+            currentUser = result.user;
+            await syncGoogleUserProfileDoc(result.user);
+            renderAccountLoginMethods(result.user);
+        }
+    } catch (error) {
+        const code = String(error?.code || '');
+        if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+            await user.linkWithRedirect(provider);
+            return;
+        }
+        throw error;
+    }
+}
+
+async function linkPasswordToCurrentAccount(password) {
+    const user = currentUser || auth.currentUser;
+    const email = sanitizePlainText(user?.email, 120);
+    if (!user || !email) throw new Error('Sua conta precisa ter um e-mail confirmado para adicionar uma senha.');
+    if (accountProviderIds(user).has('password')) {
+        renderAccountLoginMethods(user);
+        return;
+    }
+
+    const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+    const result = await user.linkWithCredential(credential);
+    currentUser = result?.user || user;
+    renderAccountLoginMethods(currentUser);
 }
 
 function splitFullName(name) {
@@ -538,19 +670,19 @@ function renderAdminActiveChatsList(chats) {
         const chatId = sanitizePlainText(chat.id, 120);
         const threadId = sanitizePlainText(chat.activeThreadId, 120) || 'geral';
         const orderId = sanitizePlainText(chat.orderId, 120);
-        const userName = sanitizePlainText(chat.userName || 'Cliente', 80) || 'Cliente';
-        const lastMessage = sanitizePlainText(chat.lastMessage || 'Sem mensagens ainda.', 120);
+        const userName = safeHtmlText(chat.userName || 'Cliente', 80) || 'Cliente';
+        const lastMessage = safeHtmlText(chat.lastMessage || 'Sem mensagens ainda.', 120);
         const lastUpdate = formatAdminChatTimestamp(chat.lastUpdate);
         const href = `chat-admin.html?chat=${encodeURIComponent(chatId)}&thread=${encodeURIComponent(threadId)}${orderId ? `&pedido=${encodeURIComponent(orderId)}` : ''}`;
 
         return `
-            <a href="${href}" class="account-order-card">
+            <a href="${escapeHtml(href)}" class="account-order-card">
                 <div class="account-order-top">
                     <div>
                         <strong>${userName}</strong>
                         <span>${lastUpdate}</span>
                     </div>
-                    <span class="account-order-status ${chat.unread ? 'is-highlight' : ''}">${chat.unread ? 'Nao lido' : 'Aberto'}</span>
+                    <span class="account-order-status ${chat.unread ? 'is-highlight' : ''}">${chat.unread ? 'Não lido' : 'Aberto'}</span>
                 </div>
                 <p class="account-panel-copy mt-3">${lastMessage}</p>
             </a>
@@ -584,7 +716,7 @@ function getStatusLabel(status) {
     const labels = {
         pendente: 'Pendente',
         pago: 'Pago',
-        processando: 'Em producao',
+        processando: 'Em produção',
         enviado: 'Enviado',
         entregue: 'Entregue',
         cancelado: 'Cancelado'
@@ -652,7 +784,7 @@ function getOrderPaymentMeta(order) {
     const parcelas = Number(order?.parcelas || 1);
     return {
         label: sanitizePlainText(order?.pagamento, 60) || 'A combinar',
-        detail: `${parcelas}x ${parcelas > 1 ? 'no cartao' : 'na finalizacao'}`
+        detail: `${parcelas}x ${parcelas > 1 ? 'no cartão' : 'na finalização'}`
     };
 }
 
@@ -758,7 +890,7 @@ async function maybeHandleInfinitePayReturn(user) {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok || !payload?.ok) {
-            throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel confirmar o pagamento da InfinitePay.', 220));
+            throw new Error(sanitizePlainText(payload?.error || 'Não foi possível confirmar o pagamento da InfinitePay.', 220));
         }
 
         try {
@@ -779,7 +911,7 @@ async function maybeHandleInfinitePayReturn(user) {
         }
     } catch (error) {
         console.error('[infinitepay.return]', error);
-        alert(sanitizePlainText(error?.message || 'Nao foi possivel concluir a volta do pagamento agora.', 220));
+        alert(sanitizePlainText(error?.message || 'Não foi possível concluir a volta do pagamento agora.', 220));
     } finally {
         infinitePayReturnInFlight = false;
     }
@@ -926,16 +1058,16 @@ function renderSelectedOrderDetail() {
 
     const itensHtml = (Array.isArray(pedido.produtos) ? pedido.produtos : []).map((item) => {
         const detalhes = [];
-        const tamanho = sanitizePlainText(item?.tamanho, 20);
-        const cor = sanitizePlainText(item?.cor?.nome, 40);
+        const tamanho = safeHtmlText(item?.tamanho, 20);
+        const cor = safeHtmlText(item?.cor?.nome, 40);
         if (tamanho) detalhes.push(`Tam: ${tamanho}`);
         if (cor) detalhes.push(`Cor: ${cor}`);
-        if (item?.personalizacao?.texto) detalhes.push(`Personalizacao: ${sanitizePlainText(item.personalizacao.texto, 120)}`);
+        if (item?.personalizacao?.texto) detalhes.push(`Personalizacao: ${safeHtmlText(item.personalizacao.texto, 120)}`);
 
         return `
             <div class="account-detail-item">
                 <div class="account-detail-item-header">
-                    <span>${item.quantity}x ${sanitizePlainText(item.nome, 120)}</span>
+                    <span>${Number(item.quantity || 0)}x ${safeHtmlText(item.nome, 120)}</span>
                     <span>${Number((item.preco || 0) * (item.quantity || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
                 <div class="account-detail-item-meta">${detalhes.join(' | ') || 'Sob demanda'}</div>
@@ -950,7 +1082,7 @@ function renderSelectedOrderDetail() {
                 <h3>${getOrderCode(selectedOrder.id)}</h3>
                 <p class="account-panel-copy mt-2">Criado em ${dataPedido} e atualmente em ${getOrderDisplayStatus(pedido).toLowerCase()}.</p>
             </div>
-            <span class="account-order-status ${getOrderDisplayStatusClass(pedido)}">${getOrderDisplayStatus(pedido)}</span>
+            <span class="account-order-status ${getOrderDisplayStatusClass(pedido)}">${escapeHtml(getOrderDisplayStatus(pedido))}</span>
         </div>
 
         <div class="account-detail-section">
@@ -968,16 +1100,16 @@ function renderSelectedOrderDetail() {
                 <div class="account-detail-item">
                     <div class="account-detail-item-header">
                         <span>Pagamento</span>
-                        <span>${paymentMeta.label}</span>
+                        <span>${escapeHtml(paymentMeta.label)}</span>
                     </div>
-                    <div class="account-detail-item-meta">${paymentMeta.detail}</div>
+                    <div class="account-detail-item-meta">${escapeHtml(paymentMeta.detail)}</div>
                 </div>
             </div>
         </div>
 
         <div class="account-detail-section">
             <span class="account-detail-label">Entrega</span>
-            <div class="account-detail-value">${endereco || 'Endereco salvo no pedido.'}</div>
+            <div class="account-detail-value">${escapeHtml(endereco) || 'Endereco salvo no pedido.'}</div>
         </div>
 
         <div class="account-detail-section">
@@ -987,7 +1119,7 @@ function renderSelectedOrderDetail() {
 
         <div class="account-order-actions">
             ${isAwaitingInfinitePay(pedido) && paymentLink ? `
-            <a href="${paymentLink}" target="_blank" rel="noopener" class="account-soft-btn account-highlight-btn">
+            <a href="${escapeHtml(paymentLink)}" target="_blank" rel="noopener" class="account-soft-btn account-highlight-btn">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
                 Continuar pagamento
             </a>
@@ -1070,7 +1202,7 @@ async function fetchPushConfig() {
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.ok) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel carregar a configuracao de notificacoes.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível carregar a configuração de notificações.', 220));
     }
 
     pushConfigCache = payload;
@@ -1086,7 +1218,7 @@ function getPushMessagingInstance() {
 
 async function ensurePushServiceWorkerRegistration() {
     if (!('serviceWorker' in navigator)) {
-        throw new Error('Seu navegador nao oferece suporte completo a notificacoes web.');
+        throw new Error('Seu navegador não oferece suporte completo a notificações web.');
     }
 
     await navigator.serviceWorker.register('/sw.js', {
@@ -1095,7 +1227,7 @@ async function ensurePushServiceWorkerRegistration() {
     });
     const registration = await navigator.serviceWorker.ready;
     if (!registration?.active) {
-        throw new Error('O service worker de notificacoes ainda nao ficou ativo. Atualize a pagina e tente novamente.');
+        throw new Error('O service worker de notificações ainda não ficou ativo. Atualize a página e tente novamente.');
     }
     return registration;
 }
@@ -1117,7 +1249,7 @@ async function sendPushSubscriptionToBackend(pathname, token) {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel atualizar sua inscricao de notificacoes.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível atualizar sua inscricao de notificações.', 220));
     }
 
     return payload;
@@ -1141,7 +1273,7 @@ async function sendChatMessageToBackend(payload) {
 
     const result = await response.json().catch(() => null);
     if (!response.ok || result?.ok === false) {
-        throw new Error(sanitizePlainText(result?.error || 'Nao foi possivel enviar sua mensagem agora.', 220));
+        throw new Error(sanitizePlainText(result?.error || 'Não foi possível enviar sua mensagem agora.', 220));
     }
 
     return result;
@@ -1155,21 +1287,21 @@ async function ativarPushNotifications() {
     try {
         const config = await fetchPushConfig();
         if (!config?.enabled || !config?.vapidPublicKey) {
-            throw new Error('As notificacoes ainda nao foram configuradas pela loja.');
+            throw new Error('As notificações ainda não foram configuradas pela loja.');
         }
 
         if (!('Notification' in window)) {
-            throw new Error('Seu navegador nao suporta notificacoes.');
+            throw new Error('Seu navegador não suporta notificações.');
         }
 
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
-            throw new Error('Permissao de notificacao nao concedida.');
+            throw new Error('Permissao de notificação não concedida.');
         }
 
         const messaging = getPushMessagingInstance();
         if (!messaging) {
-            throw new Error('O navegador nao suportou o Firebase Messaging neste aparelho.');
+            throw new Error('O navegador não suportou o Firebase Messaging neste aparelho.');
         }
 
         const registration = await ensurePushServiceWorkerRegistration();
@@ -1179,16 +1311,16 @@ async function ativarPushNotifications() {
         });
 
         if (!token) {
-            throw new Error('Nao foi possivel gerar o token de notificacao deste aparelho.');
+            throw new Error('Não foi possível gerar o token de notificação deste aparelho.');
         }
 
         await sendPushSubscriptionToBackend('/api/notifications/register', token);
         currentPushToken = token;
-        setPushStatus('Notificacoes ativas neste aparelho. Vamos avisar voce sobre pedidos e suporte.');
+        setPushStatus('Notificações ativas neste aparelho. Vamos avisar você sobre pedidos e suporte.');
     } catch (error) {
         currentPushToken = '';
         console.error('[push.enable]', error);
-        setPushStatus(error?.message || 'Nao foi possivel ativar as notificacoes agora.');
+        setPushStatus(error?.message || 'Não foi possível ativar as notificações agora.');
     } finally {
         pushRequestInFlight = false;
         updatePushButtonsState();
@@ -1223,10 +1355,10 @@ async function desativarPushNotifications() {
         }
 
         currentPushToken = '';
-        setPushStatus('Notificacoes desativadas neste aparelho.');
+        setPushStatus('Notificações desativadas neste aparelho.');
     } catch (error) {
         console.error('[push.disable]', error);
-        setPushStatus(error?.message || 'Nao foi possivel desativar as notificacoes agora.');
+        setPushStatus(error?.message || 'Não foi possível desativar as notificações agora.');
     } finally {
         pushRequestInFlight = false;
         updatePushButtonsState();
@@ -1243,13 +1375,13 @@ async function iniciarNotificacoesWeb() {
     updatePushCardVisibility();
 
     if (!currentUser) {
-        setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
+        setPushStatus('Entre na sua conta para ativar notificações neste aparelho.');
         updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
         return;
     }
 
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !firebase.messaging) {
-        setPushStatus('Este navegador nao oferece suporte completo a notificacoes web.');
+        setPushStatus('Este navegador não oferece suporte completo a notificações web.');
         updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
         return;
     }
@@ -1257,7 +1389,7 @@ async function iniciarNotificacoesWeb() {
     try {
         const config = await fetchPushConfig();
         if (!config?.enabled || !config?.vapidPublicKey) {
-            setPushStatus('As notificacoes ainda estao em configuracao na loja.');
+            setPushStatus('As notificações ainda estao em configuração na loja.');
             updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
             return;
         }
@@ -1281,15 +1413,15 @@ async function iniciarNotificacoesWeb() {
 
             setPushStatus(
                 currentPushToken
-                    ? 'Notificacoes prontas neste aparelho.'
-                    : 'Permissao concedida, mas o token ainda nao foi sincronizado. Toque para ativar novamente.'
+                    ? 'Notificações prontas neste aparelho.'
+                    : 'Permissao concedida, mas o token ainda não foi sincronizado. Toque para ativar novamente.'
             );
 
             if (!pushForegroundListenerBound && typeof messaging.onMessage === 'function') {
                 pushForegroundListenerBound = true;
                 messaging.onMessage((payload) => {
                     const title = sanitizePlainText(payload?.notification?.title || payload?.data?.title || 'Laméd vs', 120);
-                    const body = sanitizePlainText(payload?.notification?.body || payload?.data?.body || 'Voce recebeu uma nova atualizacao.', 240);
+                    const body = sanitizePlainText(payload?.notification?.body || payload?.data?.body || 'Você recebeu uma nova atualização.', 240);
                     const link = sanitizePlainText(payload?.fcmOptions?.link || payload?.data?.link || 'minha-conta.html#pedidos', 500);
                     const icon = normalizeImageUrl(payload?.notification?.icon || payload?.data?.icon) || 'https://i.ibb.co/mr93jDHT/JM.png';
                     if (document.visibilityState === 'visible' && Notification.permission === 'granted') {
@@ -1303,13 +1435,13 @@ async function iniciarNotificacoesWeb() {
                 });
             }
         } else if (Notification.permission === 'denied') {
-            setPushStatus('As notificacoes foram bloqueadas neste navegador. Libere nas configuracoes do aparelho para voltar a usar.');
+            setPushStatus('As notificações foram bloqueadas neste navegador. Libere nas configurações do aparelho para voltar a usar.');
         } else {
-            setPushStatus('Ative as notificacoes para receber atualizacoes de pedido e suporte.');
+            setPushStatus('Ative as notificações para receber atualizações de pedido e suporte.');
         }
     } catch (error) {
         console.error('[push.init]', error);
-        setPushStatus('Nao foi possivel carregar a configuracao de notificacoes agora.');
+        setPushStatus('Não foi possível carregar a configuração de notificações agora.');
     } finally {
         updatePushButtonsState({ disableDisabled: !currentPushToken && Notification.permission !== 'granted' });
     }
@@ -1327,6 +1459,7 @@ auth.onAuthStateChanged(async (user) => {
             currentUserIsAdmin = await isAuthorizedAdminUser(user);
             if(authContainer) authContainer.classList.add('hidden');
             if(userPanel) userPanel.classList.remove('hidden');
+            renderAccountLoginMethods(user);
 
             const startupTasks = [
                 ['profile.sync', () => ensureUserProfileDoc(user)],
@@ -1371,16 +1504,17 @@ auth.onAuthStateChanged(async (user) => {
             if(authContainer) authContainer.classList.remove('hidden');
             if(userPanel) userPanel.classList.add('hidden');
             switchAuthView('login');
-            setPushStatus('Entre na sua conta para ativar notificacoes neste aparelho.');
+            setPushStatus('Entre na sua conta para ativar notificações neste aparelho.');
             updatePushButtonsState({ enableDisabled: true, disableDisabled: true });
             updateAccountStat('account-stat-orders', 0);
             updateAccountStat('account-stat-favorites', 0);
             updateAccountStat('account-stat-support', 'Ativo');
             renderAdminActiveChatsList([]);
+            renderAccountLoginMethods(null);
         }
     } catch (error) {
         console.error('[account.authState]', error);
-        alert('Nao foi possivel carregar ou atualizar sua conta agora.');
+        alert('Não foi possível carregar ou atualizar sua conta agora.');
     }
 });
 
@@ -1393,6 +1527,7 @@ auth.getRedirectResult()
         });
         try {
             await syncGoogleUserProfileDoc(result.user);
+            renderAccountLoginMethods(result.user);
         } catch (error) {
             console.error('[account.google.redirectResult.sync]', error);
         }
@@ -1439,9 +1574,9 @@ if(loginForm) {
             } else if (code === 'auth/too-many-requests') {
                 showAccountAuthFeedback('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
             } else if (code === 'auth/invalid-email') {
-                showAccountAuthFeedback('Email invalido.');
+                showAccountAuthFeedback('Email inválido.');
             } else {
-                showAccountAuthFeedback('Nao foi possivel entrar com esse email e senha.');
+                showAccountAuthFeedback('Não foi possível entrar com esse email e senha.');
             }
         } finally {
             if (submitBtn) {
@@ -1501,7 +1636,7 @@ if(regForm) {
             } else if (errorCode === 'auth/invalid-email') {
                 alert("Digite um email valido.");
             } else {
-                alert("Nao foi possivel concluir o cadastro agora.");
+                alert("Não foi possível concluir o cadastro agora.");
             }
             const btn = regForm.querySelector('button');
             btn.textContent = 'Finalizar Cadastro';
@@ -1525,14 +1660,94 @@ window.fazerLoginGoogle = () => {
                 return;
             }
             if (isFirestorePermissionError(err)) {
-                showAccountAuthFeedback('Sua conta entrou, mas o perfil ainda nao conseguiu sincronizar. Tente novamente em instantes.');
+                showAccountAuthFeedback('Sua conta entrou, mas o perfil ainda não conseguiu sincronizar. Tente novamente em instantes.');
                 return;
             }
-            showAccountAuthFeedback('Nao foi possivel entrar com Google agora.');
+            showAccountAuthFeedback('Não foi possível entrar com Google agora.');
         });
 };
 
 window.fazerLogout = () => auth.signOut();
+
+const linkGoogleButton = document.getElementById('account-link-google-btn');
+if (linkGoogleButton) {
+    linkGoogleButton.addEventListener('click', async () => {
+        showLoginMethodsFeedback('');
+        linkGoogleButton.disabled = true;
+        const originalText = linkGoogleButton.textContent;
+        linkGoogleButton.textContent = 'Abrindo Google…';
+        try {
+            await linkGoogleToCurrentAccount();
+            if (accountProviderIds().has('google.com')) {
+                showLoginMethodsFeedback('Google vinculado. Agora você pode usar as duas formas de entrar.', 'success');
+            }
+        } catch (error) {
+            console.error('[account.linkGoogle]', { code: error?.code, message: error?.message });
+            showLoginMethodsFeedback(loginMethodErrorMessage(error, 'vincular o Google'), 'error');
+        } finally {
+            linkGoogleButton.disabled = false;
+            linkGoogleButton.textContent = originalText;
+            renderAccountLoginMethods();
+        }
+    });
+}
+
+const passwordLinkForm = document.getElementById('account-password-link-form');
+if (passwordLinkForm) {
+    passwordLinkForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showLoginMethodsFeedback('');
+        const password = document.getElementById('account-new-password')?.value || '';
+        const confirmation = document.getElementById('account-confirm-password')?.value || '';
+        if (password.length < 6) {
+            showLoginMethodsFeedback('A senha precisa ter pelo menos 6 caracteres.', 'error');
+            return;
+        }
+        if (password !== confirmation) {
+            showLoginMethodsFeedback('As duas senhas não são iguais. Digite novamente.', 'error');
+            return;
+        }
+
+        const button = passwordLinkForm.querySelector('button[type="submit"]');
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Adicionando senha…';
+        }
+        try {
+            await linkPasswordToCurrentAccount(password);
+            passwordLinkForm.reset();
+            showLoginMethodsFeedback('Senha adicionada. Da próxima vez, você poderá entrar com Google ou com e-mail e senha.', 'success');
+        } catch (error) {
+            console.error('[account.linkPassword]', { code: error?.code, message: error?.message });
+            showLoginMethodsFeedback(loginMethodErrorMessage(error, 'adicionar a senha'), 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Adicionar senha à minha conta';
+            }
+            renderAccountLoginMethods();
+        }
+    });
+}
+
+const passwordResetButton = document.getElementById('account-password-reset-btn');
+if (passwordResetButton) {
+    passwordResetButton.addEventListener('click', async () => {
+        const email = sanitizePlainText((currentUser || auth.currentUser)?.email, 120);
+        if (!email) return;
+        showLoginMethodsFeedback('');
+        passwordResetButton.disabled = true;
+        try {
+            await auth.sendPasswordResetEmail(email);
+            showLoginMethodsFeedback(`Enviamos para ${email} um link seguro para trocar sua senha.`, 'success');
+        } catch (error) {
+            console.error('[account.resetPassword]', { code: error?.code, message: error?.message });
+            showLoginMethodsFeedback(loginMethodErrorMessage(error, 'enviar o e-mail de troca de senha'), 'error');
+        } finally {
+            passwordResetButton.disabled = false;
+        }
+    });
+}
 
 // --- PERFIL E DADOS ---
 
@@ -1577,8 +1792,8 @@ async function carregarPerfilUsuario() {
 
         if (heroCopy) {
             heroCopy.textContent = data.telefone
-                ? 'Seu perfil ja esta pronto para acompanhar pedidos e falar com o suporte com mais facilidade.'
-                : 'Complete seus dados para agilizar os proximos pedidos e facilitar o atendimento.';
+                ? 'Seu perfil já esta pronto para acompanhar pedidos e falar com o suporte com mais facilidade.'
+                : 'Complete seus dados para agilizar os próximos pedidos e facilitar o atendimento.';
         }
     } catch(e) { console.error("Erro perfil:", e); }
 }
@@ -1595,7 +1810,7 @@ window.uploadFotoPerfil = async (input) => {
     }
 
     if (Number(file.size || 0) > MAX_PROFILE_IMAGE_BYTES) {
-        alert("A imagem precisa ter no maximo 5 MB.");
+        alert("A imagem precisa ter no máximo 5 MB.");
         input.value = '';
         return;
     }
@@ -1618,7 +1833,7 @@ window.uploadFotoPerfil = async (input) => {
 
     } catch (error) {
         console.error("Erro no upload:", error);
-        alert("Nao foi possivel enviar a imagem agora.");
+        alert("Não foi possível enviar a imagem agora.");
     } finally {
         imgPreview.style.opacity = '1';
         input.value = '';
@@ -1666,8 +1881,8 @@ if(profileForm) {
             alert("Dados atualizados!");
             location.reload(); 
         } catch(e) {
-            alert("Nao foi possivel salvar suas alteracoes agora.");
-            btn.textContent = 'Salvar alteracoes';
+            alert("Não foi possível salvar suas alterações agora.");
+            btn.textContent = 'Salvar alterações';
             btn.disabled = false;
         }
     });
@@ -1781,7 +1996,7 @@ function carregarMeusPedidosLegacy() {
 
                 let itensHtml = (p.produtos || []).map(i => `
                     <div class="flex justify-between text-xs text-gray-500 mt-1 border-b border-gray-50 pb-1 last:border-0">
-                        <span>${i.quantity}x ${i.nome} - <span class="text-[10px] bg-gray-100 px-1 rounded">${i.tamanho || 'U'}</span></span>
+                        <span>${Number(i.quantity || 0)}x ${safeHtmlText(i.nome, 120)} - <span class="text-[10px] bg-gray-100 px-1 rounded">${safeHtmlText(i.tamanho, 20) || 'U'}</span></span>
                         <span>${(i.preco * i.quantity).toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
                     </div>
                 `).join('');
@@ -1793,7 +2008,7 @@ function carregarMeusPedidosLegacy() {
                                 <span class="font-bold text-gray-800">#${doc.id.slice(0,6).toUpperCase()}</span>
                                 <span class="text-xs text-gray-400 block">${dataPedido}</span>
                             </div>
-                            <span class="text-xs px-3 py-1 rounded-full uppercase tracking-wider font-bold ${getStatusClass(p.status)} h-fit flex items-center">${p.status}</span>
+                            <span class="text-xs px-3 py-1 rounded-full uppercase tracking-wider font-bold ${getStatusClass(p.status)} h-fit flex items-center">${safeHtmlText(p.status, 40)}</span>
                         </div>
                         <div class="mb-3 space-y-1">${itensHtml}</div>
                         <div class="text-right">
@@ -1849,7 +2064,7 @@ function carregarMeusPedidos() {
                 list.innerHTML = `
                     <div class="text-center py-12">
                         <i class="fa-solid fa-bag-shopping text-4xl text-gray-300 mb-4"></i>
-                        <p class="text-gray-600 mb-4">Voce ainda nao realizou nenhum pedido.</p>
+                        <p class="text-gray-600 mb-4">Você ainda não realizou nenhum pedido.</p>
                         <a href="index.html" class="inline-block text-[#643f21] font-medium border-b border-[#643f21] pb-0.5 hover:text-[#A58A5C] hover:border-[#A58A5C] transition-colors">
                             Que tal dar uma olhada em nossos produtos?
                         </a>
@@ -1866,7 +2081,7 @@ function carregarMeusPedidos() {
                 const dataPedido = formatOrderDate(pedido.data);
                 const previewItens = (pedido.produtos || []).slice(0, 3).map((item) => `
                     <div class="account-order-line">
-                        <span>${Number(item.quantity || 0)}x ${sanitizePlainText(item.nome, 120)}</span>
+                        <span>${Number(item.quantity || 0)}x ${safeHtmlText(item.nome, 120)}</span>
                         <span>${Number((item.preco || 0) * (item.quantity || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                 `).join('');
@@ -1878,7 +2093,7 @@ function carregarMeusPedidos() {
                                 <div class="account-order-code">${getOrderCode(entry.id)}</div>
                                 <div class="account-order-date">${dataPedido}</div>
                             </div>
-                            <span class="account-order-status ${getOrderDisplayStatusClass(pedido)}">${getOrderDisplayStatus(pedido)}</span>
+                            <span class="account-order-status ${getOrderDisplayStatusClass(pedido)}">${escapeHtml(getOrderDisplayStatus(pedido))}</span>
                         </div>
                         <div class="account-order-lines">${previewItens}</div>
                         <div class="account-order-card-footer">
@@ -1916,7 +2131,7 @@ function carregarMeusPedidos() {
             selectedOrderId = '';
             updateAccountStat('account-stat-orders', 0);
             renderSelectedOrderDetail();
-            list.innerHTML = '<p class="text-center text-red-400 py-8">Nao foi possivel carregar seus pedidos agora.</p>';
+            list.innerHTML = '<p class="text-center text-red-400 py-8">Não foi possível carregar seus pedidos agora.</p>';
         });
 }
 
@@ -1962,9 +2177,9 @@ async function carregarFavoritos() {
             imageWrap.className = 'aspect-[3/4] relative bg-gray-50';
 
             const image = document.createElement('img');
-            image.src = imageUrl || 'https://placehold.co/600x800/eee/ccc?text=Sem+imagem';
+            setLightImageSource(image, imageUrl || 'https://placehold.co/600x800/eee/ccc?text=Sem+imagem', 480);
             image.className = 'w-full h-full object-cover group-hover:scale-105 transition duration-500';
-            image.alt = sanitizePlainText(p.nome, 120) || 'Peca favorita';
+            image.alt = sanitizePlainText(p.nome, 120) || 'Peça favorita';
             image.loading = 'lazy';
             image.decoding = 'async';
             imageWrap.appendChild(image);
@@ -1974,7 +2189,7 @@ async function carregarFavoritos() {
 
             const title = document.createElement('h4');
             title.className = 'text-sm font-medium text-gray-800 truncate';
-            title.textContent = sanitizePlainText(p.nome, 120) || 'Peca favorita';
+            title.textContent = sanitizePlainText(p.nome, 120) || 'Peça favorita';
 
             const price = document.createElement('p');
             price.className = 'text-xs text-[#643f21] font-bold mt-1';
@@ -2075,7 +2290,7 @@ function iniciarChat() {
             inp.value = '';
         } catch (error) {
             console.error('[chat.user.send]', error);
-            alert(sanitizePlainText(error?.message || 'Nao foi possivel enviar sua mensagem agora.', 220));
+            alert(sanitizePlainText(error?.message || 'Não foi possível enviar sua mensagem agora.', 220));
         } finally {
             inp.disabled = false;
             inp.focus();
@@ -2429,7 +2644,7 @@ async function syncAccountCartSnapshot(items, revision) {
     }
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar sua sacola.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível sincronizar sua sacola.', 220));
     }
 
     const syncedItems = Array.isArray(payload?.items) ? payload.items : items;
@@ -2486,7 +2701,7 @@ function renderAccountCartPreview(items = readAccountCartItems()) {
         row.className = 'account-cart-item';
 
         const image = document.createElement('img');
-        image.src = normalizeImageUrl(item?.imagem) || buildAvatarUrl('Lamed');
+        setLightImageSource(image, normalizeImageUrl(item?.imagem) || buildAvatarUrl('Lamed'), 480);
         image.alt = sanitizePlainText(item?.nome || 'Peça da sacola', 100);
         image.loading = 'lazy';
 

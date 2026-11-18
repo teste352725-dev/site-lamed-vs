@@ -66,7 +66,7 @@ async function fetchAccountCart(user) {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel carregar o carrinho da conta.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível carregar o carrinho da conta.', 220));
     }
 
     return Array.isArray(payload?.items) ? payload.items : [];
@@ -90,7 +90,7 @@ async function syncAccountCart(user, items, mode = 'replace') {
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.ok === false) {
-        throw new Error(sanitizePlainText(payload?.error || 'Nao foi possivel sincronizar o carrinho da conta.', 220));
+        throw new Error(sanitizePlainText(payload?.error || 'Não foi possível sincronizar o carrinho da conta.', 220));
     }
 
     return Array.isArray(payload?.items) ? payload.items : [];
@@ -287,7 +287,7 @@ function startStorefrontProductsRealtimeSync() {
 function loadSeasonalHomeExtension() {
     if (document.querySelector('script[data-home-seasonal-collections]')) return;
     const script = document.createElement('script');
-    script.src = 'js/home-seasonal-collections.js?v=20260908-1';
+    script.src = 'js/home-seasonal-collections.js?v=20261118';
     script.async = false;
     script.dataset.homeSeasonalCollections = '1';
     script.addEventListener('error', () => console.warn('[home.collections] Nao foi possivel carregar a extensao sazonal.'));

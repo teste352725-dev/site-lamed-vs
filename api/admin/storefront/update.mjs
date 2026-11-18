@@ -18,13 +18,13 @@ export default async function handler(req, res) {
     const authorizationHeader = req.headers?.authorization || req.headers?.Authorization || "";
     const body = getRequestBody(req);
     if (String(body?.action || "").startsWith("production.")) {
-      const user = await resolveAuthenticatedUser(authorizationHeader);
+      const user = await resolveAuthenticatedUser(authorizationHeader, { checkRevoked: true });
       const result = await applyProductionStockAction({ action: String(body.action).slice(11), payload: body?.payload, user });
       return res.status(200).json({ ok: true, result });
     }
 
     if (String(body?.action || "").startsWith("pricing.")) {
-      const user = await resolveAuthenticatedUser(authorizationHeader);
+      const user = await resolveAuthenticatedUser(authorizationHeader, { checkRevoked: true });
       const result = await applyPricingAction({ action: String(body.action).slice(8), payload: body?.payload, user });
       return res.status(200).json({ ok: true, result });
     }
