@@ -275,8 +275,8 @@ export function renderProductPage(product, imageManifest = null) {
         ${product.personalizavel ? `<p class="produto-meta"><strong>Personalização:</strong> esta peça pode ser personalizada. Você escolhe os detalhes ao comprar.</p>` : ""}
 
         <ul class="produto-garantias">
-          <li><strong>Produção artesanal:</strong> prazo de 20 dias úteis após a confirmação do pedido. <!-- inst:inicio --><a href="/entregas.html">Ver entregas</a><!-- inst:fim --></li>
-          <li><strong>Pagamento:</strong> Pix ou cartão pela InfinitePay, após a confirmação do frete.</li>
+          <li><strong>Produção artesanal:</strong> prazo de 40 dias úteis após a confirmação do pedido. <!-- inst:inicio --><a href="/entregas.html">Ver entregas</a><!-- inst:fim --></li>
+          <li><strong>Pagamento:</strong> Pix ou cartão pela InfinitePay. O frete é cobrado à parte, com o valor confirmado pelo WhatsApp.</li>
           <li><strong>Arrependimento:</strong> até 7 dias após o recebimento. <!-- inst:inicio --><a href="/trocas-e-devolucoes.html">Trocas e devoluções</a><!-- inst:fim --></li>
         </ul>
 
