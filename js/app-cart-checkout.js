@@ -2143,6 +2143,7 @@ async function finalizarPedido(formData) {
             if (whatsappUrl) {
                 const orderUrl = `minha-conta.html?pedido=${encodeURIComponent(String(payload.orderId))}#pedidos`;
                 window.history.replaceState({}, '', orderUrl);
+                window.LamedMetricas?.whatsapp('checkout');
                 window.location.assign(whatsappUrl);
                 return;
             }
@@ -2152,6 +2153,7 @@ async function finalizarPedido(formData) {
         }
 
         if (whatsappUrl) {
+            window.LamedMetricas?.whatsapp('checkout');
             window.location.assign(whatsappUrl);
         }
     } catch (error) {

@@ -5,6 +5,7 @@ import { applyTeamAdminAction } from "../../../server/_team-admin.mjs";
 import { applyProductionStockAction } from "../../../server/_production-stock-admin.mjs";
 import { applyPricingAction } from "../../../server/_pricing-admin.mjs";
 import { resolveAuthenticatedUser } from "../../../server/_session.mjs";
+import { applyAtelieAction } from "../../../server/_atelie.mjs";
 
 export default async function handler(req, res) {
   setNoStore(res);
@@ -20,6 +21,12 @@ export default async function handler(req, res) {
     if (String(body?.action || "").startsWith("production.")) {
       const user = await resolveAuthenticatedUser(authorizationHeader, { checkRevoked: true });
       const result = await applyProductionStockAction({ action: String(body.action).slice(11), payload: body?.payload, user });
+      return res.status(200).json({ ok: true, result });
+    }
+
+    if (String(body?.action || "").startsWith("atelie.")) {
+      const user = await resolveAuthenticatedUser(authorizationHeader, { checkRevoked: true });
+      const result = await applyAtelieAction({ action: String(body.action).slice(7), payload: body?.payload, user });
       return res.status(200).json({ ok: true, result });
     }
 
@@ -49,7 +56,8 @@ export default async function handler(req, res) {
     if (isSessionRequestError(error) || isStorefrontAdminError(error) || Number(error?.status)) {
       return res.status(Number(error.status) || 400).json({
         ok: false,
-        error: String(error.message || "Nao foi possivel validar sua operacao.")
+        error: String(error.message || "Nao foi possivel validar sua operacao."),
+        ...(error?.code && typeof error.code === "string" && /^[A-Z_]+$/.test(error.code) ? { code: error.code } : {})
       });
     }
 

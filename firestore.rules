@@ -368,5 +368,29 @@ service cloud.firestore {
         request.resource.data.createdAt is timestamp;
       allow update, delete: if false;
     }
+
+    // Paleta de cores do estoque (tela antiga de estoque). Antes nao havia regra:
+    // toda leitura e gravacao era negada, e a tela parecia quebrada.
+    match /cores_estoque/{corId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.token.production == true);
+      allow write: if isAdmin();
+    }
+
+    // Ateliê: movimentos de estoque, alteracoes de pecas e estatisticas de visitas.
+    // Gravados somente pelo servidor (que confere a permissao de cada pessoa).
+    match /estoque_movimentos/{movimentoId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /pecas_alteracoes/{alteracaoId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /estatisticas_dia/{dia} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
   }
 }

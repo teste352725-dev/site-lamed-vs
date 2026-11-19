@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Ateliê | Laméd vs</title>
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#FDFBF6">
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/atelie.css?v=20261119">
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="js/atelie.js?v=20261119"></script>
+</head>
+<body>
+  <div id="app" class="app" data-view="carregando">
+
+    <!-- Carregando -->
+    <section class="tela tela--carregando" data-tela="carregando" aria-live="polite">
+      <p class="marca"><span class="marca__nome">Laméd</span><span class="marca__vs">vs</span></p>
+      <p class="carregando__texto">Abrindo o ateliê…</p>
+    </section>
+
+    <!-- Entrar -->
+    <section class="tela tela--entrar" data-tela="entrar">
+      <form id="form-entrar" class="entrar" novalidate>
+        <p class="marca"><span class="marca__nome">Laméd</span><span class="marca__vs">vs</span></p>
+        <h1 class="entrar__titulo">Ateliê</h1>
+        <p class="entrar__texto">Estoque, peças e visitas do site, em um só lugar.</p>
+        <label class="campo">
+          <span class="campo__rotulo">Usuário</span>
+          <input id="entrar-usuario" name="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="Ex.: maria">
+        </label>
+        <label class="campo">
+          <span class="campo__rotulo">Senha</span>
+          <span class="campo__senha">
+            <input id="entrar-senha" name="senha" type="password" autocomplete="current-password" required>
+            <button type="button" id="entrar-mostrar" class="campo__olho" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button>
+          </span>
+        </label>
+        <p id="entrar-erro" class="entrar__erro" role="alert"></p>
+        <button type="submit" id="entrar-botao" class="botao botao--cheio botao--largo">Entrar</button>
+        <p class="entrar__ajuda">Esqueceu a senha? Peça uma nova para a administração.</p>
+      </form>
+    </section>
+
+    <!-- Área logada -->
+    <div class="area" data-tela="area">
+      <header class="topo">
+        <p class="marca marca--pequena"><span class="marca__nome">Laméd</span><span class="marca__vs">vs</span></p>
+        <button type="button" id="botao-sair" class="topo__sair">Sair</button>
+      </header>
+
+      <main id="conteudo" class="conteudo">
+        <!-- Início -->
+        <section class="painel" data-painel="inicio" aria-labelledby="titulo-inicio">
+          <h1 id="titulo-inicio" class="saudacao"></h1>
+
+          <div id="bloco-visitas" class="visitas">
+            <div class="visitas__numeros">
+              <p class="numero"><span id="v-hoje" class="numero__valor">–</span><span class="numero__rotulo">visitas hoje</span></p>
+              <p class="numero"><span id="w-hoje" class="numero__valor">–</span><span class="numero__rotulo">chamaram no WhatsApp hoje</span></p>
+            </div>
+            <figure class="semana">
+              <div id="semana-barras" class="semana__barras" role="img"></div>
+              <figcaption id="semana-legenda" class="semana__legenda"></figcaption>
+            </figure>
+          </div>
+
+          <div class="lista-bloco">
+            <h2 class="subtitulo">Peças mais vistas na semana</h2>
+            <ol id="mais-vistas" class="ranking"></ol>
+          </div>
+
+          <div class="lista-bloco">
+            <h2 class="subtitulo">Peças que mais levaram ao WhatsApp</h2>
+            <ol id="mais-whatsapp" class="ranking"></ol>
+          </div>
+
+          <div class="lista-bloco">
+            <h2 class="subtitulo">Estoque agora</h2>
+            <div class="resumo-estoque">
+              <p class="numero numero--menor"><span id="total-produzindo" class="numero__valor">–</span><span class="numero__rotulo">em produção</span></p>
+              <p class="numero numero--menor"><span id="total-prontas" class="numero__valor">–</span><span class="numero__rotulo">prontas</span></p>
+              <p class="numero numero--menor"><span id="vendas-semana" class="numero__valor">–</span><span class="numero__rotulo">vendas registradas na semana</span></p>
+            </div>
+          </div>
+
+          <div class="lista-bloco">
+            <h2 class="subtitulo">Últimos movimentos</h2>
+            <ul id="ultimos-movimentos" class="movimentos"></ul>
+          </div>
+        </section>
+
+        <!-- Estoque -->
+        <section class="painel" data-painel="estoque" aria-labelledby="titulo-estoque" hidden>
+          <h1 id="titulo-estoque" class="titulo-painel">Estoque</h1>
+          <div class="busca">
+            <input id="busca-estoque" type="search" class="busca__campo" placeholder="Buscar peça" aria-label="Buscar peça no estoque" autocomplete="off">
+          </div>
+          <div class="filtros" role="group" aria-label="Mostrar">
+            <button type="button" class="filtro" data-filtro="mesa" aria-pressed="true">Mesa posta</button>
+            <button type="button" class="filtro" data-filtro="moda" aria-pressed="false">Roupas</button>
+            <button type="button" class="filtro" data-filtro="todas" aria-pressed="false">Todas</button>
+          </div>
+          <ul id="lista-estoque" class="pecas"></ul>
+        </section>
+
+        <!-- Peças -->
+        <section class="painel" data-painel="pecas" aria-labelledby="titulo-pecas" hidden>
+          <h1 id="titulo-pecas" class="titulo-painel">Peças</h1>
+          <p class="explica">Toque numa peça para corrigir o nome ou o preço. A mudança aparece no site na hora.</p>
+          <div class="busca">
+            <input id="busca-pecas" type="search" class="busca__campo" placeholder="Buscar peça" aria-label="Buscar peça" autocomplete="off">
+          </div>
+          <ul id="lista-pecas" class="pecas"></ul>
+        </section>
+      </main>
+
+      <nav class="abas" aria-label="Seções do ateliê">
+        <button type="button" class="aba" data-aba="inicio" aria-current="page">Início</button>
+        <button type="button" class="aba" data-aba="estoque">Estoque</button>
+        <button type="button" class="aba" data-aba="pecas">Peças</button>
+      </nav>
+    </div>
+
+    <!-- Folha: estoque de uma peça -->
+    <div id="folha-peca" class="folha" role="dialog" aria-modal="true" aria-labelledby="folha-peca-titulo" hidden>
+      <div class="folha__fundo" data-fechar></div>
+      <div class="folha__corpo">
+        <header class="folha__topo">
+          <h2 id="folha-peca-titulo" class="folha__titulo"></h2>
+          <button type="button" class="folha__fechar" data-fechar aria-label="Fechar">Fechar</button>
+        </header>
+        <ul id="folha-peca-cores" class="cores"></ul>
+      </div>
+    </div>
+
+    <!-- Folha: confirmar movimento -->
+    <div id="folha-mov" class="folha folha--alta" role="dialog" aria-modal="true" aria-labelledby="folha-mov-titulo" hidden>
+      <div class="folha__fundo" data-fechar></div>
+      <form id="form-mov" class="folha__corpo">
+        <header class="folha__topo">
+          <h2 id="folha-mov-titulo" class="folha__titulo"></h2>
+          <button type="button" class="folha__fechar" data-fechar aria-label="Cancelar">Cancelar</button>
+        </header>
+        <p id="folha-mov-texto" class="folha__texto"></p>
+
+        <div id="mov-quantidade" class="quantidade">
+          <span class="campo__rotulo" id="mov-qtd-rotulo">Quantidade</span>
+          <div class="quantidade__controle" role="group" aria-labelledby="mov-qtd-rotulo">
+            <button type="button" class="quantidade__botao" data-qtd="-1" aria-label="Diminuir">−</button>
+            <input id="mov-qtd" class="quantidade__valor" type="number" inputmode="numeric" min="1" max="500" value="1" aria-label="Quantidade">
+            <button type="button" class="quantidade__botao" data-qtd="1" aria-label="Aumentar">+</button>
+          </div>
+          <div class="atalhos" aria-label="Atalhos de quantidade">
+            <button type="button" class="atalho" data-qtd-set="1">1</button>
+            <button type="button" class="atalho" data-qtd-set="2">2</button>
+            <button type="button" class="atalho" data-qtd-set="5">5</button>
+            <button type="button" class="atalho" data-qtd-set="10">10</button>
+          </div>
+        </div>
+
+        <fieldset id="mov-canal" class="canais" hidden>
+          <legend class="campo__rotulo">Onde foi a venda?</legend>
+          <label class="canal"><input type="radio" name="canal" value="whatsapp" checked><span>WhatsApp</span></label>
+          <label class="canal"><input type="radio" name="canal" value="instagram"><span>Instagram</span></label>
+          <label class="canal"><input type="radio" name="canal" value="evento"><span>Evento ou feira</span></label>
+          <label class="canal"><input type="radio" name="canal" value="site"><span>Site</span></label>
+          <label class="canal"><input type="radio" name="canal" value="outro"><span>Outro</span></label>
+        </fieldset>
+
+        <div id="mov-ajuste" class="ajuste" hidden>
+          <label class="campo">
+            <span class="campo__rotulo">Em produção</span>
+            <input id="ajuste-produzir" type="number" inputmode="numeric" min="0" max="100000">
+          </label>
+          <label class="campo">
+            <span class="campo__rotulo">Prontas</span>
+            <input id="ajuste-pronta" type="number" inputmode="numeric" min="0" max="100000">
+          </label>
+        </div>
+
+        <p id="mov-erro" class="folha__erro" role="alert"></p>
+        <button type="submit" id="mov-confirmar" class="botao botao--cheio botao--largo"></button>
+      </form>
+    </div>
+
+    <!-- Folha: editar peça -->
+    <div id="folha-editar" class="folha folha--alta" role="dialog" aria-modal="true" aria-labelledby="folha-editar-titulo" hidden>
+      <div class="folha__fundo" data-fechar></div>
+      <form id="form-editar" class="folha__corpo">
+        <header class="folha__topo">
+          <h2 id="folha-editar-titulo" class="folha__titulo">Corrigir peça</h2>
+          <button type="button" class="folha__fechar" data-fechar aria-label="Cancelar">Cancelar</button>
+        </header>
+        <label class="campo">
+          <span class="campo__rotulo">Nome</span>
+          <input id="editar-nome" maxlength="140" required autocomplete="off">
+        </label>
+        <label class="campo">
+          <span class="campo__rotulo">Preço (R$)</span>
+          <input id="editar-preco" inputmode="decimal" required autocomplete="off">
+        </label>
+        <p id="editar-desconto" class="folha__texto"></p>
+        <p id="editar-erro" class="folha__erro" role="alert"></p>
+        <button type="submit" id="editar-salvar" class="botao botao--cheio botao--largo">Salvar</button>
+      </form>
+    </div>
+
+    <div id="aviso" class="aviso" role="status" aria-live="polite" hidden>
+      <span id="aviso-texto" class="aviso__texto"></span>
+      <button type="button" id="aviso-desfazer" class="aviso__acao" hidden>Desfazer</button>
+    </div>
+  </div>
+</body>
+</html>

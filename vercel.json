@@ -89,6 +89,14 @@
     {
       "source": "/estoque-mesaposta",
       "destination": "/estoque-mesaposta.html"
+    },
+    {
+      "source": "/atelie",
+      "destination": "/atelie.html"
+    },
+    {
+      "source": "/api/eventos",
+      "destination": "/api/status"
     }
   ]
 }

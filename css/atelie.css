@@ -1,0 +1,293 @@
+/* Ateliê — área da equipe. Feita para o celular, com a identidade da Laméd vs:
+   creme, café, marrom e um toque de ouro. O destaque são as amostras de tecido
+   (cor real de cada peça) com os números em serifa, como uma etiqueta de ateliê. */
+:root {
+  --creme: #FDFBF6;
+  --papel: #F6F2EA;
+  --linho: #ECE5D8;
+  --linha: #E2DACB;
+  --cafe: #45301F;
+  --cafe-suave: #6E5A49;
+  --marrom: #643F21;
+  --ouro: #A58A5C;
+  --ouro-claro: #E9DDC6;
+  --verde: #2F6B4F;
+  --vermelho: #9B3B2E;
+  --serifa: "Cormorant Garamond", Georgia, serif;
+  --texto: "Inter", system-ui, -apple-system, sans-serif;
+  --abas-h: 4.25rem;
+  --seguro-baixo: env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--creme);
+  color: var(--cafe);
+  font-family: var(--texto);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button, a, label { -webkit-tap-highlight-color: transparent; }
+/* A serifa usa algarismos antigos por padrao ("1" parece um "I"): forca os modernos. */
+.numero__valor, .ranking__total, .quantidade__valor, .peca__preco { font-variant-numeric: lining-nums tabular-nums; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--ouro); outline-offset: 3px; border-radius: 6px; }
+
+/* Telas */
+.tela, .area { display: none; }
+.app[data-view="carregando"] .tela--carregando,
+.app[data-view="entrar"] .tela--entrar { display: grid; }
+.app[data-view="area"] .area { display: block; }
+
+.tela {
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 2rem 1.25rem;
+}
+.tela--carregando { align-content: center; gap: .5rem; text-align: center; }
+.carregando__texto { color: var(--cafe-suave); margin: 0; }
+
+/* Marca */
+.marca { margin: 0; display: inline-flex; align-items: baseline; gap: .2rem; line-height: 1; }
+.marca__nome { font-family: "Allura", cursive; font-size: 3.4rem; color: var(--cafe); }
+.marca__vs { font-family: var(--serifa); font-size: 1.15rem; color: var(--ouro); }
+.marca--pequena .marca__nome { font-size: 2.1rem; }
+.marca--pequena .marca__vs { font-size: .9rem; }
+
+/* Entrar */
+.entrar { width: 100%; max-width: 22rem; display: grid; gap: 1rem; text-align: center; }
+.entrar__titulo { font-family: var(--serifa); font-weight: 500; font-size: 2.2rem; margin: -.25rem 0 0; letter-spacing: .02em; }
+.entrar__texto { margin: -.5rem 0 .75rem; color: var(--cafe-suave); }
+.entrar__erro { min-height: 1.25rem; margin: 0; color: var(--vermelho); font-size: .92rem; }
+.entrar__ajuda { margin: .25rem 0 0; color: var(--cafe-suave); font-size: .85rem; }
+.entrar .campo { text-align: left; }
+.entrar .marca { justify-self: center; }
+
+/* Campos */
+.campo { display: grid; gap: .35rem; }
+.campo__rotulo { font-size: .85rem; font-weight: 500; color: var(--cafe-suave); }
+.campo input, .busca__campo {
+  width: 100%;
+  min-height: 3.1rem;
+  padding: .7rem .95rem;
+  border: 1px solid var(--linha);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 1.05rem; /* 16px+ evita zoom no iPhone */
+}
+.campo input:focus, .busca__campo:focus { border-color: var(--ouro); outline: none; box-shadow: 0 0 0 3px var(--ouro-claro); }
+.campo__senha { position: relative; display: block; }
+.campo__senha input { padding-right: 5.5rem; }
+.campo__olho {
+  position: absolute; right: .35rem; top: 50%; transform: translateY(-50%);
+  min-height: 2.5rem; padding: 0 .8rem; border: 0; background: transparent;
+  color: var(--marrom); font-size: .9rem; font-weight: 500;
+}
+
+/* Botões */
+.botao {
+  min-height: 3.1rem;
+  padding: .75rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--marrom);
+  background: transparent;
+  color: var(--marrom);
+  font-weight: 500;
+  font-size: 1rem;
+}
+.botao--cheio { background: var(--marrom); color: var(--creme); }
+.botao--cheio:active { background: var(--cafe); }
+.botao--largo { width: 100%; }
+.botao[disabled] { opacity: .55; cursor: progress; }
+
+/* Topo e conteúdo */
+.topo {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(.6rem + env(safe-area-inset-top, 0px)) 1.25rem .6rem;
+  background: rgba(253, 251, 246, .94);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--linha);
+}
+.topo__sair { border: 0; background: none; color: var(--cafe-suave); min-height: 2.75rem; padding: 0 .25rem; font-size: .95rem; }
+.conteudo {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem calc(var(--abas-h) + var(--seguro-baixo) + 5.5rem);
+}
+
+.saudacao, .titulo-painel {
+  font-family: var(--serifa);
+  font-weight: 500;
+  font-size: 2rem;
+  line-height: 1.15;
+  margin: .25rem 0 1.25rem;
+}
+.subtitulo { font-family: var(--serifa); font-weight: 600; font-size: 1.3rem; margin: 0 0 .6rem; }
+.explica { color: var(--cafe-suave); margin: -.75rem 0 1rem; }
+
+/* Números (visitas, estoque) */
+.numero { margin: 0; display: grid; gap: .1rem; }
+.numero__valor { font-family: var(--serifa); font-weight: 600; font-size: 3rem; line-height: 1; font-variant-numeric: lining-nums tabular-nums; }
+.numero__rotulo { color: var(--cafe-suave); font-size: .92rem; }
+.numero--menor .numero__valor { font-size: 2.1rem; }
+
+.visitas { padding-bottom: 1.5rem; border-bottom: 1px solid var(--linha); }
+.visitas__numeros { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.semana { margin: 1.25rem 0 0; }
+.semana__barras { display: grid; grid-template-columns: repeat(7, 1fr); gap: .45rem; align-items: end; height: 4.5rem; }
+.semana__dia { display: grid; gap: .3rem; justify-items: center; height: 100%; align-content: end; }
+.semana__barra { width: 100%; max-width: 2.2rem; min-height: 3px; border-radius: 4px 4px 1px 1px; background: var(--ouro-claro); }
+.semana__dia--hoje .semana__barra { background: var(--ouro); }
+.semana__rotulo { font-size: .72rem; color: var(--cafe-suave); }
+.semana__legenda { margin-top: .6rem; color: var(--cafe-suave); font-size: .9rem; }
+
+.lista-bloco { padding: 1.4rem 0; border-bottom: 1px solid var(--linha); }
+.lista-bloco:last-child { border-bottom: 0; }
+.ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.ranking li { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+.ranking__nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking__total { font-family: var(--serifa); font-weight: 600; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.vazio { color: var(--cafe-suave); margin: 0; }
+.resumo-estoque { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+.movimentos { list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; }
+.movimentos li { display: grid; gap: .1rem; }
+.movimentos__quem { color: var(--cafe-suave); font-size: .85rem; }
+.movimentos__desfeito { text-decoration: line-through; color: var(--cafe-suave); }
+
+/* Busca e filtros */
+.busca { margin-bottom: .75rem; }
+.busca__campo { border-radius: 999px; padding-left: 1.2rem; }
+.filtros { display: flex; gap: .5rem; margin-bottom: 1rem; overflow-x: auto; scrollbar-width: none; }
+.filtro {
+  flex: 0 0 auto; min-height: 2.6rem; padding: .4rem 1rem;
+  border-radius: 999px; border: 1px solid var(--linha); background: transparent; color: var(--cafe-suave);
+}
+.filtro[aria-pressed="true"] { background: var(--cafe); border-color: var(--cafe); color: var(--creme); }
+
+/* Lista de peças */
+.pecas { list-style: none; margin: 0; padding: 0; }
+.peca {
+  width: 100%;
+  display: grid; grid-template-columns: 3.5rem 1fr auto; gap: .9rem; align-items: center;
+  padding: .8rem 0; border: 0; border-bottom: 1px solid var(--linha); background: none; text-align: left;
+}
+.peca__foto {
+  width: 3.5rem; height: 3.5rem; border-radius: 10px; object-fit: cover; background: var(--linho);
+  display: grid; place-items: center; font-family: var(--serifa); font-size: 1.4rem; color: var(--cafe-suave);
+}
+.peca__nome { display: block; font-weight: 500; line-height: 1.3; }
+.peca__info { display: block; color: var(--cafe-suave); font-size: .88rem; margin-top: .15rem; }
+.peca__inativa { color: var(--vermelho); }
+.peca__seta { color: var(--ouro); font-size: 1.4rem; line-height: 1; }
+.peca__preco { font-family: var(--serifa); font-weight: 600; font-size: 1.2rem; white-space: nowrap; }
+
+/* Folhas (sobem de baixo) */
+.folha { position: fixed; inset: 0; z-index: 50; display: grid; align-items: end; }
+.folha__fundo { position: absolute; inset: 0; background: rgba(69, 48, 31, .38); }
+.folha__corpo {
+  position: relative;
+  max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;
+  width: 100%; max-width: 36rem; margin: 0 auto;
+  padding: 1.1rem 1.25rem calc(1.5rem + var(--seguro-baixo));
+  background: var(--creme);
+  border-radius: 22px 22px 0 0;
+  display: grid; gap: 1rem; align-content: start;
+  animation: subir .22s ease-out;
+}
+.folha--alta .folha__corpo { min-height: 50vh; }
+@keyframes subir { from { transform: translateY(32px); } to { transform: none; } }
+.folha__topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.folha__titulo { font-family: var(--serifa); font-weight: 600; font-size: 1.6rem; line-height: 1.2; margin: 0; }
+.folha__fechar { border: 0; background: none; color: var(--marrom); min-height: 2.75rem; padding: 0 .25rem; font-weight: 500; flex: 0 0 auto; }
+.folha__texto { margin: -.25rem 0 0; color: var(--cafe-suave); }
+.folha__erro { margin: 0; min-height: 1.25rem; color: var(--vermelho); font-size: .95rem; }
+
+/* Cores: amostra de tecido + números */
+.cores { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.1rem; }
+.cor { padding: 1rem; border: 1px solid var(--linha); border-radius: 16px; background: #fff; display: grid; gap: .9rem; }
+.cor__cabeca { display: grid; grid-template-columns: auto 1fr; gap: .85rem; align-items: center; }
+.amostra {
+  width: 2.6rem; height: 2.6rem; border-radius: 50%;
+  border: 1px solid rgba(69, 48, 31, .18);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .55);
+  background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 2px, transparent 2px 5px);
+}
+.amostra--sem-cor { background-color: var(--linho); }
+.cor__nome { font-weight: 600; font-size: 1.05rem; }
+.cor__numeros { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.cor__numeros .numero__valor { font-size: 2.4rem; }
+.cor__acoes { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.cor__acoes .acao--venda { grid-column: 1 / -1; }
+.acao {
+  min-height: 3rem; padding: .55rem .75rem; border-radius: 12px;
+  border: 1px solid var(--linha); background: var(--papel); color: var(--cafe); font-weight: 500; font-size: .95rem;
+}
+.acao:active { background: var(--linho); }
+.acao--venda { background: var(--marrom); border-color: var(--marrom); color: var(--creme); }
+.acao--venda:active { background: var(--cafe); }
+.cor__corrigir { justify-self: start; border: 0; background: none; color: var(--cafe-suave); text-decoration: underline; text-underline-offset: 3px; min-height: 2.5rem; padding: 0; font-size: .9rem; }
+
+/* Quantidade */
+.quantidade { display: grid; gap: .6rem; }
+.quantidade__controle { display: grid; grid-template-columns: 3.5rem 1fr 3.5rem; gap: .5rem; }
+.quantidade__botao { min-height: 3.5rem; border-radius: 14px; border: 1px solid var(--linha); background: var(--papel); font-size: 1.6rem; color: var(--marrom); }
+.quantidade__valor {
+  min-height: 3.5rem; text-align: center; border: 1px solid var(--linha); border-radius: 14px; background: #fff;
+  font-family: var(--serifa); font-weight: 600; font-size: 2rem; -moz-appearance: textfield;
+}
+.quantidade__valor::-webkit-inner-spin-button, .quantidade__valor::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.atalhos { display: flex; gap: .5rem; }
+.atalho { flex: 1; min-height: 2.75rem; border-radius: 999px; border: 1px solid var(--linha); background: transparent; color: var(--cafe-suave); }
+
+/* Canal da venda */
+.canais { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.canais legend { margin-bottom: .5rem; padding: 0; }
+.canal { position: relative; }
+.canal input { position: absolute; opacity: 0; pointer-events: none; }
+.canal span { display: inline-flex; align-items: center; min-height: 2.75rem; padding: .4rem 1rem; border-radius: 999px; border: 1px solid var(--linha); color: var(--cafe-suave); }
+.canal input:checked + span { background: var(--cafe); border-color: var(--cafe); color: var(--creme); }
+.canal input:focus-visible + span { outline: 2px solid var(--ouro); outline-offset: 2px; }
+.ajuste { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
+/* Abas */
+.abas {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  height: calc(var(--abas-h) + var(--seguro-baixo));
+  padding-bottom: var(--seguro-baixo);
+  background: rgba(253, 251, 246, .97);
+  border-top: 1px solid var(--linha);
+}
+.aba { border: 0; background: none; color: var(--cafe-suave); font-size: .95rem; font-weight: 500; position: relative; }
+.aba[aria-current="page"] { color: var(--cafe); }
+.aba[aria-current="page"]::before {
+  content: ""; position: absolute; top: -1px; left: 30%; right: 30%; height: 2px; background: var(--ouro); border-radius: 2px;
+}
+
+/* Aviso (toast) */
+.aviso {
+  position: fixed; left: 1rem; right: 1rem; z-index: 60;
+  bottom: calc(var(--abas-h) + var(--seguro-baixo) + .75rem);
+  max-width: 34rem; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .8rem 1rem; border-radius: 14px;
+  background: var(--cafe); color: var(--creme);
+}
+/* Com uma folha aberta, o aviso sobe para o topo (espaço reservado acima da folha)
+   para nunca cobrir o botão principal dela. */
+body.com-folha .aviso { top: calc(env(safe-area-inset-top, 0px) + .6rem); bottom: auto; }
+body.com-folha .folha__corpo { max-height: calc(100dvh - 4.75rem); }
+.aviso--erro { background: var(--vermelho); }
+.aviso__texto { font-size: .95rem; }
+.aviso__acao { border: 0; background: none; color: var(--ouro-claro); font-weight: 600; min-height: 2.5rem; padding: 0 .25rem; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .folha__corpo { animation: none; }
+}

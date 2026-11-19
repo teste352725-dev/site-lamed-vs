@@ -310,8 +310,9 @@ export function renderProductPage(product, imageManifest = null) {
     <p class="inst-footer__legal">Laméd vs · Veronica Soares da Silva · CNPJ 43.698.381/0001-37 · &copy; 2026</p>
   </footer>
 
+  <script defer src="/js/metricas.js?v=20261119"></script>
   <script>
-  // Atualiza preco e disponibilidade ao vivo (descontos mudam sem novo deploy).
+  // Atualiza nome, preco e disponibilidade ao vivo (equipe/descontos mudam sem novo deploy).
   (function () {
     var main = document.getElementById('conteudo');
     var id = main && main.getAttribute('data-product-id');
@@ -333,6 +334,12 @@ export function renderProductPage(product, imageManifest = null) {
         buy.textContent = 'Ver outras peças';
         buy.setAttribute('href', '/#loja');
         return;
+      }
+      var liveName = fields.nome && fields.nome.stringValue;
+      var h1 = document.querySelector('.produto-info h1');
+      if (liveName && h1 && h1.textContent !== liveName) {
+        h1.textContent = liveName;
+        document.title = liveName + ' | Laméd vs';
       }
       var list = num(fields.preco);
       var discount = Math.max(0, Math.min(100, num(fields.desconto)));
