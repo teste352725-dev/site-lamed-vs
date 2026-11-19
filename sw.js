@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lamed-v35'; // v35: fotos WebP do build + correcoes do checkout (2026-11-18)
+const CACHE_NAME = 'lamed-v36'; // v35: fotos WebP do build + correcoes do checkout (2026-11-18)
 const APP_SHELL = [
   '/',
   '/index.html',

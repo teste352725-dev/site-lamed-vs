@@ -659,6 +659,11 @@ body.no-scroll {
         padding-bottom: calc(7rem + env(safe-area-inset-bottom));
     }
 
+    /* A ultima linha do rodape (CNPJ/direitos) nao fica atras da barra inferior nem do WhatsApp. */
+    footer#contato {
+        padding-bottom: calc(10rem + env(safe-area-inset-bottom));
+    }
+
     .mobile-bottom-nav {
         position: fixed;
         left: 50%;
@@ -747,16 +752,17 @@ body.no-scroll {
         font-size: 1.55rem;
     }
 
+    /* Botao do modo ADM fica empilhado acima do WhatsApp (antes ficava escondido atras dele). */
     .admin-fab-trigger {
-        right: 0.85rem;
-        bottom: calc(6.15rem + env(safe-area-inset-bottom));
+        right: 1rem;
+        bottom: calc(9.6rem + env(safe-area-inset-bottom));
         width: 3rem;
         height: 3rem;
     }
 
     .admin-fab-panel {
         right: 0.85rem;
-        bottom: calc(9.85rem + env(safe-area-inset-bottom));
+        bottom: calc(13.3rem + env(safe-area-inset-bottom));
         width: min(15rem, calc(100vw - 1.7rem));
         padding: 0.75rem;
     }
