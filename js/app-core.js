@@ -81,7 +81,34 @@ function normalizeSegmentWord(value) {
     return stripAccents(String(value || '')).trim().toLowerCase();
 }
 
+// Vitrine de cada categoria, definida no editor de categorias (Produtos > Categorias do site).
+// Sem definição, valem as listas fixas (mesa posta / casa / roupas).
+let categoryVitrines = {};
+
+function normalizeVitrine(value) {
+    const word = normalizeSegmentWord(value);
+    if (word === 'moda' || word === 'roupa' || word === 'roupas') return 'moda';
+    if (word === 'mesa' || word === 'mesa posta' || word === 'mesa_posta') return 'mesa';
+    if (isCasaSegmentWord(word)) return 'casa';
+    return '';
+}
+
+function setCategoryVitrines(entries) {
+    const map = {};
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+        const vitrine = normalizeVitrine(entry?.vitrine);
+        if (entry?.slug && vitrine) map[String(entry.slug)] = vitrine;
+    });
+    categoryVitrines = map;
+}
+
+function categoryVitrine(categoria) {
+    return categoryVitrines[String(categoria || '')] || '';
+}
+
 function checkIsCasa(categoria) {
+    const vitrine = categoryVitrine(categoria);
+    if (vitrine) return vitrine === 'casa';
     return CASA_CATEGORIES.includes(normalizeSegmentWord(categoria));
 }
 
@@ -1687,6 +1714,8 @@ function isHanukahProduct(item) {
     return term.includes('hanukah') || term.includes('chanukia') || term.includes('chanuka') || term.includes('judaica');
 }
 function checkIsMesaPosta(categoria) {
+    const vitrine = categoryVitrine(categoria);
+    if (vitrine) return vitrine === 'mesa';
     const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'toalha_de_mesa', 'toalha_mesa', 'anel_guardanapo', 'porta_guardanapo', 'trilho_velas', 'capa_de_matza'];
     return catsMesa.includes(categoria);
 }

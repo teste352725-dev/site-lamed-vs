@@ -1,4 +1,5 @@
-﻿import { createHash } from "node:crypto";
+﻿import { loadCategoryVitrines } from "./_categorias.mjs";
+import { createHash } from "node:crypto";
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 import { clearUserCart } from "./_cart.mjs";
 import {
@@ -391,11 +392,15 @@ function checkIsMesaPosta(categoria) {
 const CASA_CATEGORIES = new Set(["casa", "decoracao", "decoracao_casa", "almofada", "capa_almofada", "capa_de_almofada", "estandarte", "travesseiro", "capa_travesseiro", "capa_de_travesseiro", "cobertor", "manta"]);
 const CASA_WORDS = new Set(["casa", "decoracao", "decoracao de casa", "decoracao_casa", "home", "lar"]);
 
-export function isPecaSemTamanho(product) {
+// vitrines: mapa categoria -> vitrine do editor de categorias (server/_categorias.mjs).
+export function isPecaSemTamanho(product, vitrines = null) {
+  const segmento = stripAccents(sanitizePlainText(product?.segmento, 40)).toLowerCase();
+  if (CASA_WORDS.has(segmento)) return true;
+  const configured = vitrines?.get?.(sanitizePlainText(product?.categoria, 60));
+  if (configured) return configured === "mesa" || configured === "casa";
   if (checkIsMesaPosta(product?.categoria)) return true;
   const categoria = stripAccents(sanitizePlainText(product?.categoria, 60)).toLowerCase();
-  const segmento = stripAccents(sanitizePlainText(product?.segmento, 40)).toLowerCase();
-  return CASA_CATEGORIES.has(categoria) || CASA_WORDS.has(segmento);
+  return CASA_CATEGORIES.has(categoria);
 }
 
 function isSudeste(cep) {
@@ -607,6 +612,7 @@ async function buildCanonicalCartSnapshot(db, sourceCart) {
     : [];
 
   const productMap = await getProductMapByIds(db, baseIds);
+  const vitrines = await loadCategoryVitrines(db);
   const canonicalCart = [];
 
   for (const rawItem of sourceCart) {
@@ -710,7 +716,7 @@ async function buildCanonicalCartSnapshot(db, sourceCart) {
         canonicalItem.cor = null;
       }
 
-      const canonicalSize = isPecaSemTamanho(product)
+      const canonicalSize = isPecaSemTamanho(product, vitrines)
         ? "Unico"
         : normalizeSizeLabel(sourceItem.tamanho);
 

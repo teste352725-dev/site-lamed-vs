@@ -1082,3 +1082,7 @@
 .palette-swatch__outra { display: inline-flex; align-items: center; justify-content: center; background: #fff; font-weight: 700; }
 .palette-preview { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(95, 61, 47, 0.05); }
 .palette-fixed { display: inline-flex; align-items: center; justify-content: center; min-height: 54px; padding: 0 10px; border-radius: 14px; background: rgba(95, 61, 47, 0.06); font-size: 11px; font-weight: 700; color: rgba(95, 61, 47, 0.7); }
+
+/* Editor de categorias: vitrine de cada categoria */
+.category-vitrine-field select { min-height: 40px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(95, 61, 47, 0.18); background: #fff; font-size: 13px; font-weight: 600; color: var(--mocha-deep, #45301f); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

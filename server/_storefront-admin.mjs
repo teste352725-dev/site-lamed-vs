@@ -79,6 +79,15 @@ function normalizeCollectionEditorEntry(entry, fallbackOrder = 0) {
   return { id, nome, ordem, ativa };
 }
 
+// Vitrine da categoria: roupas (moda), mesa posta (mesa) ou casa.
+export function normalizeCategoryVitrine(value) {
+  const word = sanitizePlainText(value, 30).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (["moda", "roupa", "roupas"].includes(word)) return "moda";
+  if (["mesa", "mesa posta", "mesa_posta"].includes(word)) return "mesa";
+  if (["casa", "decoracao", "decoracao de casa", "decoracao_casa"].includes(word)) return "casa";
+  return "";
+}
+
 function normalizeCategoryEditorEntries(entries) {
   const normalized = [];
   const seen = new Set();
@@ -95,7 +104,8 @@ function normalizeCategoryEditorEntries(entries) {
       slug,
       nome,
       ordem: sanitizeInteger(entry.ordem, { min: 0, max: 99999, fallback: (index + 1) * 10 }),
-      ativa: sanitizeBoolean(entry.ativa, true)
+      ativa: sanitizeBoolean(entry.ativa, true),
+      ...(normalizeCategoryVitrine(entry.vitrine) ? { vitrine: normalizeCategoryVitrine(entry.vitrine) } : {})
     });
   });
 
@@ -281,7 +291,8 @@ async function updateCategoryVisibility(db, payload, adminUid) {
       slug: currentSlug,
       nome: sanitizePlainText(category?.nome || currentSlug, 120),
       ordem: Number.isFinite(Number(category?.ordem)) ? Number(category.ordem) : index * 10 + 10,
-      ativa: currentSlug === slug ? ativa : category?.ativa !== false
+      ativa: currentSlug === slug ? ativa : category?.ativa !== false,
+      ...(normalizeCategoryVitrine(category?.vitrine) ? { vitrine: normalizeCategoryVitrine(category.vitrine) } : {})
     };
   });
 

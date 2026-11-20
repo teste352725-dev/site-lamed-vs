@@ -1,5 +1,6 @@
 // Ateliê: área simples da equipe (estoque por cor, nome/preço das peças, visitas).
 // Toda alteração passa por aqui; o servidor confere a permissão de cada ação.
+import { vitrinesFromSettings } from "./_categorias.mjs";
 import { FieldValue, getAdminAuth, getAdminDb } from "./_firebase-admin.mjs";
 import { isAdminDecodedToken } from "./_session.mjs";
 import { summarizeAnalytics } from "./_analytics.mjs";
@@ -165,22 +166,25 @@ const CASA_WORDS = new Set(["casa", "decoracao", "decoracao de casa", "decoracao
 const semAcento = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 // casaCollections: ids das coleções marcadas só como "Casa" (a peça entra em Casa por elas).
-export function productSegment(data, casaCollections = null) {
+// vitrines: mapa categoria -> vitrine do editor de categorias.
+export function productSegment(data, casaCollections = null, vitrines = null) {
   const seg = semAcento(clean(data?.segmento, 30)).toLowerCase();
   const categoria = semAcento(clean(data?.categoria, 60)).toLowerCase();
-  if (CASA_WORDS.has(seg) || CASA_CATEGORIES.has(categoria) || (casaCollections && casaCollections.has(data?.colecaoId))) return "casa";
+  const configured = vitrines?.get?.(clean(data?.categoria, 60));
+  if (CASA_WORDS.has(seg) || configured === "casa" || (!configured && CASA_CATEGORIES.has(categoria)) || (casaCollections && casaCollections.has(data?.colecaoId))) return "casa";
   if (seg) return ["moda", "roupa", "roupas", "fashion"].includes(seg) ? "moda" : "mesa";
+  if (configured) return configured;
   return MESA_CATEGORIES.has(clean(data?.categoria, 60).toLowerCase()) ? "mesa" : "moda";
 }
 
-function slimProduct(id, data, casaCollections = null) {
+function slimProduct(id, data, casaCollections = null, vitrines = null) {
   const imagens = Array.isArray(data.imagens) ? data.imagens : [];
   return {
     id,
     nome: clean(data.nome, 140),
     preco: Number(data.preco) || 0,
     desconto: Math.max(0, Math.min(100, Number(data.desconto) || 0)),
-    segmento: productSegment(data, casaCollections),
+    segmento: productSegment(data, casaCollections, vitrines),
     categoria: clean(data.categoria, 60),
     status: clean(data.status, 20) || "active",
     imagem: clean(imagens[0] || data.imagem || "", 2000),
@@ -237,12 +241,14 @@ async function loadHome(user, caps) {
     db.collection("estoque_movimentos").where("createdAt", ">=", since).orderBy("createdAt", "desc").limit(200).get(),
     caps.visitas ? summarizeAnalytics({ days: 7 }).catch(() => null) : null
   ]);
+  const settingsDoc = (colecoesSnap?.docs || []).find((doc) => doc.id === "__catalog_settings");
+  const vitrines = vitrinesFromSettings(settingsDoc?.data()?.categorias);
   const casaCollections = new Set((colecoesSnap?.docs || []).filter((doc) => {
     const c = doc.data() || {};
     const segs = Array.isArray(c.segmentos) ? c.segmentos : (c.segmento ? [c.segmento] : []);
     return segs.length > 0 && segs.every((x) => CASA_WORDS.has(semAcento(x).toLowerCase()));
   }).map((doc) => doc.id));
-  const pecas = pecasSnap.docs.map((doc) => slimProduct(doc.id, doc.data() || {}, casaCollections))
+  const pecas = pecasSnap.docs.map((doc) => slimProduct(doc.id, doc.data() || {}, casaCollections, vitrines))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   const movimentos = movSnap.docs.map(publicMovement);
   const vendasSemana = movimentos.filter((m) => m.tipo === "venda" && !m.desfeito)

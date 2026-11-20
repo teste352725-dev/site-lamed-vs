@@ -201,7 +201,8 @@ function normalizeCategoryEntry(entry, fallbackOrder = 999) {
         slug,
         nome,
         ordem: Number.isFinite(Number(entry.ordem)) ? Number(entry.ordem) : fallbackOrder,
-        ativa: entry.ativa !== false
+        ativa: entry.ativa !== false,
+        vitrine: normalizeVitrine(entry.vitrine)
     };
 }
 
@@ -381,6 +382,12 @@ function renderCollectionManagerList() {
     `).join('');
 }
 
+function categoryVitrineForEditor(entry) {
+    if (entry?.vitrine) return entry.vitrine;
+    if (checkIsCasa(entry?.slug)) return 'casa';
+    return checkIsMesaPosta(entry?.slug) ? 'mesa' : 'moda';
+}
+
 function renderCategoryManagerList() {
     const container = categoryManagerElements.list;
     if (!container) return;
@@ -392,7 +399,7 @@ function renderCategoryManagerList() {
 
     container.innerHTML = adminCategoriesCache.map((entry) => `
         <div class="rounded-[22px] border border-[#E5E0D8] bg-white px-4 py-4 category-manager-item" data-category-slug="${escapeHtmlAttr(entry.slug)}">
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_0.8fr_0.5fr_auto] md:items-center">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_0.8fr_0.8fr_0.5fr_auto] md:items-center">
                 <label class="space-y-1">
                     <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Nome</span>
                     <input type="text" class="category-manager-name w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" value="${escapeHtmlAttr(entry.nome)}" placeholder="Nome da categoria">
@@ -401,6 +408,12 @@ function renderCategoryManagerList() {
                     <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Slug</span>
                     <div class="rounded-2xl border border-dashed border-[#E5E0D8] bg-[#F8F6F0] px-4 py-3 text-xs text-gray-500 break-all">${escapeHtml(entry.slug)}</div>
                 </div>
+                <label class="space-y-1">
+                    <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Vitrine</span>
+                    <select class="category-manager-vitrine w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm">
+                        ${[['moda', 'Roupas'], ['mesa', 'Mesa posta'], ['casa', 'Casa']].map(([value, label]) => `<option value="${value}" ${categoryVitrineForEditor(entry) === value ? 'selected' : ''}>${label}</option>`).join('')}
+                    </select>
+                </label>
                 <label class="space-y-1">
                     <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9C8564]">Ordem</span>
                     <input type="number" min="0" step="1" class="category-manager-order w-full rounded-2xl border border-[#E5E0D8] bg-white px-4 py-3 text-sm" value="${Number(entry.ordem || 0)}">
@@ -676,7 +689,8 @@ function readCategoryManagerPayload() {
         slug: sanitizePlainText(item.dataset.categorySlug, 80),
         nome: sanitizePlainText(item.querySelector('.category-manager-name')?.value, 120),
         ordem: parseInt(item.querySelector('.category-manager-order')?.value || 0, 10) || 0,
-        ativa: item.querySelector('.category-manager-active')?.checked === true
+        ativa: item.querySelector('.category-manager-active')?.checked === true,
+        vitrine: item.querySelector('.category-manager-vitrine')?.value || ''
     })).filter((entry) => entry.slug && entry.nome);
 }
 
@@ -1304,6 +1318,7 @@ async function carregarDadosLoja() {
             .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
         storefrontCatalogLoaded = true;
 
+        if (catalogSettingsSnap.exists) setCategoryVitrines(catalogSettingsSnap.data()?.categorias);
         const savedCatalogSegment = readSavedCatalogSegment();
         currentCatalogSegment = savedCatalogSegment || getLatestCollectionSegment();
         if (currentCatalogSegment === 'casa' && !hasCasaProducts()) currentCatalogSegment = 'mesa';
@@ -1312,6 +1327,7 @@ async function carregarDadosLoja() {
         const configCategories = catalogSettingsSnap.exists
             ? catalogSettingsSnap.data()?.categorias
             : [];
+        setCategoryVitrines(configCategories);
         const productCategories = [...new Set(products.map((product) => product.categoria).filter(Boolean))];
         siteCategories = mergeSiteCategories(configCategories, productCategories);
         adminCategoriesCache = buildEditableSiteCategories(configCategories, productCategories);

@@ -29,7 +29,8 @@
     }
 
     function segmentForProduct(product) {
-        if (product?.segmento === 'casa' || CASA_CATEGORIES.includes(String(product?.categoria || '').toLowerCase())) return 'casa';
+        const categoriaCasa = typeof isCasaCategory === 'function' ? isCasaCategory(product?.categoria) : CASA_CATEGORIES.includes(String(product?.categoria || '').toLowerCase());
+        if (product?.segmento === 'casa' || categoriaCasa) return 'casa';
         if (product?.segmento === 'mesa') return 'mesa';
         if (product?.segmento === 'moda') return 'moda';
         if (typeof isMesaPostaCategory === 'function' && isMesaPostaCategory(product?.categoria)) return 'mesa';

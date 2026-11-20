@@ -20,7 +20,7 @@
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260818-team-access" defer></script>
 
-        <link rel="stylesheet" href="css/produtos.css?v=20261120-cores">
+        <link rel="stylesheet" href="css/produtos.css?v=20261120-vitrine">
         <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
     <script src="js/paleta-cores.js?v=20261120"></script>
 </head>
@@ -166,12 +166,12 @@
                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h3 class="panel-title">Categorias do site</h3>
-                            <p class="panel-copy mb-0">Crie novas categorias aqui e elas aparecerão no painel, nos filtros e na página da loja.</p>
+                            <p class="panel-copy mb-0">Crie categorias e escolha em qual vitrine cada uma aparece: Roupas, Mesa posta ou Casa. Peças de Mesa posta e Casa não pedem tamanho de roupa.</p>
                         </div>
                         <div class="pill pill-light"><i class="fa-solid fa-tags"></i><span id="categories-count-label">0 categoria(s)</span></div>
                     </div>
 
-                    <div class="mt-5 grid gap-3 md:grid-cols-[1.2fr_1fr_auto]">
+                    <div class="mt-5 grid gap-3 md:grid-cols-[1.2fr_1fr_0.9fr_auto]">
                         <label class="stack-field">
                             <span class="field-label">Nome da categoria</span>
                             <input type="text" id="new-category-name" placeholder="Ex: blusa de linho">
@@ -179,6 +179,14 @@
                         <label class="stack-field">
                             <span class="field-label">Slug</span>
                             <input type="text" id="new-category-slug" placeholder="Opcional, gerado automaticamente">
+                        </label>
+                        <label class="stack-field">
+                            <span class="field-label">Vitrine</span>
+                            <select id="new-category-vitrine">
+                                <option value="moda">Roupas</option>
+                                <option value="mesa">Mesa posta</option>
+                                <option value="casa">Casa</option>
+                            </select>
                         </label>
                         <div class="stack-field">
                             <span class="field-label">Adicionar</span>
@@ -660,8 +668,27 @@
                 nome,
                 slug,
                 ordem: Number.isFinite(Number(entry.ordem)) ? Number(entry.ordem) : fallbackOrder,
-                ativa: entry.ativa !== false
+                ativa: entry.ativa !== false,
+                vitrine: normalizarVitrine(entry.vitrine) || vitrinePadrao(slug)
             };
+        }
+
+        const VITRINE_ROTULOS = { moda: "Roupas", mesa: "Mesa posta", casa: "Casa" };
+        function normalizarVitrine(value) {
+            const word = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+            if (["moda", "roupa", "roupas"].includes(word)) return "moda";
+            if (["mesa", "mesa posta", "mesa_posta"].includes(word)) return "mesa";
+            if (["casa", "decoracao", "decoracao de casa"].includes(word)) return "casa";
+            return "";
+        }
+        // Sem escolha no editor: listas fixas de sempre.
+        function vitrinePadrao(slug) {
+            if (CASA_CATEGORIES.includes(String(slug || "").toLowerCase())) return "casa";
+            return MESA_CATEGORIES_PADRAO.includes(String(slug || "")) ? "mesa" : "moda";
+        }
+        function vitrineDaCategoria(slug) {
+            const found = categoryDefinitions.find((category) => category.slug === String(slug || ""));
+            return found?.vitrine || vitrinePadrao(slug);
         }
 
         function mergeCategoryDefinitions(configEntries, productEntries) {
@@ -674,7 +701,8 @@
                 merged.set(normalized.slug, {
                     ...existing,
                     ...normalized,
-                    nome: normalized.nome || existing.nome || normalized.slug
+                    nome: normalized.nome || existing.nome || normalized.slug,
+                    vitrine: normalizarVitrine(entry.vitrine) || existing.vitrine || normalized.vitrine
                 });
             };
 
@@ -718,12 +746,13 @@
         }
 
         const CASA_CATEGORIES = ["casa", "decoracao", "decoracao_casa", "almofada", "capa_almofada", "capa_de_almofada", "estandarte", "travesseiro", "capa_travesseiro", "capa_de_travesseiro", "cobertor", "manta"];
+        const MESA_CATEGORIES_PADRAO = ["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "toalha_de_mesa", "toalha_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"];
         function isCasaCategory(categoria) {
-            return CASA_CATEGORIES.includes(String(categoria || "").toLowerCase());
+            return vitrineDaCategoria(categoria) === "casa";
         }
 
         function isMesaPostaCategory(categoria) {
-            return ["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "toalha_de_mesa", "toalha_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"].includes(String(categoria || ""));
+            return vitrineDaCategoria(categoria) === "mesa";
         }
 
         const PERSONALIZATION_ALPHABET_OPTIONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -870,6 +899,11 @@
                             <div class="mt-1 text-xs uppercase tracking-[0.16em] text-[rgba(95,61,47,0.54)]">${escapeHtml(category.slug)}</div>
                         </div>
                         <div class="flex flex-wrap items-center gap-3">
+                            <label class="category-vitrine-field"><span class="sr-only">Vitrine de ${escapeHtmlAttr(category.nome)}</span>
+                                <select onchange="mudarVitrineCategoria(${index}, this.value)" aria-label="Vitrine de ${escapeHtmlAttr(category.nome)}">
+                                    ${Object.entries(VITRINE_ROTULOS).map(([value, label]) => `<option value="${value}" ${category.vitrine === value ? "selected" : ""}>${label}</option>`).join("")}
+                                </select>
+                            </label>
                             <span class="pill ${category.ativa !== false ? "pill-emerald" : "pill-slate"}">${category.ativa !== false ? "Visível" : "Oculta"}</span>
                             <button type="button" class="secondary-button" onclick="alternarCategoriaCatalogo(${index})">${category.ativa !== false ? "Ocultar" : "Exibir"}</button>
                             <button type="button" class="danger-button" onclick="removerCategoriaCatalogo(${index})"><i class="fa-solid fa-trash"></i>Remover</button>
@@ -887,7 +921,8 @@
                     slug: category.slug,
                     nome: category.nome,
                     ordem: Number.isFinite(Number(category.ordem)) ? Number(category.ordem) : index * 10 + 10,
-                    ativa: category.ativa !== false
+                    ativa: category.ativa !== false,
+                    vitrine: category.vitrine || vitrinePadrao(category.slug)
                 })),
                 updatedAt: new Date()
             }, { merge: true });
@@ -1011,7 +1046,8 @@
                 nome,
                 slug,
                 ordem: categoryDefinitions.length * 10 + 10,
-                ativa: true
+                ativa: true,
+                vitrine: normalizarVitrine(document.getElementById("new-category-vitrine")?.value) || "moda"
             });
 
             categoryDefinitions = mergeCategoryDefinitions(categoryDefinitions, produtos.map((product) => product.categoria).filter(Boolean));
@@ -1024,6 +1060,29 @@
             slugInput.value = "";
             delete slugInput.dataset.touched;
                     mostrarToast("Categoria adicionada ao catálogo.");
+        };
+
+        window.mudarVitrineCategoria = async function mudarVitrineCategoria(index, value) {
+            const category = categoryDefinitions[index];
+            const vitrine = normalizarVitrine(value);
+            if (!category || !vitrine || category.vitrine === vitrine) return;
+            category.vitrine = vitrine;
+            await salvarConfiguracoesCategorias();
+            const pecasDaCategoria = produtos.filter((product) => product.categoria === category.slug && product.segmento !== vitrine);
+            if (pecasDaCategoria.length && window.confirm(`Mover também as ${pecasDaCategoria.length} peça(s) de "${category.nome}" para a vitrine ${VITRINE_ROTULOS[vitrine]}?`)) {
+                for (let start = 0; start < pecasDaCategoria.length; start += 400) {
+                    const batch = db.batch();
+                    pecasDaCategoria.slice(start, start + 400).forEach((product) => {
+                        batch.update(db.collection("pecas").doc(product.id), { segmento: vitrine, updatedAt: new Date() });
+                    });
+                    await batch.commit();
+                }
+                mostrarToast(`"${category.nome}" e ${pecasDaCategoria.length} peça(s) agora estão em ${VITRINE_ROTULOS[vitrine]}.`);
+            } else {
+                mostrarToast(`"${category.nome}" agora é da vitrine ${VITRINE_ROTULOS[vitrine]}.`);
+            }
+            renderCategoryManager();
+            filtrarProdutos();
         };
 
         window.alternarCategoriaCatalogo = async function alternarCategoriaCatalogo(index) {

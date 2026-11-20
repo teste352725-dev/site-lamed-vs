@@ -15,7 +15,7 @@ function loadStorefrontRules(activeCollections = []) {
     source.slice(source.indexOf("function checkIsMesaPosta"), source.indexOf("}", source.indexOf("function checkIsMesaPosta")) + 1)
   ].join("\n");
   const context = { activeCollections };
-  vm.runInNewContext(`${helpers}\n${source.slice(start, end)}\nthis.api = { getProductSegment, isPecaSemTamanho, normalizeCatalogSegment, CATALOG_SEGMENTS };`, context);
+  vm.runInNewContext(`${helpers}\n${source.slice(start, end)}\nthis.api = { getProductSegment, isPecaSemTamanho, normalizeCatalogSegment, CATALOG_SEGMENTS, setCategoryVitrines, checkIsMesaPosta, checkIsCasa };`, context);
   return context.api;
 }
 
@@ -70,4 +70,33 @@ test("Toalha de mesa é mesa posta (vitrine, sem tamanho, Ateliê)", () => {
   assert.equal(rules.isPecaSemTamanho({ categoria: "toalha_de_mesa", segmento: "mesa" }), true);
   assert.equal(isPecaSemTamanho({ categoria: "toalha_de_mesa" }), true);
   assert.equal(productSegment({ categoria: "toalha_de_mesa" }), "mesa");
+});
+
+test("vitrine definida no editor de categorias vale na loja, nos pedidos e no Ateliê", async () => {
+  const { vitrinesFromSettings, vitrineDaCategoria } = await import("../server/_categorias.mjs");
+  const categorias = [
+    { slug: "sousplat", nome: "Sousplat", vitrine: "mesa" },
+    { slug: "quadro", nome: "Quadro", vitrine: "casa" },
+    { slug: "guardanapo", nome: "Guardanapo", vitrine: "casa" }, // trocou de vitrine
+    { slug: "vestido", nome: "Vestidos" } // sem escolha: lista fixa
+  ];
+  const rules = loadStorefrontRules();
+  rules.setCategoryVitrines(categorias);
+  const vitrines = vitrinesFromSettings(categorias);
+  const casos = [
+    ["sousplat", "mesa", true],
+    ["quadro", "casa", true],
+    ["guardanapo", "casa", true],
+    ["vestido", "moda", false],
+    ["lugar_americano", "mesa", true]
+  ];
+  for (const [categoria, vitrine, semTamanho] of casos) {
+    assert.equal(rules.getProductSegment({ categoria }), vitrine, `loja: ${categoria}`);
+    assert.equal(vitrineDaCategoria(categoria, vitrines), vitrine, `servidor: ${categoria}`);
+    assert.equal(rules.isPecaSemTamanho({ categoria }), semTamanho, `loja sem tamanho: ${categoria}`);
+    assert.equal(isPecaSemTamanho({ categoria }, vitrines), semTamanho, `pedido sem tamanho: ${categoria}`);
+    assert.equal(productSegment({ categoria }, null, vitrines), vitrine, `Ateliê: ${categoria}`);
+  }
+  // a vitrine escolhida na própria peça continua valendo
+  assert.equal(rules.getProductSegment({ categoria: "sousplat", segmento: "moda" }), "moda");
 });
