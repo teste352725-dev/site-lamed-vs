@@ -661,6 +661,7 @@ function startStoreOperationsFeed() {
             storeOperationsState = normalizeStoreOperationsState(snapshot.exists ? snapshot.data() : null);
             applyStoreOperationsPublicState();
             refreshStoreOperationsMetaUi();
+            if (typeof reaplicarRegrasDeTempo === 'function') reaplicarRegrasDeTempo();
         }, () => {
             storeOperationsState = getDefaultStoreOperationsState();
             applyStoreOperationsPublicState();

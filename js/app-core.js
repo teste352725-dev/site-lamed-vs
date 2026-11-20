@@ -158,6 +158,95 @@ function saveCatalogSegment(segment) {
     } catch (error) {}
 }
 
+// ---------------------------------------------------------------- Horários
+// Mesmas regras do servidor (server/_regras-tempo.mjs):
+// - desconto da peça vale até `descontoAte`;
+// - "tirar todos os descontos" agendado vale na hora marcada para os descontos
+//   que já existiam (`descontoDefinidoEm` antes do horário);
+// - coleção: antes do início as peças não aparecem; depois do fim a coleção sai do site.
+let allStorefrontProducts = [];
+let proximaViradaTimer = null;
+
+function msDe(value) {
+    if (!value) return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'string') { const t = new Date(value).getTime(); return Number.isNaN(t) ? 0 : t; }
+    if (value instanceof Date) return value.getTime();
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    return 0;
+}
+const HORARIO_DIA = 24 * 60 * 60 * 1000;
+const HORARIO_BRASILIA = -3 * 60 * 60 * 1000;
+function eraSoDia(ms) {
+    if (!ms) return false;
+    const d = new Date(ms);
+    return (d.getUTCHours() === 15 || d.getUTCHours() === 12) && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
+}
+function inicioDoDia(ms) { const local = ms + HORARIO_BRASILIA; return local - (((local % HORARIO_DIA) + HORARIO_DIA) % HORARIO_DIA) - HORARIO_BRASILIA; }
+function inicioDaColecao(colecao) {
+    const ms = msDe(colecao?.dataInicio || colecao?.dataLancamento);
+    return !colecao?.datasComHorario && eraSoDia(ms) ? inicioDoDia(ms) : ms;
+}
+function fimDaColecao(colecao) {
+    const ms = msDe(colecao?.dataFim);
+    return !colecao?.datasComHorario && eraSoDia(ms) ? inicioDoDia(ms) + HORARIO_DIA - 1 : ms;
+}
+function colecaoAindaNaoComecou(colecao, agora = Date.now()) { const i = inicioDaColecao(colecao); return Boolean(i && agora < i); }
+function colecaoJaTerminou(colecao, agora = Date.now()) { const f = fimDaColecao(colecao); return Boolean(f && agora > f); }
+function colecaoNoAr(colecao, agora = Date.now()) {
+    if (!colecao) return false;
+    if (currentUserIsAdmin) return true; // a administração vê tudo para conferir antes
+    return !colecaoAindaNaoComecou(colecao, agora) && !colecaoJaTerminou(colecao, agora);
+}
+function agendamentosDeDescontoVencidos(agora = Date.now()) {
+    const lista = (typeof storeOperationsState !== 'undefined' && Array.isArray(storeOperationsState?.discountSchedules)) ? storeOperationsState.discountSchedules : [];
+    return lista.filter((s) => { const run = msDe(s?.runAt); const last = msDe(s?.lastRunAt); return s?.enabled !== false && run && run <= agora && (!last || last < run); });
+}
+function descontoEfetivo(produto, agora = Date.now()) {
+    const desconto = Math.max(0, Math.min(100, Number(produto?.desconto) || 0));
+    if (!desconto) return 0;
+    const ate = msDe(produto?.descontoAte);
+    if (ate && agora >= ate) return 0;
+    const definidoEm = msDe(produto?.descontoDefinidoEm);
+    return agendamentosDeDescontoVencidos(agora).some((s) => !definidoEm || definidoEm <= msDe(s.runAt)) ? 0 : desconto;
+}
+function aplicarRegrasDeTempo(lista, agora = Date.now()) {
+    const colecoes = new Map((Array.isArray(activeCollections) ? activeCollections : []).map((c) => [c.id, c]));
+    return (Array.isArray(lista) ? lista : [])
+        .filter((p) => { const c = colecoes.get(p?.colecaoId); return currentUserIsAdmin || !(c && colecaoAindaNaoComecou(c, agora)); })
+        .map((p) => { const ef = descontoEfetivo(p, agora); return ef === (Number(p.desconto) || 0) ? p : { ...p, desconto: ef }; });
+}
+function agendarProximaVirada() {
+    if (proximaViradaTimer) clearTimeout(proximaViradaTimer);
+    const agora = Date.now();
+    const horarios = [];
+    allStorefrontProducts.forEach((p) => { const ate = msDe(p?.descontoAte); if (ate > agora) horarios.push(ate); });
+    (Array.isArray(activeCollections) ? activeCollections : []).forEach((c) => { [inicioDaColecao(c), fimDaColecao(c)].forEach((t) => { if (t > agora) horarios.push(t + 1); }); });
+    const ops = (typeof storeOperationsState !== 'undefined' && Array.isArray(storeOperationsState?.discountSchedules)) ? storeOperationsState.discountSchedules : [];
+    ops.forEach((s) => { const run = msDe(s?.runAt); if (s?.enabled !== false && run > agora) horarios.push(run); });
+    if (!horarios.length) return;
+    const espera = Math.min(Math.min(...horarios) - agora + 500, 6 * 60 * 60 * 1000);
+    proximaViradaTimer = setTimeout(reaplicarRegrasDeTempo, Math.max(1000, espera));
+}
+function definirProdutosDaLoja(lista) {
+    allStorefrontProducts = Array.isArray(lista) ? lista : [];
+    products = aplicarRegrasDeTempo(allStorefrontProducts);
+    agendarProximaVirada();
+}
+// Chamada quando muda a hora, as coleções, os agendamentos ou o login de administração.
+function reaplicarRegrasDeTempo() {
+    if (!allStorefrontProducts.length) { agendarProximaVirada(); return; }
+    const antes = products.map((p) => `${p.id}:${p.desconto}`).join('|');
+    products = aplicarRegrasDeTempo(allStorefrontProducts);
+    agendarProximaVirada();
+    const depois = products.map((p) => `${p.id}:${p.desconto}`).join('|');
+    if (antes !== depois && typeof refreshVisibleStorefrontAfterProductsSync === 'function') refreshVisibleStorefrontAfterProductsSync();
+}
+window.reaplicarRegrasDeTempo = reaplicarRegrasDeTempo;
+window.colecaoNoAr = colecaoNoAr;
+
 // Controle Carrossel
 let mainSplideInstance = null;
 let thumbSplideInstance = null;
@@ -828,6 +917,7 @@ function init() {
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         currentUserIsAdmin = await isAuthorizedAdminUser(user);
+        reaplicarRegrasDeTempo();
         if (typeof window.hydrateAccountCartState === 'function') {
             await window.hydrateAccountCartState(user);
         }

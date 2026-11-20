@@ -114,7 +114,8 @@ function formatBRL(value) {
 
 export function normalizeProduct(id, data) {
   const listPrice = Number(data?.preco) || 0;
-  const discount = Math.max(0, Math.min(100, Number(data?.desconto) || 0));
+  const descontoAte = data?.descontoAte ? new Date(data.descontoAte).getTime() : 0;
+  const discount = descontoAte && Date.now() >= descontoAte ? 0 : Math.max(0, Math.min(100, Number(data?.desconto) || 0));
   const finalPrice = centsToMoney(getCatalogUnitPriceCents({ preco: listPrice, desconto: discount }));
   return {
     id,
@@ -347,10 +348,16 @@ export function renderProductPage(product, imageManifest = null, fallbackShareIm
       encodeURIComponent(id) + '?key=${FIREBASE_WEB_API_KEY}';
     function num(field) { return field ? Number(field.integerValue || field.doubleValue || 0) : 0; }
     function brl(value) { return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    var opsUrl = 'https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/site_config/store_operations?key=${FIREBASE_WEB_API_KEY}';
+    function quando(v) { var t = v ? new Date(v).getTime() : 0; return isNaN(t) ? 0 : t; }
+    var opsPromise = fetch(opsUrl).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
     fetch(url).then(function (response) {
       if (response.status === 404) return { missing: true };
       return response.ok ? response.json() : null;
     }).then(function (doc) {
+      return opsPromise.then(function (ops) { return { doc: doc, ops: ops }; });
+    }).then(function (res) {
+      var doc = res.doc;
       if (!doc) return;
       var fields = doc.fields || {};
       var status = fields.status && fields.status.stringValue;
@@ -372,6 +379,19 @@ export function renderProductPage(product, imageManifest = null, fallbackShareIm
       if (sub) { sub.textContent = liveSub || ''; sub.hidden = !liveSub; }
       var list = num(fields.preco);
       var discount = Math.max(0, Math.min(100, num(fields.desconto)));
+      // Horários: desconto com prazo vencido ou "tirar todos" agendado já vencido.
+      var agora = Date.now();
+      var ate = quando(fields.descontoAte && fields.descontoAte.stringValue);
+      if (ate && agora >= ate) discount = 0;
+      var definidoEm = quando(fields.descontoDefinidoEm && fields.descontoDefinidoEm.stringValue);
+      var agenda = (((res.ops || {}).fields || {}).discountSchedules || {}).arrayValue;
+      ((agenda && agenda.values) || []).forEach(function (item) {
+        var f = (item.mapValue && item.mapValue.fields) || {};
+        var run = quando(f.runAt && f.runAt.stringValue);
+        var last = quando(f.lastRunAt && f.lastRunAt.stringValue);
+        var ligado = !(f.enabled && f.enabled.booleanValue === false);
+        if (ligado && run && run <= agora && (!last || last < run) && (!definidoEm || definidoEm <= run)) discount = 0;
+      });
       if (!(list > 0)) return;
       var listCents = Math.round((list + Number.EPSILON) * 100);
       var finalValue = Math.round(listCents * (10000 - Math.round(discount * 100)) / 10000) / 100;

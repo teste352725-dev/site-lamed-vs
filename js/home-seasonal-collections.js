@@ -55,7 +55,7 @@
         return source
             .filter((collection) => normalizeStatus(collection) === 'active')
             .filter((collection) => collection?.ativa !== false)
-            .filter((collection) => isCollectionInsideWindow(collection, now))
+            .filter((collection) => (typeof window.colecaoNoAr === 'function' ? window.colecaoNoAr(collection, now) : isCollectionInsideWindow(collection, now)))
             .filter((collection) => !segment || normalizeSegments(collection).includes(segment))
             .sort((a, b) => {
                 const featuredDifference = Number(b?.destaqueHome === true) - Number(a?.destaqueHome === true);
@@ -257,6 +257,7 @@
             if (signature === currentCollectionsSignature) return;
             currentCollectionsSignature = signature;
             activeCollections = next;
+            if (typeof window.reaplicarRegrasDeTempo === 'function') window.reaplicarRegrasDeTempo();
             renderSeasonalHome();
             if (typeof renderizarSecoesColecoes === 'function') renderizarSecoesColecoes();
             if (typeof renderSidebarCategoryLinks === 'function') renderSidebarCategoryLinks();

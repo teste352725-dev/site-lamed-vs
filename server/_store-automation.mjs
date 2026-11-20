@@ -1,3 +1,4 @@
+import { descontoEfetivo, msDe } from "./_regras-tempo.mjs";
 import { FieldValue, getAdminDb } from "./_firebase-admin.mjs";
 import { sendBroadcastNotification, sendCustomNotificationToUsers } from "./_notifications.mjs";
 import { STORE_OPERATIONS_DOC_ID, getStoreOperations } from "./_store-operations.mjs";
@@ -99,16 +100,24 @@ async function recordAutomationEvent(db, eventId, payload) {
   }, { merge: true });
 }
 
-async function clearAllActiveDiscounts(db) {
+// Tira os descontos que já existiam no horário do agendamento (um desconto
+// aplicado depois desse horário continua valendo).
+async function clearAllActiveDiscounts(db, runAt = null) {
   const snapshot = await db.collection("pecas").where("desconto", ">", 0).get();
   if (snapshot.empty) return { updated: 0 };
 
-  const docs = snapshot.docs;
+  const limite = msDe(runAt);
+  const docs = snapshot.docs.filter((doc) => {
+    if (!limite) return true;
+    const definidoEm = msDe(doc.data()?.descontoDefinidoEm);
+    return !definidoEm || definidoEm <= limite;
+  });
   for (let index = 0; index < docs.length; index += 400) {
     const batch = db.batch();
     docs.slice(index, index + 400).forEach((doc) => {
       batch.set(doc.ref, {
         desconto: 0,
+        descontoAte: null,
         updatedAt: FieldValue.serverTimestamp(),
         updatedByAutomation: "discount_schedule"
       }, { merge: true });
@@ -117,6 +126,24 @@ async function clearAllActiveDiscounts(db) {
   }
 
   return { updated: docs.length };
+}
+
+// Descontos com "válido até" vencido: a loja já não mostra; aqui o cadastro é limpo.
+async function clearExpiredProductDiscounts(db, nowIso) {
+  const agora = msDe(nowIso);
+  const snapshot = await db.collection("pecas").where("desconto", ">", 0).get();
+  const vencidos = snapshot.docs.filter((doc) => { const ate = msDe(doc.data()?.descontoAte); return ate && ate <= agora; });
+  for (let index = 0; index < vencidos.length; index += 400) {
+    const batch = db.batch();
+    vencidos.slice(index, index + 400).forEach((doc) => batch.set(doc.ref, {
+      desconto: 0,
+      descontoAte: null,
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedByAutomation: "discount_expired"
+    }, { merge: true }));
+    await batch.commit();
+  }
+  return { updated: vencidos.length };
 }
 
 async function processDiscountSchedules(db, operations, nowIso) {
@@ -130,7 +157,7 @@ async function processDiscountSchedules(db, operations, nowIso) {
     const due = schedule.enabled && runAt && now && runAt <= now && (!lastRunAt || lastRunAt < runAt);
 
     if (due) {
-      const cleared = await clearAllActiveDiscounts(db);
+      const cleared = await clearAllActiveDiscounts(db, schedule.runAt);
       nextSchedules.push({
         ...schedule,
         lastRunAt: nowIso
@@ -358,7 +385,7 @@ async function processProductNotifications(db, operations) {
 
   const results = [];
   for (const product of activeProducts) {
-    if (Number(product?.desconto || 0) > 0) {
+    if (descontoEfetivo(product, Date.now(), operations.discountSchedules) > 0) {
       results.push(...(await notifyUsersForPromotion(db, product, operations)));
     }
 
@@ -376,6 +403,7 @@ export async function runStoreAutomation({ trigger = "manual" } = {}) {
   try {
     const operations = await getStoreOperations(db);
     const discountResult = await processDiscountSchedules(db, operations, nowIso);
+    const expiredDiscounts = await clearExpiredProductDiscounts(db, nowIso);
     const collectionResult = await processCollectionSchedules(db, {
       ...operations,
       discountSchedules: discountResult.schedules
@@ -398,6 +426,7 @@ export async function runStoreAutomation({ trigger = "manual" } = {}) {
       ranAt: nowIso,
       trigger: sanitizePlainText(trigger, 120),
       discounts: discountResult.results,
+      expiredDiscounts: expiredDiscounts.updated,
       collections: collectionResult.results,
       notifications
     };

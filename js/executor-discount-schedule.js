@@ -118,7 +118,7 @@
         panel.innerHTML = `
             <div class="divider"></div>
             <div class="operation-card-head"><span class="operation-icon"><i class="fa-regular fa-clock"></i></span><div><span class="panel-kicker">Automação</span><h3>Retirada programada</h3></div></div>
-            <p>Agende quando todos os descontos ativos devem voltar a 0%.</p>
+            <p>Na hora marcada, os descontos que existirem saem do site na mesma hora (um desconto aplicado depois continua valendo). Para encerrar só algumas peças, use "Válido até" acima.</p>
             <label class="field"><span>Nome</span><input id="discount-schedule-label" type="text" value="Encerrar campanha de desconto"></label>
             <label class="field"><span>Data e horário</span><input id="discount-schedule-run-at" type="datetime-local"></label>
             <div class="operation-actions split-actions"><button id="discount-schedule-add" type="button" class="btn btn-secondary"><i class="fa-solid fa-calendar-plus"></i> Agendar</button><button id="discount-schedule-run-now" type="button" class="btn btn-ghost">Executar agora</button></div>

@@ -439,10 +439,21 @@
         }, 'remover_cor_selecionados');
     }
 
+    // "Válido até": a loja e o servidor de pedidos param de aplicar o desconto nessa hora.
+    function descontoCampos(percent) {
+        const valor = $('#discount-valid-until')?.value || '';
+        const ate = valor ? new Date(valor) : null;
+        return {
+            desconto: percent,
+            descontoDefinidoEm: new Date().toISOString(),
+            descontoAte: percent > 0 && ate && !Number.isNaN(ate.getTime()) ? ate.toISOString() : null
+        };
+    }
+
     async function applySelectedDiscount() {
         const percent = normalizePercent($('#selected-discount-percent')?.value);
         if (percent === null) return writeLog('Informe um desconto entre 0 e 90%.', 'warning');
-        await updateSelected(`Aplicando ${percent}% de desconto`, () => ({ desconto: percent }), 'desconto_selecionados');
+        await updateSelected(`Aplicando ${percent}% de desconto`, () => descontoCampos(percent), 'desconto_selecionados');
     }
 
     async function assignSelectedCollection() {
@@ -543,7 +554,7 @@
             writeLog(`Etapa 2/3: enviando ${snap.size} alteração(ões)…`, 'info');
             const operations = snap.docs.map((doc) => ({
                 ref: doc.ref,
-                data: { desconto: percent, updatedAt: new Date() }
+                data: { ...descontoCampos(percent), updatedAt: new Date() }
             }));
             await commitOperations(operations, 'Desconto global');
             writeLog('Etapa 3/3: verificando valores gravados…', 'info');
@@ -564,7 +575,7 @@
             const snap = await db.collection('pecas').get({ source: 'server' }).catch(() => db.collection('pecas').get());
             const operations = snap.docs
                 .filter((doc) => Number(doc.data()?.desconto || 0) > 0)
-                .map((doc) => ({ ref: doc.ref, data: { desconto: 0, updatedAt: new Date() } }));
+                .map((doc) => ({ ref: doc.ref, data: { desconto: 0, descontoAte: null, updatedAt: new Date() } }));
             await commitOperations(operations, 'Remoção de descontos');
             await bestEffortAudit('remover_descontos_produtos', { total: operations.length });
             writeLog(`${operations.length} peça(s) ficaram sem desconto promocional.`, 'success');

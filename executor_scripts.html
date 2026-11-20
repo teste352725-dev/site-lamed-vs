@@ -16,8 +16,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260908-command-center" defer></script>
-    <script src="js/executor-operations.js?v=20261120-cores" defer></script>
-    <script src="js/executor-discount-schedule.js?v=20260908-1" defer></script>
+    <script src="js/executor-operations.js?v=20261120-horarios" defer></script>
+    <script src="js/executor-discount-schedule.js?v=20261120-horarios" defer></script>
     <script src="js/paleta-cores.js?v=20261120" defer></script>
     <script src="js/executor-padronizar-cores.js?v=20261120" defer></script>
 </head>
@@ -70,7 +70,7 @@
                     </article>
 
                     <article class="operation-card discount-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-percent"></i></span><div><span class="panel-kicker">Campanhas</span><h3>Descontos</h3></div></div><p>Aplique promoção nas selecionadas ou em todo o catálogo.</p><div class="dual-fields"><label class="field"><span>Selecionadas (%)</span><input id="selected-discount-percent" type="number" min="0" max="90" value="10"></label><button id="apply-selected-discount" data-operation-button type="button" class="btn btn-secondary align-bottom"><i class="fa-solid fa-tags"></i> Aplicar</button></div><div class="divider"></div><div class="dual-fields"><label class="field"><span>Catálogo inteiro (%)</span><input id="bulk-discount-percent" type="number" min="0" max="90" value="15"></label><button onclick="runScript('aplicarDescontoGlobal')" data-operation-button type="button" class="btn btn-primary align-bottom"><i class="fa-solid fa-bolt"></i> Aplicar global</button></div><button id="remove-all-discounts" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-eraser"></i> Remover todos os descontos</button>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-percent"></i></span><div><span class="panel-kicker">Campanhas</span><h3>Descontos</h3></div></div><p>Aplique promoção nas selecionadas ou em todo o catálogo. Com "Válido até", o desconto sai do site sozinho na hora marcada.</p><label class="field"><span>Válido até (opcional)</span><input id="discount-valid-until" type="datetime-local"></label><div class="dual-fields"><label class="field"><span>Selecionadas (%)</span><input id="selected-discount-percent" type="number" min="0" max="90" value="10"></label><button id="apply-selected-discount" data-operation-button type="button" class="btn btn-secondary align-bottom"><i class="fa-solid fa-tags"></i> Aplicar</button></div><div class="divider"></div><div class="dual-fields"><label class="field"><span>Catálogo inteiro (%)</span><input id="bulk-discount-percent" type="number" min="0" max="90" value="15"></label><button onclick="runScript('aplicarDescontoGlobal')" data-operation-button type="button" class="btn btn-primary align-bottom"><i class="fa-solid fa-bolt"></i> Aplicar global</button></div><button id="remove-all-discounts" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-eraser"></i> Remover todos os descontos</button>
                     </article>
 
                     <article class="operation-card color-card">

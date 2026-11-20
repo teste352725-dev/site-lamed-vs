@@ -1,4 +1,5 @@
-﻿import { loadCategoryVitrines } from "./_categorias.mjs";
+﻿import { colecaoAindaNaoComecou, descontoEfetivo } from "./_regras-tempo.mjs";
+import { loadCategoryVitrines } from "./_categorias.mjs";
 import { createHash } from "node:crypto";
 import { FieldValue, getAdminAuth, getAdminDb, getFirebaseAdminStatus } from "./_firebase-admin.mjs";
 import { clearUserCart } from "./_cart.mjs";
@@ -606,13 +607,25 @@ async function ensureProductLoaded(db, productMap, id) {
   return product;
 }
 
-async function buildCanonicalCartSnapshot(db, sourceCart) {
+export async function buildCanonicalCartSnapshot(db, sourceCart) {
   const baseIds = Array.isArray(sourceCart)
     ? sourceCart.map((item) => sanitizePlainText(item?.id, 120)).filter(Boolean)
     : [];
 
   const productMap = await getProductMapByIds(db, baseIds);
   const vitrines = await loadCategoryVitrines(db);
+  // Horários: desconto vencido não vale; peça de coleção ainda não lançada não pode ser comprada.
+  const agora = Date.now();
+  const operacoes = await getStoreOperations(db).catch(() => ({ discountSchedules: [] }));
+  const colecoesCache = new Map();
+  const colecaoDe = async (id) => {
+    if (!id) return null;
+    if (!colecoesCache.has(id)) {
+      const snap = await db.collection("colecoes").doc(id).get().catch(() => null);
+      colecoesCache.set(id, snap?.exists ? snap.data() : null);
+    }
+    return colecoesCache.get(id);
+  };
   const canonicalCart = [];
 
   for (const rawItem of sourceCart) {
@@ -625,6 +638,12 @@ async function buildCanonicalCartSnapshot(db, sourceCart) {
     if (!product || product.status !== "active") {
       throw new RequestError(400, `O produto "${sourceItem.nome}" nao esta mais disponivel.`);
     }
+
+    const colecao = await colecaoDe(sanitizePlainText(product.colecaoId, 120));
+    if (colecao && colecao.ativa !== false && colecaoAindaNaoComecou(colecao, agora)) {
+      throw new RequestError(400, `A peça "${sanitizePlainText(product.nome, 120)}" ainda não foi lançada.`);
+    }
+    product.desconto = descontoEfetivo(product, agora, operacoes.discountSchedules);
 
     const quantity = Math.max(1, Math.min(99, parseInt(sourceItem.quantity, 10) || 0));
     const unitPriceCents = getCatalogUnitPriceCents(product);

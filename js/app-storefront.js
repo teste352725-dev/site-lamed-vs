@@ -936,7 +936,7 @@ function getSegmentedProducts(segment = currentCatalogSegment) {
 function getSegmentedCollections(segment = currentCatalogSegment) {
     const segmentProducts = getSegmentedProducts(segment);
     const collectionIds = new Set(segmentProducts.map((product) => product.colecaoId).filter(Boolean));
-    return activeCollections.filter((collection) => collectionIds.has(collection.id));
+    return activeCollections.filter((collection) => collectionIds.has(collection.id) && colecaoNoAr(collection));
 }
 
 function hasCasaProducts() {
@@ -1315,8 +1315,8 @@ async function carregarDadosLoja() {
             });
         }
 
-        products = productDocs
-            .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) }));
+        definirProdutosDaLoja(productDocs
+            .map(doc => ({ id: doc.id, ...doc.data(), preco: parseFloat(doc.data().preco || 0) })));
         storefrontCatalogLoaded = true;
 
         if (catalogSettingsSnap.exists) setCategoryVitrines(catalogSettingsSnap.data()?.categorias);
@@ -1621,6 +1621,15 @@ function renderizarGridColecao(collectionId) {
     grid.innerHTML = '';
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
+    if (col && !colecaoNoAr(col)) {
+        // Coleção ainda não lançada ou encerrada: não mostra as peças.
+        setCollectionHeader(null);
+        const lancamento = inicioDaColecao(col);
+        grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">${colecaoAindaNaoComecou(col) && lancamento
+            ? `Esta coleção será lançada em ${new Date(lancamento).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`
+            : 'Esta coleção foi encerrada. Veja as outras peças na loja.'}</p>`;
+        return;
+    }
     setCollectionHeader(col);
     // A coleção mostra todas as suas peças, de todas as áreas.
     const prods = products

@@ -97,25 +97,30 @@
         return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
-    function toDateInput(value) {
+    // Campo "dia e hora". Datas antigas (só dia, salvas ao meio-dia) aparecem
+    // como início às 00:00 e fim às 23:59, que é como a loja as trata.
+    function toDateInput(value, { fim = false, comHorario = false } = {}) {
         const date = toDate(value);
         if (!date) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        const pad = (n) => String(n).padStart(2, '0');
+        const dia = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        if (!comHorario && date.getHours() === 12 && date.getMinutes() === 0) return `${dia}T${fim ? '23:59' : '00:00'}`;
+        return `${dia}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     }
 
     function toTimestamp(value) {
         if (!value) return null;
-        const date = new Date(`${value}T12:00:00`);
+        const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
         if (Number.isNaN(date.getTime())) return null;
         return firebase.firestore.Timestamp.fromDate(date);
     }
 
-    function formatDate(value) {
+    function formatDate(value, comHorario = false) {
         const date = toDate(value);
-        return date ? date.toLocaleDateString('pt-BR') : 'Sem data';
+        if (!date) return 'Sem data';
+        return comHorario
+            ? `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+            : date.toLocaleDateString('pt-BR');
     }
 
     function statusLabel(status) {
@@ -218,8 +223,8 @@
                         ${featured ? '<span class="chip"><i class="fa-solid fa-star"></i> Destaque</span>' : ''}
                     </div>
                     <div class="collection-meta">
-                        <div class="meta-item"><span>Início</span><strong>${formatDate(start)}</strong></div>
-                        <div class="meta-item"><span>Fim</span><strong>${formatDate(end)}</strong></div>
+                        <div class="meta-item"><span>Início</span><strong>${formatDate(start, collection.datasComHorario === true)}</strong></div>
+                        <div class="meta-item"><span>Fim</span><strong>${formatDate(end, collection.datasComHorario === true)}</strong></div>
                     </div>
                     <div class="collection-actions">
                         <a class="button button-secondary" href="produtos.html?collection=${encodeURIComponent(collection.id)}"><i class="fa-solid fa-shirt"></i> Produtos</a>
@@ -320,8 +325,8 @@
             $('#collection-segment-mesa').checked = segments.includes('mesa');
             if ($('#collection-segment-casa')) $('#collection-segment-casa').checked = segments.includes('casa');
             $('#collection-status').value = normalizeStatus(collection);
-            $('#collection-start-date').value = toDateInput(collection.dataInicio || collection.dataLancamento);
-            $('#collection-end-date').value = toDateInput(collection.dataFim);
+            $('#collection-start-date').value = toDateInput(collection.dataInicio || collection.dataLancamento, { comHorario: collection.datasComHorario === true });
+            $('#collection-end-date').value = toDateInput(collection.dataFim, { fim: true, comHorario: collection.datasComHorario === true });
             $('#collection-order').value = Number(collection.ordem || 0);
             $('#collection-featured').checked = collection.destaqueHome === true;
             $('#collection-image').value = collection.imagemDestaque || '';
@@ -391,6 +396,7 @@
             ativa: status === 'active',
             dataInicio: startDate,
             dataFim: endDate,
+            datasComHorario: true,
             dataLancamento: startDate,
             ordem: Math.max(0, Number.parseInt($('#collection-order').value, 10) || 0),
             destaqueHome: $('#collection-featured').checked === true,

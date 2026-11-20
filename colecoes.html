@@ -14,7 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260908-collections" defer></script>
-    <script src="js/collections-admin.js?v=20261119-toalha" defer></script>
+    <script src="js/collections-admin.js?v=20261120-horarios" defer></script>
     <script src="js/collections-upload-extension.js?v=20260908-1" defer></script>
     <link rel="stylesheet" href="css/colecoes.css?v=20261119-casa">
     <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
@@ -104,8 +104,8 @@
                     <div class="section-title"><i class="fa-regular fa-calendar"></i><div><h3>Ciclo da coleção</h3><p>Rascunho não aparece no site. Ativa entra na vitrine. Encerrada fica arquivada.</p></div></div>
                     <div class="form-grid three-columns">
                         <label class="field"><span>Status</span><select id="collection-status"><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="ended">Encerrada</option></select></label>
-                        <label class="field"><span>Início</span><input id="collection-start-date" type="date"></label>
-                        <label class="field"><span>Fim</span><input id="collection-end-date" type="date"></label>
+                        <label class="field"><span>Início (dia e hora)</span><input id="collection-start-date" type="datetime-local"></label>
+                        <label class="field"><span>Fim (dia e hora)</span><input id="collection-end-date" type="datetime-local"></label>
                     </div>
                     <div class="form-grid two-columns">
                         <label class="field"><span>Prioridade / ordem</span><input id="collection-order" type="number" min="0" max="99999" value="0"></label>

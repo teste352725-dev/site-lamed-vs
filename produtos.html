@@ -342,6 +342,11 @@
                                             <input type="number" id="product-discount" placeholder="0">
                                         </label>
                                     </div>
+                                    <label class="stack-field">
+                                        <span class="field-label">Desconto válido até (opcional)</span>
+                                        <input type="datetime-local" id="product-discount-until">
+                                        <span class="panel-copy">Na hora marcada o desconto sai do site sozinho.</span>
+                                    </label>
                                     <div id="price-preview" class="price-preview">Sem desconto aplicado.</div>
                                     <div class="modal-grid two-up">
                                         <label class="stack-field">
@@ -1432,7 +1437,30 @@
             }
         };
 
+        let descontoOriginal = null;
+        function paraCampoDataHora(valor) {
+            if (!valor) return "";
+            const data = typeof valor?.toDate === "function" ? valor.toDate() : new Date(valor);
+            if (Number.isNaN(data.getTime())) return "";
+            const local = new Date(data.getTime() - data.getTimezoneOffset() * 60000);
+            return local.toISOString().slice(0, 16);
+        }
+        // Desconto e prazo: marca quando o desconto começou (o "tirar todos" agendado só tira os anteriores).
+        function camposDeDesconto(desconto) {
+            const valor = document.getElementById("product-discount-until").value;
+            const ate = valor && desconto > 0 ? new Date(valor) : null;
+            const descontoAte = ate && !Number.isNaN(ate.getTime()) ? ate.toISOString() : null;
+            const mudou = !descontoOriginal || descontoOriginal.desconto !== desconto || (descontoOriginal.ate || null) !== descontoAte;
+            return {
+                desconto,
+                descontoAte,
+                descontoDefinidoEm: mudou ? new Date().toISOString() : (descontoOriginal.definidoEm || null)
+            };
+        }
+
         function resetModalProduto() {
+            descontoOriginal = null;
+            if (document.getElementById("product-discount-until")) document.getElementById("product-discount-until").value = "";
             document.getElementById("product-form").reset();
             document.getElementById("product-id").value = "";
             document.getElementById("product-type").value = "standard";
@@ -1465,6 +1493,8 @@
             document.getElementById("product-subtitle").value = produto.subtitulo || "";
             document.getElementById("product-price").value = produto.preco ?? "";
             document.getElementById("product-discount").value = produto.desconto || 0;
+            document.getElementById("product-discount-until").value = paraCampoDataHora(produto.descontoAte);
+            descontoOriginal = { desconto: Number(produto.desconto || 0), ate: produto.descontoAte || null, definidoEm: produto.descontoDefinidoEm || null };
             document.getElementById("product-description").value = produto.descricao || "";
             document.getElementById("product-category").value = produto.categoria || "vestido";
             document.getElementById("product-segment").value = ["moda", "mesa", "casa"].includes(produto.segmento) ? produto.segmento : (isCasaCategory(produto.categoria) ? "casa" : (isMesaPostaCategory(produto.categoria) ? "mesa" : "moda"));
@@ -1532,7 +1562,7 @@
                     nome,
                     subtitulo: document.getElementById("product-subtitle").value.trim().replace(/\s+/g, " ").slice(0, 80),
                     preco,
-                    desconto: parseInt(document.getElementById("product-discount").value, 10) || 0,
+                    ...camposDeDesconto(parseInt(document.getElementById("product-discount").value, 10) || 0),
                     descricao: document.getElementById("product-description").value.trim(),
                     categoria,
                     segmento,

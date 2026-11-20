@@ -192,6 +192,8 @@ async function updateProductQuickEdit(db, payload, adminUid) {
     categoria,
     preco,
     desconto,
+    // Desconto mudou pela edição rápida: começa a contar agora e sem prazo.
+    ...(Number(current?.desconto || 0) !== desconto ? { descontoDefinidoEm: new Date().toISOString(), descontoAte: null } : {}),
     ordem,
     status,
     colecaoId,
