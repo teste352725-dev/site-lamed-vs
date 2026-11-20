@@ -20,8 +20,9 @@
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260818-team-access" defer></script>
 
-        <link rel="stylesheet" href="css/produtos.css?v=20260818-mobile-catalog">
+        <link rel="stylesheet" href="css/produtos.css?v=20261120-cores">
         <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
+    <script src="js/paleta-cores.js?v=20261120"></script>
 </head>
 <body>
     <!--
@@ -407,21 +408,36 @@
                     <div id="tab-colors" class="tab-panel hidden modal-grid">
                         <div class="modal-grid two-up">
                             <div class="modal-panel">
-                                <h3 class="panel-title">Adicionar nova cor</h3>
-                                <p class="panel-copy">Crie variacoes com nome e tom para a cliente escolher no site.</p>
+                                <h3 class="panel-title">Adicionar cor</h3>
+                                <p class="panel-copy">Escolha a cor do tecido na paleta. Assim todas as peças usam o mesmo nome e o mesmo tom.</p>
                                 <div class="modal-grid">
+                                    <div class="stack-field">
+                                        <span class="field-label">Cor do tecido</span>
+                                        <div id="palette-swatches" class="palette-swatches" role="radiogroup" aria-label="Cor do tecido"></div>
+                                    </div>
                                     <div class="modal-grid two-up">
+                                        <label class="stack-field">
+                                            <span class="field-label">Detalhe</span>
+                                            <select id="new-color-finish" onchange="atualizarPreviewCor()"></select>
+                                        </label>
+                                        <label class="stack-field" id="new-color-detail-field" hidden>
+                                            <span class="field-label">Cor do detalhe</span>
+                                            <select id="new-color-detail" onchange="atualizarPreviewCor()"></select>
+                                        </label>
+                                    </div>
+                                    <div id="new-color-custom" class="modal-grid two-up" hidden>
                                         <label class="stack-field">
                                             <span class="field-label">Tom</span>
                                             <input type="color" id="new-color-hex-text" value="#000000" class="min-h-[58px]">
                                         </label>
                                         <label class="stack-field">
                                             <span class="field-label">Nome da cor</span>
-                                            <input type="text" id="new-color-name" placeholder="Ex: areia rosada">
+                                            <input type="text" id="new-color-name" placeholder="Ex: Terracota" oninput="atualizarPreviewCor()">
                                         </label>
+                                        <p class="panel-copy" style="grid-column:1/-1">Use "Outra cor" só para um tecido que não existe na paleta.</p>
                                     </div>
+                                    <div class="palette-preview"><span id="new-color-preview-swatch" class="color-preview"></span><strong id="new-color-preview-name">Escolha a cor do tecido</strong></div>
                                     <div class="stack-field">
-                                        <span class="field-label">Acao</span>
                                         <button type="button" onclick="adicionarCor()" class="primary-button"><i class="fa-solid fa-plus"></i>Adicionar cor</button>
                                     </div>
                                 </div>
@@ -429,7 +445,7 @@
 
                             <div class="modal-panel">
                                 <h3 class="panel-title">Variacoes ativas</h3>
-                                <p class="panel-copy">Edite nome e tom direto nas linhas abaixo, sem apagar e criar de novo.</p>
+                                <p class="panel-copy">Ao corrigir o nome de uma cor, o estoque dela continua o mesmo. Nomes da paleta ganham o tom padrão sozinhos.</p>
                                 <div class="empty-inline">Use o bloco ao lado para iniciar as variacoes deste produto.</div>
                             </div>
                         </div>
@@ -1367,6 +1383,7 @@
             document.getElementById("product-shipping-width").value = "";
             document.getElementById("product-shipping-length").value = "";
             document.getElementById("new-color-hex-text").value = "#000000";
+            prepararPaletaCores();
             selectedProductImages = [];
             productColors = [];
             comboComponents = [];
@@ -1400,8 +1417,9 @@
             document.getElementById("product-shipping-length").value = produto.frete?.comprimento ?? "";
 
             selectedProductImages = Array.isArray(produto.imagens) ? produto.imagens.map(normalizeImageUrl).filter(Boolean) : [];
+            // Guarda a cor inteira (estoque pronto/em produção, foto...), não só nome e tom.
             productColors = Array.isArray(produto.cores)
-                ? produto.cores.map((cor) => ({ nome: cor?.nome || "", hex: cor?.hex || "#000000" }))
+                ? produto.cores.filter((cor) => cor && typeof cor === "object").map((cor) => ({ ...cor, nome: cor.nome || "", hex: cor.hex || "#000000" }))
                 : [];
             comboComponents = Array.isArray(produto.componentes)
                 ? produto.componentes.map((component) => ({ id: component.id, nome: component.nome, categoria: component.categoria, imagem: component.imagem || null, quantidade: Math.max(1, parseInt(component.quantidade, 10) || 1) }))
@@ -1465,6 +1483,7 @@
                     cores: tipo === "standard"
                         ? productColors
                             .map((cor) => ({
+                                ...cor,
                                 nome: String(cor?.nome || "").trim(),
                                 hex: String(cor?.hex || "#000000").trim() || "#000000"
                             }))
@@ -1502,23 +1521,91 @@
             mostrarToast("Produto excluido.");
         };
 
+        // ---- Paleta de cores (js/paleta-cores.js)
+        let corBaseEscolhida = "";
+
+        function prepararPaletaCores() {
+            const paleta = window.LamedPaleta;
+            const swatches = document.getElementById("palette-swatches");
+            if (!paleta || !swatches) return;
+            corBaseEscolhida = "";
+            swatches.innerHTML = paleta.PALETA.map((cor) => `
+                <button type="button" class="palette-swatch" role="radio" aria-checked="false" data-base="${escapeHtmlAttr(cor.nome)}" onclick="escolherCorBase(this.dataset.base)">
+                    <span class="color-preview" style="background:${escapeHtmlAttr(cor.hex)}"></span><span>${escapeHtml(cor.nome)}</span>
+                </button>`).join("") + `
+                <button type="button" class="palette-swatch" role="radio" aria-checked="false" data-base="__outra" onclick="escolherCorBase('__outra')">
+                    <span class="color-preview palette-swatch__outra">+</span><span>Outra cor</span>
+                </button>`;
+            document.getElementById("new-color-finish").innerHTML = paleta.ACABAMENTOS
+                .map((item) => `<option value="${escapeHtmlAttr(item.id)}">${escapeHtml(item.rotulo)}</option>`).join("");
+            document.getElementById("new-color-detail").innerHTML = paleta.DETALHES
+                .map((item) => `<option value="${escapeHtmlAttr(item)}">${escapeHtml(item.charAt(0).toUpperCase() + item.slice(1))}</option>`).join("");
+            document.getElementById("new-color-name").value = "";
+            atualizarPreviewCor();
+        }
+
+        window.escolherCorBase = function(base) {
+            corBaseEscolhida = base;
+            document.querySelectorAll("#palette-swatches .palette-swatch").forEach((botao) => {
+                botao.setAttribute("aria-checked", String(botao.dataset.base === base));
+            });
+            atualizarPreviewCor();
+        };
+
+        function corEmMontagem() {
+            const paleta = window.LamedPaleta;
+            if (!paleta || !corBaseEscolhida) return null;
+            if (corBaseEscolhida === "__outra") {
+                const nome = document.getElementById("new-color-name").value.trim().replace(/\s+/g, " ");
+                const padrao = nome ? paleta.padronizar(nome) : null;
+                if (padrao) return { nome: padrao.nome, hex: padrao.hex };
+                return nome ? { nome: nome.charAt(0).toUpperCase() + nome.slice(1), hex: document.getElementById("new-color-hex-text").value || "#000000" } : null;
+            }
+            const acabamento = document.getElementById("new-color-finish").value;
+            const detalhe = document.getElementById("new-color-detail").value;
+            return { nome: paleta.montarNome(corBaseEscolhida, acabamento, detalhe), hex: paleta.hexDaBase(corBaseEscolhida) };
+        }
+
+        window.atualizarPreviewCor = function() {
+            const outra = corBaseEscolhida === "__outra";
+            document.getElementById("new-color-custom").hidden = !outra;
+            const acabamento = document.getElementById("new-color-finish").value;
+            document.getElementById("new-color-detail-field").hidden = outra || !acabamento;
+            document.getElementById("new-color-finish").disabled = outra;
+            const cor = corEmMontagem();
+            document.getElementById("new-color-preview-name").textContent = cor ? cor.nome : (outra ? "Digite o nome da cor" : "Escolha a cor do tecido");
+            document.getElementById("new-color-preview-swatch").style.background = cor ? cor.hex : "transparent";
+        };
+
         window.adicionarCor = function() {
-            const nome = document.getElementById("new-color-name").value.trim();
-            const hex = document.getElementById("new-color-hex-text").value.trim() || "#000000";
-            if (!nome) {
-                alert("Digite o nome da cor.");
+            const cor = corEmMontagem();
+            if (!cor) {
+                alert(corBaseEscolhida === "__outra" ? "Digite o nome da cor." : "Escolha a cor do tecido.");
                 return;
             }
-
-            productColors.push({ nome, hex });
+            if (productColors.some((item) => String(item.nome || "").trim().toLowerCase() === cor.nome.toLowerCase())) {
+                alert(`A cor "${cor.nome}" já está nesta peça.`);
+                return;
+            }
+            productColors.push({ nome: cor.nome, hex: cor.hex });
             document.getElementById("new-color-name").value = "";
-            document.getElementById("new-color-hex-text").value = "#000000";
             atualizarListaCores();
+            atualizarPreviewCor();
         };
 
         window.atualizarCorCampo = function(index, field, value) {
             if (!productColors[index]) return;
             productColors[index][field] = value;
+        };
+
+        // Ao terminar de digitar o nome, corrige para o padrão da paleta (o estoque da cor continua).
+        window.padronizarCorCampo = function(index, value) {
+            if (!productColors[index]) return;
+            const padrao = window.LamedPaleta?.padronizar(value);
+            if (!padrao) return;
+            productColors[index].nome = padrao.nome;
+            productColors[index].hex = padrao.hex;
+            atualizarListaCores();
         };
 
         function atualizarListaCores() {
@@ -1535,14 +1622,16 @@
                             <div class="color-preview" style="background:${escapeHtmlAttr(cor.hex || "#000000")}"></div>
                             <div>
                                 <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-[rgba(95,61,47,0.58)]">Cor ${index + 1}</div>
-                                <div class="text-sm font-semibold text-[var(--mocha-deep)]">Edite nome e tom direto aqui.</div>
+                                <div class="text-sm font-semibold text-[var(--mocha-deep)]">${escapeHtml(cor.nome || "Sem nome")}${Number(cor.quantidade ?? cor.estoque) > 0 || Number(cor.produzir) > 0 ? ` · ${Number(cor.quantidade ?? cor.estoque) || 0} pronta(s), ${Number(cor.produzir) || 0} em produção` : ""}</div>
                             </div>
                         </div>
                         <button type="button" onclick="removerCor(${index})" class="danger-button"><i class="fa-solid fa-trash"></i>Remover</button>
                     </div>
                     <div class="mt-4 grid gap-3 md:grid-cols-[1fr_110px]">
-                        <input type="text" value="${escapeHtmlAttr(cor.nome)}" oninput="atualizarCorCampo(${index}, 'nome', this.value)" placeholder="Nome da cor">
-                        <input type="color" value="${escapeHtmlAttr(cor.hex || "#000000")}" onchange="atualizarCorCampo(${index}, 'hex', this.value)" class="min-h-[54px]">
+                        <input type="text" value="${escapeHtmlAttr(cor.nome)}" oninput="atualizarCorCampo(${index}, 'nome', this.value)" onchange="padronizarCorCampo(${index}, this.value)" placeholder="Nome da cor">
+                        ${window.LamedPaleta?.padronizar(cor.nome)
+                            ? `<span class="palette-fixed" title="Tom padrão da paleta">Tom da paleta</span>`
+                            : `<input type="color" value="${escapeHtmlAttr(cor.hex || "#000000")}" onchange="atualizarCorCampo(${index}, 'hex', this.value)" class="min-h-[54px]">`}
                     </div>
                 </div>
             `).join("");

@@ -16,8 +16,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260908-command-center" defer></script>
-    <script src="js/executor-operations.js?v=20261119-casa" defer></script>
+    <script src="js/executor-operations.js?v=20261120-cores" defer></script>
     <script src="js/executor-discount-schedule.js?v=20260908-1" defer></script>
+    <script src="js/paleta-cores.js?v=20261120" defer></script>
+    <script src="js/executor-padronizar-cores.js?v=20261120" defer></script>
 </head>
 <body class="executor-page">
     <header class="executor-topbar">
@@ -72,7 +74,7 @@
                     </article>
 
                     <article class="operation-card color-card">
-                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-palette"></i></span><div><span class="panel-kicker">Variantes</span><h3>Estúdio de cores</h3></div></div><p>Adicione uma cor às peças selecionadas sem abrir cada cadastro.</p><label class="field"><span>Nome da cor</span><input id="bulk-color-name" type="text" placeholder="Ex.: Verde oliva"></label><div class="color-input-row"><span id="color-preview" class="color-preview" style="--swatch:#6B705C"></span><input id="bulk-color-hex" type="color" value="#6b705c" aria-label="Escolher cor"><label class="field compact-field"><span>HEX</span><input id="bulk-color-hex-text" type="text" value="#6B705C" maxlength="7"></label></div><button id="add-color-selected" data-operation-button type="button" class="btn btn-primary full-width"><i class="fa-solid fa-plus"></i> Adicionar às selecionadas</button><div class="divider"></div><label class="field"><span>Remover cor pelo nome</span><input id="bulk-color-remove-name" type="text" placeholder="Ex.: Verde oliva"></label><button id="remove-color-selected" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-minus"></i> Remover das selecionadas</button>
+                        <div class="operation-card-head"><span class="operation-icon"><i class="fa-solid fa-palette"></i></span><div><span class="panel-kicker">Variantes</span><h3>Estúdio de cores</h3></div></div><p>Adicione uma cor às peças selecionadas sem abrir cada cadastro.</p><label class="field"><span>Nome da cor</span><input id="bulk-color-name" type="text" placeholder="Ex.: Pérola com bordado dourado"></label><div class="color-input-row"><span id="color-preview" class="color-preview" style="--swatch:#6B705C"></span><input id="bulk-color-hex" type="color" value="#6b705c" aria-label="Escolher cor"><label class="field compact-field"><span>HEX</span><input id="bulk-color-hex-text" type="text" value="#6B705C" maxlength="7"></label></div><button id="add-color-selected" data-operation-button type="button" class="btn btn-primary full-width"><i class="fa-solid fa-plus"></i> Adicionar às selecionadas</button><div class="divider"></div><label class="field"><span>Remover cor pelo nome</span><input id="bulk-color-remove-name" type="text" placeholder="Ex.: Pérola com bordado dourado"></label><button id="remove-color-selected" data-operation-button type="button" class="btn btn-ghost full-width"><i class="fa-solid fa-minus"></i> Remover das selecionadas</button>
                     </article>
 
                     <article class="operation-card organize-card">

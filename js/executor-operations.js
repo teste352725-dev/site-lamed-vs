@@ -416,8 +416,11 @@
     }
 
     async function addColorToSelected() {
-        const name = sanitizeText($('#bulk-color-name')?.value, 60);
-        const hex = normalizeHex($('#bulk-color-hex-text')?.value || $('#bulk-color-hex')?.value);
+        // Nome da paleta padrão (js/paleta-cores.js) ganha o nome certo e o tom padrão.
+        const typed = sanitizeText($('#bulk-color-name')?.value, 60);
+        const standard = typed && window.LamedPaleta ? window.LamedPaleta.padronizar(typed) : null;
+        const name = standard ? standard.nome : typed;
+        const hex = standard ? standard.hex : normalizeHex($('#bulk-color-hex-text')?.value || $('#bulk-color-hex')?.value);
         if (!name) return writeLog('Informe o nome da cor.', 'warning');
         await updateSelected(`Adicionando cor ${name}`, (product) => {
             const current = Array.isArray(product.cores) ? product.cores : [];

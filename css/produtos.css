@@ -1070,3 +1070,15 @@
                 margin-bottom: 0.65rem;
             }
         }
+
+/* Paleta de cores padrão (js/paleta-cores.js) */
+.palette-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.palette-swatch {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 10px; text-align: left;
+  border: 1px solid rgba(95, 61, 47, 0.14); border-radius: 14px; background: #fff; font-size: 13px; font-weight: 600; color: var(--mocha-deep, #45301f); cursor: pointer;
+}
+.palette-swatch[aria-checked="true"] { border-color: var(--mocha-deep, #45301f); box-shadow: 0 0 0 2px rgba(95, 61, 47, 0.18); background: #fbf7f0; }
+.palette-swatch .color-preview { flex: none; }
+.palette-swatch__outra { display: inline-flex; align-items: center; justify-content: center; background: #fff; font-weight: 700; }
+.palette-preview { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(95, 61, 47, 0.05); }
+.palette-fixed { display: inline-flex; align-items: center; justify-content: center; min-height: 54px; padding: 0 10px; border-radius: 14px; background: rgba(95, 61, 47, 0.06); font-size: 11px; font-weight: 700; color: rgba(95, 61, 47, 0.7); }
