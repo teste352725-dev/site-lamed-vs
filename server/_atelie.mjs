@@ -159,7 +159,7 @@ export function validateProductEdit(input) {
 // ---------------------------------------------------------------- leitura
 
 // Mesma regra da vitrine (js/app-core.js): sem segmento, decide pela categoria.
-const MESA_CATEGORIES = new Set(["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"]);
+const MESA_CATEGORIES = new Set(["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "toalha_de_mesa", "toalha_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"]);
 const CASA_CATEGORIES = new Set(["casa", "decoracao", "decoracao_casa", "almofada", "capa_almofada", "capa_de_almofada", "estandarte", "travesseiro", "capa_travesseiro", "capa_de_travesseiro", "cobertor", "manta"]);
 const CASA_WORDS = new Set(["casa", "decoracao", "decoracao de casa", "decoracao_casa", "home", "lar"]);
 const semAcento = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");

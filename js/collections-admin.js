@@ -81,7 +81,7 @@
         if (product?.segmento === 'mesa') return 'mesa';
         if (product?.segmento === 'moda') return 'moda';
         const category = String(product?.categoria || '').toLowerCase();
-        return ['mesa_posta', 'lugar_americano', 'guardanapo', 'anel_guardanapo', 'trilho_velas', 'caminho_mesa', 'capa_de_matza'].includes(category) ? 'mesa' : 'moda';
+        return ['mesa_posta', 'lugar_americano', 'guardanapo', 'anel_guardanapo', 'trilho_velas', 'caminho_mesa', 'toalha_de_mesa', 'toalha_mesa', 'capa_de_matza'].includes(category) ? 'mesa' : 'moda';
     }
 
     function productImage(product) {

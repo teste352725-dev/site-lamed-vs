@@ -299,6 +299,7 @@
                                                     <option value="anel_guardanapo">Anel de guardanapo</option>
                                                     <option value="trilho_velas">Trilho para velas</option>
                                                     <option value="caminho_mesa">Caminho de mesa</option>
+                                                    <option value="toalha_de_mesa">Toalha de mesa</option>
                                                     <option value="capa_de_matza">Capa de matza bordada</option>
                                                     <option value="porta_guardanapo">Anel de guardanapo (legado)</option>
                                                 </optgroup>
@@ -570,6 +571,7 @@
             { slug: "anel_guardanapo", nome: "Anel de guardanapo", ordem: 90, ativa: true },
             { slug: "trilho_velas", nome: "Trilho para velas", ordem: 100, ativa: true },
             { slug: "caminho_mesa", nome: "Caminho de mesa", ordem: 110, ativa: true },
+            { slug: "toalha_de_mesa", nome: "Toalha de mesa", ordem: 115, ativa: true },
             { slug: "capa_de_matza", nome: "Capa de matza bordada", ordem: 120, ativa: true },
             { slug: "capa_de_almofada", nome: "Capa de almofada", ordem: 130, ativa: true },
             { slug: "estandarte", nome: "Estandarte", ordem: 140, ativa: true },
@@ -705,7 +707,7 @@
         }
 
         function isMesaPostaCategory(categoria) {
-            return ["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"].includes(String(categoria || ""));
+            return ["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "toalha_de_mesa", "toalha_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"].includes(String(categoria || ""));
         }
 
         const PERSONALIZATION_ALPHABET_OPTIONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");

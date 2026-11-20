@@ -1687,7 +1687,7 @@ function isHanukahProduct(item) {
     return term.includes('hanukah') || term.includes('chanukia') || term.includes('chanuka') || term.includes('judaica');
 }
 function checkIsMesaPosta(categoria) {
-    const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'anel_guardanapo', 'porta_guardanapo', 'trilho_velas', 'capa_de_matza'];
+    const catsMesa = ['mesa_posta', 'lugar_americano', 'guardanapo', 'caminho_mesa', 'toalha_de_mesa', 'toalha_mesa', 'anel_guardanapo', 'porta_guardanapo', 'trilho_velas', 'capa_de_matza'];
     return catsMesa.includes(categoria);
 }
 

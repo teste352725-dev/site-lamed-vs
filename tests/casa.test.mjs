@@ -63,3 +63,11 @@ test("Ateliê: filtro Casa", () => {
   assert.equal(productSegment({ categoria: "guardanapo" }), "mesa");
   assert.equal(productSegment({ categoria: "vestido" }), "moda");
 });
+
+test("Toalha de mesa é mesa posta (vitrine, sem tamanho, Ateliê)", () => {
+  const rules = loadStorefrontRules();
+  assert.equal(rules.getProductSegment({ categoria: "toalha_de_mesa" }), "mesa");
+  assert.equal(rules.isPecaSemTamanho({ categoria: "toalha_de_mesa", segmento: "mesa" }), true);
+  assert.equal(isPecaSemTamanho({ categoria: "toalha_de_mesa" }), true);
+  assert.equal(productSegment({ categoria: "toalha_de_mesa" }), "mesa");
+});

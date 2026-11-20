@@ -26,6 +26,7 @@ const MESA_CATEGORIES = [
     { id: 'porta_guardanapo', label: 'Porta Guardanapo' },
     { id: 'anel_guardanapo', label: 'Porta Guardanapo' },
     { id: 'caminho_mesa', label: 'Caminho de Mesa' },
+    { id: 'toalha_de_mesa', label: 'Toalha de Mesa' },
     { id: 'trilho_velas', label: 'Trilho para Velas' },
     { id: 'sousplat', label: 'Sousplat' },
     { id: 'jogos_americanos', label: 'Jogos Americanos' },

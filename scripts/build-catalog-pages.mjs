@@ -50,6 +50,7 @@ const CATEGORY_LABELS = {
   porta_guardanapo: "Porta-guardanapo",
   trilho_velas: "Trilho para Velas",
   caminho_mesa: "Caminho de Mesa",
+  toalha_de_mesa: "Toalha de Mesa",
   capa_de_matza: "Capa de Matzá Bordada",
   combo: "Combos e Kits"
 };

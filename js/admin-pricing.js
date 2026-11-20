@@ -21,7 +21,7 @@ const AREA_LABELS = {
 };
 const MESA_CATEGORIES = new Set([
     "mesa_posta", "lugar_americano", "jogos_americanos", "sousplat", "guardanapo",
-    "caminho_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"
+    "caminho_mesa", "toalha_de_mesa", "toalha_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"
 ]);
 const UNIT_OPTIONS = [
     ["m", "metro"], ["cm", "centímetro"], ["un", "unidade"], ["kg", "quilo"],

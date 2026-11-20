@@ -378,6 +378,8 @@ function checkIsMesaPosta(categoria) {
     "lugar_americano",
     "guardanapo",
     "caminho_mesa",
+    "toalha_de_mesa",
+    "toalha_mesa",
     "anel_guardanapo",
     "porta_guardanapo",
     "trilho_velas",
