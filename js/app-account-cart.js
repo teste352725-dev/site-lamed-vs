@@ -287,7 +287,7 @@ function startStorefrontProductsRealtimeSync() {
 function loadSeasonalHomeExtension() {
     if (document.querySelector('script[data-home-seasonal-collections]')) return;
     const script = document.createElement('script');
-    script.src = 'js/home-seasonal-collections.js?v=20261118';
+    script.src = 'js/home-seasonal-collections.js?v=20261119-casa';
     script.async = false;
     script.dataset.homeSeasonalCollections = '1';
     script.addEventListener('error', () => console.warn('[home.collections] Nao foi possivel carregar a extensao sazonal.'));

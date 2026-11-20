@@ -140,7 +140,11 @@ const DEFAULT_SITE_CATEGORIES = [
     { slug: 'anel_guardanapo', nome: 'Anel de Guardanapo', ordem: 90, ativa: true },
     { slug: 'trilho_velas', nome: 'Trilho para Velas', ordem: 100, ativa: true },
     { slug: 'caminho_mesa', nome: 'Caminho de Mesa', ordem: 110, ativa: true },
-    { slug: 'capa_de_matza', nome: 'Capa de Matzá Bordada', ordem: 120, ativa: true }
+    { slug: 'capa_de_matza', nome: 'Capa de Matzá Bordada', ordem: 120, ativa: true },
+    { slug: 'capa_de_almofada', nome: 'Capas de Almofada', ordem: 130, ativa: true },
+    { slug: 'estandarte', nome: 'Estandartes', ordem: 140, ativa: true },
+    { slug: 'capa_de_travesseiro', nome: 'Capas de Travesseiro', ordem: 150, ativa: true },
+    { slug: 'cobertor', nome: 'Cobertores', ordem: 160, ativa: true }
 ];
 
 function slugifyCategoryName(value) {
@@ -919,6 +923,10 @@ function getSegmentedCollections(segment = currentCatalogSegment) {
     return activeCollections.filter((collection) => collectionIds.has(collection.id));
 }
 
+function hasCasaProducts() {
+    return Array.isArray(products) && products.some((product) => getProductSegment(product) === 'casa');
+}
+
 function applyCatalogSegmentCopy() {
     const segmentConfig = CATALOG_SEGMENTS[currentCatalogSegment] || CATALOG_SEGMENTS.mesa;
     const title = document.getElementById('home-shop-title');
@@ -930,6 +938,10 @@ function applyCatalogSegmentCopy() {
     if (subtitle) subtitle.textContent = segmentConfig.subtitle;
     if (heroTitle) heroTitle.textContent = segmentConfig.heroTitle || segmentConfig.title;
     if (heroSubtitle) heroSubtitle.textContent = segmentConfig.heroSubtitle || segmentConfig.subtitle;
+
+    // A aba Casa aparece sozinha quando a primeira peça de Casa estiver ativa.
+    const hasCasa = hasCasaProducts();
+    document.querySelectorAll('[data-segment="casa"]').forEach((button) => { button.hidden = !hasCasa; });
 
     document.querySelectorAll('[data-segment]').forEach((button) => {
         const isActive = button.dataset.segment === currentCatalogSegment;
@@ -1293,6 +1305,7 @@ async function carregarDadosLoja() {
 
         const savedCatalogSegment = readSavedCatalogSegment();
         currentCatalogSegment = savedCatalogSegment || getLatestCollectionSegment();
+        if (currentCatalogSegment === 'casa' && !hasCasaProducts()) currentCatalogSegment = 'mesa';
         if (!savedCatalogSegment) saveCatalogSegment(currentCatalogSegment);
 
         const configCategories = catalogSettingsSnap.exists
@@ -1555,8 +1568,18 @@ function renderizarGridColecao(collectionId) {
     grid.innerHTML = '';
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
-    const prods = products
-        .filter(p => p.colecaoId === collectionId && getProductSegment(p) === currentCatalogSegment)
+    // Link direto para uma coleção de outra vitrine (ex.: Casa): troca a vitrine junto.
+    const collectionProducts = products.filter(p => p.colecaoId === collectionId);
+    if (collectionProducts.length && !collectionProducts.some(p => getProductSegment(p) === currentCatalogSegment)) {
+        currentCatalogSegment = getProductSegment(collectionProducts[0]);
+        saveCatalogSegment(currentCatalogSegment);
+        applyCatalogSegmentCopy();
+        renderSidebarCategoryLinks();
+        renderHomeShopFilters();
+        renderHomeShopGrid();
+    }
+    const prods = collectionProducts
+        .filter(p => getProductSegment(p) === currentCatalogSegment)
         .sort(sortProductsByNewest);
     renderProductsIntoGrid(grid, prods, '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>');
 }
@@ -1575,12 +1598,16 @@ function renderizarGridCategoria(catSlug) {
         'anel_guardanapo': 'Anel de Guardanapo',
         'trilho_velas': 'Trilho para Velas',
         'caminho_mesa': 'Caminho de Mesa',
-        'capa_de_matza': 'Capa de Matzá Bordada'
+        'capa_de_matza': 'Capa de Matzá Bordada',
+        'capa_de_almofada': 'Capas de Almofada',
+        'estandarte': 'Estandartes',
+        'capa_de_travesseiro': 'Capas de Travesseiro',
+        'cobertor': 'Cobertores'
     };
 
     if (title) title.textContent = nomesCategorias[catSlug] || catSlug.toUpperCase();
 
-    const categorySegment = catSlug === 'combo' || checkIsMesaPosta(catSlug) ? 'mesa' : 'moda';
+    const categorySegment = checkIsCasa(catSlug) ? 'casa' : (catSlug === 'combo' || checkIsMesaPosta(catSlug) ? 'mesa' : 'moda');
     if (categorySegment !== currentCatalogSegment) {
         currentCatalogSegment = categorySegment;
         saveCatalogSegment(categorySegment);
@@ -1693,7 +1720,9 @@ function showProductDetail(id) {
     setupSplideCarousel(); 
     
     const isCombo = currentProduct.tipo === 'combo';
-    const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
+    // Mesa posta e Casa: peça sem tamanho de roupa.
+    const isMesaPosta = isPecaSemTamanho(currentProduct);
+    const isCasaPeca = isMesaPosta && !checkIsMesaPosta(currentProduct.categoria);
     const titleRow = document.querySelector('#product-detail-view .flex.justify-between.items-start.mb-2');
     if (titleRow) {
         const existingAdminEdit = document.getElementById('detail-admin-edit-btn');
@@ -1962,7 +1991,14 @@ if (sizeGuideContainer) {
         `
     };
 
-    if (isMesaPosta) {
+    if (isCasaPeca) {
+        sizeGuideContainer.innerHTML = `
+            <div class="space-y-3 text-sm text-[--cor-texto]">
+                <h4 class="font-bold text-[--cor-marrom-cta]">Medidas da peça</h4>
+                <p class="text-xs text-gray-600">As medidas desta peça estão na descrição. Se precisar de outro tamanho, fale com a gente pelo WhatsApp: muitas peças podem ser feitas sob medida.</p>
+                <p class="text-xs text-gray-500">Produção artesanal. Pequenas variações de 1-2 cm podem ocorrer.</p>
+            </div>`;
+    } else if (isMesaPosta) {
         const categoriaAtual = currentProduct.categoria;
         sizeGuideContainer.innerHTML = mesaPostaGuides[categoriaAtual] || mesaPostaGuides.mesa_posta;
     } else {
@@ -2294,7 +2330,7 @@ function updateAddToCartButton() {
     btn.classList.add('hover:bg-[#4a2e18]');
 
     const isCombo = currentProduct.tipo === 'combo';
-    const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
+    const isMesaPosta = isPecaSemTamanho(currentProduct);
     const hasSize = selectedSize !== null;
     const hasColor = !hasTrackedColors || selectedColor !== null;
     const hasPersonalization = !currentProduct.personalizavel || Boolean(document.getElementById('personalization-option-select')?.value);

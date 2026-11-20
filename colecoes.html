@@ -14,9 +14,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
     <script src="js/admin-embedded-mode.js" defer></script>
     <script src="js/admin-native-shell.js?v=20260908-collections" defer></script>
-    <script src="js/collections-admin.js?v=20260908-1" defer></script>
+    <script src="js/collections-admin.js?v=20261119-casa" defer></script>
     <script src="js/collections-upload-extension.js?v=20260908-1" defer></script>
-    <link rel="stylesheet" href="css/colecoes.css?v=20260908-1">
+    <link rel="stylesheet" href="css/colecoes.css?v=20261119-casa">
     <link rel="stylesheet" href="css/admin-native-shell.css?v=20260818-team-access">
 </head>
 <body>
@@ -38,6 +38,7 @@
             <article class="metric-card metric-live"><span>Ativas</span><strong id="metric-active">0</strong><small>visíveis no site</small></article>
             <article class="metric-card"><span>Roupas</span><strong id="metric-moda">0</strong><small>coleções com moda</small></article>
             <article class="metric-card"><span>Mesa posta</span><strong id="metric-mesa">0</strong><small>coleções com mesa</small></article>
+            <article class="metric-card"><span>Casa</span><strong id="metric-casa">0</strong><small>coleções de decoração</small></article>
             <article class="metric-card"><span>Encerradas</span><strong id="metric-ended">0</strong><small>arquivo histórico</small></article>
         </section>
 
@@ -49,7 +50,7 @@
             <div class="filters-grid">
                 <label class="field search-field"><span>Buscar</span><div class="field-control"><i class="fa-solid fa-magnifying-glass"></i><input id="collection-search" type="search" placeholder="Nome, descrição ou slug"></div></label>
                 <label class="field"><span>Status</span><select id="collection-status-filter"><option value="all">Todos</option><option value="active">Ativas</option><option value="draft">Rascunhos</option><option value="ended">Encerradas</option></select></label>
-                <label class="field"><span>Área</span><select id="collection-segment-filter"><option value="all">Roupas + Mesa Posta</option><option value="moda">Roupas</option><option value="mesa">Mesa Posta</option></select></label>
+                <label class="field"><span>Área</span><select id="collection-segment-filter"><option value="all">Todas as áreas</option><option value="moda">Roupas</option><option value="mesa">Mesa Posta</option><option value="casa">Casa</option></select></label>
                 <label class="field"><span>Ordenar</span><select id="collection-sort"><option value="priority">Prioridade</option><option value="newest">Mais recentes</option><option value="name">Nome A–Z</option><option value="ending">Encerram primeiro</option></select></label>
             </div>
         </section>
@@ -91,10 +92,11 @@
                 </div>
 
                 <div class="form-section">
-                    <div class="section-title"><i class="fa-solid fa-table-columns"></i><div><h3>Abrangência</h3><p>Roupas e Mesa Posta continuam sendo as duas áreas permanentes do site.</p></div></div>
+                    <div class="section-title"><i class="fa-solid fa-table-columns"></i><div><h3>Abrangência</h3><p>Escolha em quais vitrines do site a coleção aparece: Roupas, Mesa Posta e Casa.</p></div></div>
                     <div class="segment-picker">
                         <label class="segment-option"><input id="collection-segment-moda" type="checkbox" value="moda"><span class="segment-icon"><i class="fa-solid fa-shirt"></i></span><span><strong>Roupas</strong><small>Vestidos, conjuntos, saias e demais peças de moda.</small></span></label>
                         <label class="segment-option"><input id="collection-segment-mesa" type="checkbox" value="mesa"><span class="segment-icon"><i class="fa-solid fa-utensils"></i></span><span><strong>Mesa Posta</strong><small>Peças de mesa, inclusive linhas e temas proféticos.</small></span></label>
+                        <label class="segment-option"><input id="collection-segment-casa" type="checkbox" value="casa"><span class="segment-icon"><i class="fa-solid fa-couch"></i></span><span><strong>Casa</strong><small>Decoração: almofadas, estandartes, travesseiros, cobertores.</small></span></label>
                     </div>
                 </div>
 

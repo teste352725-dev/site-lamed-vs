@@ -1,6 +1,7 @@
 (() => {
     let originalPopularPreview = null;
-    let selectedCollectionBySegment = { moda: '', mesa: '' };
+    let selectedCollectionBySegment = { moda: '', mesa: '', casa: '' };
+    const SEGMENTS = ['moda', 'mesa', 'casa'];
     let collectionsListenerStarted = false;
     let currentCollectionsSignature = '';
 
@@ -29,10 +30,10 @@
 
     function normalizeSegments(collection) {
         const explicit = Array.isArray(collection?.segmentos)
-            ? collection.segmentos.filter((item) => item === 'moda' || item === 'mesa')
+            ? collection.segmentos.filter((item) => SEGMENTS.includes(item))
             : [];
         if (explicit.length) return [...new Set(explicit)];
-        if (collection?.segmento === 'moda' || collection?.segmento === 'mesa') return [collection.segmento];
+        if (SEGMENTS.includes(collection?.segmento)) return [collection.segmento];
         return ['moda', 'mesa'];
     }
 
@@ -146,7 +147,7 @@
         if (!grid || typeof products === 'undefined' || typeof activeCollections === 'undefined') return;
         installStyles();
         const heading = ensureHeading();
-        const segment = typeof currentCatalogSegment === 'string' && currentCatalogSegment === 'moda' ? 'moda' : 'mesa';
+        const segment = typeof currentCatalogSegment === 'string' && SEGMENTS.includes(currentCatalogSegment) ? currentCatalogSegment : 'mesa';
         const collections = activeSeasonalCollections(segment);
         if (!collections.length) {
             renderFallback();
@@ -167,7 +168,7 @@
         const image = originalImage && window.LamedImages?.has(originalImage)
             ? window.LamedImages.url(originalImage, 1080)
             : originalImage;
-        const segmentLabel = segment === 'mesa' ? 'Mesa Posta' : 'Roupas';
+        const segmentLabel = segment === 'mesa' ? 'Mesa Posta' : (segment === 'casa' ? 'Casa' : 'Roupas');
 
         heading.classList.remove('hidden');
         heading.innerHTML = `

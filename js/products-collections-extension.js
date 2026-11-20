@@ -16,16 +16,20 @@
         return collection?.ativa === true ? 'active' : 'draft';
     }
 
+    const SEGMENTS = ['moda', 'mesa', 'casa'];
+    const CASA_CATEGORIES = ['casa', 'decoracao', 'decoracao_casa', 'almofada', 'capa_almofada', 'capa_de_almofada', 'estandarte', 'travesseiro', 'capa_travesseiro', 'capa_de_travesseiro', 'cobertor', 'manta'];
+
     function normalizeCollectionSegments(collection) {
         const segments = Array.isArray(collection?.segmentos)
-            ? collection.segmentos.filter((item) => item === 'moda' || item === 'mesa')
+            ? collection.segmentos.filter((item) => SEGMENTS.includes(item))
             : [];
         if (segments.length) return [...new Set(segments)];
-        if (collection?.segmento === 'moda' || collection?.segmento === 'mesa') return [collection.segmento];
+        if (SEGMENTS.includes(collection?.segmento)) return [collection.segmento];
         return ['moda', 'mesa'];
     }
 
     function segmentForProduct(product) {
+        if (product?.segmento === 'casa' || CASA_CATEGORIES.includes(String(product?.categoria || '').toLowerCase())) return 'casa';
         if (product?.segmento === 'mesa') return 'mesa';
         if (product?.segmento === 'moda') return 'moda';
         if (typeof isMesaPostaCategory === 'function' && isMesaPostaCategory(product?.categoria)) return 'mesa';
@@ -83,9 +87,10 @@
         segmentLabel.innerHTML = `
             <i class="fa-solid fa-table-columns"></i>
             <select id="filter-segment" aria-label="Filtrar por área">
-                <option value="all">Roupas + Mesa Posta</option>
+                <option value="all">Todas as áreas</option>
                 <option value="moda">Roupas</option>
                 <option value="mesa">Mesa Posta</option>
+                <option value="casa">Casa</option>
             </select>`;
 
         const collectionLabel = document.createElement('label');
@@ -179,7 +184,7 @@
             product?.tags,
             colors,
             collectionName(product?.colecaoId),
-            segmentForProduct(product) === 'mesa' ? 'mesa posta profético profetico' : 'roupas moda'
+            ({ mesa: 'mesa posta profético profetico', casa: 'casa decoração decoracao' })[segmentForProduct(product)] || 'roupas moda'
         ].join(' ').toLowerCase();
 
         const matchTerm = !term || haystack.includes(term);
@@ -209,7 +214,7 @@
         const select = $('#product-collection');
         const segmentSelect = $('#product-segment');
         if (!select || !segmentSelect) return;
-        const segment = segmentSelect.value === 'mesa' ? 'mesa' : 'moda';
+        const segment = SEGMENTS.includes(segmentSelect.value) ? segmentSelect.value : 'moda';
         const current = selectedValue !== null ? selectedValue : select.value;
         const relevant = state.collections.filter((collection) => normalizeCollectionSegments(collection).includes(segment));
 
@@ -265,7 +270,7 @@
     }
 
     function applyQueryFilters() {
-        if (state.querySegment && ['moda', 'mesa'].includes(state.querySegment) && $('#filter-segment')) {
+        if (state.querySegment && SEGMENTS.includes(state.querySegment) && $('#filter-segment')) {
             $('#filter-segment').value = state.querySegment;
         }
         if (state.queryCollection && $('#filter-collection')) {

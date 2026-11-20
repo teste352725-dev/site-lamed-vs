@@ -38,7 +38,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .icon-button { width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 13px; background: #fff; color: var(--muted); cursor: pointer; }
 .text-link { color: var(--mocha); font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; }
 
-.metrics-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; margin: 18px 0; }
+.metrics-grid { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; margin: 18px 0; }
 .metric-card { border: 1px solid var(--line); border-radius: 20px; background: rgba(255,253,249,.92); padding: 18px; display: grid; gap: 4px; }
 .metric-card span { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
 .metric-card strong { font-family: 'Cormorant Garamond', serif; font-size: 36px; line-height: 1; color: var(--mocha-deep); }
@@ -81,6 +81,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border-radius: 999px; background: #f4efe9; color: #6b5c54; font-size: 10px; font-weight: 800; }
 .chip-moda { background: #f1ecf8; color: #6c4b84; }
 .chip-mesa { background: #eef4f8; color: #466d83; }
+.chip-casa { background: #f6efe6; color: #7a5531; }
 .collection-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .meta-item { padding: 9px 10px; border-radius: 12px; background: #faf7f3; }
 .meta-item span { display: block; color: #9a8c84; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
@@ -112,7 +113,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .form-grid { display: grid; gap: 12px; }
 .two-columns { grid-template-columns: repeat(2, minmax(0,1fr)); }
 .three-columns { grid-template-columns: repeat(3, minmax(0,1fr)); }
-.segment-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.segment-picker { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
 .segment-option { position: relative; border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; grid-template-columns: auto 42px 1fr; align-items: center; gap: 10px; cursor: pointer; }
 .segment-option:has(input:checked) { border-color: #b79a71; background: #fbf7ef; box-shadow: inset 0 0 0 1px rgba(169,137,85,.18); }
 .segment-option input { width: 16px; height: 16px; accent-color: var(--mocha); }

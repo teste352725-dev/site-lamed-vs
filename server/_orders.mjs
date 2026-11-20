@@ -385,6 +385,17 @@ function checkIsMesaPosta(categoria) {
   ].includes(sanitizePlainText(categoria, 40));
 }
 
+// Vitrine Casa (decoração): peça sem tamanho de roupa, igual à mesa posta.
+const CASA_CATEGORIES = new Set(["casa", "decoracao", "decoracao_casa", "almofada", "capa_almofada", "capa_de_almofada", "estandarte", "travesseiro", "capa_travesseiro", "capa_de_travesseiro", "cobertor", "manta"]);
+const CASA_WORDS = new Set(["casa", "decoracao", "decoracao de casa", "decoracao_casa", "home", "lar"]);
+
+export function isPecaSemTamanho(product) {
+  if (checkIsMesaPosta(product?.categoria)) return true;
+  const categoria = stripAccents(sanitizePlainText(product?.categoria, 60)).toLowerCase();
+  const segmento = stripAccents(sanitizePlainText(product?.segmento, 40)).toLowerCase();
+  return CASA_CATEGORIES.has(categoria) || CASA_WORDS.has(segmento);
+}
+
 function isSudeste(cep) {
   const cepClean = normalizePostalCode(cep);
   if (cepClean.length !== 8) return false;
@@ -697,7 +708,7 @@ async function buildCanonicalCartSnapshot(db, sourceCart) {
         canonicalItem.cor = null;
       }
 
-      const canonicalSize = checkIsMesaPosta(product.categoria)
+      const canonicalSize = isPecaSemTamanho(product)
         ? "Unico"
         : normalizeSizeLabel(sourceItem.tamanho);
 

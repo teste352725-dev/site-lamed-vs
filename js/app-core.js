@@ -61,15 +61,56 @@ const CATALOG_SEGMENTS = {
         subtitle: 'Peças artesanais para transformar sua mesa e receber com afeto.',
         heroTitle: 'Mesa Posta Laméd',
         heroSubtitle: 'Peças artesanais para transformar sua mesa'
+    },
+    casa: {
+        label: 'Casa',
+        title: 'Casa',
+        subtitle: 'Almofadas, estandartes e peças bordadas para vestir a sua casa.',
+        heroTitle: 'Casa Laméd',
+        heroSubtitle: 'Decoração artesanal para a sua casa'
     }
 };
 
+// Vitrine Casa (decoração): categorias que entram nela automaticamente.
+const CASA_CATEGORIES = [
+    'casa', 'decoracao', 'decoracao_casa', 'almofada', 'capa_almofada', 'capa_de_almofada',
+    'estandarte', 'travesseiro', 'capa_travesseiro', 'capa_de_travesseiro', 'cobertor', 'manta'
+];
+
+function normalizeSegmentWord(value) {
+    return stripAccents(String(value || '')).trim().toLowerCase();
+}
+
+function checkIsCasa(categoria) {
+    return CASA_CATEGORIES.includes(normalizeSegmentWord(categoria));
+}
+
+function isCasaSegmentWord(value) {
+    return ['casa', 'decoracao', 'decoracao de casa', 'decoracao_casa', 'home', 'lar'].includes(normalizeSegmentWord(value));
+}
+
+// Peças sem tamanho de roupa (mesa posta e casa): vão para a sacola como "Único".
+function isPecaSemTamanho(product) {
+    return checkIsMesaPosta(product?.categoria) || checkIsCasa(product?.categoria) || isCasaSegmentWord(product?.segmento);
+}
+
+function collectionIsOnlyCasa(collectionId) {
+    if (!collectionId || !Array.isArray(activeCollections)) return false;
+    const collection = activeCollections.find((entry) => entry?.id === collectionId);
+    if (!collection) return false;
+    const segments = Array.isArray(collection.segmentos) ? collection.segmentos : (collection.segmento ? [collection.segmento] : []);
+    return segments.length > 0 && segments.every(isCasaSegmentWord);
+}
+
 function normalizeCatalogSegment(value) {
     const safeValue = String(value || '').trim().toLowerCase();
+    if (isCasaSegmentWord(safeValue)) return 'casa';
     return ['moda', 'roupa', 'roupas', 'fashion'].includes(safeValue) ? 'moda' : 'mesa';
 }
 
 function getProductSegment(product) {
+    // Casa vem primeiro: pela vitrine da peça, pela categoria ou por uma coleção marcada só como Casa.
+    if (isCasaSegmentWord(product?.segmento) || checkIsCasa(product?.categoria) || collectionIsOnlyCasa(product?.colecaoId)) return 'casa';
     const explicitSegment = normalizeCatalogSegment(product?.segmento);
     if (product?.segmento) return explicitSegment;
     return checkIsMesaPosta(product?.categoria) ? 'mesa' : 'moda';
@@ -1615,7 +1656,7 @@ async function buildCanonicalCartSnapshot(sourceCart) {
                 canonicalItem.cor = null;
             }
 
-            const canonicalSize = checkIsMesaPosta(product.categoria)
+            const canonicalSize = isPecaSemTamanho(product)
                 ? 'Único'
                 : normalizeSizeLabel(sourceItem.tamanho);
 

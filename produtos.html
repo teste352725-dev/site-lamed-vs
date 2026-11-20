@@ -279,6 +279,7 @@
                                             <select id="product-segment" required>
                                                 <option value="moda">Roupas</option>
                                                 <option value="mesa">Mesa posta</option>
+                                                <option value="casa">Casa (decoração)</option>
                                             </select>
                                         </label>
                                         <label class="stack-field">
@@ -569,7 +570,11 @@
             { slug: "anel_guardanapo", nome: "Anel de guardanapo", ordem: 90, ativa: true },
             { slug: "trilho_velas", nome: "Trilho para velas", ordem: 100, ativa: true },
             { slug: "caminho_mesa", nome: "Caminho de mesa", ordem: 110, ativa: true },
-            { slug: "capa_de_matza", nome: "Capa de matza bordada", ordem: 120, ativa: true }
+            { slug: "capa_de_matza", nome: "Capa de matza bordada", ordem: 120, ativa: true },
+            { slug: "capa_de_almofada", nome: "Capa de almofada", ordem: 130, ativa: true },
+            { slug: "estandarte", nome: "Estandarte", ordem: 140, ativa: true },
+            { slug: "capa_de_travesseiro", nome: "Capa de travesseiro", ordem: 150, ativa: true },
+            { slug: "cobertor", nome: "Cobertor", ordem: 160, ativa: true }
         ];
 
         let produtos = [];
@@ -694,6 +699,11 @@
             return Array.isArray(product?.cores) ? product.cores.length : 0;
         }
 
+        const CASA_CATEGORIES = ["casa", "decoracao", "decoracao_casa", "almofada", "capa_almofada", "capa_de_almofada", "estandarte", "travesseiro", "capa_travesseiro", "capa_de_travesseiro", "cobertor", "manta"];
+        function isCasaCategory(categoria) {
+            return CASA_CATEGORIES.includes(String(categoria || "").toLowerCase());
+        }
+
         function isMesaPostaCategory(categoria) {
             return ["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"].includes(String(categoria || ""));
         }
@@ -744,7 +754,7 @@
             const categorySelect = document.getElementById("product-category");
             const segmentSelect = document.getElementById("product-segment");
             if (!categorySelect || !segmentSelect) return;
-            segmentSelect.value = isMesaPostaCategory(categorySelect.value) ? "mesa" : "moda";
+            segmentSelect.value = isCasaCategory(categorySelect.value) ? "casa" : (isMesaPostaCategory(categorySelect.value) ? "mesa" : "moda");
         }
 
         document.getElementById("product-category")?.addEventListener("change", syncProductSegmentFromCategory);
@@ -1372,7 +1382,7 @@
             document.getElementById("product-discount").value = produto.desconto || 0;
             document.getElementById("product-description").value = produto.descricao || "";
             document.getElementById("product-category").value = produto.categoria || "vestido";
-            document.getElementById("product-segment").value = produto.segmento || (isMesaPostaCategory(produto.categoria) ? "mesa" : "moda");
+            document.getElementById("product-segment").value = ["moda", "mesa", "casa"].includes(produto.segmento) ? produto.segmento : (isCasaCategory(produto.categoria) ? "casa" : (isMesaPostaCategory(produto.categoria) ? "mesa" : "moda"));
             document.getElementById("product-type").value = produto.tipo || (produto.categoria === "combo" ? "combo" : "standard");
             document.getElementById("product-status").value = produto.status || "active";
             document.getElementById("product-order").value = produto.ordem || 0;
@@ -1408,7 +1418,7 @@
             const nome = document.getElementById("product-name").value.trim();
             const preco = parseFloat(document.getElementById("product-price").value);
             const categoria = document.getElementById("product-category").value;
-            const segmento = document.getElementById("product-segment").value || (isMesaPostaCategory(categoria) ? "mesa" : "moda");
+            const segmento = document.getElementById("product-segment").value || (isCasaCategory(categoria) ? "casa" : (isMesaPostaCategory(categoria) ? "mesa" : "moda"));
             const tipo = document.getElementById("product-type").value;
             if (!nome || Number.isNaN(preco)) {
                 alert("Preencha nome e preço.");

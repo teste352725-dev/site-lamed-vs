@@ -391,7 +391,12 @@
   function atualizarPeca(peca) {
     if (!peca) return;
     for (var i = 0; i < state.pecas.length; i += 1) {
-      if (state.pecas[i].id === peca.id) { state.pecas[i] = peca; return; }
+      if (state.pecas[i].id === peca.id) {
+        // A vitrine Casa pode vir da coleção, que só o carregamento inicial conhece.
+        if (state.pecas[i].segmento === "casa") peca.segmento = "casa";
+        state.pecas[i] = peca;
+        return;
+      }
     }
     state.pecas.push(peca);
   }

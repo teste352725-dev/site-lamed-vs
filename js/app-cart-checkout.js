@@ -1526,7 +1526,7 @@ function addToCart() {
     const corObj = selectedColor !== null ? currentProduct.cores[selectedColor] : null;
     const precoFinal = currentProduct.preco * (1 - (currentProduct.desconto || 0) / 100);
     const isCombo = currentProduct.tipo === 'combo';
-    const isMesaPosta = checkIsMesaPosta(currentProduct.categoria);
+    const isMesaPosta = isPecaSemTamanho(currentProduct);
     const tamanhoFinal = (isMesaPosta || isCombo) ? (isCombo ? 'Combo' : 'Unico') : selectedSize;
     const personalizacao = currentProduct.personalizavel ? getCurrentPersonalization() : null;
     if (currentProduct.personalizavel && !personalizacao?.texto) {

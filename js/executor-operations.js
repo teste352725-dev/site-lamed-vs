@@ -455,8 +455,8 @@
 
     async function applySelectedSegment() {
         const segment = $('#bulk-segment-target')?.value;
-        if (!['mesa', 'moda'].includes(segment)) return writeLog('Escolha uma vitrine válida.', 'warning');
-        await updateSelected(`Movendo para a vitrine ${segment === 'mesa' ? 'Mesa posta' : 'Roupas'}`, () => ({ segmento: segment }), 'segmento_selecionados');
+        if (!['mesa', 'moda', 'casa'].includes(segment)) return writeLog('Escolha uma vitrine válida.', 'warning');
+        await updateSelected(`Movendo para a vitrine ${({ mesa: 'Mesa posta', moda: 'Roupas', casa: 'Casa' })[segment]}`, () => ({ segmento: segment }), 'segmento_selecionados');
     }
 
     async function setSelectedStatus(status) {

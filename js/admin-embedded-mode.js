@@ -353,7 +353,7 @@
     if (!/produtos\.html$/i.test(window.location.pathname)) return;
     if (document.querySelector('script[data-products-collections-extension]')) return;
     const script = document.createElement('script');
-    script.src = 'js/products-collections-extension.js?v=20260908-1';
+    script.src = 'js/products-collections-extension.js?v=20261119-casa';
     script.dataset.productsCollectionsExtension = '1';
     document.head.appendChild(script);
 })();

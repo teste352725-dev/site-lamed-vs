@@ -160,20 +160,27 @@ export function validateProductEdit(input) {
 
 // Mesma regra da vitrine (js/app-core.js): sem segmento, decide pela categoria.
 const MESA_CATEGORIES = new Set(["mesa_posta", "lugar_americano", "guardanapo", "caminho_mesa", "anel_guardanapo", "porta_guardanapo", "trilho_velas", "capa_de_matza"]);
-export function productSegment(data) {
-  const seg = clean(data?.segmento, 30).toLowerCase();
+const CASA_CATEGORIES = new Set(["casa", "decoracao", "decoracao_casa", "almofada", "capa_almofada", "capa_de_almofada", "estandarte", "travesseiro", "capa_travesseiro", "capa_de_travesseiro", "cobertor", "manta"]);
+const CASA_WORDS = new Set(["casa", "decoracao", "decoracao de casa", "decoracao_casa", "home", "lar"]);
+const semAcento = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+// casaCollections: ids das coleções marcadas só como "Casa" (a peça entra em Casa por elas).
+export function productSegment(data, casaCollections = null) {
+  const seg = semAcento(clean(data?.segmento, 30)).toLowerCase();
+  const categoria = semAcento(clean(data?.categoria, 60)).toLowerCase();
+  if (CASA_WORDS.has(seg) || CASA_CATEGORIES.has(categoria) || (casaCollections && casaCollections.has(data?.colecaoId))) return "casa";
   if (seg) return ["moda", "roupa", "roupas", "fashion"].includes(seg) ? "moda" : "mesa";
   return MESA_CATEGORIES.has(clean(data?.categoria, 60).toLowerCase()) ? "mesa" : "moda";
 }
 
-function slimProduct(id, data) {
+function slimProduct(id, data, casaCollections = null) {
   const imagens = Array.isArray(data.imagens) ? data.imagens : [];
   return {
     id,
     nome: clean(data.nome, 140),
     preco: Number(data.preco) || 0,
     desconto: Math.max(0, Math.min(100, Number(data.desconto) || 0)),
-    segmento: productSegment(data),
+    segmento: productSegment(data, casaCollections),
     categoria: clean(data.categoria, 60),
     status: clean(data.status, 20) || "active",
     imagem: clean(imagens[0] || data.imagem || "", 2000),
@@ -224,12 +231,18 @@ async function ensureActive(user) {
 async function loadHome(user, caps) {
   const db = getAdminDb();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [pecasSnap, movSnap, analytics] = await Promise.all([
+  const [pecasSnap, colecoesSnap, movSnap, analytics] = await Promise.all([
     db.collection("pecas").get(),
+    db.collection("colecoes").get().catch(() => null),
     db.collection("estoque_movimentos").where("createdAt", ">=", since).orderBy("createdAt", "desc").limit(200).get(),
     caps.visitas ? summarizeAnalytics({ days: 7 }).catch(() => null) : null
   ]);
-  const pecas = pecasSnap.docs.map((doc) => slimProduct(doc.id, doc.data() || {}))
+  const casaCollections = new Set((colecoesSnap?.docs || []).filter((doc) => {
+    const c = doc.data() || {};
+    const segs = Array.isArray(c.segmentos) ? c.segmentos : (c.segmento ? [c.segmento] : []);
+    return segs.length > 0 && segs.every((x) => CASA_WORDS.has(semAcento(x).toLowerCase()));
+  }).map((doc) => doc.id));
+  const pecas = pecasSnap.docs.map((doc) => slimProduct(doc.id, doc.data() || {}, casaCollections))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   const movimentos = movSnap.docs.map(publicMovement);
   const vendasSemana = movimentos.filter((m) => m.tipo === "venda" && !m.desfeito)

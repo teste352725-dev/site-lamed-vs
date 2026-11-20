@@ -249,7 +249,7 @@
 
     if (currentPage.id === 'products' && !document.querySelector('script[data-products-collections-extension]')) {
         const productsExtension = document.createElement('script');
-        productsExtension.src = 'js/products-collections-extension.js?v=20260908-1';
+        productsExtension.src = 'js/products-collections-extension.js?v=20261119-casa';
         productsExtension.dataset.productsCollectionsExtension = '1';
         document.head.appendChild(productsExtension);
     }

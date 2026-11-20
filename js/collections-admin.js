@@ -65,14 +65,19 @@
 
     function normalizeSegments(collection) {
         const segments = Array.isArray(collection?.segmentos)
-            ? collection.segmentos.filter((segment) => segment === 'moda' || segment === 'mesa')
+            ? collection.segmentos.filter((segment) => SEGMENTS.includes(segment))
             : [];
         if (segments.length) return [...new Set(segments)];
-        if (collection?.segmento === 'moda' || collection?.segmento === 'mesa') return [collection.segmento];
+        if (SEGMENTS.includes(collection?.segmento)) return [collection.segmento];
         return ['moda', 'mesa'];
     }
 
+    const SEGMENTS = ['moda', 'mesa', 'casa'];
+    const SEGMENT_LABELS = { moda: 'Roupas', mesa: 'Mesa Posta', casa: 'Casa' };
+    const CASA_CATEGORIES = ['casa', 'decoracao', 'decoracao_casa', 'almofada', 'capa_almofada', 'capa_de_almofada', 'estandarte', 'travesseiro', 'capa_travesseiro', 'capa_de_travesseiro', 'cobertor', 'manta'];
+
     function productSegment(product) {
+        if (product?.segmento === 'casa' || CASA_CATEGORIES.includes(String(product?.categoria || '').toLowerCase())) return 'casa';
         if (product?.segmento === 'mesa') return 'mesa';
         if (product?.segmento === 'moda') return 'moda';
         const category = String(product?.categoria || '').toLowerCase();
@@ -151,6 +156,7 @@
         $('#metric-active').textContent = normalized.filter((item) => item.normalizedStatus === 'active').length;
         $('#metric-moda').textContent = normalized.filter((item) => item.normalizedSegments.includes('moda')).length;
         $('#metric-mesa').textContent = normalized.filter((item) => item.normalizedSegments.includes('mesa')).length;
+        if ($('#metric-casa')) $('#metric-casa').textContent = normalized.filter((item) => item.normalizedSegments.includes('casa')).length;
         $('#metric-ended').textContent = normalized.filter((item) => item.normalizedStatus === 'ended').length;
     }
 
@@ -208,6 +214,7 @@
                     <div class="chips">
                         ${segments.includes('moda') ? '<span class="chip chip-moda"><i class="fa-solid fa-shirt"></i> Roupas</span>' : ''}
                         ${segments.includes('mesa') ? '<span class="chip chip-mesa"><i class="fa-solid fa-utensils"></i> Mesa Posta</span>' : ''}
+                        ${segments.includes('casa') ? '<span class="chip chip-casa"><i class="fa-solid fa-couch"></i> Casa</span>' : ''}
                         ${featured ? '<span class="chip"><i class="fa-solid fa-star"></i> Destaque</span>' : ''}
                     </div>
                     <div class="collection-meta">
@@ -268,6 +275,7 @@
         $('#collection-order').value = '0';
         $('#collection-segment-moda').checked = true;
         $('#collection-segment-mesa').checked = false;
+        if ($('#collection-segment-casa')) $('#collection-segment-casa').checked = false;
         $('#collection-featured').checked = false;
         $('#delete-collection-btn')?.classList.add('hidden');
         $('#linked-products-section')?.classList.add('hidden');
@@ -292,7 +300,7 @@
             const image = productImage(product);
             return `<div class="linked-product">
                 ${image ? `<img class="product-thumb" src="${escapeHtml(image)}" alt="">` : '<div class="product-thumb-placeholder"><i class="fa-solid fa-shirt"></i></div>'}
-                <div class="product-copy"><strong>${escapeHtml(product.nome || product.id)}</strong><small>${productSegment(product) === 'mesa' ? 'Mesa Posta' : 'Roupas'} · ${escapeHtml(product.categoria || 'sem categoria')}</small></div>
+                <div class="product-copy"><strong>${escapeHtml(product.nome || product.id)}</strong><small>${SEGMENT_LABELS[productSegment(product)] || 'Roupas'} · ${escapeHtml(product.categoria || 'sem categoria')}</small></div>
                 <span class="chip">${product.status === 'active' ? 'Ativa' : 'Pausada'}</span>
             </div>`;
         }).join('') + (products.length > 30 ? `<div class="notice"><i class="fa-solid fa-circle-info"></i><p>Mostrando 30 de ${products.length}. Use a página Produtos para ver todas.</p></div>` : '');
@@ -310,6 +318,7 @@
             const segments = normalizeSegments(collection);
             $('#collection-segment-moda').checked = segments.includes('moda');
             $('#collection-segment-mesa').checked = segments.includes('mesa');
+            if ($('#collection-segment-casa')) $('#collection-segment-casa').checked = segments.includes('casa');
             $('#collection-status').value = normalizeStatus(collection);
             $('#collection-start-date').value = toDateInput(collection.dataInicio || collection.dataLancamento);
             $('#collection-end-date').value = toDateInput(collection.dataFim);
@@ -351,6 +360,7 @@
         const segments = [];
         if ($('#collection-segment-moda')?.checked) segments.push('moda');
         if ($('#collection-segment-mesa')?.checked) segments.push('mesa');
+        if ($('#collection-segment-casa')?.checked) segments.push('casa');
         return segments;
     }
 
@@ -358,7 +368,7 @@
         event.preventDefault();
         const segments = selectedSegments();
         if (!segments.length) {
-            showToast('Escolha Roupas, Mesa Posta ou as duas áreas.', 'error');
+            showToast('Escolha pelo menos uma área: Roupas, Mesa Posta ou Casa.', 'error');
             return;
         }
         const name = sanitize($('#collection-name').value, 120);
@@ -447,7 +457,7 @@
                 const checked = product.status === 'active' ? 'checked' : '';
                 return `<div class="end-product" data-product-id="${escapeHtml(product.id)}">
                     ${image ? `<img class="product-thumb" src="${escapeHtml(image)}" alt="">` : '<div class="product-thumb-placeholder"><i class="fa-solid fa-shirt"></i></div>'}
-                    <div class="product-copy"><strong>${escapeHtml(product.nome || product.id)}</strong><small>${productSegment(product) === 'mesa' ? 'Mesa Posta' : 'Roupas'} · ${escapeHtml(product.categoria || 'sem categoria')}</small></div>
+                    <div class="product-copy"><strong>${escapeHtml(product.nome || product.id)}</strong><small>${SEGMENT_LABELS[productSegment(product)] || 'Roupas'} · ${escapeHtml(product.categoria || 'sem categoria')}</small></div>
                     <label><input type="checkbox" data-keep-active ${checked}> Continuar ativa</label>
                 </div>`;
             }).join('') : '<div class="notice"><i class="fa-solid fa-circle-info"></i><p>Esta coleção não possui peças vinculadas. Apenas a coleção será encerrada.</p></div>';
