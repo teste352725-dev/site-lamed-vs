@@ -119,6 +119,7 @@ export function normalizeProduct(id, data) {
   return {
     id,
     nome: String(data?.nome || "").trim(),
+    subtitulo: String(data?.subtitulo || "").trim().replace(/\s+/g, " ").slice(0, 80),
     descricao: String(data?.descricao || "").trim(),
     categoria: String(data?.categoria || "").trim(),
     status: String(data?.status || "").trim(),
@@ -228,7 +229,7 @@ export function renderProductPage(product, imageManifest = null) {
   <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/institucional.css?v=20261103">
-  <link rel="stylesheet" href="/css/produto.css?v=20261119">
+  <link rel="stylesheet" href="/css/produto.css?v=20261120">
   <script type="application/ld+json" id="produto-jsonld">${buildProductJsonLd(product)}</script>
 </head>
 <body>
@@ -261,6 +262,7 @@ export function renderProductPage(product, imageManifest = null) {
       <div class="produto-info">
         ${category ? `<p class="inst-eyebrow">${escapeHtml(category)}</p>` : ""}
         <h1>${escapeHtml(product.nome)}</h1>
+        <p class="produto-subtitulo" data-subtitulo${product.subtitulo ? "" : " hidden"}>${escapeHtml(product.subtitulo)}</p>
         <p class="produto-preco" aria-live="polite">
           <span class="produto-preco__antigo" data-preco-antigo${hasDiscount ? "" : " hidden"}>${escapeHtml(formatBRL(product.listPrice))}</span>
           <span class="produto-preco__atual" data-preco-atual>${escapeHtml(formatBRL(product.finalPrice))}</span>
@@ -347,6 +349,9 @@ export function renderProductPage(product, imageManifest = null) {
         h1.textContent = liveName;
         document.title = liveName + ' | Laméd vs';
       }
+      var sub = document.querySelector('[data-subtitulo]');
+      var liveSub = fields.subtitulo && fields.subtitulo.stringValue;
+      if (sub) { sub.textContent = liveSub || ''; sub.hidden = !liveSub; }
       var list = num(fields.preco);
       var discount = Math.max(0, Math.min(100, num(fields.desconto)));
       if (!(list > 0)) return;

@@ -118,3 +118,12 @@ test("se o Firestore falhar, o build continua e gera o sitemap basico", async ()
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("pagina da peca mostra o subtitulo abaixo do nome", () => {
+  const product = normalizeProduct("abcdef123", parseFirestoreFields({ ...sampleFields, subtitulo: { stringValue: "  Sem   enchimento " } }));
+  assert.equal(product.subtitulo, "Sem enchimento");
+  const html = renderProductPage(product);
+  assert.match(html, /<h1>[^<]+<\/h1>\s*<p class="produto-subtitulo" data-subtitulo>Sem enchimento<\/p>/);
+  const semSub = renderProductPage(normalizeProduct("abcdef123", parseFirestoreFields(sampleFields)));
+  assert.match(semSub, /data-subtitulo hidden><\/p>/);
+});

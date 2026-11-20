@@ -1547,6 +1547,7 @@ function addToCart() {
             id: currentProduct.id,
             categoria: currentProduct.categoria,
             nome: currentProduct.nome,
+            subtitulo: sanitizePlainText(currentProduct.subtitulo, 80),
             preco: precoFinal,
             imagem: getProductImages(currentProduct)[0],
             frete: normalizeShippingProfile(currentProduct.frete),
@@ -1616,6 +1617,7 @@ function updateCartUI() {
                 <img ${typeof optimizedImageAttrs === 'function' ? optimizedImageAttrs(item.imagem, '64px', 480) : `src="${escapeHtml(item.imagem)}"`} alt="" class="h-20 w-16 rounded-sm border border-[#E5E0D8] object-cover" loading="lazy" decoding="async">
                 <div class="flex-grow">
                     <h4 class="text-sm font-medium text-[--cor-texto]">${escapeHtml(item.nome)}</h4>
+                    ${item.subtitulo ? `<p class="text-xs text-gray-500">${escapeHtml(item.subtitulo)}</p>` : ''}
                     ${detailsHtml}
                     <div class="mt-1 flex items-center justify-between">
                         <span class="text-sm font-semibold">${formatarReal(item.preco)}</span>
@@ -1882,6 +1884,7 @@ function updateCheckoutSummary() {
     cart.forEach((item) => {
         const itemTotal = item.preco * item.quantity;
         let description = sanitizePlainText(item.nome, 120);
+        if (item.subtitulo) description += ` (${sanitizePlainText(item.subtitulo, 80)})`;
         if (item.isCombo) description += ' (Combo)';
         if (item.personalizacao?.texto || item.personalizacao?.observacoes) description += ' [Personalizada]';
         appendItemRow(`${item.quantity}x ${description}`, formatarReal(itemTotal));

@@ -276,7 +276,12 @@
                                 <div class="modal-grid">
                                     <label class="stack-field">
                                         <span class="field-label">Nome do produto</span>
-                                        <input type="text" id="product-name" required placeholder="Ex: Vestido de linho Areia">
+                                        <input type="text" id="product-name" required placeholder="Ex: Capa de almofada Happy Chanukah">
+                                    </label>
+                                    <label class="stack-field">
+                                        <span class="field-label">Subtítulo (opcional)</span>
+                                        <input type="text" id="product-subtitle" maxlength="80" placeholder="Ex: Sem enchimento · Sem suporte de madeira">
+                                        <span class="panel-copy">Aparece em letra menor, logo abaixo do nome. Use para detalhes como "Sem enchimento".</span>
                                     </label>
                                     <label class="stack-field">
                                         <span class="field-label">Descrição</span>
@@ -1457,6 +1462,7 @@
         function preencherFormularioProduto(produto) {
             document.getElementById("product-id").value = produto.id;
             document.getElementById("product-name").value = produto.nome || "";
+            document.getElementById("product-subtitle").value = produto.subtitulo || "";
             document.getElementById("product-price").value = produto.preco ?? "";
             document.getElementById("product-discount").value = produto.desconto || 0;
             document.getElementById("product-description").value = produto.descricao || "";
@@ -1524,6 +1530,7 @@
                 const frete = readShippingProfileFromForm();
                 const data = {
                     nome,
+                    subtitulo: document.getElementById("product-subtitle").value.trim().replace(/\s+/g, " ").slice(0, 80),
                     preco,
                     desconto: parseInt(document.getElementById("product-discount").value, 10) || 0,
                     descricao: document.getElementById("product-description").value.trim(),

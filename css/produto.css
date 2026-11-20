@@ -51,3 +51,5 @@
 .produto-compartilhar:hover { background: var(--cor-papel); }
 .produto-compartilhar:focus-visible { outline: 2px solid var(--cor-ouro); outline-offset: 3px; }
 @media (min-width: 860px) { .produto-compartilhar { width: auto; display: inline-flex; margin: 0 0 0 .6rem; vertical-align: middle; } }
+
+.produto-subtitulo { margin: -0.6rem 0 1.1rem; font-size: .95rem; letter-spacing: .02em; color: var(--cor-texto-suave); }

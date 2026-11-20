@@ -1067,7 +1067,7 @@ function normalizeShopSearchText(value) {
 
 function getShopSearchHaystack(product) {
     const categoryName = siteCategories.find((category) => category.slug === product.categoria)?.nome || '';
-    return normalizeShopSearchText(`${product.nome || ''} ${categoryName} ${String(product.categoria || '').replace(/_/g, ' ')}`);
+    return normalizeShopSearchText(`${product.nome || ''} ${product.subtitulo || ''} ${categoryName} ${String(product.categoria || '').replace(/_/g, ' ')}`);
 }
 
 function getShopFilteredProducts() {
@@ -1650,6 +1650,7 @@ function criarCardProduto(peca) {
     const imgHover = images[1] || images[0];
     const shouldRenderHoverImage = canUseHoverPreviews && imgHover && imgHover !== imgPrincipal;
     const safeName = escapeHtml(sanitizePlainText(peca.nome, 120) || 'Peca');
+    const safeSubtitle = escapeHtml(sanitizePlainText(peca.subtitulo, 80));
     
     let priceHtml = '';
     if (peca.desconto > 0) {
@@ -1682,7 +1683,8 @@ function criarCardProduto(peca) {
              <div class="quick-view-btn text-center py-2 bg-white/90 text-[--cor-texto] text-xs font-bold uppercase tracking-widest absolute bottom-0 w-full translate-y-full group-hover:translate-y-0 transition-transform">Ver Detalhes</div>
         </div>
         <div class="text-center px-2">
-            <h4 class="text-sm font-medium serif text-[--cor-texto] truncate tracking-wide">${safeName}</h4>
+            <h4 class="text-sm font-medium serif text-[--cor-texto] line-clamp-2 min-h-[2.5em] leading-tight tracking-wide" title="${safeName}">${safeName}</h4>
+            ${safeSubtitle ? `<p class="text-[11px] text-gray-500 truncate">${safeSubtitle}</p>` : ''}
             ${priceHtml}
             <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">${catLabel}</p>
          </div>
@@ -1717,6 +1719,12 @@ function showProductDetail(id) {
     
     document.querySelectorAll('.size-option').forEach(el => el.classList.remove('selected'));
     document.getElementById('detail-title').textContent = currentProduct.nome;
+    const detailSubtitle = document.getElementById('detail-subtitle');
+    if (detailSubtitle) {
+        const subtitle = sanitizePlainText(currentProduct.subtitulo, 80);
+        detailSubtitle.textContent = subtitle;
+        detailSubtitle.hidden = !subtitle;
+    }
     document.title = `${sanitizePlainText(currentProduct.nome, 90)} | Laméd vs`;
     document.getElementById('detail-description').textContent = sanitizePlainText(currentProduct.descricao, 2000) || '';
     

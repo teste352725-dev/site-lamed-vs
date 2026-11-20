@@ -1468,6 +1468,7 @@ function sanitizeCartItem(item) {
         id: sanitizePlainText(item.id, 120),
         categoria: sanitizePlainText(item.categoria, 40),
         nome,
+        subtitulo: sanitizePlainText(item.subtitulo, 80),
         preco,
         imagem: normalizeUrl(item.imagem),
         frete: normalizeShippingProfile(item.frete),
