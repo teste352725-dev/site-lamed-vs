@@ -122,6 +122,7 @@ export function normalizeProduct(id, data) {
     subtitulo: String(data?.subtitulo || "").trim().replace(/\s+/g, " ").slice(0, 80),
     descricao: String(data?.descricao || "").trim(),
     categoria: String(data?.categoria || "").trim(),
+    colecaoId: String(data?.colecaoId || "").trim(),
     status: String(data?.status || "").trim(),
     imagens: safeImageUrls(data?.imagens),
     cores: (Array.isArray(data?.cores) ? data.cores : [])
@@ -178,16 +179,32 @@ export function optimizedImage(url, width, imageManifest, ext = "webp") {
   return key ? variantPath(key, width, ext) : url;
 }
 
-export function renderProductPage(product, imageManifest = null) {
+// Texto da prévia do link: preço e subtítulo primeiro, como nas lojas grandes.
+export function buildShareDescription(product) {
+  const partes = [];
+  if (product.finalPrice > 0) {
+    partes.push(product.discount > 0 && product.listPrice > product.finalPrice
+      ? `De ${formatBRL(product.listPrice)} por ${formatBRL(product.finalPrice)}`
+      : formatBRL(product.finalPrice));
+  }
+  if (product.subtitulo) partes.push(product.subtitulo);
+  partes.push(buildDescription(product));
+  return partes.join(" · ").slice(0, 200);
+}
+
+export function renderProductPage(product, imageManifest = null, fallbackShareImage = "") {
   const path = productPath(product);
   const url = `${SITE_URL}${path}`;
   const category = CATEGORY_LABELS[product.categoria] || "";
   const description = buildDescription(product);
+  const shareDescription = buildShareDescription(product);
   const title = `${product.nome} | Laméd vs`;
+  const shareTitle = product.subtitulo ? `${product.nome} (${product.subtitulo}) | Laméd vs` : title;
   const buyHref = `/#/produto/${encodeURIComponent(product.id)}`;
   const mainImage = product.imagens[0] || "";
   const mainImageKey = imageManifest?.items?.[mainImage];
-  const shareImage = mainImageKey ? `${SITE_URL}${variantPath(mainImageKey, OG_WIDTH, "jpg")}` : mainImage;
+  // Sem foto da peça: banner da coleção ou a foto da loja, para a prévia nunca ficar sem imagem.
+  const shareImage = mainImageKey ? `${SITE_URL}${variantPath(mainImageKey, OG_WIDTH, "jpg")}` : (mainImage || fallbackShareImage || `${SITE_URL}/assets/hero-lamed.jpg`);
   const hasDiscount = product.discount > 0 && product.listPrice > product.finalPrice;
   // Mantem as quebras de linha que a proprietaria digitou no cadastro.
   const descriptionHtml = (product.descricao || description)
@@ -215,13 +232,14 @@ export function renderProductPage(product, imageManifest = null) {
   <meta property="og:type" content="product">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:site_name" content="Laméd vs">
-  <meta property="og:title" content="${escapeHtml(title)}">
-  <meta property="og:description" content="${escapeHtml(description.slice(0, 200))}">
+  <meta property="og:title" content="${escapeHtml(shareTitle)}">
+  <meta property="og:description" content="${escapeHtml(shareDescription)}">
   <meta property="og:url" content="${escapeHtml(url)}">
-  ${shareImage ? `<meta property="og:image" content="${escapeHtml(shareImage)}">` : ""}
+  <meta property="og:image" content="${escapeHtml(shareImage)}">
+  <meta property="og:image:alt" content="${escapeHtml(product.nome)}">
   <meta property="product:price:amount" content="${product.finalPrice.toFixed(2)}">
   <meta property="product:price:currency" content="BRL">
-  <meta name="twitter:card" content="${mainImage ? "summary_large_image" : "summary"}">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#FDFBF6">
   <link rel="icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -425,6 +443,84 @@ export async function fetchCatalog({ fetchImpl = fetch, timeoutMs = 15000 } = {}
   return products;
 }
 
+// Coleções visíveis no site (com id), para as páginas de compartilhamento.
+export async function fetchCollections({ fetchImpl = fetch, timeoutMs = 15000 } = {}) {
+  const url = new URL(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/colecoes`);
+  url.searchParams.set("pageSize", "100");
+  if (FIREBASE_WEB_API_KEY) url.searchParams.set("key", FIREBASE_WEB_API_KEY);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Firestore respondeu ${response.status}`);
+    const payload = await response.json();
+    return (payload.documents || [])
+      .map((doc) => normalizeCollection(String(doc.name || "").split("/").pop(), parseFirestoreFields(doc.fields || {})))
+      .filter(Boolean);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function normalizeCollection(id, data) {
+  if (!id || id === "__catalog_settings" || data?.kind === "catalog_settings") return null;
+  const nome = String(data?.nome || "").trim();
+  if (!nome) return null;
+  const imagem = typeof data?.imagemDestaque === "string" && /^https:\/\//i.test(data.imagemDestaque) ? data.imagemDestaque : "";
+  return {
+    id,
+    nome,
+    slug: slugify(data?.slug || nome),
+    descricao: String(data?.descricao || "").replace(/\s+/g, " ").trim(),
+    chamada: String(data?.chamadaHome || "").replace(/\s+/g, " ").trim(),
+    imagem,
+    publica: data?.ativa === true && data?.status !== "ended" && data?.status !== "inactive"
+  };
+}
+
+export function collectionPath(collection) {
+  return `/colecao/${collection.slug}/`;
+}
+
+// Página leve só para a prévia do link (WhatsApp, Instagram...): quem abre vai direto para a coleção na loja.
+export function renderCollectionSharePage(collection, imageManifest = null) {
+  const url = `${SITE_URL}${collectionPath(collection)}`;
+  const target = `/#/colecao/${encodeURIComponent(collection.id)}`;
+  const key = imageManifest?.items?.[collection.imagem];
+  const image = key ? `${SITE_URL}${variantPath(key, OG_WIDTH, "jpg")}` : (collection.imagem || `${SITE_URL}/assets/hero-lamed.jpg`);
+  const title = `Coleção ${collection.nome} | Laméd vs`;
+  const description = (collection.chamada || collection.descricao || `Conheça as peças da coleção ${collection.nome}, feitas à mão no ateliê Laméd vs.`).slice(0, 200);
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description.slice(0, 160))}">
+  <link rel="canonical" href="${escapeHtml(url)}">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="Laméd vs">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(url)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image:alt" content="${escapeHtml(`Coleção ${collection.nome}`)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#FDFBF6">
+  <link rel="icon" href="/favicon.ico">
+  <meta http-equiv="refresh" content="0; url=${escapeHtml(target)}">
+  <script>location.replace(${JSON.stringify(target)});</script>
+</head>
+<body style="font-family:Georgia,serif;background:#FDFBF6;color:#45301F;text-align:center;padding:3rem 1rem">
+  <h1>${escapeHtml(`Coleção ${collection.nome}`)}</h1>
+  <p>${escapeHtml(description)}</p>
+  <p><a href="${escapeHtml(target)}" style="color:#643F21">Ver a coleção na loja</a></p>
+</body>
+</html>
+`;
+}
+
 export async function fetchCollectionImages({ fetchImpl = fetch, timeoutMs = 15000 } = {}) {
   const url = new URL(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/colecoes`);
   url.searchParams.set("pageSize", "100");
@@ -453,16 +549,18 @@ export async function buildCatalogPages(outputDirectory, { fetchImpl = fetch, lo
     log.warn(`[catalogo] Nao foi possivel ler o catalogo (${error.message}). Gerando apenas o sitemap basico.`);
   }
 
+  let collections = [];
+  try {
+    collections = await fetchCollections({ fetchImpl });
+  } catch (error) {
+    log.warn(`[colecoes] Colecoes nao lidas (${error.message}).`);
+  }
+
   let imageManifest = null;
   if (imageOptions.enabled !== false) {
-    let collectionImages = [];
-    try {
-      collectionImages = await fetchCollectionImages({ fetchImpl });
-    } catch (error) {
-      log.warn(`[imagens] Colecoes nao lidas (${error.message}).`);
-    }
+    const collectionImages = collections.filter((c) => c.publica && c.imagem).map((c) => c.imagem);
     const productImages = products.flatMap((product) => product.imagens);
-    const ogUrls = new Set(products.map((product) => product.imagens[0]).filter(Boolean));
+    const ogUrls = new Set([...products.map((product) => product.imagens[0]), ...collectionImages].filter(Boolean));
     try {
       ({ manifest: imageManifest } = await buildImageVariants([...productImages, ...collectionImages], {
         outputDirectory,
@@ -476,6 +574,14 @@ export async function buildCatalogPages(outputDirectory, { fetchImpl = fetch, lo
     }
   }
 
+  const collectionById = new Map(collections.map((c) => [c.id, c]));
+  const collectionShareImage = (id) => {
+    const c = collectionById.get(id);
+    if (!c?.imagem) return "";
+    const key = imageManifest?.items?.[c.imagem];
+    return key ? `${SITE_URL}${variantPath(key, OG_WIDTH, "jpg")}` : c.imagem;
+  };
+
   const usedSlugs = new Set();
   const published = [];
   for (const product of products) {
@@ -484,7 +590,7 @@ export async function buildCatalogPages(outputDirectory, { fetchImpl = fetch, lo
     usedSlugs.add(slug);
     const directory = join(outputDirectory, "produto", slug);
     await mkdir(directory, { recursive: true });
-    await writeFile(join(directory, "index.html"), renderProductPage(product, imageManifest), "utf8");
+    await writeFile(join(directory, "index.html"), renderProductPage(product, imageManifest, collectionShareImage(product.colecaoId)), "utf8");
     published.push(product);
   }
 
@@ -492,6 +598,20 @@ export async function buildCatalogPages(outputDirectory, { fetchImpl = fetch, lo
   const links = Object.fromEntries(published.filter((product) => product.id).map((product) => [product.id, productPath(product)]));
   await mkdir(join(outputDirectory, "produto"), { recursive: true });
   await writeFile(join(outputDirectory, "produto", "links.json"), JSON.stringify(links), "utf8");
+
+  // Páginas de compartilhamento das coleções (/colecao/<nome>/) e a lista id -> endereço.
+  const collectionLinks = {};
+  const usedCollectionSlugs = new Set();
+  for (const collection of collections.filter((c) => c.publica)) {
+    if (usedCollectionSlugs.has(collection.slug)) continue;
+    usedCollectionSlugs.add(collection.slug);
+    const directory = join(outputDirectory, "colecao", collection.slug);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, "index.html"), renderCollectionSharePage(collection, imageManifest), "utf8");
+    collectionLinks[collection.id] = collectionPath(collection);
+  }
+  await mkdir(join(outputDirectory, "colecao"), { recursive: true });
+  await writeFile(join(outputDirectory, "colecao", "links.json"), JSON.stringify(collectionLinks), "utf8");
   await writeFile(join(outputDirectory, "sitemap.xml"), buildSitemap(published, undefined, hiddenPaths), "utf8");
   log.log(`[catalogo] ${published.length} paginas de produto geradas; sitemap com ${published.length + STATIC_PAGES.length - hiddenPaths.size} URLs.`);
   return published;

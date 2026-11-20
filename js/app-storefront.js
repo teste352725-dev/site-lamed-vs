@@ -1578,6 +1578,42 @@ function renderizarListaDeColecoes() {
     });
 }
 
+// Cabeçalho da página da coleção: banner, descrição e botão de compartilhar.
+// Nas páginas de categoria (mesma tela) tudo isso fica escondido.
+function setCollectionHeader(col) {
+    const banner = document.getElementById('collection-banner');
+    const bannerImg = document.getElementById('collection-banner-img');
+    const description = document.getElementById('collection-description');
+    const shareWrap = document.getElementById('collection-share-wrap');
+    const shareButton = document.getElementById('share-collection-button');
+    const spacer = document.getElementById('collection-header-spacer');
+    const original = col ? sanitizePlainText(col.imagemDestaque, 700) : '';
+    const imageUrl = original && window.LamedImages?.has(original) ? window.LamedImages.url(original, 1080) : original;
+    if (banner && bannerImg) {
+        banner.hidden = !imageUrl;
+        if (imageUrl) { bannerImg.src = imageUrl; bannerImg.alt = `Coleção ${sanitizePlainText(col.nome, 120)}`; }
+        else bannerImg.removeAttribute('src');
+    }
+    const text = col ? sanitizePlainText(col.descricao || col.chamadaHome, 1200) : '';
+    const descriptionWrap = document.getElementById('collection-description-wrap');
+    const more = document.getElementById('collection-description-more');
+    if (description && descriptionWrap) {
+        description.textContent = text;
+        description.classList.add('line-clamp-4');
+        descriptionWrap.hidden = !text;
+        if (more) {
+            // "Ler mais" só quando o texto passa de 4 linhas.
+            requestAnimationFrame(() => { more.hidden = !text || description.scrollHeight <= description.clientHeight + 2; });
+            more.onclick = () => { description.classList.remove('line-clamp-4'); more.hidden = true; };
+        }
+    }
+    if (shareWrap && shareButton) {
+        shareWrap.hidden = !col;
+        shareButton.dataset.shareCollection = col ? col.id : '';
+    }
+    if (spacer) spacer.hidden = Boolean(col);
+}
+
 function renderizarGridColecao(collectionId) {
     const grid = document.getElementById('collection-grid');
     const title = document.querySelector('#page-collection h3');
@@ -1585,6 +1621,7 @@ function renderizarGridColecao(collectionId) {
     grid.innerHTML = '';
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
+    setCollectionHeader(col);
     // A coleção mostra todas as suas peças, de todas as áreas.
     const prods = products
         .filter(p => p.colecaoId === collectionId)
@@ -1615,6 +1652,7 @@ function renderizarGridCategoria(catSlug) {
     };
 
     if (title) title.textContent = nomesCategorias[catSlug] || catSlug.toUpperCase();
+    setCollectionHeader(null);
 
     const categorySegment = checkIsCasa(catSlug) ? 'casa' : (catSlug === 'combo' || checkIsMesaPosta(catSlug) ? 'mesa' : 'moda');
     if (categorySegment !== currentCatalogSegment) {

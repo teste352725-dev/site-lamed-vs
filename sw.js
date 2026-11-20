@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lamed-v37'; // v35: fotos WebP do build + correcoes do checkout (2026-11-18)
+const CACHE_NAME = 'lamed-v38'; // v35: fotos WebP do build + correcoes do checkout (2026-11-18)
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -114,7 +114,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Lista das fotos leves muda a cada deploy: sempre tenta a rede primeiro.
-  if (url.pathname.endsWith('/img/manifest.json') || url.pathname === '/produto/links.json') {
+  if (url.pathname.endsWith('/img/manifest.json') || url.pathname === '/produto/links.json' || url.pathname === '/colecao/links.json') {
     event.respondWith(fetch(request).then((response) => putInCache(request, response)).catch(() => caches.match(request)));
     return;
   }

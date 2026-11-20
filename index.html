@@ -77,7 +77,7 @@
     <!-- Firebase SDK -->
     <script src="js/image-variants.js?v=20261118"></script>
     <script defer src="js/metricas.js?v=20261119"></script>
-    <script defer src="js/compartilhar.js?v=20261119"></script>
+    <script defer src="js/compartilhar.js?v=20261120"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -461,7 +461,20 @@
             <section class="py-8 px-4 min-h-screen">
                 <!-- Grid da Cole??o -->
                 <div id="collection-gallery" class="container mx-auto max-w-7xl">
-                    <h3 class="serif text-3xl md:text-4xl font-light text-center mb-12 text-[--cor-texto] mt-8">Coleção</h3>
+                    <div id="collection-banner" class="mx-auto mb-8 mt-4 max-w-5xl overflow-hidden rounded-sm bg-[#F0EEE6]" hidden>
+                        <img id="collection-banner-img" alt="" class="block h-56 w-full object-cover md:h-80" decoding="async">
+                    </div>
+                    <h3 class="serif text-3xl md:text-4xl font-light text-center mb-4 text-[--cor-texto] mt-8">Coleção</h3>
+                    <div id="collection-share-wrap" class="mb-6 text-center" hidden>
+                        <button id="share-collection-button" type="button" data-share-collection="" class="inline-flex items-center justify-center gap-2 border border-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.15em] text-[--cor-marrom-cta] transition-colors hover:bg-[#F0EEE6]">
+                            <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> <span data-share-label>Compartilhar coleção</span>
+                        </button>
+                    </div>
+                    <div id="collection-description-wrap" class="mx-auto mb-10 max-w-2xl text-center" hidden>
+                        <p id="collection-description" class="line-clamp-4 text-sm leading-7 text-gray-600"></p>
+                        <button id="collection-description-more" type="button" class="mt-2 text-xs font-semibold uppercase tracking-[0.15em] text-[--cor-ouro-acento] underline" hidden>Ler mais</button>
+                    </div>
+                    <div id="collection-header-spacer" class="mb-8"></div>
                     <div id="collection-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
                          <div class="col-span-full text-center py-20">
                             <div class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-[--cor-marrom-cta]"></div>
@@ -1153,7 +1166,7 @@
 
     <script defer src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
     <script defer src="js/app-core.js?v=20261120-subtitulo"></script>
-    <script defer src="js/app-storefront.js?v=20261120-subtitulo"></script>
+    <script defer src="js/app-storefront.js?v=20261120-colecao"></script>
     <script defer src="js/app-cart-checkout.js?v=20261120-subtitulo"></script>
     <script defer src="js/app-account-cart.js?v=20261120-recomenda"></script>
     <script defer src="js/app-operations.js"></script>

@@ -8,6 +8,16 @@
   var SITE = "https://www.lamedvs.com.br";
   var PRODUCT_ID = /^[A-Za-z0-9]{6,40}$/;
   var linksPromise = null;
+  var colecoesPromise = null;
+
+  function carregarLinksColecoes() {
+    if (!colecoesPromise) {
+      colecoesPromise = fetch("/colecao/links.json", { cache: "no-cache" })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .catch(function () { return {}; });
+    }
+    return colecoesPromise;
+  }
 
   function carregarLinks() {
     if (!linksPromise) {
@@ -66,7 +76,31 @@
       .catch(function () { window.prompt("Copie o link da peça:", url); });
   }
 
+  function compartilharColecao(botao, nome, url) {
+    var dados = { title: "Coleção " + nome + " | Laméd vs", text: "Conheça a coleção " + nome + " da Laméd vs", url: url };
+    if (navigator.share) {
+      return navigator.share(dados).catch(function (erro) {
+        if (erro && erro.name === "AbortError") return;
+        return copiar(url).then(function () { avisar(botao, "Link copiado"); }).catch(function () { window.prompt("Copie o link da coleção:", url); });
+      });
+    }
+    return copiar(url).then(function () { avisar(botao, "Link copiado"); }).catch(function () { window.prompt("Copie o link da coleção:", url); });
+  }
+
   document.addEventListener("click", function (event) {
+    var botaoColecao = event.target && event.target.closest && event.target.closest("[data-share-collection]");
+    if (botaoColecao) {
+      event.preventDefault();
+      var colecaoId = botaoColecao.getAttribute("data-share-collection") || "";
+      if (!PRODUCT_ID.test(colecaoId)) return;
+      var tituloColecao = document.querySelector("#page-collection h3");
+      var nomeColecao = tituloColecao ? tituloColecao.textContent.trim() : "";
+      carregarLinksColecoes().then(function (links) {
+        var caminho = links && typeof links[colecaoId] === "string" && /^\/colecao\/[a-z0-9-]+\/$/.test(links[colecaoId]) ? links[colecaoId] : "";
+        compartilharColecao(botaoColecao, nomeColecao, caminho ? SITE + caminho : SITE + "/#/colecao/" + colecaoId);
+      });
+      return;
+    }
     var botao = event.target && event.target.closest && event.target.closest("[data-share-product]");
     if (!botao) return;
     event.preventDefault();
@@ -93,6 +127,7 @@
   // Carrega a lista de links quando uma peca e aberta, para o toque ser imediato.
   function preparar() {
     if (/^#\/produto\//.test(location.hash || "")) carregarLinks();
+    if (/^#\/colecao\//.test(location.hash || "")) carregarLinksColecoes();
   }
   window.addEventListener("hashchange", preparar);
   preparar();
