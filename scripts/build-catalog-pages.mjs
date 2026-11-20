@@ -227,7 +227,7 @@ export function renderProductPage(product, imageManifest = null) {
   <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/institucional.css?v=20261103">
-  <link rel="stylesheet" href="/css/produto.css?v=20261103">
+  <link rel="stylesheet" href="/css/produto.css?v=20261119">
   <script type="application/ld+json" id="produto-jsonld">${buildProductJsonLd(product)}</script>
 </head>
 <body>
@@ -267,6 +267,10 @@ export function renderProductPage(product, imageManifest = null) {
         <p class="produto-indisponivel" data-indisponivel hidden>Esta peça não está disponível no momento. Fale com o ateliê para saber quando volta.</p>
 
         <a class="inst-cta produto-cta" data-comprar href="${escapeHtml(buyHref)}">Escolher opções e comprar</a>
+        <button type="button" class="produto-compartilhar" data-share-product data-share-url="${escapeHtml(url)}" data-share-name="${escapeHtml(product.nome)}">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>
+          <span data-share-label>Compartilhar esta peça</span>
+        </button>
 
         <div class="produto-descricao">
           ${descriptionHtml}
@@ -311,6 +315,7 @@ export function renderProductPage(product, imageManifest = null) {
   </footer>
 
   <script defer src="/js/metricas.js?v=20261119"></script>
+  <script defer src="/js/compartilhar.js?v=20261119"></script>
   <script>
   // Atualiza nome, preco e disponibilidade ao vivo (equipe/descontos mudam sem novo deploy).
   (function () {
@@ -477,6 +482,10 @@ export async function buildCatalogPages(outputDirectory, { fetchImpl = fetch, lo
     published.push(product);
   }
 
+  // Lista id -> endereco da pagina propria, usada pelo botao "Compartilhar" da loja.
+  const links = Object.fromEntries(published.filter((product) => product.id).map((product) => [product.id, productPath(product)]));
+  await mkdir(join(outputDirectory, "produto"), { recursive: true });
+  await writeFile(join(outputDirectory, "produto", "links.json"), JSON.stringify(links), "utf8");
   await writeFile(join(outputDirectory, "sitemap.xml"), buildSitemap(published, undefined, hiddenPaths), "utf8");
   log.log(`[catalogo] ${published.length} paginas de produto geradas; sitemap com ${published.length + STATIC_PAGES.length - hiddenPaths.size} URLs.`);
   return published;

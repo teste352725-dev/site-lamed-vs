@@ -77,6 +77,7 @@
     <!-- Firebase SDK -->
     <script src="js/image-variants.js?v=20261118"></script>
     <script defer src="js/metricas.js?v=20261119"></script>
+    <script defer src="js/compartilhar.js?v=20261119"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -504,6 +505,9 @@
                             <div class="space-y-4 mb-8 pt-4 border-t border-[#E5E0D8]">
                                <button id="add-to-cart-button" class="w-full bg-[--cor-marrom-cta] text-white py-4 text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#4a2e18] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                 Selecione Opções
+                               </button>
+                               <button id="share-product-button" type="button" data-share-product class="w-full border border-[--cor-marrom-cta] text-[--cor-marrom-cta] py-3.5 text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#F0EEE6] transition-colors flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> <span data-share-label>Compartilhar esta peça</span>
                                </button>
                             </div>
 

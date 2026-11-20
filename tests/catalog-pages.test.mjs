@@ -93,7 +93,12 @@ test("build gera so produtos ativos com preco e ignora duplicados", async () => 
     });
     const published = await buildCatalogPages(dir, { fetchImpl: fakeFetch, log: { log() {}, warn() {} } });
     assert.equal(published.length, 1);
-    assert.deepEqual(await readdir(join(dir, "produto")), ["caminho-de-mesa-shabat-shalom-abcdef"]);
+    assert.deepEqual((await readdir(join(dir, "produto"))).sort(), ["caminho-de-mesa-shabat-shalom-abcdef", "links.json"]);
+    // lista usada pelo botao "Compartilhar" da loja
+    assert.deepEqual(JSON.parse(await readFile(join(dir, "produto", "links.json"), "utf8")), { abcdef123: "/produto/caminho-de-mesa-shabat-shalom-abcdef/" });
+    const pagina = await readFile(join(dir, "produto", "caminho-de-mesa-shabat-shalom-abcdef", "index.html"), "utf8");
+    assert.match(pagina, /data-share-url="https:\/\/www\.lamedvs\.com\.br\/produto\/caminho-de-mesa-shabat-shalom-abcdef\/"/);
+    assert.match(pagina, /\/js\/compartilhar\.js/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

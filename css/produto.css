@@ -40,3 +40,14 @@
 .produto-garantias li + li { margin-top: .55rem; }
 
 .produto-whats { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; }
+
+.produto-compartilhar {
+  display: flex; align-items: center; justify-content: center; gap: .55rem; width: 100%;
+  margin-top: .75rem; padding: .95rem 1.4rem; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--cor-marrom); border: 1px solid var(--cor-marrom);
+  font: inherit; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+}
+.produto-compartilhar:hover { background: var(--cor-papel); }
+.produto-compartilhar:focus-visible { outline: 2px solid var(--cor-ouro); outline-offset: 3px; }
+@media (min-width: 860px) { .produto-compartilhar { width: auto; display: inline-flex; margin: 0 0 0 .6rem; vertical-align: middle; } }
