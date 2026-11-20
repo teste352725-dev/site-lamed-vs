@@ -221,7 +221,8 @@ function mergeSiteCategories(configEntries, productEntries) {
     };
 
     DEFAULT_SITE_CATEGORIES.forEach(append);
-    (Array.isArray(productEntries) ? productEntries : []).forEach((slug, index) => append({ slug, nome: formatCategoryLabel(slug), ordem: 500 + index, ativa: true }));
+    // Categoria só vista nas peças entra com nome gerado, sem trocar o nome já cadastrado.
+    (Array.isArray(productEntries) ? productEntries : []).forEach((slug, index) => { if (!merged.has(slug)) append({ slug, nome: formatCategoryLabel(slug), ordem: 500 + index, ativa: true }); });
     (Array.isArray(configEntries) ? configEntries : []).forEach(append);
 
     return [...merged.values()]
@@ -244,12 +245,12 @@ function buildEditableSiteCategories(configEntries, productEntries) {
     };
 
     DEFAULT_SITE_CATEGORIES.forEach(append);
-    (Array.isArray(productEntries) ? productEntries : []).forEach((slug, index) => append({
+    (Array.isArray(productEntries) ? productEntries : []).forEach((slug, index) => { if (!merged.has(slug)) append({
         slug,
         nome: formatCategoryLabel(slug),
         ordem: 500 + index,
         ativa: true
-    }));
+    }); });
     (Array.isArray(configEntries) ? configEntries : []).forEach(append);
 
     return [...merged.values()]
@@ -1388,9 +1389,8 @@ function renderizarSecoesColecoes() {
     if (segmentCollections.length === 0) return;
 
     segmentCollections.forEach((colecao, index) => {
-        const prods = products
-            .filter(p => p.colecaoId === colecao.id && getProductSegment(p) === currentCatalogSegment)
-            .sort(sortProductsByNewest);
+        // Todas as peças da coleção (roupas, mesa posta e casa), misturadas.
+        const prods = misturarPorArea(products.filter(p => p.colecaoId === colecao.id));
         if (prods.length === 0) return; 
 
         const section = document.createElement('section');
@@ -1400,10 +1400,10 @@ function renderizarSecoesColecoes() {
         const splideId = `splide-collection-${index}`;
         section.innerHTML = `
             <div class="container mx-auto max-w-7xl text-center">
-                <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">${colecao.nome}</h3>
-                ${colecao.descricao ? `<p class="text-[--cor-texto] mb-8 max-w-2xl mx-auto text-sm italic">${colecao.descricao}</p>` : '<div class="mb-8"></div>'}
+                <h3 class="serif text-3xl md:text-4xl font-light mb-2 text-[--cor-texto]">${escapeHtml(colecao.nome || '')}</h3>
+                ${colecao.descricao ? `<p class="text-[--cor-texto] mb-8 max-w-2xl mx-auto text-sm italic">${escapeHtml(colecao.descricao)}</p>` : '<div class="mb-8"></div>'}
                 <div id="${splideId}" class="splide mb-12"><div class="splide__track"><ul class="splide__list"></ul></div></div>
-                <button class="main-button py-3 px-8 rounded-full uppercase text-xs tracking-widest" onclick="location.hash='#/colecao/${colecao.id}'">Ver Tudo</button>
+                <button class="main-button py-3 px-8 rounded-full uppercase text-xs tracking-widest" onclick="location.hash='#/colecao/${encodeURIComponent(colecao.id)}'">Ver Tudo</button>
             </div>
         `;
         container.appendChild(section);
@@ -1585,18 +1585,9 @@ function renderizarGridColecao(collectionId) {
     grid.innerHTML = '';
     const col = activeCollections.find(c => c.id === collectionId);
     if (col && title) title.textContent = col.nome;
-    // Link direto para uma coleção de outra vitrine (ex.: Casa): troca a vitrine junto.
-    const collectionProducts = products.filter(p => p.colecaoId === collectionId);
-    if (collectionProducts.length && !collectionProducts.some(p => getProductSegment(p) === currentCatalogSegment)) {
-        currentCatalogSegment = getProductSegment(collectionProducts[0]);
-        saveCatalogSegment(currentCatalogSegment);
-        applyCatalogSegmentCopy();
-        renderSidebarCategoryLinks();
-        renderHomeShopFilters();
-        renderHomeShopGrid();
-    }
-    const prods = collectionProducts
-        .filter(p => getProductSegment(p) === currentCatalogSegment)
+    // A coleção mostra todas as suas peças, de todas as áreas.
+    const prods = products
+        .filter(p => p.colecaoId === collectionId)
         .sort(sortProductsByNewest);
     renderProductsIntoGrid(grid, prods, '<p class="col-span-full text-center text-gray-500 py-12">Nenhuma peça.</p>');
 }
@@ -2282,20 +2273,91 @@ function getProductImages(product) {
         : ['https://placehold.co/600x800/eee/ccc?text=Sem+imagem'];
 }
 
+function embaralhar(lista) {
+    const copia = lista.slice();
+    for (let i = copia.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+    return copia;
+}
+
+// Sorteia as peças e intercala as áreas (mesa, casa, roupa...) para todas aparecerem logo no começo.
+function misturarPorArea(lista) {
+    const grupos = new Map();
+    embaralhar(lista).forEach((produto) => {
+        const area = getProductSegment(produto);
+        if (!grupos.has(area)) grupos.set(area, []);
+        grupos.get(area).push(produto);
+    });
+    const filas = embaralhar([...grupos.values()]);
+    const resultado = [];
+    while (filas.some((fila) => fila.length)) {
+        filas.forEach((fila) => { if (fila.length) resultado.push(fila.shift()); });
+    }
+    return resultado;
+}
+window.misturarPorArea = misturarPorArea;
+
+const RECOMENDACAO_AREA_TITULO = { moda: 'Mais roupas Laméd', mesa: 'Mais peças de mesa posta', casa: 'Mais peças para a casa' };
+
+function renderRecommendationBlock(container, { titulo, pecas, acaoTexto, acao }) {
+    if (!pecas.length) return;
+    const bloco = document.createElement('section');
+    bloco.className = 'recommendation-block';
+    const title = document.createElement('h3');
+    title.className = "serif text-2xl text-center mt-12 mb-6 text-[--cor-texto]";
+    title.textContent = titulo;
+    bloco.appendChild(title);
+    const grid = document.createElement('div');
+    grid.className = "grid grid-cols-2 md:grid-cols-4 gap-4";
+    pecas.forEach((p) => grid.appendChild(criarCardProduto(p)));
+    bloco.appendChild(grid);
+    if (acaoTexto && acao) {
+        const wrap = document.createElement('div');
+        wrap.className = 'text-center mt-6';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'border border-[--cor-marrom-cta] text-[--cor-marrom-cta] px-6 py-3 text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#F0EEE6] transition-colors';
+        button.textContent = acaoTexto;
+        button.addEventListener('click', acao);
+        wrap.appendChild(button);
+        bloco.appendChild(wrap);
+    }
+    container.appendChild(bloco);
+}
+
+// Página da peça: primeiro peças da mesma categoria (guardanapo -> guardanapos),
+// depois o resto da mesma área (mesa posta, casa ou roupas).
 function renderRecommendations(current) {
     const container = document.getElementById('related-products-container');
     if (!container) return;
     container.innerHTML = '';
-    const suggestions = products.filter(p => p.id !== current.id).sort(() => 0.5 - Math.random()).slice(0, 4);
-    if (suggestions.length > 0) {
-        const title = document.createElement('h3');
-        title.className = "serif text-2xl text-center mt-12 mb-6 text-[--cor-texto]";
-        title.textContent = "Você também pode gostar";
-        container.appendChild(title);
-        const grid = document.createElement('div');
-        grid.className = "grid grid-cols-2 md:grid-cols-4 gap-4";
-        suggestions.forEach(p => grid.appendChild(criarCardProduto(p)));
-        container.appendChild(grid);
+    const outras = products.filter((p) => p.id !== current.id && String(p.status || 'active').toLowerCase() !== 'inactive');
+    const area = getProductSegment(current);
+    const mesmaCategoria = current.categoria ? embaralhar(outras.filter((p) => p.categoria === current.categoria)) : [];
+    const idsCategoria = new Set(mesmaCategoria.map((p) => p.id));
+    const mesmaArea = embaralhar(outras.filter((p) => !idsCategoria.has(p.id) && getProductSegment(p) === area));
+
+    if (mesmaCategoria.length) {
+        const nomeCategoria = getSiteCategoryLabel(current.categoria);
+        renderRecommendationBlock(container, {
+            titulo: `Outras peças de ${nomeCategoria}`,
+            pecas: mesmaCategoria.slice(0, 4),
+            acaoTexto: mesmaCategoria.length > 4 ? `Ver todas (${mesmaCategoria.length + 1})` : '',
+            acao: () => { window.location.hash = `#/categoria/${encodeURIComponent(current.categoria)}`; }
+        });
+    }
+    if (mesmaArea.length) {
+        renderRecommendationBlock(container, {
+            titulo: RECOMENDACAO_AREA_TITULO[area] || 'Você também pode gostar',
+            pecas: mesmaArea.slice(0, 8),
+            acaoTexto: `Ver tudo de ${(CATALOG_SEGMENTS[area] || CATALOG_SEGMENTS.mesa).label}`,
+            acao: () => { setCatalogSegment(area); window.location.hash = '#loja'; }
+        });
+    }
+    if (!mesmaCategoria.length && !mesmaArea.length && outras.length) {
+        renderRecommendationBlock(container, { titulo: 'Você também pode gostar', pecas: misturarPorArea(outras).slice(0, 4) });
     }
 }
 

@@ -56,7 +56,7 @@
             .filter((collection) => normalizeStatus(collection) === 'active')
             .filter((collection) => collection?.ativa !== false)
             .filter((collection) => isCollectionInsideWindow(collection, now))
-            .filter((collection) => normalizeSegments(collection).includes(segment))
+            .filter((collection) => !segment || normalizeSegments(collection).includes(segment))
             .sort((a, b) => {
                 const featuredDifference = Number(b?.destaqueHome === true) - Number(a?.destaqueHome === true);
                 if (featuredDifference) return featuredDifference;
@@ -71,11 +71,13 @@
         return product?.segmento === 'mesa' ? 'mesa' : 'moda';
     }
 
-    function collectionProducts(collectionId, segment) {
-        return (Array.isArray(products) ? products : [])
+    // Todas as peças da coleção (de qualquer área), sorteadas e intercaladas por área.
+    function collectionProducts(collectionId) {
+        const lista = (Array.isArray(products) ? products : [])
             .filter((product) => product?.colecaoId === collectionId)
-            .filter((product) => String(product?.status || 'active').toLowerCase() !== 'inactive')
-            .filter((product) => segmentForProduct(product) === segment)
+            .filter((product) => String(product?.status || 'active').toLowerCase() !== 'inactive');
+        if (typeof window.misturarPorArea === 'function') return window.misturarPorArea(lista);
+        return lista
             .sort((a, b) => {
                 if (typeof sortProductsByNewest === 'function') return sortProductsByNewest(a, b);
                 return Number(b?.ordem || 0) - Number(a?.ordem || 0);
@@ -148,7 +150,9 @@
         installStyles();
         const heading = ensureHeading();
         const segment = typeof currentCatalogSegment === 'string' && SEGMENTS.includes(currentCatalogSegment) ? currentCatalogSegment : 'mesa';
-        const collections = activeSeasonalCollections(segment);
+        // Coleções desta aba; se não houver, mostra as outras (chama atenção para as outras áreas).
+        let collections = activeSeasonalCollections(segment);
+        if (!collections.length) collections = activeSeasonalCollections(null);
         if (!collections.length) {
             renderFallback();
             return;
@@ -160,7 +164,7 @@
             || collections[0];
         selectedCollectionBySegment[segment] = selected.id;
 
-        const items = collectionProducts(selected.id, segment);
+        const items = collectionProducts(selected.id);
         const title = sanitize(selected.nome || 'Coleção', 120);
         const description = sanitize(selected.chamadaHome || selected.descricao || 'Conheça as peças desta coleção.', 260);
         const originalImage = sanitize(selected.imagemDestaque, 700);
@@ -174,7 +178,7 @@
         heading.innerHTML = `
             <div class="home-seasonal-main ${image ? 'has-cover' : ''}">
                 <div class="home-seasonal-copy">
-                    <span class="home-seasonal-eyebrow">Coleção em destaque · ${escapeHtml(segmentLabel)}</span>
+                    <span class="home-seasonal-eyebrow">Coleção em destaque</span>
                     <h3 class="home-seasonal-title">${escapeHtml(title)}</h3>
                     <p class="home-seasonal-description">${escapeHtml(description)}</p>
                     <div class="home-seasonal-actions">
